@@ -8,7 +8,7 @@
 | Class | SE20A02 |
 | Semester | SU26 |
 | Group | 05 |
-| Topic |  |
+| Topic | TripGenie AI – Smart Travel Planner for Central Vietnam |
 | Repository |  |
 
 ---
@@ -17,11 +17,11 @@
 
 | No | Student ID | Full Name | GitHub Username | Role | Main Responsibility |
 |---:|---|---|---|---|---|
-| 1 |  |  |  | Leader |  |
-| 2 |  |  |  | Member |  |
-| 3 |  |  |  | Member |  |
-| 4 |  |  |  | Member |  |
-| 5 |  |  |  | Member |  |
+| 1 | DE200147 | Nguyễn Hoàng Ngọc Ánh | [Ngọc Ánh](https://github.com/nhnnanh) | Leader | Project management, AI recommendation planning, UI/UX review |
+| 2 | DE200523 | Đoàn Thế Lực | [Thế Lực](https://github.com/LucFr1746) | Vice Leader | Frontend development, AI integration, system architecture |
+| 3 | DE190105 | Trương Văn Hiếu | [Hiếu](https://github.com/truonghieu1233) | Member | Backend API development, database management |
+| 4 | DE200160 | Trần Nhất Long | [Long](https://github.com/TNL293107) | Member | Testing, AI audit documentation, feature support |
+| 5 | DE201043 | Nguyễn La Hòa An | [Hòa An](https://github.com/Anhoa123) | Member | UI/UX design, frontend support, documentation |
 
 ---
 
@@ -125,3 +125,7 @@ docs/REFLECTION.md
 ```
 
 Students must be able to explain, verify, and defend all submitted work.
+
+
+
+
