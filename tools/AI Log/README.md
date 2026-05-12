@@ -1,36 +1,109 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# 🤖 AI Workflow Logger
 
-## Getting Started
+[![Next.js](https://img.shields.io/badge/Next.js-16.2.6-black?style=for-the-badge&logo=next.js)](https://nextjs.org/)
+[![HeroUI](https://img.shields.io/badge/HeroUI-v3-0070F3?style=for-the-badge&logo=react)](https://heroui.com/)
+[![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-v4-38B2AC?style=for-the-badge&logo=tailwind-css)](https://tailwindcss.com/)
+[![Zustand](https://img.shields.io/badge/Zustand-State_Mgmt-orange?style=for-the-badge)](https://github.com/pmndrs/zustand)
 
-First, run the development server:
+A premium, local-first workflow management tool designed for auditing AI interactions and documenting project evolution. Built with a focus on privacy, comprehensive logging, and deep reflection.
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+---
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## 🌟 Overview
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+**AI Workflow Logger** is a structured environment for developers and students to track their collaborative journey with Artificial Intelligence. It moves beyond simple prompt history, providing a multi-dimensional view of how AI influences project architecture, code quality, and personal growth.
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+### Why AI Workflow Logger?
 
-## Learn More
+- **Audit-Ready**: Generate comprehensive reports on how AI was used in your project.
+- **Structured Reflection**: Analyze the effectiveness of your prompts and the accuracy of AI suggestions.
+- **Evidence-Based**: Link commits, screenshots, and documentation directly to your AI logs.
+- **Privacy First**: All data is stored locally in your project workspace as `.data.json`.
 
-To learn more about Next.js, take a look at the following resources:
+---
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## 🚀 Key Features
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+### 📅 Workflow Changelog
 
-## Deploy on Vercel
+Track project phases with precision. Log completed features, major improvements, and AI support levels for every development cycle.
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+### 📝 Prompt Analytics & Logging
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- **Detailed Context**: Record not just the prompt, but the purpose, category, and usage level.
+- **Evaluation System**: Flag "Most Important" prompts or "Ineffective" responses with detailed post-mortems.
+- **Prompt Lessons**: Extract actionable insights from your AI interactions to improve future communication.
+
+### 🛡️ AI Audit System
+
+- **Usage Matrix**: Visualize which AI tools are supporting which parts of your project.
+- **Issue Tracking**: Record AI-generated bugs or logic errors and how they were resolved.
+- **Contribution Audit**: Distinguish between human effort and AI-generated content in team projects.
+
+### 🧠 Deep Reflection
+
+- **Dependency Analysis**: Honestly evaluate your level of reliance on AI tools.
+- **Before/After Metrics**: Document specific areas where AI significantly improved (or hindered) performance.
+- **Self-Evaluation**: Score yourself against core criteria to track competency development.
+
+---
+
+## 🛠️ Tech Stack
+
+- **Framework**: [Next.js 16 (App Router)](https://nextjs.org/)
+- **UI Library**: [HeroUI v3](https://heroui.com/) - Utilizing Compound Components and React Aria.
+- **Styling**: [Tailwind CSS v4](https://tailwindcss.com/) with OKLCH color variables.
+- **State Management**: [Zustand](https://github.com/pmndrs/zustand) for robust local state.
+- **Forms**: [React Hook Form](https://react-hook-form.com/) + [Zod](https://zod.dev/) for strict validation.
+- **Icons**: [Lucide React](https://lucide.dev/)
+
+---
+
+## 📁 Data Architecture
+
+This project uses a **local-first, file-based architecture**.
+
+Projects are stored as standalone `.data.json` files within the workspace. This ensures:
+
+1.  **Version Control Compatibility**: Your AI logs live alongside your code in Git.
+2.  **No Backend Required**: Zero-config setup and 100% data ownership.
+3.  **Portability**: Easily share project files with team members or instructors.
+
+---
+
+## 🏁 Getting Started
+
+### Prerequisites
+
+- Node.js 18.x or later
+- npm / yarn / pnpm
+
+### Installation
+
+1.  Clone the repository:
+
+    ```bash
+    git clone https://github.com/fptu-se-su26/swp391-su26-ai-audit-project-swp391_se20a02_group-05
+    cd "tools/AI Log"
+    ```
+
+2.  Install dependencies:
+
+    ```bash
+    npm install
+    ```
+
+3.  Run the development server:
+
+    ```bash
+    npm run dev
+    ```
+
+4.  Open [http://localhost:3000](http://localhost:3000) in your browser.
+
+---
+
+## 📝 License
+
+Part of the SWP391 AI Audit Project - FPT University.
+Group-05 | SE20A02
