@@ -28,6 +28,14 @@ export interface ChangelogEntry {
   notes: string;
 }
 
+export interface ChangelogSummary {
+  completedFeatures: string;
+  unfinishedFeatures: string;
+  majorImprovements: string;
+  overallSummary: string;
+  futureImprovements: string;
+}
+
 export interface PromptLogEntry {
   id: string;
   date: string;
@@ -46,12 +54,24 @@ export interface PromptLogEntry {
   isMostImportant: boolean; 
   isIneffective: boolean; 
   ineffectiveDetails?: { reason: string; improvementMethod: string; improvedPrompt: string; newResult: string };
+  importanceExplanation: string;
 }
 
 export interface PromptLessons {
   infoNeeded: string;
   lessonsLearned: string;
   futureImprovements: string;
+}
+
+export interface EvidenceItem {
+  id: string;
+  type: 'commit' | 'screenshot' | 'demo' | 'test' | 'file' | 'note';
+  label: string;
+  content: string;         // URL, descriptive text
+  description?: string;    // Optional longer description
+  fileName?: string;       // For file references
+  thumbnail?: string;      // Compressed base64 preview for screenshots
+  timestamp: string;       // When this evidence was added
 }
 
 export interface AiAuditLogEntry {
@@ -65,8 +85,9 @@ export interface AiAuditLogEntry {
   aiResponseSummary: string;
   usedContent: string;
   modifications: string;
-  evidence: Array<{ id: string; type: string; content: string }>;
+  evidence: EvidenceItem[];
   lessonsLearned: string;
+  linkedPromptIds: string[];
 }
 
 export interface AiAuditData {
@@ -113,8 +134,21 @@ export interface Project {
   metadata: ProjectMetadata;
   members: ProjectMember[];
   changelogs: ChangelogEntry[];
+  changelogSummary: ChangelogSummary;
   prompts: PromptLogEntry[];
   promptLessons: PromptLessons;
   aiAudit: AiAuditData;
   reflection: ReflectionData;
+}
+
+/** Schema for .data.json project files */
+export interface DataProjectFile {
+  schemaVersion: "1.0";
+  appVersion: string;
+  metadata: {
+    createdAt: string;
+    updatedAt: string;
+    fileName: string;
+  };
+  project: Project;
 }

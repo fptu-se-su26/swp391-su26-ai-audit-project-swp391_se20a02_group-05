@@ -2,20 +2,37 @@
 
 import { useProjectStore } from "@/store/projectStore";
 import { useForm, Controller, useFieldArray } from "react-hook-form";
-import { Accordion, TextField, Input, Button, Card, TextArea, Checkbox, Select, ListBox, Label } from "@heroui/react";
-import { Plus, Trash2, Save, ArrowRight, ArrowLeft, ChevronDown } from "lucide-react";
-import { useEffect } from "react";
-import { useRouter } from "next/navigation";
-import { ChangelogEntry } from "@/types/project";
+import { Accordion, TextField, Input, Button, Card, TextArea, Checkbox, Select, ListBox, Label, Separator } from "@heroui/react";
+import { Plus, Trash2, Save, ArrowRight, ArrowLeft, ChevronDown, CheckCircle, XCircle, Rocket, ClipboardList, Sparkles } from "lucide-react";
+import { useEffect, useState } from "react";
+import { ChangelogEntry, ChangelogSummary } from "@/types/project";
+import { useUnsavedChanges } from "@/lib/useUnsavedChanges";
+import ConfirmDeleteModal from "./ConfirmDeleteModal";
+
+interface Step2FormData {
+  changelogs: ChangelogEntry[];
+  changelogSummary: ChangelogSummary;
+}
 
 export default function Step2Form({ projectId }: { projectId: string }) {
-  const { projects, updateChangelogs } = useProjectStore();
+  const { projects, updateChangelogs, updateChangelogSummary } = useProjectStore();
   const project = projects[projectId];
-  const router = useRouter();
+  const [deleteTarget, setDeleteTarget] = useState<{ index: number; name: string } | null>(null);
 
-  const { control, handleSubmit, formState: { isDirty }, reset, watch } = useForm<{ changelogs: ChangelogEntry[] }>({
-    defaultValues: { changelogs: [] }
+  const { control, handleSubmit, formState: { isDirty }, reset, watch } = useForm<Step2FormData>({
+    defaultValues: {
+      changelogs: [],
+      changelogSummary: {
+        completedFeatures: "",
+        unfinishedFeatures: "",
+        majorImprovements: "",
+        overallSummary: "",
+        futureImprovements: "",
+      }
+    }
   });
+
+  const changelogs = watch("changelogs") || [];
 
   const { fields, append, remove } = useFieldArray({
     control,
@@ -24,14 +41,29 @@ export default function Step2Form({ projectId }: { projectId: string }) {
 
   useEffect(() => {
     if (project) {
-      reset({ changelogs: project.changelogs || [] });
+      reset({
+        changelogs: project.changelogs || [],
+        changelogSummary: project.changelogSummary || {
+          completedFeatures: "",
+          unfinishedFeatures: "",
+          majorImprovements: "",
+          overallSummary: "",
+          futureImprovements: "",
+        }
+      });
     }
   }, [project, reset]);
 
-  const onSubmit = (data: { changelogs: ChangelogEntry[] }) => {
+  const onSubmit = (data: Step2FormData) => {
     updateChangelogs(data.changelogs);
+    updateChangelogSummary(data.changelogSummary);
     reset(data);
   };
+
+  const { UnsavedModal, guardNavigation } = useUnsavedChanges({
+    isDirty,
+    onSave: handleSubmit(onSubmit),
+  });
 
   const handleAddPhase = () => {
     append({
@@ -72,10 +104,8 @@ export default function Step2Form({ projectId }: { projectId: string }) {
               <Accordion.Heading>
                 <Accordion.Trigger className="bg-surface-secondary px-4 py-3 rounded-lg mb-2">
                   <div className="flex flex-col text-left">
-                    {/* eslint-disable-next-line react-compiler/react-compiler */}
-                    <span className="text-sm font-medium">{watch(`changelogs.${index}.phaseName`)}</span>
-                    {/* eslint-disable-next-line react-compiler/react-compiler */}
-                    <span className="text-xs text-default-500">{watch(`changelogs.${index}.status`)}</span>
+                    <span className="text-sm font-medium">{changelogs[index]?.phaseName}</span>
+                    <span className="text-xs text-default-500">{changelogs[index]?.status}</span>
                   </div>
                   <Accordion.Indicator>
                     <ChevronDown className="w-4 h-4" />
@@ -168,8 +198,125 @@ export default function Step2Form({ projectId }: { projectId: string }) {
         </Accordion>
       )}
 
+      {/* ─── Final Project Change Summary ──────────────────── */}
+      <Separator className="my-2" />
+
+      <Card>
+        <div className="flex flex-col gap-4 p-6">
+          <h3 className="text-lg font-semibold">Final Project Change Summary</h3>
+          <p className="text-xs text-default-400">Summarize the overall project changes for the CHANGELOG.md final section.</p>
+
+          <Accordion className="w-full">
+            <Accordion.Item>
+              <Accordion.Heading>
+                <Accordion.Trigger className="bg-surface-secondary px-4 py-3 rounded-lg mb-1">
+                  <div className="flex items-center gap-2 text-left">
+                    <CheckCircle className="w-4 h-4 text-success shrink-0" />
+                    <span className="text-sm font-medium">Completed Features</span>
+                  </div>
+                  <Accordion.Indicator><ChevronDown className="w-4 h-4" /></Accordion.Indicator>
+                </Accordion.Trigger>
+              </Accordion.Heading>
+              <Accordion.Panel>
+                <Accordion.Body className="p-4">
+                  <Controller name="changelogSummary.completedFeatures" control={control} render={({ field }) => (
+                    <TextField aria-label="Completed Features">
+                      <TextArea {...field} placeholder="List features that were completed successfully..." />
+                    </TextField>
+                  )} />
+                </Accordion.Body>
+              </Accordion.Panel>
+            </Accordion.Item>
+
+            <Accordion.Item>
+              <Accordion.Heading>
+                <Accordion.Trigger className="bg-surface-secondary px-4 py-3 rounded-lg mb-1">
+                  <div className="flex items-center gap-2 text-left">
+                    <XCircle className="w-4 h-4 text-danger shrink-0" />
+                    <span className="text-sm font-medium">Unfinished Features</span>
+                  </div>
+                  <Accordion.Indicator><ChevronDown className="w-4 h-4" /></Accordion.Indicator>
+                </Accordion.Trigger>
+              </Accordion.Heading>
+              <Accordion.Panel>
+                <Accordion.Body className="p-4">
+                  <Controller name="changelogSummary.unfinishedFeatures" control={control} render={({ field }) => (
+                    <TextField aria-label="Unfinished Features">
+                      <TextArea {...field} placeholder="List features that were not completed, with reasons..." />
+                    </TextField>
+                  )} />
+                </Accordion.Body>
+              </Accordion.Panel>
+            </Accordion.Item>
+
+            <Accordion.Item>
+              <Accordion.Heading>
+                <Accordion.Trigger className="bg-surface-secondary px-4 py-3 rounded-lg mb-1">
+                  <div className="flex items-center gap-2 text-left">
+                    <Rocket className="w-4 h-4 text-primary shrink-0" />
+                    <span className="text-sm font-medium">Major Improvements</span>
+                  </div>
+                  <Accordion.Indicator><ChevronDown className="w-4 h-4" /></Accordion.Indicator>
+                </Accordion.Trigger>
+              </Accordion.Heading>
+              <Accordion.Panel>
+                <Accordion.Body className="p-4">
+                  <Controller name="changelogSummary.majorImprovements" control={control} render={({ field }) => (
+                    <TextField aria-label="Major Improvements">
+                      <TextArea {...field} placeholder="Describe major improvements made during the project..." />
+                    </TextField>
+                  )} />
+                </Accordion.Body>
+              </Accordion.Panel>
+            </Accordion.Item>
+
+            <Accordion.Item>
+              <Accordion.Heading>
+                <Accordion.Trigger className="bg-surface-secondary px-4 py-3 rounded-lg mb-1">
+                  <div className="flex items-center gap-2 text-left">
+                    <ClipboardList className="w-4 h-4 text-secondary shrink-0" />
+                    <span className="text-sm font-medium">Overall Project Summary</span>
+                  </div>
+                  <Accordion.Indicator><ChevronDown className="w-4 h-4" /></Accordion.Indicator>
+                </Accordion.Trigger>
+              </Accordion.Heading>
+              <Accordion.Panel>
+                <Accordion.Body className="p-4">
+                  <Controller name="changelogSummary.overallSummary" control={control} render={({ field }) => (
+                    <TextField aria-label="Overall Project Summary">
+                      <TextArea {...field} placeholder="Provide an overall summary of the project..." />
+                    </TextField>
+                  )} />
+                </Accordion.Body>
+              </Accordion.Panel>
+            </Accordion.Item>
+
+            <Accordion.Item>
+              <Accordion.Heading>
+                <Accordion.Trigger className="bg-surface-secondary px-4 py-3 rounded-lg mb-1">
+                  <div className="flex items-center gap-2 text-left">
+                    <Sparkles className="w-4 h-4 text-warning shrink-0" />
+                    <span className="text-sm font-medium">Future Improvements</span>
+                  </div>
+                  <Accordion.Indicator><ChevronDown className="w-4 h-4" /></Accordion.Indicator>
+                </Accordion.Trigger>
+              </Accordion.Heading>
+              <Accordion.Panel>
+                <Accordion.Body className="p-4">
+                  <Controller name="changelogSummary.futureImprovements" control={control} render={({ field }) => (
+                    <TextField aria-label="Future Improvements">
+                      <TextArea {...field} placeholder="What would you improve in the next iteration?" />
+                    </TextField>
+                  )} />
+                </Accordion.Body>
+              </Accordion.Panel>
+            </Accordion.Item>
+          </Accordion>
+        </div>
+      </Card>
+
       <div className="flex justify-between items-center mt-4">
-        <Button onPress={() => router.push(`/project/${projectId}/workspace/step1`)} variant="secondary">
+        <Button onPress={() => guardNavigation(`/project/${projectId}/workspace/step1`)} variant="secondary">
           <ArrowLeft className="w-4 h-4 mr-2 inline" />
           Back
         </Button>
@@ -178,12 +325,20 @@ export default function Step2Form({ projectId }: { projectId: string }) {
             <Save className="w-4 h-4 mr-2 inline" />
             {isDirty ? "Save Changes" : "Saved"}
           </Button>
-          <Button onPress={() => router.push(`/project/${projectId}/workspace/step3`)} variant="secondary">
+          <Button onPress={() => guardNavigation(`/project/${projectId}/workspace/step3`)} variant="secondary">
             Next Step
             <ArrowRight className="w-4 h-4 ml-2 inline" />
           </Button>
         </div>
       </div>
+      <UnsavedModal />
+      <ConfirmDeleteModal
+        isOpen={deleteTarget !== null}
+        onClose={() => setDeleteTarget(null)}
+        onConfirm={() => { if (deleteTarget) { remove(deleteTarget.index); setDeleteTarget(null); } }}
+        itemName={deleteTarget?.name}
+        title="Delete Phase"
+      />
     </form>
   );
 }
@@ -191,7 +346,7 @@ export default function Step2Form({ projectId }: { projectId: string }) {
 import { Control } from "react-hook-form";
 
 // Sub-component to manage nested field array for changes
-function ChangesListArray({ control, nestIndex }: { control: Control<{ changelogs: ChangelogEntry[] }>, nestIndex: number }) {
+function ChangesListArray({ control, nestIndex }: { control: Control<Step2FormData>, nestIndex: number }) {
   const { fields, append, remove } = useFieldArray({
     control,
     name: `changelogs.${nestIndex}.changes`
@@ -203,22 +358,22 @@ function ChangesListArray({ control, nestIndex }: { control: Control<{ changelog
         <div key={item.id} className="flex gap-2 items-start">
           <div className="flex-1 grid grid-cols-1 sm:grid-cols-4 gap-2">
             <Controller name={`changelogs.${nestIndex}.changes.${k}.content`} control={control} render={({ field }) => (
-              <TextField className="sm:col-span-2">
+              <TextField aria-label="What changed?" className="sm:col-span-2">
                 <Input {...field} placeholder="What changed?" />
               </TextField>
             )} />
             <Controller name={`changelogs.${nestIndex}.changes.${k}.author`} control={control} render={({ field }) => (
-              <TextField>
+              <TextField aria-label="Author">
                 <Input {...field} placeholder="Author" />
               </TextField>
             )} />
             <Controller name={`changelogs.${nestIndex}.changes.${k}.evidence`} control={control} render={({ field }) => (
-              <TextField>
+              <TextField aria-label="Evidence">
                 <Input {...field} placeholder="Evidence" />
               </TextField>
             )} />
           </div>
-          <Button isIconOnly className="bg-danger/20 text-danger" variant="ghost" onPress={() => remove(k)}>
+          <Button isIconOnly className="bg-danger/20 text-danger" variant="ghost" onPress={() => remove(k)} aria-label="Remove change item">
             <Trash2 className="w-4 h-4" />
           </Button>
         </div>

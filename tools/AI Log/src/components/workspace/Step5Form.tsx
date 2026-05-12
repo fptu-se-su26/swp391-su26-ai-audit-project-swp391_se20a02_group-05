@@ -5,13 +5,12 @@ import { useForm, Controller, useFieldArray } from "react-hook-form";
 import { TextField, Input, Button, TextArea, Select, ListBox, CheckboxGroup, Checkbox, Card, Separator, Label } from "@heroui/react";
 import { Save, ArrowRight, ArrowLeft, Plus, Trash2 } from "lucide-react";
 import { useEffect } from "react";
-import { useRouter } from "next/navigation";
 import { ReflectionData } from "@/types/project";
+import { useUnsavedChanges } from "@/lib/useUnsavedChanges";
 
 export default function Step5Form({ projectId }: { projectId: string }) {
   const { projects, updateReflection } = useProjectStore();
   const project = projects[projectId];
-  const router = useRouter();
 
   const { control, handleSubmit, formState: { isDirty }, reset } = useForm<ReflectionData>({
     defaultValues: {
@@ -90,6 +89,11 @@ export default function Step5Form({ projectId }: { projectId: string }) {
     reset(data);
   };
 
+  const { UnsavedModal, guardNavigation } = useUnsavedChanges({
+    isDirty,
+    onSave: handleSubmit(onSubmit),
+  });
+
   const aiToolOptions = ["ChatGPT", "Gemini", "Claude", "GitHub Copilot", "Cursor", "Antigravity", "Microsoft Copilot", "Perplexity"];
   const supportAreaOptions = ["Hiểu yêu cầu đề bài", "Phân tích bài toán", "Tìm ý tưởng giải pháp", "Thiết kế database", "Thiết kế giao diện", "Thiết kế kiến trúc hệ thống", "Viết code mẫu", "Debug lỗi", "Viết test case", "Review code", "Tối ưu code", "Kiểm tra bảo mật", "Viết báo cáo", "Chuẩn bị thuyết trình", "Tìm hiểu công nghệ mới"];
   const verificationMethodsOptions = ["Chạy thử chương trình", "Kiểm tra output", "Viết test case", "So sánh với yêu cầu", "Đối chiếu tài liệu", "Review code", "Hỏi lại giảng viên", "Tra cứu chính thống", "Thảo luận nhóm", "Kiểm tra bằng dữ liệu mẫu", "So sánh trước/sau"];
@@ -98,7 +102,7 @@ export default function Step5Form({ projectId }: { projectId: string }) {
 
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-6 pb-20">
-      
+
       {/* 3. Summary */}
       <Card>
         <div className="flex flex-col gap-4 p-6">
@@ -131,7 +135,7 @@ export default function Step5Form({ projectId }: { projectId: string }) {
               </div>
             </CheckboxGroup>
           )} />
-          
+
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <Controller name="mostUsedTool" control={control} render={({ field }) => (
               <TextField>
@@ -190,7 +194,7 @@ export default function Step5Form({ projectId }: { projectId: string }) {
               <TextArea {...field} />
             </TextField>
           )} />
-          
+
           <Separator />
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <Controller name="dependencyLevel" control={control} render={({ field: { value, onChange } }) => (
@@ -241,7 +245,7 @@ export default function Step5Form({ projectId }: { projectId: string }) {
               <TextArea {...field} />
             </TextField>
           )} />
-          
+
           <Separator />
           <h4 className="text-md font-semibold">Ví dụ cụ thể về một lần kiểm chứng</h4>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -284,10 +288,11 @@ export default function Step5Form({ projectId }: { projectId: string }) {
               <div className="flex justify-between">
                 <Controller name={`wrongSuggestions.${index}.suggestion`} control={control} render={({ field }) => (
                   <TextField className="w-2/3">
+                    <Label>AI đã gợi ý gì?</Label>
                     <Input {...field} placeholder="AI đã gợi ý gì?" />
                   </TextField>
                 )} />
-                <Button isIconOnly className="bg-danger/20 text-danger" variant="ghost" onPress={() => removeWrong(index)}>
+                <Button isIconOnly className="bg-danger/20 text-danger" variant="ghost" onPress={() => removeWrong(index)} aria-label="Remove suggestion">
                   <Trash2 className="w-4 h-4" />
                 </Button>
               </div>
@@ -331,7 +336,7 @@ export default function Step5Form({ projectId }: { projectId: string }) {
               <TextArea {...field} />
             </TextField>
           )} />
-          
+
           <Separator />
           <div className="flex justify-between items-center">
             <h4 className="text-md font-semibold">So sánh trước và sau khi dùng AI</h4>
@@ -363,7 +368,7 @@ export default function Step5Form({ projectId }: { projectId: string }) {
                     <Input {...field} placeholder="Cải thiện đạt được" />
                   </TextField>
                 )} />
-                <Button isIconOnly className="bg-danger/20 text-danger" variant="ghost" onPress={() => removeBA(index)}>
+                <Button isIconOnly className="bg-danger/20 text-danger" variant="ghost" onPress={() => removeBA(index)} aria-label="Remove area">
                   <Trash2 className="w-4 h-4" />
                 </Button>
               </div>
@@ -433,7 +438,7 @@ export default function Step5Form({ projectId }: { projectId: string }) {
       <Card>
         <div className="flex flex-col gap-6 p-6">
           <h3 className="text-lg font-semibold">Tự đánh giá & Vấn đáp</h3>
-          
+
           <h4 className="text-md font-medium mt-2">Tự đánh giá mức độ hoàn thành (1-5)</h4>
           <div className="flex flex-col gap-3 bg-surface-secondary/20 p-4 rounded-xl border border-border">
             {evalFields.map((field, index) => (
@@ -491,7 +496,7 @@ export default function Step5Form({ projectId }: { projectId: string }) {
       </Card>
 
       <div className="flex justify-between items-center mt-4 sticky bottom-6 z-10 bg-surface/80 backdrop-blur-md p-4 rounded-xl border border-border shadow-lg">
-        <Button onPress={() => router.push(`/project/${projectId}/workspace/step4`)} variant="secondary">
+        <Button onPress={() => guardNavigation(`/project/${projectId}/workspace/step4`)} variant="secondary">
           <ArrowLeft className="w-4 h-4 mr-2 inline" />
           Back
         </Button>
@@ -500,12 +505,13 @@ export default function Step5Form({ projectId }: { projectId: string }) {
             <Save className="w-4 h-4 mr-2 inline" />
             {isDirty ? "Save Changes" : "Saved"}
           </Button>
-          <Button onPress={() => router.push(`/project/${projectId}/export`)} className="bg-success text-success-foreground" variant="secondary">
+          <Button onPress={() => guardNavigation(`/project/${projectId}/export`)} className="bg-success text-success-foreground" variant="secondary">
             Finish & Export
             <ArrowRight className="w-4 h-4 ml-2 inline" />
           </Button>
         </div>
       </div>
+      <UnsavedModal />
     </form>
   );
 }

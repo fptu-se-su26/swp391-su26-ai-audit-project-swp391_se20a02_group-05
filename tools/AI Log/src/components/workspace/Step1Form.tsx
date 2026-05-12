@@ -60,6 +60,9 @@ export default function Step1Form({ projectId }: { projectId: string }) {
     if (project) {
       reset({
         ...project.metadata,
+        repoUrl: project.metadata.repoUrl || "",
+        startDate: project.metadata.startDate || "",
+        endDate: project.metadata.endDate || "",
         members: project.members || [],
       });
     }
@@ -132,13 +135,37 @@ export default function Step1Form({ projectId }: { projectId: string }) {
             <Controller name="startDate" control={control} render={({ field }) => (
               <TextField>
                 <Label>Start Date</Label>
-                <Input {...field} type="date" />
+                <Input 
+                  {...field} 
+                  type="date" 
+                  value={field.value ? new Date(field.value).toISOString().split('T')[0] : ''}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    if (val) {
+                      field.onChange(new Date(val).toISOString());
+                    } else {
+                      field.onChange('');
+                    }
+                  }}
+                />
               </TextField>
             )} />
             <Controller name="endDate" control={control} render={({ field }) => (
               <TextField>
                 <Label>Completion Date</Label>
-                <Input {...field} type="date" />
+                <Input 
+                  {...field} 
+                  type="date" 
+                  value={field.value ? new Date(field.value).toISOString().split('T')[0] : ''}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    if (val) {
+                      field.onChange(new Date(val).toISOString());
+                    } else {
+                      field.onChange('');
+                    }
+                  }}
+                />
               </TextField>
             )} />
           </div>
@@ -155,7 +182,7 @@ export default function Step1Form({ projectId }: { projectId: string }) {
             </Button>
           </div>
           <Separator />
-          
+
           <div className="flex flex-col gap-4">
             {fields.map((field, index) => (
               <div key={field.id} className="flex gap-4 items-start">
@@ -192,15 +219,15 @@ export default function Step1Form({ projectId }: { projectId: string }) {
       </Card>
 
       <div className="flex justify-between items-center mt-4">
-        <Button 
-          type="submit" 
+        <Button
+          type="submit"
           variant={isDirty ? "secondary" : "ghost"}
         >
           <Save className="w-4 h-4 mr-2 inline" />
           {isDirty ? "Save Changes" : "Saved"}
         </Button>
-        
-        <Button 
+
+        <Button
           onPress={() => router.push(`/project/${projectId}/workspace/step2`)}
           variant="secondary"
         >

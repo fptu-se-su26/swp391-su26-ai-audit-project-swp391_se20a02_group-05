@@ -1,7 +1,16 @@
-import { Project } from "@/types/project";
+import { Project, EvidenceItem } from "@/types/project";
+
+const evidenceTypeLabels: Record<EvidenceItem['type'], string> = {
+  commit: 'Commit/PR',
+  screenshot: 'Screenshot',
+  demo: 'Demo Link',
+  test: 'Test Result',
+  file: 'Related File',
+  note: 'Note',
+};
 
 export const generateChangelog = (project: Project): string => {
-  const { metadata, members, changelogs } = project;
+  const { metadata, members, changelogs, changelogSummary } = project;
   
   let markdown = `# Changelog
 
@@ -86,32 +95,15 @@ Nguyên tắc ghi changelog:
     markdown += `---\n\n`;
   });
 
-  // End sections
+  // End sections — populated from changelogSummary
+  const summary = changelogSummary || { completedFeatures: '', unfinishedFeatures: '', majorImprovements: '', overallSummary: '', futureImprovements: '' };
+
   markdown += `# 4. Tổng kết thay đổi cuối project\n\n`;
-  markdown += `## 4.1. Các chức năng đã hoàn thành\n\n`;
-  markdown += `| STT | Chức năng | Trạng thái | Minh chứng | Ghi chú |\n`;
-  markdown += `|---:|---|---|---|---|\n`;
-  markdown += `| 1 |  | Completed / Partial / Not Completed |  |  |\n\n---\n\n`;
-  
-  markdown += `## 4.2. Các chức năng chưa hoàn thành\n\n`;
-  markdown += `| STT | Chức năng | Lý do chưa hoàn thành | Hướng cải thiện |\n`;
-  markdown += `|---:|---|---|---|\n`;
-  markdown += `| 1 |  |  |  |\n\n---\n\n`;
-
-  markdown += `## 4.3. Tổng hợp AI hỗ trợ trong project\n\n`;
-  markdown += `| Hạng mục | AI có hỗ trợ không? | Mức độ hỗ trợ | Ghi chú |\n`;
-  markdown += `|---|---|---|---|\n`;
-  markdown += `| Requirement | Có / Không | Ít / Trung bình / Nhiều |  |\n`;
-  markdown += `| Design | Có / Không | Ít / Trung bình / Nhiều |  |\n`;
-  markdown += `| Database | Có / Không | Ít / Trung bình / Nhiều |  |\n`;
-  markdown += `| Coding | Có / Không | Ít / Trung bình / Nhiều |  |\n`;
-  markdown += `| Debug | Có / Không | Ít / Trung bình / Nhiều |  |\n`;
-  markdown += `| Testing | Có / Không | Ít / Trung bình / Nhiều |  |\n`;
-  markdown += `| Report | Có / Không | Ít / Trung bình / Nhiều |  |\n`;
-  markdown += `| Presentation | Có / Không | Ít / Trung bình / Nhiều |  |\n\n---\n\n`;
-
-  markdown += `## 4.4. Bài học rút ra\n\n\`\`\`text\nViết tại đây...\n\`\`\`\n\n---\n\n`;
-  markdown += `## 4.5. Hướng cải thiện tiếp theo\n\n\`\`\`text\nViết tại đây...\n\`\`\`\n\n---\n\n`;
+  markdown += `## 4.1. Các chức năng đã hoàn thành\n\n\`\`\`text\n${summary.completedFeatures || 'Chưa có thông tin.'}\n\`\`\`\n\n---\n\n`;
+  markdown += `## 4.2. Các chức năng chưa hoàn thành\n\n\`\`\`text\n${summary.unfinishedFeatures || 'Chưa có thông tin.'}\n\`\`\`\n\n---\n\n`;
+  markdown += `## 4.3. Cải thiện chính\n\n\`\`\`text\n${summary.majorImprovements || 'Chưa có thông tin.'}\n\`\`\`\n\n---\n\n`;
+  markdown += `## 4.4. Tổng kết project\n\n\`\`\`text\n${summary.overallSummary || 'Chưa có thông tin.'}\n\`\`\`\n\n---\n\n`;
+  markdown += `## 4.5. Hướng cải thiện tiếp theo\n\n\`\`\`text\n${summary.futureImprovements || 'Chưa có thông tin.'}\n\`\`\`\n\n---\n\n`;
   markdown += `# 5. Cam kết cập nhật Changelog\n\n`;
   markdown += `Sinh viên/nhóm cam kết rằng nội dung changelog phản ánh đúng các thay đổi đã thực hiện trong quá trình làm bài tập/project.\n\n`;
   markdown += `| Đại diện sinh viên/nhóm | Ngày xác nhận |\n`;
@@ -195,7 +187,7 @@ export const generatePrompts = (project: Project): string => {
   markdown += `## 6. Prompt quan trọng nhất\n\n`;
   if (mostImportant) {
     markdown += `### 6.1. Prompt được chọn\n\n\`\`\`text\n${mostImportant.promptText || ' '}\n\`\`\`\n\n`;
-    markdown += `### 6.2. Vì sao prompt này quan trọng?\n\n\`\`\`text\n${mostImportant.notes || ' '}\n\`\`\`\n\n`;
+    markdown += `### 6.2. Vì sao prompt này quan trọng?\n\n\`\`\`text\n${mostImportant.importanceExplanation || mostImportant.notes || ' '}\n\`\`\`\n\n`;
     markdown += `### 6.3. Kết quả prompt này mang lại\n\n\`\`\`text\n${mostImportant.aiResponse || ' '}\n\`\`\`\n\n`;
     markdown += `### 6.4. Sinh viên/nhóm đã kiểm tra kết quả như thế nào?\n\n\`\`\`text\n${mostImportant.appliedResult || ' '}\n\`\`\`\n\n`;
     markdown += `### 6.5. Sinh viên/nhóm đã cải tiến gì từ kết quả AI?\n\n\`\`\`text\n${mostImportant.improvements || ' '}\n\`\`\`\n\n---\n\n`;
@@ -280,8 +272,16 @@ export const generateAiAudit = (project: Project): string => {
     markdown += `#### 4.3. Phần sinh viên/nhóm đã sử dụng từ AI\n\n\`\`\`text\n${e.usedContent || ' '}\n\`\`\`\n\n`;
     markdown += `#### 4.4. Phần sinh viên/nhóm tự chỉnh sửa hoặc cải tiến\n\n\`\`\`text\n${e.modifications || ' '}\n\`\`\`\n\n`;
     
-    markdown += `#### 4.5. Minh chứng\n\n| Loại minh chứng | Nội dung |\n|---|---|\n`;
-    markdown += `| File/Commit | ${e.evidence?.[0]?.content || ' '} |\n\n`;
+    markdown += `#### 4.5. Minh chứng\n\n| Loại minh chứng | Nhãn | Nội dung |\n|---|---|---|\n`;
+    if (e.evidence && e.evidence.length > 0) {
+      e.evidence.forEach((ev) => {
+        const typeLabel = evidenceTypeLabels[ev.type as keyof typeof evidenceTypeLabels] || ev.type;
+        markdown += `| ${typeLabel} | ${ev.label || ' '} | ${ev.content || ev.fileName || ' '} |\n`;
+      });
+    } else {
+      markdown += `| File/Commit |  |  |\n`;
+    }
+    markdown += `\n`;
 
     markdown += `#### 4.6. Nhận xét cá nhân/nhóm\n\n\`\`\`text\n${e.lessonsLearned || ' '}\n\`\`\`\n\n---\n\n`;
   });

@@ -1,21 +1,40 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import { Project, ProjectMetadata, ProjectMember, ChangelogEntry, PromptLogEntry, PromptLessons, AiAuditData, ReflectionData } from '@/types/project';
+import { 
+  Project, ProjectMetadata, ProjectMember, ChangelogEntry, 
+  PromptLogEntry, PromptLessons, AiAuditData, ReflectionData, 
+  ChangelogSummary 
+} from '@/types/project';
+import { 
+  saveProjectToFile, saveProjectAs as saveProjectAsFile, 
+  openProjectFile, getPersistenceMode, migrateProject,
+  type PersistenceMode 
+} from '@/lib/fileService';
 
 interface ProjectState {
   projects: Record<string, Project>;
   activeProjectId: string | null;
+  fileHandles: Record<string, FileSystemFileHandle | null>;
+  lastSavedAt: Record<string, string | null>;
+  persistenceMode: PersistenceMode;
   
-  // Actions
+  // Core Actions
   createProject: (metadata: ProjectMetadata) => string;
   deleteProject: (id: string) => void;
   setActiveProject: (id: string) => void;
   importProject: (projectData: Project) => void;
   
+  // File Actions
+  saveProject: (id: string) => Promise<boolean>;
+  saveProjectAs: (id: string) => Promise<boolean>;
+  openProject: () => Promise<string | null>;
+  setFileHandle: (id: string, handle: FileSystemFileHandle | null) => void;
+  
   // Update Actions for the active project
   updateMetadata: (metadata: Partial<ProjectMetadata>) => void;
   updateMembers: (members: ProjectMember[]) => void;
   updateChangelogs: (changelogs: ChangelogEntry[]) => void;
+  updateChangelogSummary: (summary: Partial<ChangelogSummary>) => void;
   updatePrompts: (prompts: PromptLogEntry[], lessons?: Partial<PromptLessons>) => void;
   updateAiAudit: (aiAudit: Partial<AiAuditData>) => void;
   updateReflection: (reflection: Partial<ReflectionData>) => void;
@@ -66,11 +85,22 @@ const initialPromptLessons: PromptLessons = {
   futureImprovements: '',
 };
 
+const initialChangelogSummary: ChangelogSummary = {
+  completedFeatures: '',
+  unfinishedFeatures: '',
+  majorImprovements: '',
+  overallSummary: '',
+  futureImprovements: '',
+};
+
 export const useProjectStore = create<ProjectState>()(
   persist(
     (set, get) => ({
       projects: {},
       activeProjectId: null,
+      fileHandles: {},
+      lastSavedAt: {},
+      persistenceMode: typeof window !== 'undefined' ? getPersistenceMode() : 'fallback',
 
       createProject: (metadata) => {
         const id = generateId();
@@ -81,6 +111,7 @@ export const useProjectStore = create<ProjectState>()(
           metadata,
           members: [],
           changelogs: [],
+          changelogSummary: initialChangelogSummary,
           prompts: [],
           promptLessons: initialPromptLessons,
           aiAudit: initialAiAuditData,
@@ -96,9 +127,17 @@ export const useProjectStore = create<ProjectState>()(
 
       deleteProject: (id) => {
         set((state) => {
-          const { [id]: _, ...rest } = state.projects;
+          // Create new copies without the deleted key
+          const newProjects = { ...state.projects };
+          delete newProjects[id];
+          const newHandles = { ...state.fileHandles };
+          delete newHandles[id];
+          const newSavedAt = { ...state.lastSavedAt };
+          delete newSavedAt[id];
           return {
-            projects: rest,
+            projects: newProjects,
+            fileHandles: newHandles,
+            lastSavedAt: newSavedAt,
             activeProjectId: state.activeProjectId === id ? null : state.activeProjectId,
           };
         });
@@ -109,10 +148,83 @@ export const useProjectStore = create<ProjectState>()(
       },
 
       importProject: (projectData) => {
+        const migrated = migrateProject(projectData);
         set((state) => ({
-          projects: { ...state.projects, [projectData.id]: projectData }
+          projects: { ...state.projects, [migrated.id]: migrated }
         }));
       },
+
+      // ─── File Actions ─────────────────────────────────────
+
+      saveProject: async (id) => {
+        const { projects, fileHandles } = get();
+        const project = projects[id];
+        if (!project) return false;
+
+        try {
+          const handle = await saveProjectToFile(project, fileHandles[id]);
+          set((state) => ({
+            fileHandles: { ...state.fileHandles, [id]: handle },
+            lastSavedAt: { ...state.lastSavedAt, [id]: new Date().toISOString() },
+          }));
+          return true;
+        } catch (err) {
+          console.error("Failed to save project:", err);
+          return false;
+        }
+      },
+
+      saveProjectAs: async (id) => {
+        const { projects } = get();
+        const project = projects[id];
+        if (!project) return false;
+
+        try {
+          const handle = await saveProjectAsFile(project);
+          if (handle) {
+            set((state) => ({
+              fileHandles: { ...state.fileHandles, [id]: handle },
+              lastSavedAt: { ...state.lastSavedAt, [id]: new Date().toISOString() },
+            }));
+          } else {
+            // Fallback mode or cancelled - still mark as saved if content was downloaded
+            set((state) => ({
+              lastSavedAt: { ...state.lastSavedAt, [id]: new Date().toISOString() },
+            }));
+          }
+          return true;
+        } catch (err) {
+          console.error("Failed to save project:", err);
+          return false;
+        }
+      },
+
+      openProject: async () => {
+        try {
+          const result = await openProjectFile();
+          if (!result) return null;
+
+          const { project, handle } = result;
+          set((state) => ({
+            projects: { ...state.projects, [project.id]: project },
+            activeProjectId: project.id,
+            fileHandles: { ...state.fileHandles, [project.id]: handle },
+            lastSavedAt: { ...state.lastSavedAt, [project.id]: new Date().toISOString() },
+          }));
+          return project.id;
+        } catch (err) {
+          console.error("Failed to open project:", err);
+          throw err;
+        }
+      },
+
+      setFileHandle: (id, handle) => {
+        set((state) => ({
+          fileHandles: { ...state.fileHandles, [id]: handle },
+        }));
+      },
+
+      // ─── Update Actions ───────────────────────────────────
 
       updateMetadata: (metadata) => {
         const { activeProjectId, projects } = get();
@@ -156,6 +268,22 @@ export const useProjectStore = create<ProjectState>()(
             [activeProjectId]: {
               ...state.projects[activeProjectId],
               changelogs,
+              updatedAt: new Date().toISOString(),
+            }
+          }
+        }));
+      },
+
+      updateChangelogSummary: (summary) => {
+        const { activeProjectId, projects } = get();
+        if (!activeProjectId || !projects[activeProjectId]) return;
+
+        set((state) => ({
+          projects: {
+            ...state.projects,
+            [activeProjectId]: {
+              ...state.projects[activeProjectId],
+              changelogSummary: { ...state.projects[activeProjectId].changelogSummary, ...summary },
               updatedAt: new Date().toISOString(),
             }
           }
@@ -213,6 +341,14 @@ export const useProjectStore = create<ProjectState>()(
     }),
     {
       name: 'ai-workflow-logger-storage',
+      // Only persist lightweight data — project data is cached here but
+      // the .data.json file is the canonical source of truth.
+      // fileHandles cannot be serialized, so we exclude them.
+      partialize: (state) => ({
+        projects: state.projects,
+        activeProjectId: state.activeProjectId,
+        lastSavedAt: state.lastSavedAt,
+      }),
     }
   )
 );

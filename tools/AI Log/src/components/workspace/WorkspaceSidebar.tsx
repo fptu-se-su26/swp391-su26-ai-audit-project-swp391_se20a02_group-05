@@ -1,8 +1,9 @@
 "use client";
 
 import { Button } from "@heroui/react";
-import { Info, ListChecks, MessageSquare, ShieldCheck, Lightbulb, FileText, ChevronLeft } from "lucide-react";
+import { Info, ListChecks, MessageSquare, ShieldCheck, Lightbulb, FileText, ChevronLeft, Menu, X } from "lucide-react";
 import { usePathname, useRouter } from "next/navigation";
+import { useState } from "react";
 
 const steps = [
   { id: "step1", name: "1. Project Info", icon: Info, path: "/step1" },
@@ -16,9 +17,10 @@ export default function WorkspaceSidebar({ projectId }: { projectId: string }) {
   const pathname = usePathname();
   const router = useRouter();
   const basePath = `/project/${projectId}/workspace`;
+  const [mobileOpen, setMobileOpen] = useState(false);
   
-  return (
-    <aside className="w-64 border-r border-border bg-surface flex flex-col">
+  const sidebarContent = (
+    <>
       <div className="p-4 border-b border-border">
         <Button 
           variant="ghost" 
@@ -39,7 +41,7 @@ export default function WorkspaceSidebar({ projectId }: { projectId: string }) {
           return (
             <Button
               key={step.id}
-              onPress={() => router.push(`${basePath}${step.path}`)}
+              onPress={() => { router.push(`${basePath}${step.path}`); setMobileOpen(false); }}
               variant={isActive ? "secondary" : "ghost"}
               className={`w-full justify-start ${isActive ? "font-medium" : "text-default-500"}`}
             >
@@ -53,7 +55,7 @@ export default function WorkspaceSidebar({ projectId }: { projectId: string }) {
           Export
         </div>
         <Button
-          onPress={() => router.push(`/project/${projectId}/export`)}
+          onPress={() => { router.push(`/project/${projectId}/export`); setMobileOpen(false); }}
           variant="ghost"
           className="w-full justify-start text-success-600"
         >
@@ -61,6 +63,46 @@ export default function WorkspaceSidebar({ projectId }: { projectId: string }) {
           Markdown Preview
         </Button>
       </nav>
-    </aside>
+    </>
+  );
+
+  return (
+    <>
+      {/* Mobile toggle */}
+      <div className="md:hidden fixed top-14 left-0 z-30 p-2">
+        <Button 
+          isIconOnly 
+          variant="secondary" 
+          size="sm" 
+          onPress={() => setMobileOpen(!mobileOpen)}
+          className="shadow-lg"
+          aria-label="Toggle menu"
+        >
+          {mobileOpen ? <X className="h-4 w-4" /> : <Menu className="h-4 w-4" />}
+        </Button>
+      </div>
+
+      {/* Mobile overlay */}
+      {mobileOpen && (
+        <div 
+          className="md:hidden fixed inset-0 top-14 z-20 bg-black/50 backdrop-blur-sm"
+          onClick={() => setMobileOpen(false)}
+        />
+      )}
+
+      {/* Mobile sidebar */}
+      <aside className={`
+        md:hidden fixed top-14 left-0 bottom-0 z-20 w-64 border-r border-border bg-surface flex flex-col
+        transition-transform duration-200 ease-in-out
+        ${mobileOpen ? "translate-x-0" : "-translate-x-full"}
+      `}>
+        {sidebarContent}
+      </aside>
+
+      {/* Desktop sidebar */}
+      <aside className="hidden md:flex w-64 border-r border-border bg-surface flex-col shrink-0">
+        {sidebarContent}
+      </aside>
+    </>
   );
 }

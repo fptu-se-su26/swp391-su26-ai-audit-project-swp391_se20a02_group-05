@@ -2,19 +2,23 @@
 
 import { useProjectStore } from "@/store/projectStore";
 import { Button } from "@heroui/react";
-import { Plus, Upload } from "lucide-react";
+import { Plus, FolderOpen, Upload } from "lucide-react";
 import ProjectCard from "@/components/dashboard/ProjectCard";
 import CreateProjectModal from "@/components/dashboard/CreateProjectModal";
 import Navbar from "@/components/layout/Navbar";
 import { useRef, useState } from "react";
 import { Project } from "@/types/project";
+import { useRouter } from "next/navigation";
 
 export default function DashboardPage() {
-  const { projects, importProject } = useProjectStore();
+  const { projects, importProject, openProject } = useProjectStore();
   const [isOpen, setIsOpen] = useState(false);
+  const [opening, setOpening] = useState(false);
+  const [openError, setOpenError] = useState<string | null>(null);
   const onOpen = () => setIsOpen(true);
   const onClose = () => setIsOpen(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const router = useRouter();
 
   const projectList = Object.values(projects).sort((a, b) => 
     new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
@@ -41,6 +45,21 @@ export default function DashboardPage() {
     if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
+  const handleOpenProject = async () => {
+    setOpening(true);
+    setOpenError(null);
+    try {
+      const projectId = await openProject();
+      if (projectId) {
+        router.push(`/project/${projectId}/workspace`);
+      }
+    } catch (err) {
+      setOpenError(err instanceof Error ? err.message : "Failed to open project file");
+    } finally {
+      setOpening(false);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-background flex flex-col">
       <Navbar />
@@ -53,17 +72,25 @@ export default function DashboardPage() {
           <div className="flex gap-3">
             <input 
               type="file" 
-              accept=".json" 
+              accept=".json,.data.json" 
               className="hidden" 
               ref={fileInputRef} 
               onChange={handleImport}
             />
             <Button 
-              variant="secondary" 
+              variant="ghost" 
               onPress={() => fileInputRef.current?.click()}
             >
               <Upload className="h-4 w-4 mr-2 inline" />
               Import
+            </Button>
+            <Button 
+              variant="secondary" 
+              onPress={handleOpenProject}
+              isDisabled={opening}
+            >
+              <FolderOpen className="h-4 w-4 mr-2 inline" />
+              {opening ? "Opening..." : "Open Project"}
             </Button>
             <Button 
               onPress={onOpen}
@@ -74,6 +101,12 @@ export default function DashboardPage() {
           </div>
         </div>
 
+        {openError && (
+          <div className="mb-6 p-4 rounded-lg bg-danger/10 border border-danger/30 text-danger text-sm">
+            {openError}
+          </div>
+        )}
+
         {projectList.length === 0 ? (
           <div className="flex flex-col items-center justify-center p-12 border border-dashed border-border rounded-xl bg-surface-secondary/30">
             <div className="p-4 rounded-full bg-surface-secondary mb-4">
@@ -81,11 +114,17 @@ export default function DashboardPage() {
             </div>
             <h2 className="text-xl font-semibold mb-2">No projects yet</h2>
             <p className="text-default-500 mb-6 text-center max-w-md">
-              Create a new project to start documenting your AI workflow and generating audit logs.
+              Create a new project or open an existing <code>.data.json</code> file to start documenting your AI workflow.
             </p>
-            <Button onPress={onOpen}>
-              Create your first project
-            </Button>
+            <div className="flex gap-3">
+              <Button variant="secondary" onPress={handleOpenProject}>
+                <FolderOpen className="h-4 w-4 mr-2 inline" />
+                Open File
+              </Button>
+              <Button onPress={onOpen}>
+                Create your first project
+              </Button>
+            </div>
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">

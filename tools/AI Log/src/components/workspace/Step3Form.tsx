@@ -4,18 +4,24 @@ import { useProjectStore } from "@/store/projectStore";
 import { useForm, Controller, useFieldArray } from "react-hook-form";
 import { Accordion, TextField, Input, Button, TextArea, Select, ListBox, CheckboxGroup, Checkbox, Card, Separator, Label } from "@heroui/react";
 import { Plus, Trash2, Save, ArrowRight, ArrowLeft, ChevronDown } from "lucide-react";
-import { useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
 import { PromptLogEntry, PromptLessons } from "@/types/project";
+import { useUnsavedChanges } from "@/lib/useUnsavedChanges";
+import ConfirmDeleteModal from "./ConfirmDeleteModal";
 
 export default function Step3Form({ projectId }: { projectId: string }) {
   const { projects, updatePrompts } = useProjectStore();
   const project = projects[projectId];
-  const router = useRouter();
+  const [deleteTarget, setDeleteTarget] = useState<{ index: number; name: string } | null>(null);
 
   const { control, handleSubmit, formState: { isDirty }, reset, watch } = useForm<{ prompts: PromptLogEntry[], promptLessons: PromptLessons }>({
-    defaultValues: { prompts: [], promptLessons: { infoNeeded: '', lessonsLearned: '', futureImprovements: '' } }
+    defaultValues: {
+      prompts: [],
+      promptLessons: { infoNeeded: "", lessonsLearned: "", futureImprovements: "" }
+    }
   });
+
+  const prompts = watch("prompts") || [];
 
   const { fields, append, remove } = useFieldArray({
     control,
@@ -24,8 +30,8 @@ export default function Step3Form({ projectId }: { projectId: string }) {
 
   useEffect(() => {
     if (project) {
-      reset({ 
-        prompts: project.prompts || [], 
+      reset({
+        prompts: project.prompts || [],
         promptLessons: project.promptLessons || { infoNeeded: '', lessonsLearned: '', futureImprovements: '' }
       });
     }
@@ -35,6 +41,11 @@ export default function Step3Form({ projectId }: { projectId: string }) {
     updatePrompts(data.prompts, data.promptLessons);
     reset(data);
   };
+
+  const { UnsavedModal, guardNavigation } = useUnsavedChanges({
+    isDirty,
+    onSave: handleSubmit(onSubmit),
+  });
 
   const handleAddPrompt = () => {
     append({
@@ -53,7 +64,8 @@ export default function Step3Form({ projectId }: { projectId: string }) {
       evidence: [],
       notes: "",
       isMostImportant: false,
-      isIneffective: false
+      isIneffective: false,
+      importanceExplanation: ""
     });
   };
 
@@ -83,10 +95,8 @@ export default function Step3Form({ projectId }: { projectId: string }) {
               <Accordion.Heading>
                 <Accordion.Trigger className="bg-surface-secondary px-4 py-3 rounded-lg mb-2">
                   <div className="flex flex-col text-left">
-                    {/* eslint-disable-next-line react-compiler/react-compiler */}
-                    <span className="text-sm font-medium">{watch(`prompts.${index}.purpose`) || `Prompt ${index + 1}`}</span>
-                    {/* eslint-disable-next-line react-compiler/react-compiler */}
-                    <span className="text-xs text-default-500">{watch(`prompts.${index}.aiTool`)} - {watch(`prompts.${index}.date`)}</span>
+                    <span className="text-sm font-medium">{prompts[index]?.purpose || `Prompt ${index + 1}`}</span>
+                    <span className="text-xs text-default-500">{prompts[index]?.aiTool} - {prompts[index]?.date}</span>
                   </div>
                   <Accordion.Indicator>
                     <ChevronDown className="w-4 h-4" />
@@ -163,7 +173,7 @@ export default function Step3Form({ projectId }: { projectId: string }) {
                         </Select>
                       )} />
                     </div>
-                    
+
                     <Controller name={`prompts.${index}.purpose`} control={control} render={({ field }) => (
                       <TextField>
                         <Label>Purpose of this prompt</Label>
@@ -230,7 +240,7 @@ export default function Step3Form({ projectId }: { projectId: string }) {
                         </CheckboxGroup>
                       )} />
                     </div>
-                    
+
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <Controller name={`prompts.${index}.isMostImportant`} control={control} render={({ field: { value, onChange } }) => (
                         <Checkbox isSelected={value} onChange={onChange}>
@@ -245,6 +255,18 @@ export default function Step3Form({ projectId }: { projectId: string }) {
                         </Checkbox>
                       )} />
                     </div>
+
+                    {watch(`prompts.${index}.isMostImportant`) && (
+                      <div className="border-l-4 border-primary pl-4 py-2 flex flex-col gap-3">
+                        <h4 className="text-sm font-semibold text-primary">Why is this prompt important? (Section 6.2)</h4>
+                        <Controller name={`prompts.${index}.importanceExplanation`} control={control} render={({ field }) => (
+                          <TextField>
+                            <Label>Explain why this prompt was important, what impact it had, and how it improved your workflow</Label>
+                            <TextArea {...field} />
+                          </TextField>
+                        )} />
+                      </div>
+                    )}
 
                     {watch(`prompts.${index}.isIneffective`) && (
                       <div className="border-l-4 border-danger pl-4 py-2 flex flex-col gap-3">
@@ -305,7 +327,7 @@ export default function Step3Form({ projectId }: { projectId: string }) {
       </Card>
 
       <div className="flex justify-between items-center mt-4">
-        <Button onPress={() => router.push(`/project/${projectId}/workspace/step2`)} variant="secondary">
+        <Button onPress={() => guardNavigation(`/project/${projectId}/workspace/step2`)} variant="secondary">
           <ArrowLeft className="w-4 h-4 mr-2 inline" />
           Back
         </Button>
@@ -314,12 +336,20 @@ export default function Step3Form({ projectId }: { projectId: string }) {
             <Save className="w-4 h-4 mr-2 inline" />
             {isDirty ? "Save Changes" : "Saved"}
           </Button>
-          <Button onPress={() => router.push(`/project/${projectId}/workspace/step4`)} variant="secondary">
+          <Button onPress={() => guardNavigation(`/project/${projectId}/workspace/step4`)} variant="secondary">
             Next Step
             <ArrowRight className="w-4 h-4 ml-2 inline" />
           </Button>
         </div>
       </div>
+      <UnsavedModal />
+      <ConfirmDeleteModal
+        isOpen={deleteTarget !== null}
+        onClose={() => setDeleteTarget(null)}
+        onConfirm={() => { if (deleteTarget) { remove(deleteTarget.index); setDeleteTarget(null); } }}
+        itemName={deleteTarget?.name}
+        title="Delete Prompt Entry"
+      />
     </form>
   );
 }

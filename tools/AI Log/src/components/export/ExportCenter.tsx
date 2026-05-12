@@ -46,7 +46,7 @@ export default function ExportCenter({ projectId }: { projectId: string }) {
       <main className="flex-1 container mx-auto px-6 py-8 max-w-5xl">
         <div className="flex justify-between items-center mb-6">
           <div className="flex items-center gap-4">
-            <Button variant="ghost" isIconOnly onPress={() => window.location.href = `/project/${projectId}/workspace/step1`}>
+            <Button variant="ghost" isIconOnly onPress={() => window.location.href = `/project/${projectId}/workspace/step1`} aria-label="Back to project">
               <ChevronLeft className="w-5 h-5" />
             </Button>
             <div>

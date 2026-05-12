@@ -3,17 +3,19 @@
 import { useProjectStore } from "@/store/projectStore";
 import { useForm, Controller, useFieldArray } from "react-hook-form";
 import { Accordion, TextField, Input, Button, TextArea, Select, ListBox, CheckboxGroup, Checkbox, Card, Separator, Label } from "@heroui/react";
-import { Plus, Trash2, Save, ArrowRight, ArrowLeft, ChevronDown } from "lucide-react";
-import { useEffect } from "react";
-import { useRouter } from "next/navigation";
-import { AiAuditData } from "@/types/project";
+import { Plus, Trash2, Save, ArrowRight, ArrowLeft, ChevronDown, Link2, Unlink } from "lucide-react";
+import { useEffect, useCallback, useState, useMemo } from "react";
+import { AiAuditData, PromptLogEntry, EvidenceItem } from "@/types/project";
+import EvidenceSection from "./EvidenceSection";
+import { useUnsavedChanges } from "@/lib/useUnsavedChanges";
+import ConfirmDeleteModal from "./ConfirmDeleteModal";
 
 export default function Step4Form({ projectId }: { projectId: string }) {
   const { projects, updateAiAudit } = useProjectStore();
   const project = projects[projectId];
-  const router = useRouter();
+  const [deleteTarget, setDeleteTarget] = useState<{ index: number; name: string; type: string } | null>(null);
 
-  const { control, handleSubmit, formState: { isDirty }, reset, watch } = useForm<AiAuditData>({
+  const { control, handleSubmit, formState: { isDirty }, reset, watch, setValue } = useForm<AiAuditData>({
     defaultValues: {
       toolsUsed: [],
       usageTargetsText: "",
@@ -25,6 +27,8 @@ export default function Step4Form({ projectId }: { projectId: string }) {
       groupContributions: []
     }
   });
+
+  const auditEntries = watch("auditEntries") || [];
 
   const { fields: auditFields, append: appendAudit, remove: removeAudit } = useFieldArray({
     control,
@@ -57,8 +61,60 @@ export default function Step4Form({ projectId }: { projectId: string }) {
     reset(data);
   };
 
+  const { UnsavedModal, guardNavigation } = useUnsavedChanges({
+    isDirty,
+    onSave: handleSubmit(onSubmit),
+  });
+
   const aiToolOptions = ["ChatGPT", "Gemini", "Claude", "GitHub Copilot", "Cursor", "Antigravity", "Microsoft Copilot", "Perplexity"];
   const usageLevelOptions = ["Không dùng AI", "AI hỗ trợ ít", "AI hỗ trợ nhiều", "AI sinh chính"];
+
+  // Get prompt log entries for linking
+  const projectPrompts = project?.prompts;
+  const promptEntries: PromptLogEntry[] = useMemo(() => projectPrompts || [], [projectPrompts]);
+
+  const handleLinkPrompts = useCallback((index: number, selectedIds: string[]) => {
+    setValue(`auditEntries.${index}.linkedPromptIds`, selectedIds, { shouldDirty: true });
+
+    if (selectedIds.length === 0) return;
+
+    // Auto-populate from linked prompts
+    const linkedPrompts = promptEntries.filter(p => selectedIds.includes(p.id));
+    if (linkedPrompts.length === 0) return;
+
+    const first = linkedPrompts[0];
+    setValue(`auditEntries.${index}.aiTool`, first.aiTool, { shouldDirty: true });
+
+    if (linkedPrompts.length === 1) {
+      setValue(`auditEntries.${index}.prompt`, first.promptText, { shouldDirty: true });
+      setValue(`auditEntries.${index}.aiResponseSummary`, first.aiResponse, { shouldDirty: true });
+      setValue(`auditEntries.${index}.usedContent`, first.appliedResult, { shouldDirty: true });
+      setValue(`auditEntries.${index}.modifications`, first.improvements, { shouldDirty: true });
+      setValue(`auditEntries.${index}.purpose`, first.purpose, { shouldDirty: true });
+    } else {
+      // Concatenate multiple prompts
+      const separator = "\n\n---\n\n";
+      setValue(`auditEntries.${index}.prompt`,
+        linkedPrompts.map((p, i) => `[Prompt ${i + 1}: ${p.purpose}]\n${p.promptText}`).join(separator),
+        { shouldDirty: true });
+      setValue(`auditEntries.${index}.aiResponseSummary`,
+        linkedPrompts.map((p, i) => `[Prompt ${i + 1}] ${p.aiResponse}`).join(separator),
+        { shouldDirty: true });
+      setValue(`auditEntries.${index}.usedContent`,
+        linkedPrompts.map((p, i) => `[Prompt ${i + 1}] ${p.appliedResult}`).join(separator),
+        { shouldDirty: true });
+      setValue(`auditEntries.${index}.modifications`,
+        linkedPrompts.map((p, i) => `[Prompt ${i + 1}] ${p.improvements}`).join(separator),
+        { shouldDirty: true });
+      setValue(`auditEntries.${index}.purpose`,
+        linkedPrompts.map(p => p.purpose).join("; "),
+        { shouldDirty: true });
+    }
+  }, [promptEntries, setValue]);
+
+  const handleClearLinks = useCallback((index: number) => {
+    setValue(`auditEntries.${index}.linkedPromptIds`, [], { shouldDirty: true });
+  }, [setValue]);
 
   if (!project) return null;
 
@@ -84,7 +140,7 @@ export default function Step4Form({ projectId }: { projectId: string }) {
               </div>
             </CheckboxGroup>
           )} />
-          
+
           <Controller name="usageTargetsText" control={control} render={({ field }) => (
             <TextField>
               <Label>Usage Targets (What did you use AI for?)</Label>
@@ -110,14 +166,15 @@ export default function Step4Form({ projectId }: { projectId: string }) {
               usedContent: "",
               modifications: "",
               evidence: [],
-              lessonsLearned: ""
+              lessonsLearned: "",
+              linkedPromptIds: []
             })}>
               <Plus className="w-4 h-4 mr-2 inline" />
               Add Audit Entry
             </Button>
           </div>
           <Separator />
-          
+
           {auditFields.length === 0 ? (
             <p className="text-sm text-default-400 italic">No detailed audit logs yet.</p>
           ) : (
@@ -127,10 +184,16 @@ export default function Step4Form({ projectId }: { projectId: string }) {
                   <Accordion.Heading>
                     <Accordion.Trigger className="bg-surface-secondary px-4 py-3 rounded-lg mb-2">
                       <div className="flex flex-col text-left">
-                        {/* eslint-disable-next-line react-compiler/react-compiler */}
-                        <span className="text-sm font-medium">{watch(`auditEntries.${index}.purpose`) || `Entry ${index + 1}`}</span>
-                        {/* eslint-disable-next-line react-compiler/react-compiler */}
-                        <span className="text-xs text-default-500">{watch(`auditEntries.${index}.date`)}</span>
+                        <span className="text-sm font-medium">{auditEntries[index]?.purpose || `Entry ${index + 1}`}</span>
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs text-default-500">{auditEntries[index]?.date}</span>
+                          {auditEntries[index]?.linkedPromptIds?.length > 0 && (
+                            <span className="text-[10px] text-primary bg-primary/10 px-1.5 py-0.5 rounded-full flex items-center gap-1">
+                              <Link2 className="w-2.5 h-2.5" />
+                              Linked
+                            </span>
+                          )}
+                        </div>
                       </div>
                       <Accordion.Indicator>
                         <ChevronDown className="w-4 h-4" />
@@ -140,6 +203,44 @@ export default function Step4Form({ projectId }: { projectId: string }) {
                   <Accordion.Panel>
                     <Accordion.Body className="bg-surface border border-border p-4 rounded-lg mb-4">
                       <div className="flex flex-col gap-4 pb-4">
+
+                        {/* ─── Prompt Log Linking ─── */}
+                        {promptEntries.length > 0 && (
+                          <div className="border border-primary/20 bg-primary/5 rounded-lg p-4">
+                            <div className="flex justify-between items-center mb-3">
+                              <div className="flex items-center gap-2">
+                                <Link2 className="w-4 h-4 text-primary" />
+                                <h4 className="text-sm font-semibold text-primary">Link from Prompt Log</h4>
+                              </div>
+                              {watch(`auditEntries.${index}.linkedPromptIds`)?.length > 0 && (
+                                <Button size="sm" variant="ghost" className="text-default-500" onPress={() => handleClearLinks(index)}>
+                                  <Unlink className="w-3 h-3 mr-1 inline" />
+                                  Clear Links
+                                </Button>
+                              )}
+                            </div>
+                            <p className="text-xs text-default-400 mb-3">Select prompt entries to auto-fill shared fields. You can still edit them after linking.</p>
+                            <Controller name={`auditEntries.${index}.linkedPromptIds`} control={control} render={({ field: { value } }) => (
+                              <CheckboxGroup value={value || []} onChange={(ids) => handleLinkPrompts(index, ids)}>
+                                <Label>Select your interests</Label>
+                                <div className="flex flex-col gap-2 max-h-40 overflow-y-auto">
+                                  {promptEntries.map(p => (
+                                    <Checkbox key={p.id} value={p.id}>
+                                      <Checkbox.Control><Checkbox.Indicator /></Checkbox.Control>
+                                      <Checkbox.Content>
+                                        <span className="text-xs">
+                                          <strong>{p.purpose || "Untitled"}</strong>
+                                          <span className="text-default-400 ml-2">{p.aiTool} · {p.date}</span>
+                                        </span>
+                                      </Checkbox.Content>
+                                    </Checkbox>
+                                  ))}
+                                </div>
+                              </CheckboxGroup>
+                            )} />
+                          </div>
+                        )}
+
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                           <Controller name={`auditEntries.${index}.date`} control={control} render={({ field }) => (
                             <TextField>
@@ -220,6 +321,21 @@ export default function Step4Form({ projectId }: { projectId: string }) {
                             <TextArea {...field} />
                           </TextField>
                         )} />
+
+                        {/* ─── Evidence Section ─── */}
+                        <Separator />
+                        <Controller
+                          name={`auditEntries.${index}.evidence`}
+                          control={control}
+                          render={({ field: { value, onChange } }) => (
+                            <EvidenceSection
+                              evidence={value || []}
+                              onChange={(items: EvidenceItem[]) => onChange(items)}
+                            />
+                          )}
+                        />
+
+                        <Separator />
                         <Controller name={`auditEntries.${index}.lessonsLearned`} control={control} render={({ field }) => (
                           <TextField>
                             <Label>Personal / Group reflections for this entry</Label>
@@ -277,7 +393,7 @@ export default function Step4Form({ projectId }: { projectId: string }) {
                     <Input {...field} placeholder="Notes" />
                   </TextField>
                 )} />
-                <Button isIconOnly className="bg-danger/20 text-danger" variant="ghost" onPress={() => removeMatrix(index)}>
+                <Button isIconOnly className="bg-danger/20 text-danger" variant="ghost" onPress={() => removeMatrix(index)} aria-label="Remove row">
                   <Trash2 className="w-4 h-4" />
                 </Button>
               </div>
@@ -313,7 +429,7 @@ export default function Step4Form({ projectId }: { projectId: string }) {
                     <Input {...field} placeholder="Resolution" />
                   </TextField>
                 )} />
-                <Button isIconOnly className="bg-danger/20 text-danger" variant="ghost" onPress={() => removeIssue(index)}>
+                <Button isIconOnly className="bg-danger/20 text-danger" variant="ghost" onPress={() => removeIssue(index)} aria-label="Remove issue">
                   <Trash2 className="w-4 h-4" />
                 </Button>
               </div>
@@ -368,7 +484,7 @@ export default function Step4Form({ projectId }: { projectId: string }) {
                       </Checkbox>
                     )} />
                   </div>
-                  <Button isIconOnly className="bg-danger/20 text-danger" variant="ghost" onPress={() => removeGroup(index)}>
+                  <Button isIconOnly className="bg-danger/20 text-danger" variant="ghost" onPress={() => removeGroup(index)} aria-label="Remove member">
                     <Trash2 className="w-4 h-4" />
                   </Button>
                 </div>
@@ -389,7 +505,7 @@ export default function Step4Form({ projectId }: { projectId: string }) {
       </Card>
 
       <div className="flex justify-between items-center mt-4">
-        <Button onPress={() => router.push(`/project/${projectId}/workspace/step3`)} variant="secondary">
+        <Button onPress={() => guardNavigation(`/project/${projectId}/workspace/step3`)} variant="secondary">
           <ArrowLeft className="w-4 h-4 mr-2 inline" />
           Back
         </Button>
@@ -398,12 +514,27 @@ export default function Step4Form({ projectId }: { projectId: string }) {
             <Save className="w-4 h-4 mr-2 inline" />
             {isDirty ? "Save Changes" : "Saved"}
           </Button>
-          <Button onPress={() => router.push(`/project/${projectId}/workspace/step5`)} variant="secondary">
+          <Button onPress={() => guardNavigation(`/project/${projectId}/workspace/step5`)} variant="secondary">
             Next Step
             <ArrowRight className="w-4 h-4 ml-2 inline" />
           </Button>
         </div>
       </div>
+      <UnsavedModal />
+      <ConfirmDeleteModal
+        isOpen={deleteTarget !== null}
+        onClose={() => setDeleteTarget(null)}
+        onConfirm={() => {
+          if (!deleteTarget) return;
+          if (deleteTarget.type === 'audit') removeAudit(deleteTarget.index);
+          if (deleteTarget.type === 'issue') removeIssue(deleteTarget.index);
+          if (deleteTarget.type === 'matrix') removeMatrix(deleteTarget.index);
+          if (deleteTarget.type === 'group') removeGroup(deleteTarget.index);
+          setDeleteTarget(null);
+        }}
+        itemName={deleteTarget?.name}
+        title={`Delete ${deleteTarget?.type === 'audit' ? 'Audit Entry' : deleteTarget?.type === 'issue' ? 'Issue' : deleteTarget?.type === 'matrix' ? 'Matrix Row' : 'Contribution'}`}
+      />
     </form>
   );
 }
