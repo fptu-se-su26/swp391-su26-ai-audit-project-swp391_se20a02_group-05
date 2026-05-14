@@ -82,7 +82,7 @@ export default function Navbar() {
   return (
     <header className="h-14 border-b border-border bg-surface flex items-center px-6 justify-between shrink-0">
       <div className="flex items-center gap-3">
-        <h1 className="text-lg font-bold tracking-tight">Group 05</h1>
+        <h1 className="text-lg font-bold tracking-tight">SE20A02 - Group 05</h1>
         {project && isInWorkspace && (
           <>
             <span className="text-default-400">/</span>
