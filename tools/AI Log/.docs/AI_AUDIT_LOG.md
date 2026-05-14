@@ -4,25 +4,23 @@
 
 | Thông tin | Nội dung |
 |---|---|
-| Môn học |  |
-| Mã môn học |  |
-| Lớp |  |
-| Học kỳ |  |
-| Tên bài tập / Project |  |
+| Môn học | Software development project |
+| Mã môn học | SWP391 |
+| Lớp | SE20A06 |
+| Học kỳ | SU26 |
+| Tên bài tập / Project | TripGenie |
 | Tên sinh viên / Nhóm |  |
 | MSSV / Danh sách MSSV |  |
-| Giảng viên hướng dẫn |  |
-| Ngày bắt đầu |  |
-| Ngày hoàn thành |  |
+| Giảng viên hướng dẫn | Trương Văn Hiếu |
+| Ngày bắt đầu | 2026-05-14T16:21:03.872Z |
+| Ngày hoàn thành | 2026-05-14T16:21:03.872Z |
 
 ---
 
 ## 2. Công cụ AI đã sử dụng
 
-Đánh dấu các công cụ AI đã sử dụng trong quá trình thực hiện bài tập/project.
-
-- [ ] ChatGPT
-- [ ] Gemini
+- [x] ChatGPT
+- [x] Gemini
 - [ ] Claude
 - [ ] GitHub Copilot
 - [ ] Cursor
@@ -35,32 +33,13 @@
 
 ## 3. Mục tiêu sử dụng AI
 
-Mô tả ngắn gọn sinh viên/nhóm đã sử dụng AI để hỗ trợ những công việc nào.
-
-Ví dụ:
-
-- Phân tích yêu cầu bài toán
-- Gợi ý ý tưởng giải pháp
-- Thiết kế database
-- Thiết kế giao diện
-- Viết code mẫu
-- Debug lỗi
-- Tối ưu code
-- Viết test case
-- Kiểm tra bảo mật
-- Viết báo cáo
-- Chuẩn bị slide thuyết trình
-- Tìm hiểu công nghệ mới
-
 ### Mô tả mục tiêu sử dụng AI
 
 ```text
-Viết tại đây...
+ 
+```
 
 ## 4. Nhật ký sử dụng AI chi tiết
-
-> Mỗi lần sử dụng AI cho một phần quan trọng của bài tập/project, sinh viên cần ghi lại theo mẫu bên dưới.  
-> Sinh viên/nhóm có thể nhân bản mẫu “Lần sử dụng AI” nhiều lần tùy theo số lần sử dụng AI thực tế.
 
 ---
 
@@ -68,224 +47,72 @@ Viết tại đây...
 
 | Nội dung | Thông tin |
 |---|---|
-| Ngày sử dụng |  |
-| Công cụ AI | ChatGPT / Gemini / Claude / GitHub Copilot / Cursor / Antigravity / Khác |
-| Mục đích sử dụng |  |
-| Phần việc liên quan | Requirement / Design / Database / Frontend / Backend / Testing / Debug / Report / Presentation / Other |
-| Mức độ sử dụng | Hỗ trợ ý tưởng / Hỗ trợ một phần / Hỗ trợ nhiều / Sinh chính nội dung |
+| Ngày sử dụng | 2026-05-14 |
+| Công cụ AI | ChatGPT |
+| Mục đích sử dụng | Thiết kế cấu trúc dữ liệu JSON cho lộ trình du lịch và lấy danh sách địa điểm thực tế tại Đà Nẵng |
+| Phần việc liên quan | Design |
+| Mức độ sử dụng | Hỗ trợ ý tưởng |
 
 #### 4.1. Prompt đã sử dụng
 
 ```text
-Dán nguyên văn prompt đã hỏi AI tại đây.
-```
-
-#### 4.2. Kết quả AI gợi ý
-
-Tóm tắt nội dung AI đã trả lời hoặc gợi ý.
-
-```text
-Viết tại đây...
-```
-
-#### 4.3. Phần sinh viên/nhóm đã sử dụng từ AI
-
-Mô tả rõ phần nào được sử dụng lại từ gợi ý của AI.
-
-```text
-Viết tại đây...
-```
-
-#### 4.4. Phần sinh viên/nhóm tự chỉnh sửa hoặc cải tiến
-
-Mô tả sinh viên/nhóm đã thay đổi, kiểm tra, sửa lỗi hoặc cải tiến gì so với gợi ý ban đầu của AI.
-
-```text
-Viết tại đây...
-```
-
-#### 4.5. Minh chứng
-
-| Loại minh chứng | Nội dung |
-|---|---|
-| Link commit |  |
-| File liên quan |  |
-| Screenshot |  |
-| Kết quả chạy/test |  |
-| Link video demo |  |
-| Ghi chú khác |  |
-
-#### 4.6. Nhận xét cá nhân/nhóm
-
-Sinh viên/nhóm học được gì sau lần sử dụng AI này?
-
-```text
-Viết tại đây...
-```
-
----
-
-### Lần sử dụng AI số 2
-
-| Nội dung | Thông tin |
-|---|---|
-| Ngày sử dụng |  |
-| Công cụ AI | ChatGPT / Gemini / Claude / GitHub Copilot / Cursor / Antigravity / Khác |
-| Mục đích sử dụng |  |
-| Phần việc liên quan | Requirement / Design / Database / Frontend / Backend / Testing / Debug / Report / Presentation / Other |
-| Mức độ sử dụng | Hỗ trợ ý tưởng / Hỗ trợ một phần / Hỗ trợ nhiều / Sinh chính nội dung |
-
-#### 4.1. Prompt đã sử dụng
-
-```text
-Dán nguyên văn prompt đã hỏi AI tại đây.
+Tôi cần thiết kế một ứng dụng du lịch cho sinh viên FPT Đà Nẵng. Hãy gợi ý lộ trình du lịch 3 ngày 2 đêm tại Đà Nẵng, bao gồm các địa điểm 'chill', chi phí sinh viên và trả về dưới định dạng JSON
 ```
 
 #### 4.2. Kết quả AI gợi ý
 
 ```text
-Viết tại đây...
+AI cung cấp một cấu trúc JSON hoàn chỉnh gồm các trường như day, time, location, activity, và cost. Nó cũng gợi ý các địa điểm thực tế như Bán đảo Sơn Trà, các quán cafe tại khu phố An Thượng và các món ăn đặc sản địa phương
 ```
 
 #### 4.3. Phần sinh viên/nhóm đã sử dụng từ AI
 
 ```text
-Viết tại đây...
+Nhóm đã sử dụng nguyên mẫu cấu trúc JSON để xây dựng API cho ứng dụng và sử dụng các địa điểm gợi ý làm dữ liệu mẫu (Seeding data) ban đầu
 ```
 
 #### 4.4. Phần sinh viên/nhóm tự chỉnh sửa hoặc cải tiến
 
 ```text
-Viết tại đây...
+hóm đã điều chỉnh lại phần chi phí cho sát với thực tế hiện tại (vì dữ liệu AI có thể cũ) và bổ sung thêm các hình ảnh thực tế của địa điểm vào Database thay vì chỉ có text như AI trả về
 ```
 
 #### 4.5. Minh chứng
 
-| Loại minh chứng | Nội dung |
-|---|---|
-| Link commit |  |
-| File liên quan |  |
-| Screenshot |  |
-| Kết quả chạy/test |  |
-| Link video demo |  |
-| Ghi chú khác |  |
+| Loại minh chứng | Nhãn | Nội dung |
+|---|---|---|
+| File/Commit |  |  |
 
 #### 4.6. Nhận xét cá nhân/nhóm
 
 ```text
-Viết tại đây...
-```
-
----
-
-### Lần sử dụng AI số 3
-
-| Nội dung | Thông tin |
-|---|---|
-| Ngày sử dụng |  |
-| Công cụ AI | ChatGPT / Gemini / Claude / GitHub Copilot / Cursor / Antigravity / Khác |
-| Mục đích sử dụng |  |
-| Phần việc liên quan | Requirement / Design / Database / Frontend / Backend / Testing / Debug / Report / Presentation / Other |
-| Mức độ sử dụng | Hỗ trợ ý tưởng / Hỗ trợ một phần / Hỗ trợ nhiều / Sinh chính nội dung |
-
-#### 4.1. Prompt đã sử dụng
-
-```text
-Dán nguyên văn prompt đã hỏi AI tại đây.
-```
-
-#### 4.2. Kết quả AI gợi ý
-
-```text
-Viết tại đây...
-```
-
-#### 4.3. Phần sinh viên/nhóm đã sử dụng từ AI
-
-```text
-Viết tại đây...
-```
-
-#### 4.4. Phần sinh viên/nhóm tự chỉnh sửa hoặc cải tiến
-
-```text
-Viết tại đây...
-```
-
-#### 4.5. Minh chứng
-
-| Loại minh chứng | Nội dung |
-|---|---|
-| Link commit |  |
-| File liên quan |  |
-| Screenshot |  |
-| Kết quả chạy/test |  |
-| Link video demo |  |
-| Ghi chú khác |  |
-
-#### 4.6. Nhận xét cá nhân/nhóm
-
-```text
-Viết tại đây...
+ 
 ```
 
 ---
 
 ## 5. Bảng tổng hợp mức độ sử dụng AI
 
-Đánh dấu mức độ AI hỗ trợ ở từng hạng mục.
-
 | Hạng mục | Không dùng AI | AI hỗ trợ ít | AI hỗ trợ nhiều | AI sinh chính | Ghi chú |
 |---|:---:|:---:|:---:|:---:|---|
-| Phân tích yêu cầu |  |  |  |  |  |
-| Viết user story/use case |  |  |  |  |  |
-| Thiết kế database |  |  |  |  |  |
-| Thiết kế kiến trúc hệ thống |  |  |  |  |  |
-| Thiết kế giao diện |  |  |  |  |  |
-| Code frontend |  |  |  |  |  |
-| Code backend |  |  |  |  |  |
-| Debug lỗi |  |  |  |  |  |
-| Viết test case |  |  |  |  |  |
-| Kiểm thử sản phẩm |  |  |  |  |  |
-| Tối ưu code |  |  |  |  |  |
-| Viết báo cáo |  |  |  |  |  |
-| Làm slide thuyết trình |  |  |  |  |  |
+| Design & Backend Data Structure |   |   | x |   | AI giúp định hình các trường dữ liệu (fields) cần thiết cho một lộ trình du lịch hoàn chỉnh |
 
 ---
 
 ## 6. Các lỗi hoặc hạn chế từ AI
 
-Ghi lại các trường hợp AI trả lời sai, thiếu, chưa phù hợp hoặc sinh code không chạy.
-
 | STT | Lỗi/hạn chế từ AI | Cách phát hiện | Cách xử lý/cải tiến |
 |---:|---|---|---|
-| 1 |  |  |  |
-| 2 |  |  |  |
-| 3 |  |  |  |
+| 1 | Dữ liệu về chi phí và địa điểm có thể bị cũ hoặc không còn hoạt động | Kiểm tra chéo với các nguồn tin thực tế từ Google Maps và các hội nhóm du lịch Đà Nẵng | Tự điều chỉnh lại mức giá và cập nhật thêm các địa điểm mới nổi đang hot hiện nay |
 
 ---
 
 ## 7. Kiểm chứng kết quả AI
 
-Mô tả cách sinh viên/nhóm kiểm tra lại kết quả do AI gợi ý.
-
-Có thể bao gồm:
-
-- Chạy thử chương trình
-- Viết test case
-- So sánh với yêu cầu đề bài
-- Kiểm tra output
-- Đối chiếu tài liệu môn học
-- Hỏi lại giảng viên
-- Review cùng thành viên nhóm
-- Kiểm tra lỗi bảo mật
-- Kiểm tra bằng dữ liệu mẫu
-- So sánh trước và sau khi dùng AI
-
 ### Nội dung kiểm chứng
 
 ```text
-Viết tại đây...
+Em đã thực hiện kiểm tra thủ công bằng cách tra cứu giá vé và tình trạng hoạt động của các quán cafe, điểm tham quan được gợi ý. Đồng thời, em cũng kiểm tra tính hợp lệ của cấu trúc JSON bằng các công cụ online để đảm bảo không bị lỗi cú pháp khi đưa vào code.
 ```
 
 ---
@@ -294,10 +121,8 @@ Viết tại đây...
 
 ### 8.1. Đối với bài cá nhân
 
-Mô tả phần sinh viên tự làm, phần AI hỗ trợ và phần đã tự cải tiến.
-
 ```text
-Viết tại đây...
+Trong dự án này, em đóng vai trò là người nghiên cứu và tích hợp AI. Em đã trực tiếp thiết kế các câu lệnh (prompts), thực hiện kiểm thử trên Postman để lấy dữ liệu mẫu và chịu trách nhiệm chính trong việc kiểm chứng độ chính xác của nội dung trước khi bàn giao cho nhóm
 ```
 
 ### 8.2. Đối với bài nhóm
@@ -305,62 +130,17 @@ Viết tại đây...
 | Thành viên | MSSV | Nhiệm vụ chính | Có sử dụng AI không? | Minh chứng đóng góp |
 |---|---|---|---|---|
 |  |  |  | Có / Không |  |
-|  |  |  | Có / Không |  |
-|  |  |  | Có / Không |  |
-|  |  |  | Có / Không |  |
 
 ---
 
 ## 9. Reflection cuối bài
 
-### 9.1. AI đã hỗ trợ em/nhóm ở điểm nào?
-
-```text
-Viết tại đây...
-```
-
-### 9.2. Phần nào em/nhóm không sử dụng theo gợi ý của AI? Vì sao?
-
-```text
-Viết tại đây...
-```
-
-### 9.3. Em/nhóm đã kiểm tra tính đúng đắn của kết quả AI như thế nào?
-
-```text
-Viết tại đây...
-```
-
-### 9.4. Nếu không có AI, phần nào sẽ khó khăn nhất?
-
-```text
-Viết tại đây...
-```
-
-### 9.5. Sau bài tập/project này, em/nhóm học được gì về môn học?
-
-```text
-Viết tại đây...
-```
-
-### 9.6. Sau bài tập/project này, em/nhóm học được gì về cách sử dụng AI có trách nhiệm?
-
-```text
-Viết tại đây...
-```
+### Xem chi tiết tại REFLECTION.md
 
 ---
 
 ## 10. Cam kết học thuật
 
-Sinh viên/nhóm cam kết rằng:
-
-- Nội dung AI hỗ trợ đã được ghi nhận trung thực.
-- Không nộp nguyên văn kết quả AI mà không kiểm tra.
-- Có khả năng giải thích các phần đã nộp.
-- Chịu trách nhiệm về tính đúng đắn của sản phẩm cuối cùng.
-- Hiểu rằng việc sử dụng AI không khai báo có thể ảnh hưởng đến kết quả đánh giá.
-
 | Đại diện sinh viên/nhóm | Ngày xác nhận |
 |---|---|
-|  |  |
+|   | 14/5/2026 |
