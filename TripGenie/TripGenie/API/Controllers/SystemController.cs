@@ -1,7 +1,8 @@
 using Microsoft.AspNetCore.Mvc;
-using TripGenie.API.Services;
+using TripGenie.API.Application.Interfaces;
+using TripGenie.API.Application.Services;
 
-namespace TripGenie.API.Controllers;
+namespace TripGenie.API.API.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
@@ -58,7 +59,7 @@ public class SystemController : ControllerBase {
     public IActionResult GetInfo() {
         return Ok(new {
             Application = "TripGenie Server",
-            Framework = ".NET 8.0",
+            Framework = ".NET 10.0",
             OS = System.Runtime.InteropServices.RuntimeInformation.OSDescription
         });
     }

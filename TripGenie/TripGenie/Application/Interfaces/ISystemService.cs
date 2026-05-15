@@ -1,6 +1,6 @@
-using TripGenie.API.DTOs;
+using TripGenie.API.Application.DTOs;
 
-namespace TripGenie.API.Services;
+namespace TripGenie.API.Application.Interfaces;
 
 public interface ISystemService
 {
