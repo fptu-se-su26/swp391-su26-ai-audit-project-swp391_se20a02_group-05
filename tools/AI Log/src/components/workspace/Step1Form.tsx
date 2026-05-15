@@ -29,6 +29,8 @@ const schema = z.object({
 
 type FormData = z.infer<typeof schema>;
 
+import { DEFAULT_PROJECT_METADATA, DEFAULT_PROJECT_MEMBERS } from "@/lib/defaults";
+
 export default function Step1Form({ projectId }: { projectId: string }) {
   const { projects, updateMetadata, updateMembers } = useProjectStore();
   const project = projects[projectId];
@@ -37,16 +39,8 @@ export default function Step1Form({ projectId }: { projectId: string }) {
   const { control, handleSubmit, formState: { errors, isDirty }, reset } = useForm<FormData>({
     resolver: zodResolver(schema),
     defaultValues: {
-      name: "",
-      course: "",
-      courseCode: "",
-      class: "",
-      semester: "",
-      lecturer: "",
-      repoUrl: "",
-      startDate: "",
-      endDate: "",
-      members: [],
+      ...DEFAULT_PROJECT_METADATA,
+      members: DEFAULT_PROJECT_MEMBERS,
     }
   });
 

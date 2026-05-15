@@ -8,6 +8,7 @@ import { useEffect, useState } from "react";
 import { ChangelogEntry, ChangelogSummary } from "@/types/project";
 import { useUnsavedChanges } from "@/lib/useUnsavedChanges";
 import ConfirmDeleteModal from "./ConfirmDeleteModal";
+import EvidenceSection from "./EvidenceSection";
 
 interface Step2FormData {
   changelogs: ChangelogEntry[];
@@ -74,6 +75,7 @@ export default function Step2Form({ projectId }: { projectId: string }) {
       completedChecklist: [],
       changes: [],
       aiSupport: { used: false, description: "" },
+      evidence: [],
       evidenceLink: "",
       notes: ""
     });
@@ -170,12 +172,16 @@ export default function Step2Form({ projectId }: { projectId: string }) {
                       )}
                     </div>
 
-                    <Controller name={`changelogs.${index}.evidenceLink`} control={control} render={({ field }) => (
-                      <TextField>
-                        <Label>Evidence (Commit / Screenshot Link)</Label>
-                        <Input {...field} />
-                      </TextField>
-                    )} />
+                    <Controller 
+                      name={`changelogs.${index}.evidence`} 
+                      control={control} 
+                      render={({ field: { value, onChange } }) => (
+                        <EvidenceSection 
+                          evidence={value || []} 
+                          onChange={onChange} 
+                        />
+                      )} 
+                    />
 
                     <Controller name={`changelogs.${index}.notes`} control={control} render={({ field }) => (
                       <TextField>
