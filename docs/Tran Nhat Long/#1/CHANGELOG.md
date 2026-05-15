@@ -64,8 +64,8 @@ A Technical Research Report for an AI-Powered Travel App
 
 ## AI có hỗ trợ không?
 
-- [ ] Có
-- [x] Không
+- [x] Có
+- [ ] Không
 
 ## Commit/Screenshot minh chứng
 

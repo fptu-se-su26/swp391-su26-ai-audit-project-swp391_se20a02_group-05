@@ -56,10 +56,9 @@ Summary of the AI ​​usage process in the project.
 ❌ Explainability (why this choice?)
 
 ## Giá Trị Mang Lại
-⏱️ 2-3 tuần research → 1 giờ gen document
-📋 14 sections covered (LLM selection, cost, security, scalability, risks)
-✅ Actionable (20-step checklist, concrete schema, specific TTL values)
-🚀 Production-ready blueprint chứ không phải lý thuyết
+⏱- 2-3 tuần research → 1 giờ gen document
+- 14 sections covered (LLM selection, cost, security, scalability, risks)
+- Actionable (20-step checklist, concrete schema, specific TTL values)- Production-ready blueprint chứ không phải lý thuyết
 
 ---
 ```
@@ -82,6 +81,7 @@ Summary of the AI ​​usage process in the project.
 
 ```text
 Gemini
+Claude
 ```
 
 ### Lý do sử dụng công cụ đó

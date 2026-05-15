@@ -73,7 +73,7 @@ Research and Requirement analysis, Generate documents.
    * Đề xuất hướng triển khai thực tế, tối ưu chi phí API, performance và scalability
    * Phân chia hướng implement AI features vào kiến trúc hệ thống hiện tại để đảm bảo khả năng mở rộng về sau.
 * Yêu cầu output: đảm bảo giải thích bằng từ ngữ và tạo file json để visualize json data thành dạng graph workflow cho dễ nhìn
-* Tài liệu đã nghiên cứu được đính kèm
+* Tài liệu đã nghiên cứu được đính kèm: https://docs.google.com/document/d/1SseVDexFxWcgXP0TLO0yejUFaDyMlnEY/edit?usp=sharing&ouid=104864543920688382356&rtpof=true&sd=true
 ```
 
 #### 4.2. Kết quả AI gợi ý

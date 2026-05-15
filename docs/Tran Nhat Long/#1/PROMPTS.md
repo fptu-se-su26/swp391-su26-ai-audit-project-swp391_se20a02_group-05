@@ -97,7 +97,7 @@ AI phải regenerate theo feedback loop
 #### 5.3. Kết quả AI trả về
 
 ```text
- 
+ https://docs.google.com/document/d/1NTzS0vvw8O6rIZAKrxMkTV2l-dVRa2EA/edit?usp=sharing&ouid=104864543920688382356&rtpof=true&sd=true
 ```
 
 #### 5.4. Kết quả đã áp dụng vào bài
