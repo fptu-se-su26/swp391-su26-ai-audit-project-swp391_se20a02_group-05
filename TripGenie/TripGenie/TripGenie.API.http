@@ -1,0 +1,37 @@
+### System Endpoints
+
+### Get Database Status
+GET {{HostAddress}}/api/system/database-status
+Accept: application/json
+
+###
+
+### Get System Status
+GET {{HostAddress}}/api/system/status
+Accept: application/json
+
+###
+
+### Get System Health
+GET {{HostAddress}}/api/system/health
+Accept: application/json
+
+###
+
+### Get System Version
+GET {{HostAddress}}/api/system/version
+Accept: application/json
+
+###
+
+### Get System Info
+GET {{HostAddress}}/api/system/info
+Accept: application/json
+
+###
+
+### Get System Time
+GET {{HostAddress}}/api/system/time
+Accept: application/json
+
+###
