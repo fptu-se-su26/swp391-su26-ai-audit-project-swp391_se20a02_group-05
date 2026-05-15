@@ -249,7 +249,7 @@ Viết tại đây...
 | Kiểm thử sản phẩm |  |  |  |  |  |
 | Tối ưu code |  |  |  |  |  |
 | Viết báo cáo |  |  |  |  |  |
-| Làm slide thuyết trình |  |  |  |  |  |
+| Làm slide thuyết trình |  |  |  |  |  | 
 
 ---
 
@@ -294,7 +294,7 @@ Viết tại đây...
 
 ### 8.1. Đối với bài cá nhân
 
-Mô tả phần sinh viên tự làm, phần AI hỗ trợ và phần đã tự cải tiến.
+Mô tả phần sinh viên tự làm, phần AI hỗ trợ và phần đã tự cải tiến tiến .
 
 ```text
 Viết tại đây...
