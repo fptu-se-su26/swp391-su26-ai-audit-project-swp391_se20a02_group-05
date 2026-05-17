@@ -12,6 +12,9 @@ using System.Text;
 using StackExchange.Redis;
 using Microsoft.OpenApi;
 using Npgsql;
+using System.Threading.RateLimiting;
+using Microsoft.AspNetCore.RateLimiting;
+using TripGenie.API.Infrastructure.Diagnostics;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -60,7 +63,56 @@ builder.Services.AddOpenApi(options =>
     });
 });
 builder.Services.AddControllers();
+builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
+builder.Services.AddProblemDetails();
 builder.Services.AddHttpContextAccessor();
+
+
+// Configure IP-partitioned Rate Limiting
+builder.Services.AddRateLimiter(options =>
+{
+    options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+
+    options.AddPolicy("ForgotPasswordLimit", context =>
+        RateLimitPartition.GetFixedWindowLimiter(
+            partitionKey: context.Connection.RemoteIpAddress?.ToString() ?? context.Request.Headers["X-Forwarded-For"].ToString() ?? "unknown",
+            factory: _ => new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = envConfig.RateLimit.ForgotPasswordPermitLimit,
+                Window = TimeSpan.FromMinutes(envConfig.RateLimit.ForgotPasswordWindowMinutes),
+                QueueLimit = 0
+            }));
+
+    options.AddPolicy("ResetPasswordLimit", context =>
+        RateLimitPartition.GetFixedWindowLimiter(
+            partitionKey: context.Connection.RemoteIpAddress?.ToString() ?? context.Request.Headers["X-Forwarded-For"].ToString() ?? "unknown",
+            factory: _ => new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = envConfig.RateLimit.ResetPasswordPermitLimit,
+                Window = TimeSpan.FromMinutes(envConfig.RateLimit.ResetPasswordWindowMinutes),
+                QueueLimit = 0
+            }));
+
+    options.AddPolicy("ResendVerificationLimit", context =>
+        RateLimitPartition.GetFixedWindowLimiter(
+            partitionKey: context.Connection.RemoteIpAddress?.ToString() ?? context.Request.Headers["X-Forwarded-For"].ToString() ?? "unknown",
+            factory: _ => new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = envConfig.RateLimit.ResendVerificationPermitLimit,
+                Window = TimeSpan.FromMinutes(envConfig.RateLimit.ResendVerificationWindowMinutes),
+                QueueLimit = 0
+            }));
+
+    options.AddPolicy("VerifyEmailLimit", context =>
+        RateLimitPartition.GetFixedWindowLimiter(
+            partitionKey: context.Connection.RemoteIpAddress?.ToString() ?? context.Request.Headers["X-Forwarded-For"].ToString() ?? "unknown",
+            factory: _ => new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = envConfig.RateLimit.VerifyEmailPermitLimit,
+                Window = TimeSpan.FromMinutes(envConfig.RateLimit.VerifyEmailWindowMinutes),
+                QueueLimit = 0
+            }));
+});
 
 // Configure EF Core with PostgreSQL (MapEnum inside UseNpgsql handles both EF Core + ADO.NET layers)
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
@@ -69,6 +121,9 @@ builder.Services.AddDbContext<ApplicationDbContext>(options =>
 
 // Configure Redis
 builder.Services.AddSingleton<IConnectionMultiplexer>(ConnectionMultiplexer.Connect(envConfig.Redis.ConnectionString));
+
+// Register Diagnostics & Telemetry
+builder.Services.AddSingleton<AuthMetrics>();
 
 // Register Infrastructure & Data Services
 builder.Services.AddScoped<IIdentityRepository, IdentityRepository>();
@@ -80,6 +135,13 @@ builder.Services.AddScoped<ITokenService, TokenService>();
 builder.Services.AddScoped<IAccountService, AccountService>();
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IPermissionService, PermissionService>();
+
+// Register Email Infrastructure & Transport Services
+builder.Services.AddEmailInfrastructure(builder.Configuration);
+
+// Register Background Outbox Processor and Token Sweeper Job
+builder.Services.AddHostedService<EmailOutboxBackgroundProcessor>();
+builder.Services.AddHostedService<TokenCleanupBackgroundJob>();
 
 
 // Configure JWT Authentication
@@ -127,9 +189,14 @@ if (app.Environment.IsDevelopment())
     });
 }
 
+app.UseExceptionHandler();
+app.UseMiddleware<SecurityHeadersMiddleware>();
+app.UseRateLimiter();
 app.UseAuthentication();
 app.UseAuthorization();
 
+
+app.MapHealthChecks("/health");
 app.MapControllers();
 
 app.Run();

@@ -35,7 +35,7 @@ public class User
 
     public DateTimeOffset? LastLoginAt { get; set; }
 
-    public string? LastLoginIp { get; set; } // Map to INET in Postgres
+    public IPAddress? LastLoginIp { get; set; } // Map to INET in Postgres
 
     public int FailedAttempts { get; set; }
 
@@ -48,6 +48,9 @@ public class User
     public DateTimeOffset UpdatedAt { get; set; } = DateTimeOffset.UtcNow;
 
     public DateTimeOffset? DeletedAt { get; set; }
+
+    [ConcurrencyCheck]
+    public uint Version { get; set; } // Map PostgreSQL xmin system column
 
     public virtual ICollection<RefreshToken> RefreshTokens { get; set; } = new List<RefreshToken>();
 }

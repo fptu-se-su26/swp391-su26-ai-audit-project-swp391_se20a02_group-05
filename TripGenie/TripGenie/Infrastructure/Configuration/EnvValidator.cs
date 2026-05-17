@@ -1,3 +1,5 @@
+using System;
+using Microsoft.Extensions.Configuration;
 using TripGenie.API.API.Extensions;
 
 namespace TripGenie.API.Infrastructure.Configuration;
@@ -25,6 +27,40 @@ public static class EnvValidator
         {
             config.Jwt.DurationInMinutes = duration;
         }
+
+        // 4. AuthSettings
+        if (int.TryParse(configuration["Auth:VerificationTokenDurationInHours"], out var vtHours))
+        {
+            config.Auth.VerificationTokenDurationInHours = vtHours;
+        }
+        if (int.TryParse(configuration["Auth:ResetPasswordTokenDurationInMinutes"], out var rpMinutes))
+        {
+            config.Auth.ResetPasswordTokenDurationInMinutes = rpMinutes;
+        }
+        config.Auth.ResetPasswordUrlFormat = configuration["Auth:ResetPasswordUrlFormat"] ?? config.Auth.ResetPasswordUrlFormat;
+        config.Auth.VerifyEmailUrlFormat = configuration["Auth:VerifyEmailUrlFormat"] ?? config.Auth.VerifyEmailUrlFormat;
+        config.Auth.TrustedDomains = configuration["Auth:TrustedDomains"] ?? config.Auth.TrustedDomains;
+
+        // 5. AuthRateLimitSettings
+        if (int.TryParse(configuration["RateLimit:ForgotPasswordPermitLimit"], out var fpLimit))
+            config.RateLimit.ForgotPasswordPermitLimit = fpLimit;
+        if (int.TryParse(configuration["RateLimit:ForgotPasswordWindowMinutes"], out var fpWindow))
+            config.RateLimit.ForgotPasswordWindowMinutes = fpWindow;
+
+        if (int.TryParse(configuration["RateLimit:ResetPasswordPermitLimit"], out var rpLimit))
+            config.RateLimit.ResetPasswordPermitLimit = rpLimit;
+        if (int.TryParse(configuration["RateLimit:ResetPasswordWindowMinutes"], out var rpWindow))
+            config.RateLimit.ResetPasswordWindowMinutes = rpWindow;
+
+        if (int.TryParse(configuration["RateLimit:ResendVerificationPermitLimit"], out var rvLimit))
+            config.RateLimit.ResendVerificationPermitLimit = rvLimit;
+        if (int.TryParse(configuration["RateLimit:ResendVerificationWindowMinutes"], out var rvWindow))
+            config.RateLimit.ResendVerificationWindowMinutes = rvWindow;
+
+        if (int.TryParse(configuration["RateLimit:VerifyEmailPermitLimit"], out var veLimit))
+            config.RateLimit.VerifyEmailPermitLimit = veLimit;
+        if (int.TryParse(configuration["RateLimit:VerifyEmailWindowMinutes"], out var veWindow))
+            config.RateLimit.VerifyEmailWindowMinutes = veWindow;
 
         return config;
     }
