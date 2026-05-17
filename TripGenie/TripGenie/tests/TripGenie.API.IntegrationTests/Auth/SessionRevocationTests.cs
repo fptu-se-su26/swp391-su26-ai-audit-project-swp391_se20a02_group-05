@@ -46,7 +46,7 @@ public class SessionRevocationTests : BaseIntegrationTest
         var user = new UserBuilder()
             .WithEmail(email)
             .WithStatus(UserStatus.ACTIVE)
-            .WithRole(userRole.Id)
+            .WithRole(userRole)
             .Build();
 
         db.Users.Add(user);

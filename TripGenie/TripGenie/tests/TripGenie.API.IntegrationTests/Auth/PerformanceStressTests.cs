@@ -18,7 +18,8 @@ namespace TripGenie.API.IntegrationTests.Auth;
 
 public class PerformanceStressTests : BaseIntegrationTest
 {
-    public PerformanceStressTests(SharedTestcontainerFixture containerFixture) : base(containerFixture)
+    public PerformanceStressTests(SharedTestcontainerFixture containerFixture) 
+        : base(containerFixture, new Dictionary<string, string> { { "RateLimit__RegisterPermitLimit", "1000" } })
     {
     }
 

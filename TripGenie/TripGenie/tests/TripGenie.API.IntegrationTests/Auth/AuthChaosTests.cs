@@ -49,7 +49,7 @@ public class AuthChaosTests : BaseIntegrationTest
         {
             var user = new UserBuilder()
                 .WithEmail("chaos@tripgenie.ai")
-                .WithRole(userRole.Id)
+                .WithRole(userRole)
                 .Build();
 
             db.Users.Add(user);

@@ -115,9 +115,9 @@ public class AuthFlowsApiTests : BaseIntegrationTest
         EmailSender.SentMessages.Should().ContainSingle();
         var verifyEmail = EmailSender.SentMessages.First();
         verifyEmail.ToEmail.Should().Be("lifecycle@tripgenie.ai");
-        verifyEmail.HtmlContent.Should().Contain("verify?token=");
+        verifyEmail.HtmlContent.Should().Contain("verify-email?token=");
 
-        var tokenPrefix = "verify?token=";
+        var tokenPrefix = "verify-email?token=";
         var tokenStartIdx = verifyEmail.HtmlContent.IndexOf(tokenPrefix) + tokenPrefix.Length;
         var tokenLength = verifyEmail.HtmlContent.IndexOf("\"", tokenStartIdx) - tokenStartIdx;
         var plainVerifyToken = verifyEmail.HtmlContent.Substring(tokenStartIdx, tokenLength);
@@ -188,13 +188,13 @@ public class AuthFlowsApiTests : BaseIntegrationTest
         await ProcessOutboxMessagesAsync().ConfigureAwait(false);
         EmailSender.SentMessages.Should().ContainSingle();
         var resetEmail = EmailSender.SentMessages.First();
-        resetEmail.HtmlContent.Should().Contain("reset?token=");
-
-        // Extract reset token
-        var resetPrefix = "reset?token=";
-        var resetStartIdx = resetEmail.HtmlContent.IndexOf(resetPrefix) + resetPrefix.Length;
-        var resetTokenLen = resetEmail.HtmlContent.IndexOf("\"", resetStartIdx) - resetStartIdx;
-        var plainResetToken = resetEmail.HtmlContent.Substring(resetStartIdx, resetTokenLen);
+        resetEmail.HtmlContent.Should().Contain("reset-password?token=");
+ 
+         // Extract reset token
+         var resetPrefix = "reset-password?token=";
+         var resetStartIdx = resetEmail.HtmlContent.IndexOf(resetPrefix) + resetPrefix.Length;
+         var resetTokenLen = resetEmail.HtmlContent.IndexOf("\"", resetStartIdx) - resetStartIdx;
+         var plainResetToken = resetEmail.HtmlContent.Substring(resetStartIdx, resetTokenLen);
         plainResetToken.Should().NotBeNullOrWhiteSpace();
 
         EmailSender.Clear();

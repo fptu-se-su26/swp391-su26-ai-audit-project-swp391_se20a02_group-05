@@ -45,7 +45,7 @@ public class VerifyEmailFlowTests : BaseIntegrationTest
         var user = new UserBuilder()
             .WithEmail($"pending_{Guid.NewGuid()}@tripgenie.ai")
             .WithStatus(UserStatus.EMAIL_VERIFY_PENDING)
-            .WithRole(userRole.Id)
+            .WithRole(userRole)
             .Build();
 
         db.Users.Add(user);

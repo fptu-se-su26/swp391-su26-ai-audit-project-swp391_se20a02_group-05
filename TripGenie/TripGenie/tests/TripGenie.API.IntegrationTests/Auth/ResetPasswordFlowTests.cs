@@ -45,7 +45,7 @@ public class ResetPasswordFlowTests : BaseIntegrationTest
         var user = new UserBuilder()
             .WithEmail($"active_{Guid.NewGuid()}@tripgenie.ai")
             .WithStatus(UserStatus.ACTIVE)
-            .WithRole(userRole.Id)
+            .WithRole(userRole)
             .Build();
 
         db.Users.Add(user);

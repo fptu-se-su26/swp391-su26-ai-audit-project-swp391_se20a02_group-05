@@ -10,6 +10,7 @@ public class UserBuilder
     private string _fullName = "Test User";
     private UserStatus _status = UserStatus.EMAIL_VERIFY_PENDING;
     private Guid _roleId = Guid.Empty;
+    private Role? _role = null;
 
     public UserBuilder WithEmail(string email)
     {
@@ -41,17 +42,33 @@ public class UserBuilder
         return this;
     }
 
+    public UserBuilder WithRole(Role role)
+    {
+        _role = role;
+        return this;
+    }
+
     public User Build()
     {
-        return new User
+        var user = new User
         {
             Email = _email,
             PasswordHash = BCrypt.Net.BCrypt.HashPassword(_password),
             FullName = _fullName,
             Status = _status,
-            RoleId = _roleId,
             CreatedAt = DateTimeOffset.UtcNow.UtcDateTime,
             UpdatedAt = DateTimeOffset.UtcNow.UtcDateTime
         };
+
+        if (_role != null)
+        {
+            user.Roles.Add(_role);
+        }
+        else if (_roleId != Guid.Empty)
+        {
+            user.Roles.Add(new Role { Id = _roleId, Name = "USER", DisplayName = "User", IsActive = true });
+        }
+
+        return user;
     }
 }

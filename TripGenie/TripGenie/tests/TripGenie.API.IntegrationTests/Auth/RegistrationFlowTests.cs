@@ -54,6 +54,67 @@ public class RegistrationFlowTests : BaseIntegrationTest
 
         var response = await Client.PostAsJsonAsync("/api/auth/register", request);
         response.StatusCode.Should().Be(HttpStatusCode.OK);
+
+        var data = await response.Content.ReadFromJsonAsync<RegisterResponse>();
+        data.Should().NotBeNull();
+        data!.StatusCode.Should().Be("REGISTRATION_SUCCESS");
+    }
+
+    [Fact]
+    public async Task Register_With_Duplicate_Email_Active_Should_Return_Silent_Success()
+    {
+        await SeedDefaultRolesAsync();
+
+        var userRequest = new RegisterRequest(
+            Email: "valid_active@tripgenie.ai",
+            Password: "SecurePassword123!",
+            ConfirmPassword: "SecurePassword123!",
+            FullName: "Valid User"
+        );
+
+        await Client.PostAsJsonAsync("/api/auth/register", userRequest);
+
+        // Manually activate user
+        using (var scope = Factory.Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+            var user = await db.Users.FirstOrDefaultAsync(u => u.Email == "valid_active@tripgenie.ai");
+            user!.Status = UserStatus.ACTIVE;
+            await db.SaveChangesAsync();
+        }
+
+        // Try to register same email again
+        var response2 = await Client.PostAsJsonAsync("/api/auth/register", userRequest).ConfigureAwait(false);
+        response2.StatusCode.Should().Be(HttpStatusCode.OK);
+
+        var data2 = await response2.Content.ReadFromJsonAsync<RegisterResponse>().ConfigureAwait(false);
+        data2.Should().NotBeNull();
+        data2!.StatusCode.Should().Be("REGISTRATION_ALREADY_ACTIVE");
+        data2.UiAction.Should().Be("SHOW_SUCCESS_TOAST");
+    }
+
+    [Fact]
+    public async Task Register_With_Duplicate_Email_Pending_Should_Resend_Verification()
+    {
+        await SeedDefaultRolesAsync();
+
+        var userRequest = new RegisterRequest(
+            Email: "valid_pending@tripgenie.ai",
+            Password: "SecurePassword123!",
+            ConfirmPassword: "SecurePassword123!",
+            FullName: "Valid User"
+        );
+
+        await Client.PostAsJsonAsync("/api/auth/register", userRequest);
+
+        // Try to register same email again without activating
+        var response2 = await Client.PostAsJsonAsync("/api/auth/register", userRequest).ConfigureAwait(false);
+        response2.StatusCode.Should().Be(HttpStatusCode.OK);
+
+        var data2 = await response2.Content.ReadFromJsonAsync<RegisterResponse>().ConfigureAwait(false);
+        data2.Should().NotBeNull();
+        data2!.StatusCode.Should().Be("REGISTRATION_PENDING_VERIFY");
+        data2.UiAction.Should().Be("SHOW_WARNING_TOAST");
     }
 
     [Fact]

@@ -46,7 +46,7 @@ public class AuthConcurrencyTests : BaseIntegrationTest
         var user = new UserBuilder()
             .WithEmail($"concurrency_{Guid.NewGuid()}@tripgenie.ai")
             .WithStatus(UserStatus.EMAIL_VERIFY_PENDING)
-            .WithRole(userRole.Id)
+            .WithRole(userRole)
             .Build();
 
         db.Users.Add(user);

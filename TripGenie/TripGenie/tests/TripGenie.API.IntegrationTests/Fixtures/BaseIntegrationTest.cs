@@ -31,7 +31,7 @@ public class IntegrationTestApplicationFactory : WebApplicationFactory<Program>
     /// <summary>
     /// Initializes a new instance of the <see cref="IntegrationTestApplicationFactory"/> class.
     /// </summary>
-    public IntegrationTestApplicationFactory(SharedTestcontainerFixture containerFixture)
+    public IntegrationTestApplicationFactory(SharedTestcontainerFixture containerFixture, Dictionary<string, string>? envOverrides = null)
     {
         _containerFixture = containerFixture;
 
@@ -48,6 +48,21 @@ public class IntegrationTestApplicationFactory : WebApplicationFactory<Program>
         Environment.SetEnvironmentVariable("REDIS_HOST", redisParts[0]);
         Environment.SetEnvironmentVariable("REDIS_PORT", redisParts[1] + ",allowAdmin=true");
         Environment.SetEnvironmentVariable("REDIS_PASSWORD", "");
+
+        // Set mock environment variables to satisfy EnvValidator during Program startup
+        Environment.SetEnvironmentVariable("GOOGLE_CLIENT_ID", "mock-google-client-id");
+        Environment.SetEnvironmentVariable("JWT_KEY", "super_secret_key_super_secret_key_super_secret_key_32_characters");
+        Environment.SetEnvironmentVariable("JWT_ISSUER", "TripGenie.API");
+        Environment.SetEnvironmentVariable("JWT_AUDIENCE", "TripGenie.Client");
+
+        // Apply custom environment overrides if provided (e.g., stress test rate limit overrides)
+        if (envOverrides != null)
+        {
+            foreach (var kvp in envOverrides)
+            {
+                Environment.SetEnvironmentVariable(kvp.Key, kvp.Value);
+            }
+        }
     }
 
     /// <inheritdoc />
@@ -69,7 +84,14 @@ public class IntegrationTestApplicationFactory : WebApplicationFactory<Program>
                 { "EmailSettings:Smtp:Password", "test_pass" },
                 { "EmailSettings:Smtp:EnableSsl", "false" },
                 { "EmailSettings:EnableBackgroundQueue", "false" },
-                { "EmailSettings:TimeoutSeconds", "10" }
+                { "EmailSettings:TimeoutSeconds", "10" },
+                { "Auth:GoogleClientId", "mock-google-client-id" },
+                { "Jwt:Key", "super_secret_key_super_secret_key_super_secret_key_32_characters" },
+                { "RateLimit:ForgotPasswordPermitLimit", "1000" },
+                { "RateLimit:ResetPasswordPermitLimit", "1000" },
+                { "RateLimit:ResendVerificationPermitLimit", "1000" },
+                { "RateLimit:VerifyEmailPermitLimit", "1000" },
+                { "RateLimit:RegisterPermitLimit", "1000" }
             });
         });
 
@@ -126,10 +148,10 @@ public abstract class BaseIntegrationTest : IAsyncLifetime
     /// <summary>
     /// Initializes a new instance of the <see cref="BaseIntegrationTest"/> class.
     /// </summary>
-    protected BaseIntegrationTest(SharedTestcontainerFixture containerFixture)
+    protected BaseIntegrationTest(SharedTestcontainerFixture containerFixture, Dictionary<string, string>? envOverrides = null)
     {
         _containerFixture = containerFixture;
-        Factory = new IntegrationTestApplicationFactory(_containerFixture);
+        Factory = new IntegrationTestApplicationFactory(_containerFixture, envOverrides);
         Client = Factory.CreateClient(new WebApplicationFactoryClientOptions
         {
             BaseAddress = new Uri("https://localhost")
