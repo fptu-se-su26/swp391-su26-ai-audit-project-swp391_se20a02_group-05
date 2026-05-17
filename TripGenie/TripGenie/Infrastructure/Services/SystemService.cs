@@ -1,7 +1,8 @@
-using TripGenie.API.Data;
-using TripGenie.API.DTOs;
+using TripGenie.API.Application.Interfaces;
+using TripGenie.API.Infrastructure.Persistence;
+using TripGenie.API.Application.DTOs;
 
-namespace TripGenie.API.Services;
+namespace TripGenie.API.Infrastructure.Services;
 
 public class SystemService : ISystemService
 {

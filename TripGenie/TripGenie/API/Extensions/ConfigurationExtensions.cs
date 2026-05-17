@@ -1,6 +1,6 @@
-﻿using System.Text.RegularExpressions;
+using System.Text.RegularExpressions;
 
-namespace TripGenie.API.Extensions;
+namespace TripGenie.API.API.Extensions;
 
 public static class ConfigurationExtensions
 {

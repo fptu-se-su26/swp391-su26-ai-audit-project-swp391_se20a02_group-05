@@ -1,6 +1,6 @@
 using System.Text.Json.Serialization;
 
-namespace TripGenie.API.DTOs;
+namespace TripGenie.API.Application.DTOs;
 
 public class DatabaseStatusResponse
 {
