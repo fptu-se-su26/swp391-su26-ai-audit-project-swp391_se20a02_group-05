@@ -55,7 +55,7 @@ public class SessionRevocationTests : BaseIntegrationTest
     }
 
     [Fact]
-    public async Task RefreshTokenTheft_Should_Revoke_All_User_Sessions_And_Throw_InvalidToken()
+    public async Task RefreshTokenTheft_Should_Revoke_Compromised_Session_Lineage_Only_Leaving_Other_Sessions_Active()
     {
         var email = $"theft_{Guid.NewGuid()}@tripgenie.ai";
         var userId = await CreateActiveUserAsync(email);
@@ -63,11 +63,15 @@ public class SessionRevocationTests : BaseIntegrationTest
         using var scope = Factory.Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
 
-        // Create active and revoked tokens for this user
+        var compromisedSessionId = Guid.NewGuid();
+        var safeSessionId = Guid.NewGuid();
+
+        // Create active and revoked tokens with distinct Session IDs for this user
         var revokedToken = new RefreshToken
         {
             UserId = userId,
             Token = "already_revoked_token_value_abc",
+            SessionId = compromisedSessionId,
             ExpiresAt = DateTimeOffset.UtcNow.AddDays(7),
             RevokedAt = DateTimeOffset.UtcNow.AddMinutes(-5)
         };
@@ -77,6 +81,7 @@ public class SessionRevocationTests : BaseIntegrationTest
         {
             UserId = userId,
             Token = "currently_active_token_value_xyz",
+            SessionId = safeSessionId,
             ExpiresAt = DateTimeOffset.UtcNow.AddDays(7)
         };
         db.RefreshTokens.Add(activeToken);
@@ -84,20 +89,32 @@ public class SessionRevocationTests : BaseIntegrationTest
         await db.SaveChangesAsync();
 
         // Simulate presenting the already revoked token (theft scenario)
-        Client.DefaultRequestHeaders.Add("Cookie", "refresh_token=already_revoked_token_value_abc");
+        Client.DefaultRequestHeaders.Add("X-CSRF-Token", "test_csrf");
+        Client.DefaultRequestHeaders.Add("Cookie", "CSRF-TOKEN=test_csrf; refresh_token=already_revoked_token_value_abc");
 
         var response = await Client.PostAsync("/api/auth/refresh-token", null);
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
 
+        Client.DefaultRequestHeaders.Remove("X-CSRF-Token");
+        Client.DefaultRequestHeaders.Remove("Cookie");
 
         var problem = await response.Content.ReadFromJsonAsync<Microsoft.AspNetCore.Mvc.ProblemDetails>();
         problem.Should().NotBeNull();
         problem!.Extensions["code"]!.ToString().Should().Be(AuthErrorCodes.InvalidToken);
 
-        // Verify ALL refresh tokens for this user are now revoked in the DB
+        // Verify compromised session chain has no active tokens, but safeSessionId remains untouched!
         using var scope2 = Factory.Services.CreateScope();
         var db2 = scope2.ServiceProvider.GetRequiredService<ApplicationDbContext>();
-        var activeTokens = await db2.RefreshTokens.Where(t => t.UserId == userId && t.RevokedAt == null).ToListAsync();
-        activeTokens.Should().BeEmpty();
+        
+        var compromisedTokens = await db2.RefreshTokens
+            .Where(t => t.SessionId == compromisedSessionId && t.RevokedAt == null)
+            .ToListAsync();
+        compromisedTokens.Should().BeEmpty();
+
+        var safeTokens = await db2.RefreshTokens
+            .Where(t => t.SessionId == safeSessionId && t.RevokedAt == null)
+            .ToListAsync();
+        safeTokens.Should().NotBeEmpty();
+        safeTokens.First().Token.Should().Be("currently_active_token_value_xyz");
     }
 }

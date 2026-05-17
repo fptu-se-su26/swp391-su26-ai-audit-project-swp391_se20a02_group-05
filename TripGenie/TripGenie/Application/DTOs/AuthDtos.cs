@@ -11,7 +11,9 @@ public record LoginRequest(
     string Email,
 
     [Required]
-    string Password
+    string Password,
+
+    bool RememberMe = false
 );
 
 public class RegisterRequest
@@ -90,6 +92,18 @@ public class ResetPasswordRequest
     }
 }
 
-public record AuthResponse(Guid Id, string Email, IEnumerable<string> Roles, IEnumerable<string> Permissions);
+public record AuthResponse(Guid Id, string Email, string FullName, string? AvatarUrl, IEnumerable<string> Roles, IEnumerable<string> Permissions, bool IsEmailVerified, string Status, string NextStep);
 
-public record UserProfileResponse(Guid Id, string Email, IEnumerable<string> Roles, IEnumerable<string> Permissions);
+public record UserProfileResponse(Guid Id, string Email, string FullName, string? AvatarUrl, IEnumerable<string> Roles, IEnumerable<string> Permissions, bool IsEmailVerified, string Status, string NextStep);
+
+public record GoogleLoginRequest(
+    [Required]
+    string IdToken
+);
+
+public record RegisterResponse(
+    string StatusCode,
+    string UiAction,
+    string Message
+);
+

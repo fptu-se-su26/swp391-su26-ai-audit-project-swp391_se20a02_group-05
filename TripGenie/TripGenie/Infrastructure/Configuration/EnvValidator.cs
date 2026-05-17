@@ -37,9 +37,10 @@ public static class EnvValidator
         {
             config.Auth.ResetPasswordTokenDurationInMinutes = rpMinutes;
         }
-        config.Auth.ResetPasswordUrlFormat = configuration["Auth:ResetPasswordUrlFormat"] ?? config.Auth.ResetPasswordUrlFormat;
-        config.Auth.VerifyEmailUrlFormat = configuration["Auth:VerifyEmailUrlFormat"] ?? config.Auth.VerifyEmailUrlFormat;
+        config.Auth.FrontendUrl = (configuration["Auth:FrontendUrl"] ?? configuration["FRONTEND_URL"])?.ResolveEnvironmentVariables() ?? config.Auth.FrontendUrl;
         config.Auth.TrustedDomains = configuration["Auth:TrustedDomains"] ?? config.Auth.TrustedDomains;
+        config.Auth.GoogleClientId = (configuration["Auth:GoogleClientId"] ?? configuration["GOOGLE_CLIENT_ID"])?.ResolveEnvironmentVariables()
+            ?? throw new InvalidOperationException("Environment variable 'GOOGLE_CLIENT_ID' or setting 'Auth:GoogleClientId' is missing.");
 
         // 5. AuthRateLimitSettings
         if (int.TryParse(configuration["RateLimit:ForgotPasswordPermitLimit"], out var fpLimit))
@@ -61,6 +62,11 @@ public static class EnvValidator
             config.RateLimit.VerifyEmailPermitLimit = veLimit;
         if (int.TryParse(configuration["RateLimit:VerifyEmailWindowMinutes"], out var veWindow))
             config.RateLimit.VerifyEmailWindowMinutes = veWindow;
+
+        if (int.TryParse(configuration["RateLimit:RegisterPermitLimit"], out var regLimit))
+            config.RateLimit.RegisterPermitLimit = regLimit;
+        if (int.TryParse(configuration["RateLimit:RegisterWindowMinutes"], out var regWindow))
+            config.RateLimit.RegisterWindowMinutes = regWindow;
 
         return config;
     }

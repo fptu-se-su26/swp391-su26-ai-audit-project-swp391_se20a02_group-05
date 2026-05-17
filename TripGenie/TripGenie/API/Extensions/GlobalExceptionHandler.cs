@@ -33,7 +33,14 @@ public class GlobalExceptionHandler : IExceptionHandler
             Detail = exception.Message
         };
 
-        if (exception is AuthException authEx)
+        if (exception is DuplicateEmailException dupEx)
+        {
+            problemDetails.Status = StatusCodes.Status409Conflict;
+            problemDetails.Title = "Duplicate Email Conflict";
+            problemDetails.Type = "https://tools.ietf.org/html/rfc7231#section-6.5.8";
+            problemDetails.Extensions.Add("code", dupEx.Code);
+        }
+        else if (exception is AuthException authEx)
         {
             problemDetails.Status = StatusCodes.Status400BadRequest;
             problemDetails.Title = "Authentication Error";

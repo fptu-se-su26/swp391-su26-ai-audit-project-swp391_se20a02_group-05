@@ -9,11 +9,8 @@ public class User
     [Key]
     public Guid Id { get; set; } = Guid.NewGuid();
 
-    [Required]
-    public Guid RoleId { get; set; }
-    
-    [ForeignKey(nameof(RoleId))]
-    public virtual Role Role { get; set; } = null!;
+    public virtual ICollection<Role> Roles { get; set; } = new List<Role>();
+
 
     [Required]
     [Column(TypeName = "citext")]
@@ -53,4 +50,40 @@ public class User
     public uint Version { get; set; } // Map PostgreSQL xmin system column
 
     public virtual ICollection<RefreshToken> RefreshTokens { get; set; } = new List<RefreshToken>();
+
+    /// <summary>
+    /// Transition the user to a new status using a formal domain state machine.
+    /// Throws an InvalidOperationException if the transition is invalid.
+    /// </summary>
+    public void TransitionTo(UserStatus newStatus)
+    {
+        if (Status == newStatus) return;
+
+        bool isValid = (Status, newStatus) switch
+        {
+            (UserStatus.EMAIL_VERIFY_PENDING, UserStatus.ACTIVE) => true,
+            (UserStatus.EMAIL_VERIFY_PENDING, UserStatus.DELETED) => true,
+
+            (UserStatus.ACTIVE, UserStatus.SUSPENDED) => true,
+            (UserStatus.ACTIVE, UserStatus.BANNED) => true,
+            (UserStatus.ACTIVE, UserStatus.DELETED) => true,
+
+            (UserStatus.SUSPENDED, UserStatus.ACTIVE) => true,
+            (UserStatus.SUSPENDED, UserStatus.BANNED) => true,
+            (UserStatus.SUSPENDED, UserStatus.DELETED) => true,
+
+            (UserStatus.BANNED, UserStatus.ACTIVE) => true,
+            (UserStatus.BANNED, UserStatus.DELETED) => true,
+
+            _ => false
+        };
+
+        if (!isValid)
+        {
+            throw new InvalidOperationException($"Invalid user status transition from {Status} to {newStatus}.");
+        }
+
+        Status = newStatus;
+        UpdatedAt = DateTimeOffset.UtcNow;
+    }
 }

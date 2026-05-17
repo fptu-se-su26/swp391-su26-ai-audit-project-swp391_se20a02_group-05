@@ -38,6 +38,29 @@ public class AuthController : ControllerBase
         return Ok(response);
     }
 
+    [HttpPost("google")]
+    [AllowAnonymous]
+    [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(AuthResponse))]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<IActionResult> LoginWithGoogle([FromBody] GoogleLoginRequest request)
+    {
+        try
+        {
+            var response = await _authService.LoginWithGoogleAsync(request);
+            if (response == null)
+            {
+                return Unauthorized(new { code = AuthErrorCodes.InvalidCredentials, message = "Google authentication failed" });
+            }
+
+            return Ok(response);
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            return Unauthorized(new { code = AuthErrorCodes.InvalidCredentials, message = ex.Message });
+        }
+    }
+
     [HttpPost("logout")]
     [Authorize]
     [ProducesResponseType(StatusCodes.Status200OK)]
@@ -79,33 +102,28 @@ public class AuthController : ControllerBase
 
     [HttpPost("register")]
     [AllowAnonymous]
-    [ProducesResponseType(StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [EnableRateLimiting("RegisterLimit")]
+    [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(RegisterResponse))]
     public async Task<IActionResult> Register([FromBody] RegisterRequest request, CancellationToken cancellationToken)
     {
         var userAgent = Request.Headers["User-Agent"].ToString();
         var ipAddress = HttpContext.Connection.RemoteIpAddress?.ToString() ?? "127.0.0.1";
 
         var result = await _authService.RegisterAsync(request, userAgent, ipAddress, cancellationToken);
-        if (result)
-        {
-            return Ok(new { message = "Registration successful. Please verify your email address." });
-        }
-
-        return BadRequest(new { message = "Registration failed." });
+        return Ok(result);
     }
 
     [HttpPost("verify-email")]
     [AllowAnonymous]
     [EnableRateLimiting("VerifyEmailLimit")]
-    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(AuthResponse))]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     public async Task<IActionResult> VerifyEmail([FromBody] VerifyEmailRequest request, CancellationToken cancellationToken)
     {
         var result = await _authService.VerifyEmailAsync(request, cancellationToken);
-        if (result)
+        if (result != null)
         {
-            return Ok(new { message = "Email verified successfully. Your account is now active." });
+            return Ok(result);
         }
 
         return BadRequest(new { message = "Email verification failed." });
@@ -146,14 +164,14 @@ public class AuthController : ControllerBase
     [HttpPost("reset-password")]
     [AllowAnonymous]
     [EnableRateLimiting("ResetPasswordLimit")]
-    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(AuthResponse))]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     public async Task<IActionResult> ResetPassword([FromBody] ResetPasswordRequest request, CancellationToken cancellationToken)
     {
         var result = await _authService.ResetPasswordAsync(request, cancellationToken);
-        if (result)
+        if (result != null)
         {
-            return Ok(new { message = "Password reset successful. All active sessions have been invalidated." });
+            return Ok(result);
         }
 
         return BadRequest(new { message = "Password reset failed." });

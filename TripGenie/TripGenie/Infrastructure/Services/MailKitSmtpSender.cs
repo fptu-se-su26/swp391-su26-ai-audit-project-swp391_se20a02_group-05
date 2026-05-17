@@ -82,9 +82,21 @@ public class MailKitSmtpSender : IEmailSender
                 using var client = new SmtpClient();
                 client.Timeout = (int)TimeSpan.FromSeconds(_settings.TimeoutSeconds).TotalMilliseconds;
 
-                var socketOptions = _settings.Smtp.EnableSsl 
-                    ? MailKit.Security.SecureSocketOptions.SslOnConnect 
-                    : MailKit.Security.SecureSocketOptions.StartTlsWhenAvailable;
+                var socketOptions = MailKit.Security.SecureSocketOptions.Auto;
+                if (_settings.Smtp.Port == 587)
+                {
+                    socketOptions = MailKit.Security.SecureSocketOptions.StartTls;
+                }
+                else if (_settings.Smtp.Port == 465)
+                {
+                    socketOptions = MailKit.Security.SecureSocketOptions.SslOnConnect;
+                }
+                else
+                {
+                    socketOptions = _settings.Smtp.EnableSsl 
+                        ? MailKit.Security.SecureSocketOptions.SslOnConnect 
+                        : MailKit.Security.SecureSocketOptions.StartTlsWhenAvailable;
+                }
 
                 await client.ConnectAsync(_settings.Smtp.Host, _settings.Smtp.Port, socketOptions, ct.CancellationToken).ConfigureAwait(false);
 

@@ -27,6 +27,8 @@ if (File.Exists(envPath)) {
             Environment.SetEnvironmentVariable(parts[0].Trim(), parts[1].Trim());
         }
     }
+    // Re-build configuration to populate dynamically injected variables
+    builder.Configuration.AddEnvironmentVariables();
 }
 
 // 2. Validate & Resolve Configuration (Enterprise Clean Code: Fail Fast)
@@ -38,7 +40,14 @@ builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowFrontend", policy =>
     {
-        policy.WithOrigins("http://localhost:3000", "http://127.0.0.1:3000")
+        var allowedOrigins = new List<string> { "http://localhost:3000", "http://127.0.0.1:3000" };
+        var configuredFrontend = envConfig.Auth.FrontendUrl?.TrimEnd('/');
+        if (!string.IsNullOrEmpty(configuredFrontend) && !allowedOrigins.Contains(configuredFrontend))
+        {
+            allowedOrigins.Add(configuredFrontend);
+        }
+
+        policy.WithOrigins(allowedOrigins.ToArray())
               .AllowAnyHeader()
               .AllowAnyMethod()
               .AllowCredentials();
@@ -122,6 +131,16 @@ builder.Services.AddRateLimiter(options =>
             {
                 PermitLimit = envConfig.RateLimit.VerifyEmailPermitLimit,
                 Window = TimeSpan.FromMinutes(envConfig.RateLimit.VerifyEmailWindowMinutes),
+                QueueLimit = 0
+            }));
+
+    options.AddPolicy("RegisterLimit", context =>
+        RateLimitPartition.GetFixedWindowLimiter(
+            partitionKey: context.Connection.RemoteIpAddress?.ToString() ?? context.Request.Headers["X-Forwarded-For"].ToString() ?? "unknown",
+            factory: _ => new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = envConfig.RateLimit.RegisterPermitLimit,
+                Window = TimeSpan.FromMinutes(envConfig.RateLimit.RegisterWindowMinutes),
                 QueueLimit = 0
             }));
 });

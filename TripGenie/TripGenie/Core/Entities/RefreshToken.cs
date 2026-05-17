@@ -25,6 +25,12 @@ public class RefreshToken
     [MaxLength(255)]
     public string? ReplacedByToken { get; set; }
 
+    public Guid SessionId { get; set; } = Guid.NewGuid();
+
+    public bool RememberMe { get; set; }
+
+    public Guid? ReplacedByTokenId { get; set; }
+
     [MaxLength(500)]
     public string? UserAgent { get; set; }
 

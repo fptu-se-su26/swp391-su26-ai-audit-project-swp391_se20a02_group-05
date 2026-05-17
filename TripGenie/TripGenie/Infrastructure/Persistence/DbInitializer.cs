@@ -69,7 +69,6 @@ public static class DbInitializer
             -- Core table storing user credentials, profile data, and security logs
             CREATE TABLE IF NOT EXISTS users (
                 id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-                role_id UUID NOT NULL,
                 email CITEXT NOT NULL UNIQUE,
                 password_hash TEXT NOT NULL,
                 full_name VARCHAR(255) NOT NULL,
@@ -83,9 +82,44 @@ public static class DbInitializer
                 lock_until TIMESTAMP WITH TIME ZONE,
                 created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
                 updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
-                deleted_at TIMESTAMP WITH TIME ZONE,
-                CONSTRAINT fk_users_role FOREIGN KEY (role_id) REFERENCES roles(id) ON DELETE RESTRICT
+                deleted_at TIMESTAMP WITH TIME ZONE
             );
+
+            -- Maps users to roles (Many-to-Many relationship)
+            CREATE TABLE IF NOT EXISTS user_roles (
+                user_id UUID NOT NULL,
+                role_id UUID NOT NULL,
+                assigned_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+                PRIMARY KEY (user_id, role_id),
+                CONSTRAINT fk_user_roles_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+                CONSTRAINT fk_user_roles_role FOREIGN KEY (role_id) REFERENCES roles(id) ON DELETE CASCADE
+            );
+
+            -- Backward-compatibility patch block: migrate old single user role layout if detected
+            DO $$
+            BEGIN
+                IF EXISTS (
+                    SELECT 1 
+                    FROM information_schema.columns 
+                    WHERE table_name = 'users' AND column_name = 'role_id'
+                ) THEN
+                    -- Copy existing single-role relations to junction table
+                    INSERT INTO user_roles (user_id, role_id)
+                    SELECT id, role_id FROM users
+                    ON CONFLICT DO NOTHING;
+
+                    -- Drop foreign key constraint on users table
+                    IF EXISTS (
+                        SELECT 1 FROM information_schema.table_constraints 
+                        WHERE constraint_name = 'fk_users_role'
+                    ) THEN
+                        ALTER TABLE users DROP CONSTRAINT fk_users_role;
+                    END IF;
+
+                    -- Safely drop the old role_id column
+                    ALTER TABLE users DROP COLUMN role_id;
+                END IF;
+            END $$;
 
             -- Granular permissions using a hierarchical naming convention
             CREATE TABLE IF NOT EXISTS permissions (
@@ -120,6 +154,9 @@ public static class DbInitializer
                 replaced_by_token VARCHAR(255),
                 user_agent VARCHAR(500),
                 ip_address VARCHAR(45),
+                session_id UUID NOT NULL DEFAULT gen_random_uuid(),
+                remember_me BOOLEAN NOT NULL DEFAULT FALSE,
+                replaced_by_token_id UUID,
                 CONSTRAINT fk_refresh_tokens_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
             );
 
@@ -146,6 +183,47 @@ public static class DbInitializer
                     ALTER TABLE refresh_tokens ADD COLUMN user_agent VARCHAR(500);
                 END IF;
             END $$;
+
+            -- Ensure session_id column exists on refresh_tokens
+            DO $$
+            BEGIN
+                IF NOT EXISTS (
+                    SELECT 1 
+                    FROM information_schema.columns 
+                    WHERE table_name='refresh_tokens' AND column_name='session_id'
+                ) THEN
+                    ALTER TABLE refresh_tokens ADD COLUMN session_id UUID NOT NULL DEFAULT gen_random_uuid();
+                END IF;
+            END $$;
+
+            -- Ensure remember_me column exists on refresh_tokens
+            DO $$
+            BEGIN
+                IF NOT EXISTS (
+                    SELECT 1 
+                    FROM information_schema.columns 
+                    WHERE table_name='refresh_tokens' AND column_name='remember_me'
+                ) THEN
+                    ALTER TABLE refresh_tokens ADD COLUMN remember_me BOOLEAN NOT NULL DEFAULT FALSE;
+                END IF;
+            END $$;
+
+            -- Ensure replaced_by_token_id column exists on refresh_tokens
+            DO $$
+            BEGIN
+                IF NOT EXISTS (
+                    SELECT 1 
+                    FROM information_schema.columns 
+                    WHERE table_name='refresh_tokens' AND column_name='replaced_by_token_id'
+                ) THEN
+                    ALTER TABLE refresh_tokens ADD COLUMN replaced_by_token_id UUID;
+                END IF;
+            END $$;
+
+            -- Create explicit indexes for high performance query lookups
+            CREATE INDEX IF NOT EXISTS idx_refresh_tokens_user_id ON refresh_tokens(user_id);
+            CREATE INDEX IF NOT EXISTS idx_refresh_tokens_session_id ON refresh_tokens(session_id);
+            CREATE INDEX IF NOT EXISTS idx_refresh_tokens_expires_at ON refresh_tokens(expires_at);
 
             -- Manages one-time-use email verification tokens
             CREATE TABLE IF NOT EXISTS verification_tokens (
@@ -244,7 +322,6 @@ public static class DbInitializer
 
             -- Provision the master administrator account if it doesn't exist
             INSERT INTO users (
-                role_id, 
                 email, 
                 password_hash, 
                 full_name, 
@@ -252,15 +329,127 @@ public static class DbInitializer
                 email_verified_at
             )
             SELECT 
-                (SELECT id FROM roles WHERE name = 'SUPER_ADMIN'),
                 'admin@system.com',
                 crypt('SuperAdminPassword123', gen_salt('bf', 10)),
                 'System Administrator',
                 'ACTIVE',
                 NOW()
             WHERE NOT EXISTS (SELECT 1 FROM users WHERE email = 'admin@system.com');
+
+            -- Seed the master administrator role mapping if not present
+            INSERT INTO user_roles (user_id, role_id)
+            SELECT 
+                (SELECT id FROM users WHERE email = 'admin@system.com'),
+                (SELECT id FROM roles WHERE name = 'SUPER_ADMIN')
+            ON CONFLICT DO NOTHING;
         ";
 
         await context.Database.ExecuteSqlRawAsync(sql);
+
+        // 3. Dynamic seed from permissions-registry.json
+        var registryPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "resources", "permissions-registry.json");
+        if (!File.Exists(registryPath))
+        {
+            // Fallback for dev environment directly
+            registryPath = Path.Combine(Directory.GetCurrentDirectory(), "resources", "permissions-registry.json");
+        }
+
+        if (File.Exists(registryPath))
+        {
+            try
+            {
+                var jsonString = await File.ReadAllTextAsync(registryPath);
+                using var doc = System.Text.Json.JsonDocument.Parse(jsonString);
+                
+                // Seed all permissions from the modules section
+                if (doc.RootElement.TryGetProperty("modules", out var modulesElement))
+                {
+                    foreach (var moduleProperty in modulesElement.EnumerateObject())
+                    {
+                        var moduleName = moduleProperty.Name;
+                        foreach (var permElement in moduleProperty.Value.EnumerateArray())
+                        {
+                            var name = permElement.GetProperty("name").GetString();
+                            var displayName = permElement.GetProperty("displayName").GetString();
+                            var description = permElement.GetProperty("description").GetString();
+                            
+                            var sqlSeedPermission = @"
+                                INSERT INTO permissions (name, display_name, description, module, is_system)
+                                VALUES (@name, @displayName, @description, @module, TRUE)
+                                ON CONFLICT (name) DO UPDATE 
+                                SET display_name = EXCLUDED.display_name, description = EXCLUDED.description, module = EXCLUDED.module;";
+                                
+                            await context.Database.ExecuteSqlRawAsync(sqlSeedPermission, 
+                                new Npgsql.NpgsqlParameter("@name", name),
+                                new Npgsql.NpgsqlParameter("@displayName", displayName),
+                                new Npgsql.NpgsqlParameter("@description", description ?? (object)DBNull.Value),
+                                new Npgsql.NpgsqlParameter("@module", moduleName));
+                        }
+                    }
+                }
+                
+                // Seed all roles and map their permissions
+                if (doc.RootElement.TryGetProperty("roles", out var rolesElement))
+                {
+                    foreach (var roleProperty in rolesElement.EnumerateObject())
+                    {
+                        var roleName = roleProperty.Name;
+                        var roleDisplayName = roleProperty.Value.GetProperty("displayName").GetString();
+                        var roleDescription = roleProperty.Value.GetProperty("description").GetString();
+                        
+                        var sqlSeedRole = @"
+                            INSERT INTO roles (name, display_name, description, is_system, is_active)
+                            VALUES (@name, @displayName, @description, TRUE, TRUE)
+                            ON CONFLICT (name) DO UPDATE 
+                            SET display_name = EXCLUDED.display_name, description = EXCLUDED.description;";
+                            
+                        await context.Database.ExecuteSqlRawAsync(sqlSeedRole,
+                            new Npgsql.NpgsqlParameter("@name", roleName),
+                            new Npgsql.NpgsqlParameter("@displayName", roleDisplayName),
+                            new Npgsql.NpgsqlParameter("@description", roleDescription ?? (object)DBNull.Value));
+
+                        var roleId = await context.Roles
+                            .Where(r => r.Name == roleName)
+                            .Select(r => r.Id)
+                            .FirstOrDefaultAsync();
+
+                        if (roleId != Guid.Empty)
+                        {
+                            // Parse permissions assigned to this role in registry
+                            var permissionsList = new List<string>();
+                            if (roleProperty.Value.TryGetProperty("permissions", out var permsElement))
+                            {
+                                foreach (var permVal in permsElement.EnumerateArray())
+                                {
+                                    permissionsList.Add(permVal.GetString()!);
+                                }
+                            }
+                            
+                            // Get all permission IDs for this role
+                            var dbPermissionIds = await context.Permissions
+                                .Where(p => permissionsList.Contains(p.Name))
+                                .Select(p => p.Id)
+                                .ToListAsync();
+                                
+                            // Clear existing role-permissions mapping for this role, then rebuild it
+                            var sqlClear = "DELETE FROM role_permissions WHERE role_id = @roleId;";
+                            await context.Database.ExecuteSqlRawAsync(sqlClear, new Npgsql.NpgsqlParameter("@roleId", roleId));
+                            
+                            foreach (var permId in dbPermissionIds)
+                            {
+                                var sqlLink = "INSERT INTO role_permissions (role_id, permission_id) VALUES (@roleId, @permId) ON CONFLICT DO NOTHING;";
+                                await context.Database.ExecuteSqlRawAsync(sqlLink, 
+                                    new Npgsql.NpgsqlParameter("@roleId", roleId),
+                                    new Npgsql.NpgsqlParameter("@permId", permId));
+                            }
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[PermissionSeeding] Error dynamically seeding registry: {ex.Message}");
+            }
+        }
     }
 }

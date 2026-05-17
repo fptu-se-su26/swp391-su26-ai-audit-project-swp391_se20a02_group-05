@@ -17,6 +17,7 @@ using TripGenie.API.Infrastructure.Configuration;
 using TripGenie.API.Infrastructure.Diagnostics;
 using TripGenie.API.Infrastructure.Persistence;
 using TripGenie.API.Infrastructure.Security;
+using Google.Apis.Auth;
 
 namespace TripGenie.API.Application.Services;
 
@@ -105,19 +106,142 @@ public class AuthService : IAuthService
         var roles = await _identityRepository.GetUserRolesAsync(user.Id);
         var permissions = await _identityRepository.GetUserPermissionsAsync(user.Id);
 
+        if (user.Status == UserStatus.EMAIL_VERIFY_PENDING)
+        {
+            await LogAuditEventAsync(user.Id, "USER_LOGIN_UNVERIFIED", $"User {user.Email} attempted to login but email is unverified.");
+            return new AuthResponse(user.Id, user.Email, user.FullName, user.AvatarUrl, roles, permissions, false, "EMAIL_VERIFY_PENDING", "VERIFY_EMAIL");
+        }
+
         await CacheUserAuthDataAsync(user.Id, roles, permissions);
 
         var jwt = _tokenService.GenerateJwtToken(user, roles, permissions);
         var refreshTokenStr = _tokenService.GenerateRefreshToken();
 
-        await SaveRefreshTokenAsync(user.Id, refreshTokenStr);
+        var sessionId = Guid.NewGuid();
+        var rememberMe = request.RememberMe;
+        await SaveRefreshTokenAsync(user.Id, refreshTokenStr, sessionId, rememberMe);
 
-        _tokenService.SetTokenInsideCookie("access_token", jwt);
-        _tokenService.SetTokenInsideCookie("refresh_token", refreshTokenStr);
+        var refreshExpiry = rememberMe ? DateTime.UtcNow.AddDays(7) : DateTime.UtcNow.AddHours(24);
+        _tokenService.SetTokenInsideCookie("access_token", jwt, DateTime.UtcNow.AddMinutes(15));
+        _tokenService.SetTokenInsideCookie("refresh_token", refreshTokenStr, refreshExpiry);
 
         _metrics.RecordLoginSuccess();
         await LogAuditEventAsync(user.Id, "USER_LOGIN_SUCCESS", $"User {user.Email} logged in successfully.");
-        return new AuthResponse(user.Id, user.Email, roles, permissions);
+        return new AuthResponse(user.Id, user.Email, user.FullName, user.AvatarUrl, roles, permissions, true, "ACTIVE", "DASHBOARD");
+    }
+
+    /// <summary>
+    /// Authenticates a Google user using their ID Token.
+    /// Performs auto-registration for new users and status promotion/verification on successful token validation.
+    /// </summary>
+    public async Task<AuthResponse?> LoginWithGoogleAsync(GoogleLoginRequest request)
+    {
+        try
+        {
+            // Hardened Clock Tolerance settings (5 minutes safety buffer) to handle potential clock skews.
+            // In a production environment, server instances must run a localized Network Time Protocol (NTP)
+            // daemon (such as chronyd or ntpd) to synchronize internal system clocks with standard global NTP servers
+            // (e.g. pool.ntp.org), guaranteeing clock skew is minimized under 1 second.
+            var settings = new GoogleJsonWebSignature.ValidationSettings
+            {
+                Audience = new[] { _envConfig.Auth.GoogleClientId },
+                IssuedAtClockTolerance = TimeSpan.FromMinutes(5),
+                ExpirationTimeClockTolerance = TimeSpan.FromMinutes(5)
+            };
+
+            var payload = await GoogleJsonWebSignature.ValidateAsync(request.IdToken, settings);
+            if (payload == null)
+            {
+                _metrics.RecordLoginFailed();
+                throw new UnauthorizedAccessException("Google authentication failed.");
+            }
+
+            var email = payload.Email.Trim().Normalize(NormalizationForm.FormC).ToLowerInvariant();
+            var user = await _context.Users
+                .Include(u => u.Roles)
+                .FirstOrDefaultAsync(u => u.Email == email);
+
+            if (user == null)
+            {
+                var userRole = await _context.Roles.FirstOrDefaultAsync(r => r.Name == "USER");
+                if (userRole == null)
+                {
+                    throw new InvalidOperationException("Default 'USER' role not found in the database.");
+                }
+
+                user = new User
+                {
+                    Email = email,
+                    FullName = payload.Name ?? "Google User",
+                    AvatarUrl = payload.Picture,
+                    PasswordHash = BCrypt.Net.BCrypt.HashPassword(Guid.NewGuid().ToString("N")),
+                    Status = UserStatus.ACTIVE,
+                    EmailVerifiedAt = _timeProvider.GetUtcNow().UtcDateTime,
+                    CreatedAt = _timeProvider.GetUtcNow().UtcDateTime,
+                    UpdatedAt = _timeProvider.GetUtcNow().UtcDateTime,
+                    Roles = new List<Role> { userRole }
+                };
+
+                _context.Users.Add(user);
+                await _context.SaveChangesAsync();
+
+                await LogAuditEventAsync(user.Id, "USER_GOOGLE_REGISTER", $"New user {user.Email} registered via Google OAuth.");
+            }
+            else
+            {
+                if (_accountService.IsAccountDisabled(user))
+                {
+                    _metrics.RecordLoginFailed();
+                    await LogAuditEventAsync(user.Id, "USER_LOGIN_FAILED_DISABLED", $"Disabled user account Google login attempt for {user.Email}.");
+                    throw new UnauthorizedAccessException("Account is disabled.");
+                }
+
+                if (!string.IsNullOrEmpty(payload.Picture) && user.AvatarUrl != payload.Picture)
+                {
+                    user.AvatarUrl = payload.Picture;
+                }
+                if (!string.IsNullOrEmpty(payload.Name) && user.FullName != payload.Name && user.FullName == "Google User")
+                {
+                    user.FullName = payload.Name;
+                }
+
+                if (user.Status == UserStatus.EMAIL_VERIFY_PENDING)
+                {
+                    user.TransitionTo(UserStatus.ACTIVE);
+                    user.EmailVerifiedAt = _timeProvider.GetUtcNow().UtcDateTime;
+                }
+
+                user.UpdatedAt = _timeProvider.GetUtcNow().UtcDateTime;
+                await _context.SaveChangesAsync();
+            }
+
+            var roles = await _identityRepository.GetUserRolesAsync(user.Id);
+            var permissions = await _identityRepository.GetUserPermissionsAsync(user.Id);
+
+            await CacheUserAuthDataAsync(user.Id, roles, permissions);
+
+            var jwt = _tokenService.GenerateJwtToken(user, roles, permissions);
+            var refreshTokenStr = _tokenService.GenerateRefreshToken();
+
+            var sessionId = Guid.NewGuid();
+            var rememberMe = true; // default to true for Google OAuth / Remembered sessions
+            await SaveRefreshTokenAsync(user.Id, refreshTokenStr, sessionId, rememberMe);
+
+            var refreshExpiry = DateTime.UtcNow.AddDays(7);
+            _tokenService.SetTokenInsideCookie("access_token", jwt, DateTime.UtcNow.AddMinutes(15));
+            _tokenService.SetTokenInsideCookie("refresh_token", refreshTokenStr, refreshExpiry);
+
+            _metrics.RecordLoginSuccess();
+            await LogAuditEventAsync(user.Id, "USER_GOOGLE_LOGIN_SUCCESS", $"User {user.Email} logged in successfully via Google OAuth.");
+
+            return new AuthResponse(user.Id, user.Email, user.FullName, user.AvatarUrl, roles, permissions, true, "ACTIVE", "DASHBOARD");
+        }
+        catch (InvalidJwtException ex)
+        {
+            _metrics.RecordLoginFailed();
+            _logger.LogWarning("Invalid Google ID Token provided: {Message}", ex.Message);
+            throw new UnauthorizedAccessException("Invalid Google ID Token.");
+        }
     }
 
 
@@ -144,6 +268,7 @@ public class AuthService : IAuthService
     /// <summary>
     /// Validates the refresh token cookie and issues a new set of tokens (Token Rotation).
     /// Prevents replay attacks by revoking the old token.
+    /// Incorporates a 10-second concurrency grace window for multi-tab support and isolation bounds.
     /// </summary>
     public async Task<AuthResponse?> RefreshTokenAsync()
     {
@@ -166,48 +291,205 @@ public class AuthService : IAuthService
                 .Include(t => t.User)
                 .FirstOrDefaultAsync(t => t.Token == refreshTokenStr);
 
-            if (storedToken != null && storedToken.IsRevoked)
+            var validationResult = ValidateRefreshToken(storedToken);
+
+            if (validationResult == RefreshTokenValidationResult.Invalid || validationResult == RefreshTokenValidationResult.Expired)
             {
-                // Theft detection! Revoke all tokens for this user
-                var userTokens = await _context.RefreshTokens
-                    .Where(t => t.UserId == storedToken.UserId)
-                    .ToListAsync();
-                foreach (var token in userTokens)
+                return null;
+            }
+
+            if (validationResult == RefreshTokenValidationResult.Reused)
+            {
+                var httpContext = _httpContextAccessor.HttpContext;
+                var currentIp = httpContext?.Connection.RemoteIpAddress?.ToString() ?? "Unknown";
+                var currentUa = httpContext?.Request.Headers["User-Agent"].ToString() ?? "Unknown";
+
+                // Staged Revocation / Compromise Isolation: Revoke all tokens belonging to the compromised Session ID
+                using var transaction = await _context.Database.BeginTransactionAsync();
+                try
                 {
-                    token.RevokedAt = _timeProvider.GetUtcNow();
+                    await RevokeSessionChainAsync(storedToken!.SessionId);
+                    await transaction.CommitAsync();
                 }
-                await _context.SaveChangesAsync();
-                _logger.LogWarning("SECURITY ALERT: Refresh token reuse detected for User {UserId}! Revoked all tokens.", storedToken.UserId);
-                await LogAuditEventAsync(storedToken.UserId, "TOKEN_THEFT_DETECTED", $"Refresh token reuse/theft detected for token {refreshTokenStr}. All sessions revoked.");
+                catch
+                {
+                    await transaction.RollbackAsync();
+                    throw;
+                }
+
+                // Structured security log
+                _logger.LogWarning("SECURITY ALERT: [Event=TOKEN_REUSE_DETECTED] [SessionId={SessionId}] [UserId={UserId}] [IpAddress={IpAddress}] [UserAgent={UserAgent}]",
+                    storedToken.SessionId, storedToken.UserId, currentIp, currentUa);
+
+                await LogAuditEventAsync(storedToken.UserId, "TOKEN_THEFT_DETECTED",
+                    $"Refresh token reuse/theft detected for token {refreshTokenStr}. Session {storedToken.SessionId} isolated and revoked. IP: {currentIp}, UA: {currentUa}");
+
                 throw new AuthException(AuthErrorCodes.InvalidToken, "Token reuse detected.");
             }
 
-            if (storedToken == null || !storedToken.IsActive) return null;
+            if (validationResult == RefreshTokenValidationResult.WithinGracePeriod)
+            {
+                // Safe concurrency: Return the active replacement token that was already generated
+                var activeReplacement = await _context.RefreshTokens
+                    .FirstOrDefaultAsync(t => t.Id == storedToken!.ReplacedByTokenId);
 
-            var user = storedToken.User;
-            var roles = await _identityRepository.GetUserRolesAsync(user.Id);
-            var permissions = await _identityRepository.GetUserPermissionsAsync(user.Id);
+                if (activeReplacement != null)
+                {
+                    _logger.LogInformation("Safe concurrent refresh race handled. SessionId: {SessionId}.", storedToken!.SessionId);
 
-            // Rotate Refresh Token
+                    var user = storedToken.User;
+                    var roles = await _identityRepository.GetUserRolesAsync(user.Id);
+                    var permissions = await _identityRepository.GetUserPermissionsAsync(user.Id);
+
+                    var jwt = _tokenService.GenerateJwtToken(user, roles, permissions);
+
+                    // Re-set cookies for the active rotated token
+                    var refreshExpiry = activeReplacement.RememberMe ? DateTime.UtcNow.AddDays(7) : DateTime.UtcNow.AddHours(24);
+                    _tokenService.SetTokenInsideCookie("access_token", jwt, DateTime.UtcNow.AddMinutes(15));
+                    _tokenService.SetTokenInsideCookie("refresh_token", activeReplacement.Token, refreshExpiry);
+
+                    return new AuthResponse(user.Id, user.Email, user.FullName, user.AvatarUrl, roles, permissions,
+                        user.Status == UserStatus.ACTIVE, user.Status.ToString(),
+                        user.Status == UserStatus.EMAIL_VERIFY_PENDING ? "VERIFY_EMAIL" : "DASHBOARD");
+                }
+            }
+
+            // Normal path: validationResult == RefreshTokenValidationResult.Valid
+            var oldUser = storedToken!.User;
+            var oldRoles = await _identityRepository.GetUserRolesAsync(oldUser.Id);
+            var oldPermissions = await _identityRepository.GetUserPermissionsAsync(oldUser.Id);
+
+            // Compare User-Agents for hijack warnings
+            var currentUserAgent = _httpContextAccessor.HttpContext?.Request.Headers["User-Agent"].ToString();
+            if (!string.IsNullOrWhiteSpace(storedToken.UserAgent) &&
+                !string.Equals(storedToken.UserAgent, currentUserAgent, StringComparison.OrdinalIgnoreCase))
+            {
+                _logger.LogWarning("SECURITY WARNING: User-Agent changed during token refresh for Session {SessionId}. Original: '{OriginalUA}', Current: '{CurrentUA}'",
+                    storedToken.SessionId, storedToken.UserAgent, currentUserAgent);
+            }
+
             var newRefreshTokenStr = _tokenService.GenerateRefreshToken();
-            storedToken.RevokedAt = _timeProvider.GetUtcNow();
-            storedToken.ReplacedByToken = newRefreshTokenStr;
 
-            await SaveRefreshTokenAsync(user.Id, newRefreshTokenStr);
+            using var rotationTx = await _context.Database.BeginTransactionAsync();
+            RefreshToken newRefreshToken;
+            try
+            {
+                newRefreshToken = await RotateRefreshTokenAsync(storedToken, newRefreshTokenStr);
+                await rotationTx.CommitAsync();
+            }
+            catch
+            {
+                await rotationTx.RollbackAsync();
+                throw;
+            }
 
-            var jwt = _tokenService.GenerateJwtToken(user, roles, permissions);
+            var newJwt = _tokenService.GenerateJwtToken(oldUser, oldRoles, oldPermissions);
 
-            _tokenService.SetTokenInsideCookie("access_token", jwt);
-            _tokenService.SetTokenInsideCookie("refresh_token", newRefreshTokenStr);
+            var newRefreshExpiry = newRefreshToken.RememberMe ? DateTime.UtcNow.AddDays(7) : DateTime.UtcNow.AddHours(24);
+            _tokenService.SetTokenInsideCookie("access_token", newJwt, DateTime.UtcNow.AddMinutes(15));
+            _tokenService.SetTokenInsideCookie("refresh_token", newRefreshTokenStr, newRefreshExpiry);
 
-            await LogAuditEventAsync(user.Id, "TOKEN_ROTATED", $"Token rotated successfully. New token issued.");
+            await LogAuditEventAsync(oldUser.Id, "TOKEN_ROTATED", $"Token rotated successfully. New token issued for Session {storedToken.SessionId}.");
 
-            return new AuthResponse(user.Id, user.Email, roles, permissions);
+            return new AuthResponse(oldUser.Id, oldUser.Email, oldUser.FullName, oldUser.AvatarUrl, oldRoles, oldPermissions,
+                oldUser.Status == UserStatus.ACTIVE, oldUser.Status.ToString(),
+                oldUser.Status == UserStatus.EMAIL_VERIFY_PENDING ? "VERIFY_EMAIL" : "DASHBOARD");
         }
         finally
         {
             await _cacheService.ReleaseLockAsync(lockKey, lockValue);
         }
+    }
+
+    /// <summary>
+    /// Validates a refresh token. If it is already revoked, checks if it is within
+    /// the 10-second multi-tab safe concurrency grace period to avoid false positive security logouts.
+    /// </summary>
+    private RefreshTokenValidationResult ValidateRefreshToken(RefreshToken? storedToken)
+    {
+        if (storedToken == null)
+        {
+            return RefreshTokenValidationResult.Invalid;
+        }
+
+        var now = _timeProvider.GetUtcNow();
+
+        if (storedToken.IsRevoked)
+        {
+            // Concurrent safe refresh window of 10 seconds for multi-tab scenarios
+            if (storedToken.RevokedAt.HasValue && storedToken.RevokedAt.Value.AddSeconds(10) > now)
+            {
+                return RefreshTokenValidationResult.WithinGracePeriod;
+            }
+
+            return RefreshTokenValidationResult.Reused;
+        }
+
+        if (storedToken.IsExpired)
+        {
+            return RefreshTokenValidationResult.Expired;
+        }
+
+        return RefreshTokenValidationResult.Valid;
+    }
+
+    private enum RefreshTokenValidationResult
+    {
+        Invalid,
+        Expired,
+        Valid,
+        Reused,
+        WithinGracePeriod
+    }
+
+    private async Task<RefreshToken> RotateRefreshTokenAsync(RefreshToken oldToken, string newRefreshTokenStr)
+    {
+        var now = _timeProvider.GetUtcNow();
+        var expiration = oldToken.RememberMe ? TimeSpan.FromDays(7) : TimeSpan.FromHours(24);
+
+        // Revoke the old token and tie it to the new one
+        oldToken.RevokedAt = now;
+        oldToken.ReplacedByToken = newRefreshTokenStr;
+
+        // Generate the new token sharing the same sessionId and rememberMe
+        var httpContext = _httpContextAccessor.HttpContext;
+        var userAgent = httpContext?.Request.Headers["User-Agent"].ToString();
+        var ipAddress = httpContext?.Connection.RemoteIpAddress?.ToString();
+
+        var newRefreshToken = new RefreshToken
+        {
+            UserId = oldToken.UserId,
+            Token = newRefreshTokenStr,
+            SessionId = oldToken.SessionId,
+            RememberMe = oldToken.RememberMe,
+            ExpiresAt = now.Add(expiration),
+            UserAgent = string.IsNullOrWhiteSpace(userAgent) ? null : (userAgent.Length > 500 ? userAgent[..500] : userAgent),
+            IpAddress = string.IsNullOrWhiteSpace(ipAddress) ? null : (ipAddress.Length > 45 ? ipAddress[..45] : ipAddress)
+        };
+
+        _context.RefreshTokens.Add(newRefreshToken);
+        await _context.SaveChangesAsync();
+
+        // Update the reference of the old token's ReplacedByTokenId
+        oldToken.ReplacedByTokenId = newRefreshToken.Id;
+        await _context.SaveChangesAsync();
+
+        return newRefreshToken;
+    }
+
+    private async Task RevokeSessionChainAsync(Guid sessionId)
+    {
+        var now = _timeProvider.GetUtcNow();
+        var activeTokens = await _context.RefreshTokens
+            .Where(t => t.SessionId == sessionId && t.RevokedAt == null)
+            .ToListAsync();
+
+        foreach (var token in activeTokens)
+        {
+            token.RevokedAt = now;
+        }
+
+        await _context.SaveChangesAsync();
     }
 
 
@@ -231,7 +513,7 @@ public class AuthService : IAuthService
         var user = await _context.Users.FindAsync(userId);
         if (user == null) return null;
 
-        return new UserProfileResponse(user.Id, user.Email, roles, permissions);
+        return new UserProfileResponse(user.Id, user.Email, user.FullName, user.AvatarUrl, roles, permissions, user.Status == UserStatus.ACTIVE, user.Status.ToString(), user.Status == UserStatus.EMAIL_VERIFY_PENDING ? "VERIFY_EMAIL" : "DASHBOARD");
     }
 
     /// <summary>
@@ -239,7 +521,7 @@ public class AuthService : IAuthService
     /// Normalizes emails, handles idempotency retries, enforces password constraints,
     /// and schedules email verification via Outbox pattern.
     /// </summary>
-    public async Task<bool> RegisterAsync(RegisterRequest request, string userAgent, string ipAddress, CancellationToken cancellationToken = default)
+    public async Task<RegisterResponse> RegisterAsync(RegisterRequest request, string userAgent, string ipAddress, CancellationToken cancellationToken = default)
     {
         var correlationId = Guid.NewGuid().ToString("N");
         _logger.LogInformation("[CorrelationID: {CorrelationId}] Handling user registration request for {Email}.", correlationId, request.Email);
@@ -254,16 +536,12 @@ public class AuthService : IAuthService
             {
                 _logger.LogWarning("[CorrelationID: {CorrelationId}] User registration is duplicate but pending email verification. Rotating verification token.", correlationId);
                 var resendRequest = new ResendVerificationRequest(request.Email);
-                return await ResendVerificationEmailAsync(resendRequest, cancellationToken);
-            }
-            // Idempotency: If already active, return success silently (enumeration prevention and retry friendly)
-            if (existingUser.Status == UserStatus.ACTIVE)
-            {
-                _logger.LogInformation("[CorrelationID: {CorrelationId}] User registration is duplicate and already active. Returning silent idempotent success.", correlationId);
-                return true;
+                await ResendVerificationEmailAsync(resendRequest, cancellationToken);
+                return RegisterResponseFactory.Create(UserStatus.EMAIL_VERIFY_PENDING);
             }
 
-            throw new AuthException(AuthErrorCodes.EmailAlreadyExists, "The email address is already registered.");
+            _logger.LogWarning("[CorrelationID: {CorrelationId}] User registration is duplicate and status is {Status}. Throwing DuplicateEmailException.", correlationId, existingUser.Status);
+            throw new DuplicateEmailException("This email is already in use.");
         }
 
         var userRole = await _context.Roles.FirstOrDefaultAsync(r => r.Name == "USER", cancellationToken);
@@ -280,13 +558,13 @@ public class AuthService : IAuthService
         {
             var newUser = new User
             {
-                RoleId = userRole.Id,
                 Email = normalizedEmail,
                 PasswordHash = passwordHash,
                 FullName = request.FullName,
                 Status = UserStatus.EMAIL_VERIFY_PENDING,
                 CreatedAt = _timeProvider.GetUtcNow().UtcDateTime,
-                UpdatedAt = _timeProvider.GetUtcNow().UtcDateTime
+                UpdatedAt = _timeProvider.GetUtcNow().UtcDateTime,
+                Roles = new List<Role> { userRole }
             };
 
             _context.Users.Add(newUser);
@@ -303,7 +581,7 @@ public class AuthService : IAuthService
             {
                 UserId = newUser.Id,
                 TokenHash = hashedToken,
-                ExpiresAt = _timeProvider.GetUtcNow().AddHours(_envConfig.Auth.VerificationTokenDurationInHours),
+                ExpiresAt = _timeProvider.GetUtcNow().AddMinutes(5),
                 CreatedAt = _timeProvider.GetUtcNow()
             };
 
@@ -345,9 +623,26 @@ public class AuthService : IAuthService
 
             _logger.LogInformation("[CorrelationID: {CorrelationId}] User {UserId} registered successfully, outbox message enqueued.", correlationId, newUser.Id);
             _metrics.RecordRegistration();
-            return true;
+            return RegisterResponseFactory.Success();
         }
+        catch (DuplicateEmailException ex)
+        {
+            _logger.LogWarning(ex, "[CorrelationID: {CorrelationId}] Database-level unique constraint violation caught during concurrent registration insert. Falling back to duplicate registration logic.", correlationId);
+            await transaction.RollbackAsync(cancellationToken);
 
+            // Fetch the existing user that just got created in the concurrent transaction
+            var concurrentUser = await _context.Users.FirstOrDefaultAsync(u => u.Email == normalizedEmail, cancellationToken);
+            if (concurrentUser != null)
+            {
+                if (concurrentUser.Status == UserStatus.EMAIL_VERIFY_PENDING)
+                {
+                    var resendRequest = new ResendVerificationRequest(request.Email);
+                    await ResendVerificationEmailAsync(resendRequest, cancellationToken);
+                }
+                return RegisterResponseFactory.Create(concurrentUser.Status);
+            }
+            throw;
+        }
         catch (Exception ex)
         {
             _logger.LogError(ex, "[CorrelationID: {CorrelationId}] Failed to complete user registration transaction. Rolling back.", correlationId);
@@ -359,7 +654,7 @@ public class AuthService : IAuthService
     /// <summary>
     /// Confirms email ownership and activates pending accounts.
     /// </summary>
-    public async Task<bool> VerifyEmailAsync(VerifyEmailRequest request, CancellationToken cancellationToken = default)
+    public async Task<AuthResponse?> VerifyEmailAsync(VerifyEmailRequest request, CancellationToken cancellationToken = default)
     {
         var correlationId = Guid.NewGuid().ToString("N");
         _logger.LogInformation("[CorrelationID: {CorrelationId}] Processing email verification request.", correlationId);
@@ -395,7 +690,7 @@ public class AuthService : IAuthService
             tokenEntity.ConsumedAt = _timeProvider.GetUtcNow();
             
             var user = tokenEntity.User;
-            user.Status = UserStatus.ACTIVE;
+            user.TransitionTo(UserStatus.ACTIVE);
             user.EmailVerifiedAt = _timeProvider.GetUtcNow().UtcDateTime;
             user.UpdatedAt = _timeProvider.GetUtcNow().UtcDateTime;
 
@@ -423,9 +718,26 @@ public class AuthService : IAuthService
 
             await LogAuditEventAsync(user.Id, "USER_EMAIL_VERIFIED", $"User email {user.Email} successfully verified.");
 
-            _logger.LogInformation("[CorrelationID: {CorrelationId}] Email successfully verified for user {UserId}.", correlationId, user.Id);
+            var roles = await _identityRepository.GetUserRolesAsync(user.Id);
+            var permissions = await _identityRepository.GetUserPermissionsAsync(user.Id);
+
+            await CacheUserAuthDataAsync(user.Id, roles, permissions);
+
+            var jwt = _tokenService.GenerateJwtToken(user, roles, permissions);
+            var refreshTokenStr = _tokenService.GenerateRefreshToken();
+
+            var sessionId = Guid.NewGuid();
+            var rememberMe = false; // default to false
+            await SaveRefreshTokenAsync(user.Id, refreshTokenStr, sessionId, rememberMe);
+
+            var refreshExpiry = DateTime.UtcNow.AddHours(24);
+            _tokenService.SetTokenInsideCookie("access_token", jwt, DateTime.UtcNow.AddMinutes(15));
+            _tokenService.SetTokenInsideCookie("refresh_token", refreshTokenStr, refreshExpiry);
+
+            _logger.LogInformation("[CorrelationID: {CorrelationId}] Email successfully verified for user {UserId} and auto-logged in.", correlationId, user.Id);
             _metrics.RecordVerification();
-            return true;
+            
+            return new AuthResponse(user.Id, user.Email, user.FullName, user.AvatarUrl, roles, permissions, true, "ACTIVE", "DASHBOARD");
         }
 
         catch (DbUpdateConcurrencyException ex)
@@ -501,7 +813,7 @@ public class AuthService : IAuthService
             {
                 UserId = user.Id,
                 TokenHash = hashedToken,
-                ExpiresAt = _timeProvider.GetUtcNow().AddHours(_envConfig.Auth.VerificationTokenDurationInHours),
+                ExpiresAt = _timeProvider.GetUtcNow().AddMinutes(5),
                 CreatedAt = _timeProvider.GetUtcNow()
             };
 
@@ -612,7 +924,7 @@ public class AuthService : IAuthService
             {
                 UserId = user.Id,
                 TokenHash = hashedToken,
-                ExpiresAt = _timeProvider.GetUtcNow().AddMinutes(_envConfig.Auth.ResetPasswordTokenDurationInMinutes),
+                ExpiresAt = _timeProvider.GetUtcNow().AddMinutes(5),
                 CreatedAt = _timeProvider.GetUtcNow()
             };
 
@@ -670,7 +982,7 @@ public class AuthService : IAuthService
     /// <summary>
     /// Resets the user's password, consumes the token, and globally revokes all active refresh sessions.
     /// </summary>
-    public async Task<bool> ResetPasswordAsync(ResetPasswordRequest request, CancellationToken cancellationToken = default)
+    public async Task<AuthResponse?> ResetPasswordAsync(ResetPasswordRequest request, CancellationToken cancellationToken = default)
     {
         var correlationId = Guid.NewGuid().ToString("N");
         _logger.LogInformation("[CorrelationID: {CorrelationId}] Processing password reset request.", correlationId);
@@ -724,9 +1036,26 @@ public class AuthService : IAuthService
 
             await LogAuditEventAsync(user.Id, "USER_PASSWORD_RESET_SUCCESS", $"Password reset successfully. Sessions globally revoked for {user.Email}.");
 
-            _logger.LogInformation("[CorrelationID: {CorrelationId}] Password reset successfully. Session refresh tokens globally revoked for user {UserId}.", correlationId, user.Id);
+            var roles = await _identityRepository.GetUserRolesAsync(user.Id);
+            var permissions = await _identityRepository.GetUserPermissionsAsync(user.Id);
+
+            await CacheUserAuthDataAsync(user.Id, roles, permissions);
+
+            var jwt = _tokenService.GenerateJwtToken(user, roles, permissions);
+            var refreshTokenStr = _tokenService.GenerateRefreshToken();
+
+            var sessionId = Guid.NewGuid();
+            var rememberMe = false; // default to false
+            await SaveRefreshTokenAsync(user.Id, refreshTokenStr, sessionId, rememberMe);
+
+            var refreshExpiry = DateTime.UtcNow.AddHours(24);
+            _tokenService.SetTokenInsideCookie("access_token", jwt, DateTime.UtcNow.AddMinutes(15));
+            _tokenService.SetTokenInsideCookie("refresh_token", refreshTokenStr, refreshExpiry);
+
+            _logger.LogInformation("[CorrelationID: {CorrelationId}] Password reset successfully and user {UserId} auto-logged in.", correlationId, user.Id);
             _metrics.RecordPasswordReset();
-            return true;
+            
+            return new AuthResponse(user.Id, user.Email, user.FullName, user.AvatarUrl, roles, permissions, true, "ACTIVE", "DASHBOARD");
         }
 
         catch (DbUpdateConcurrencyException ex)
@@ -755,17 +1084,22 @@ public class AuthService : IAuthService
         foreach (var perm in permissions) await _cacheService.AddToSetAsync(permsKey, perm);
     }
 
-    private async Task SaveRefreshTokenAsync(Guid userId, string tokenStr)
+    private async Task SaveRefreshTokenAsync(Guid userId, string tokenStr, Guid sessionId, bool rememberMe, Guid? replacedByTokenId = null)
     {
         var httpContext = _httpContextAccessor.HttpContext;
         var userAgent = httpContext?.Request.Headers["User-Agent"].ToString();
         var ipAddress = httpContext?.Connection.RemoteIpAddress?.ToString();
 
+        var expiration = rememberMe ? TimeSpan.FromDays(7) : TimeSpan.FromHours(24);
+
         var refreshToken = new RefreshToken
         {
             UserId = userId,
             Token = tokenStr,
-            ExpiresAt = DateTimeOffset.UtcNow.AddDays(7),
+            SessionId = sessionId,
+            RememberMe = rememberMe,
+            ReplacedByTokenId = replacedByTokenId,
+            ExpiresAt = _timeProvider.GetUtcNow().Add(expiration),
             UserAgent = string.IsNullOrWhiteSpace(userAgent) ? null : (userAgent.Length > 500 ? userAgent[..500] : userAgent),
             IpAddress = string.IsNullOrWhiteSpace(ipAddress) ? null : (ipAddress.Length > 45 ? ipAddress[..45] : ipAddress)
         };

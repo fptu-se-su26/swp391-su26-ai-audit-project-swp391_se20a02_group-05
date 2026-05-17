@@ -31,9 +31,11 @@ public class AuthSettings
 {
     public int VerificationTokenDurationInHours { get; set; } = 24;
     public int ResetPasswordTokenDurationInMinutes { get; set; } = 30;
-    public string ResetPasswordUrlFormat { get; set; } = "https://tripgenie.ai/reset?token={token}";
-    public string VerifyEmailUrlFormat { get; set; } = "https://tripgenie.ai/verify?token={token}";
+    public string FrontendUrl { get; set; } = "http://localhost:3000";
+    public string ResetPasswordUrlFormat => $"{FrontendUrl.TrimEnd('/')}/reset-password?token={{token}}";
+    public string VerifyEmailUrlFormat => $"{FrontendUrl.TrimEnd('/')}/verify-email?token={{token}}";
     public string TrustedDomains { get; set; } = "tripgenie.ai;localhost;127.0.0.1";
+    public string GoogleClientId { get; set; } = null!;
 }
 
 public class AuthRateLimitSettings
@@ -49,4 +51,7 @@ public class AuthRateLimitSettings
 
     public int VerifyEmailPermitLimit { get; set; } = 10;
     public int VerifyEmailWindowMinutes { get; set; } = 5;
+
+    public int RegisterPermitLimit { get; set; } = 5;
+    public int RegisterWindowMinutes { get; set; } = 15;
 }

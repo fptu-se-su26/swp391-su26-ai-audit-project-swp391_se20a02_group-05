@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using TripGenie.API.Core.Entities;
+using TripGenie.API.Application.Exceptions;
 using Npgsql;
 
 namespace TripGenie.API.Infrastructure.Persistence;
@@ -9,6 +10,38 @@ public class ApplicationDbContext : DbContext
     public ApplicationDbContext(DbContextOptions<ApplicationDbContext> options)
         : base(options)
     {
+    }
+
+    public override async Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            return await base.SaveChangesAsync(cancellationToken);
+        }
+        catch (DbUpdateException ex) when (ex.InnerException is PostgresException pgEx && pgEx.SqlState == "23505")
+        {
+            if (pgEx.ConstraintName?.Contains("users_email") == true || pgEx.Message.Contains("users") || pgEx.Detail?.Contains("email") == true)
+            {
+                throw new DuplicateEmailException("A user with this email address already exists.", ex);
+            }
+            throw;
+        }
+    }
+
+    public override async Task<int> SaveChangesAsync(bool acceptAllChangesOnSuccess, CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            return await base.SaveChangesAsync(acceptAllChangesOnSuccess, cancellationToken);
+        }
+        catch (DbUpdateException ex) when (ex.InnerException is PostgresException pgEx && pgEx.SqlState == "23505")
+        {
+            if (pgEx.ConstraintName?.Contains("users_email") == true || pgEx.Message.Contains("users") || pgEx.Detail?.Contains("email") == true)
+            {
+                throw new DuplicateEmailException("A user with this email address already exists.", ex);
+            }
+            throw;
+        }
     }
 
     public DbSet<User> Users => Set<User>();
@@ -32,12 +65,18 @@ public class ApplicationDbContext : DbContext
         // Map Enum
         modelBuilder.HasPostgresEnum<UserStatus>();
 
-        // Configure User -> Role (Many-to-One)
+        // Configure User <-> Role (Many-to-Many via user_roles junction table)
         modelBuilder.Entity<User>()
-            .HasOne(u => u.Role)
+            .HasMany(u => u.Roles)
             .WithMany(r => r.Users)
-            .HasForeignKey(u => u.RoleId)
-            .OnDelete(DeleteBehavior.Restrict);
+            .UsingEntity<Dictionary<string, object>>(
+                "user_roles",
+                j => j.HasOne<Role>().WithMany().HasForeignKey("role_id"),
+                j => j.HasOne<User>().WithMany().HasForeignKey("user_id"),
+                j =>
+                {
+                    j.Property<DateTimeOffset>("assigned_at").HasDefaultValueSql("NOW()");
+                });
 
         // Configure Role <-> Permission (Many-to-Many)
         modelBuilder.Entity<Role>()
@@ -128,5 +167,24 @@ public class ApplicationDbContext : DbContext
             .HasIndex(om => om.CreatedAt)
             .HasFilter("processed_at IS NULL")
             .HasDatabaseName("idx_outbox_messages_pending");
+
+        // Configure RefreshToken mapping and indexes explicitly
+        modelBuilder.Entity<RefreshToken>(entity =>
+        {
+            entity.ToTable("refresh_tokens");
+            entity.Property(t => t.SessionId)
+                .HasColumnName("session_id")
+                .IsRequired();
+            entity.Property(t => t.RememberMe)
+                .HasColumnName("remember_me")
+                .HasDefaultValue(false)
+                .IsRequired();
+            entity.Property(t => t.ReplacedByTokenId)
+                .HasColumnName("replaced_by_token_id");
+
+            entity.HasIndex(t => t.UserId).HasDatabaseName("idx_refresh_tokens_user_id");
+            entity.HasIndex(t => t.SessionId).HasDatabaseName("idx_refresh_tokens_session_id");
+            entity.HasIndex(t => t.ExpiresAt).HasDatabaseName("idx_refresh_tokens_expires_at");
+        });
     }
 }
