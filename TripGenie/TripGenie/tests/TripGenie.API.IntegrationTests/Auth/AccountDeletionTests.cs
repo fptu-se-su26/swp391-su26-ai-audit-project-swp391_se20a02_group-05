@@ -60,7 +60,7 @@ public class AccountDeletionTests : BaseIntegrationTest
         var userId = await CreateActiveUserAsync(email);
 
         // Authenticate the client
-        var loginRequest = new LoginRequest(Email: email, Password: "SecurePassword123!");
+        var loginRequest = new LoginRequest(Email: email, Password: "Password123!");
         var loginResponse = await Client.PostAsJsonAsync("/api/auth/login", loginRequest);
         loginResponse.StatusCode.Should().Be(HttpStatusCode.OK);
 

@@ -33,6 +33,18 @@ if (File.Exists(envPath)) {
 var envConfig = EnvValidator.Validate(builder.Configuration);
 builder.Services.AddSingleton(envConfig);
 
+// Configure CORS (Cross-Origin Resource Sharing)
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("AllowFrontend", policy =>
+    {
+        policy.WithOrigins("http://localhost:3000", "http://127.0.0.1:3000")
+              .AllowAnyHeader()
+              .AllowAnyMethod()
+              .AllowCredentials();
+    });
+});
+
 // Add services to the container.
 builder.Services.AddOpenApi(options =>
 {
@@ -178,6 +190,25 @@ builder.Services.AddCustomAuthorization();
 
 var app = builder.Build();
 
+// 3. Automatically initialize/sync the database schema at application startup
+using (var scope = app.Services.CreateScope())
+{
+    var services = scope.ServiceProvider;
+    try
+    {
+        var context = services.GetRequiredService<ApplicationDbContext>();
+        var logger = services.GetRequiredService<ILogger<Program>>();
+        logger.LogInformation("Initializing database schema and checking synchronization...");
+        await DbInitializer.InitializeAsync(context);
+        logger.LogInformation("Database schema initialized and synchronized successfully.");
+    }
+    catch (Exception ex)
+    {
+        var logger = services.GetRequiredService<ILogger<Program>>();
+        logger.LogError(ex, "An error occurred while initializing the database schema.");
+    }
+}
+
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
 {
@@ -191,6 +222,7 @@ if (app.Environment.IsDevelopment())
 
 app.UseExceptionHandler();
 app.UseMiddleware<SecurityHeadersMiddleware>();
+app.UseCors("AllowFrontend");
 app.UseRateLimiter();
 app.UseAuthentication();
 app.UseAuthorization();

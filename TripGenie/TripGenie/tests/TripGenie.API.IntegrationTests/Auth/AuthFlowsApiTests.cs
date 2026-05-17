@@ -146,6 +146,10 @@ public class AuthFlowsApiTests : BaseIntegrationTest
             auditLog.Should().NotBeNull();
         }
 
+        // Process WelcomeNotice onboarding email outbox and clear fake mail queue
+        await ProcessOutboxMessagesAsync().ConfigureAwait(false);
+        EmailSender.Clear();
+
         // =========================================================
         // E8. LOGIN (SUCCESS) & COOKIE SETTINGS
         // =========================================================
@@ -160,8 +164,8 @@ public class AuthFlowsApiTests : BaseIntegrationTest
         // Verify HTTP cookies are set
         loginResponse.Headers.Contains("Set-Cookie").Should().BeTrue();
         var setCookieHeaders = loginResponse.Headers.GetValues("Set-Cookie").ToList();
-        setCookieHeaders.Any(c => c.Contains("access_token") && c.Contains("HttpOnly")).Should().BeTrue();
-        setCookieHeaders.Any(c => c.Contains("refresh_token") && c.Contains("HttpOnly")).Should().BeTrue();
+        setCookieHeaders.Any(c => c.Contains("access_token") && c.Contains("httponly", StringComparison.OrdinalIgnoreCase)).Should().BeTrue();
+        setCookieHeaders.Any(c => c.Contains("refresh_token") && c.Contains("httponly", StringComparison.OrdinalIgnoreCase)).Should().BeTrue();
 
         using (var scope = Factory.Services.CreateScope())
         {

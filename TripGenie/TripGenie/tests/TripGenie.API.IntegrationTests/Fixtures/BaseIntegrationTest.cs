@@ -9,7 +9,9 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Respawn;
 using StackExchange.Redis;
+using Microsoft.Extensions.Hosting;
 using TripGenie.API.Application.Interfaces;
+using TripGenie.API.Infrastructure.Services;
 using Xunit;
 
 namespace TripGenie.API.IntegrationTests.Fixtures;
@@ -66,7 +68,7 @@ public class IntegrationTestApplicationFactory : WebApplicationFactory<Program>
                 { "EmailSettings:Smtp:Username", "test_user" },
                 { "EmailSettings:Smtp:Password", "test_pass" },
                 { "EmailSettings:Smtp:EnableSsl", "false" },
-                { "EmailSettings:EnableBackgroundQueue", "true" },
+                { "EmailSettings:EnableBackgroundQueue", "false" },
                 { "EmailSettings:TimeoutSeconds", "10" }
             });
         });
@@ -78,6 +80,12 @@ public class IntegrationTestApplicationFactory : WebApplicationFactory<Program>
             {
                 var descriptor = services[i];
                 if (descriptor.ServiceType == typeof(IEmailSender))
+                {
+                    services.RemoveAt(i);
+                }
+                else if (descriptor.ServiceType == typeof(IHostedService) && 
+                         (descriptor.ImplementationType == typeof(EmailOutboxBackgroundProcessor) || 
+                          descriptor.ImplementationType == typeof(TokenCleanupBackgroundJob)))
                 {
                     services.RemoveAt(i);
                 }
@@ -122,7 +130,10 @@ public abstract class BaseIntegrationTest : IAsyncLifetime
     {
         _containerFixture = containerFixture;
         Factory = new IntegrationTestApplicationFactory(_containerFixture);
-        Client = Factory.CreateClient();
+        Client = Factory.CreateClient(new WebApplicationFactoryClientOptions
+        {
+            BaseAddress = new Uri("https://localhost")
+        });
     }
 
     /// <inheritdoc />

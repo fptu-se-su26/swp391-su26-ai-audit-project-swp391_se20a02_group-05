@@ -27,12 +27,29 @@ public class AuthChaosTests : BaseIntegrationTest
         using var scope = Factory.Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
 
+        // Ensure "USER" role exists to satisfy the foreign key constraint
+        var userRole = await db.Roles.FirstOrDefaultAsync(r => r.Name == "USER");
+        if (userRole == null)
+        {
+            userRole = new Role
+            {
+                Name = "USER",
+                DisplayName = "General User",
+                Description = "Basic app user",
+                IsSystem = true,
+                IsActive = true
+            };
+            db.Roles.Add(userRole);
+            await db.SaveChangesAsync();
+        }
+
         // Create a custom transaction and verify rollback behavior manually in code.
         using var transaction = await db.Database.BeginTransactionAsync();
         try
         {
             var user = new UserBuilder()
                 .WithEmail("chaos@tripgenie.ai")
+                .WithRole(userRole.Id)
                 .Build();
 
             db.Users.Add(user);

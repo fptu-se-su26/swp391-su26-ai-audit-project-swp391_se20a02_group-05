@@ -5,4 +5,5 @@ namespace TripGenie.API.Application.Interfaces;
 public interface ISystemService
 {
     Task<DatabaseStatusResponse> CheckDatabaseStatusAsync();
+    Task<SystemHealthResponse> CheckSystemHealthAsync();
 }
