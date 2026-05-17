@@ -24,9 +24,11 @@ export interface ChangelogEntry {
   completedChecklist: string[];
   changes: Array<{ id: string; content: string; author: string; files: string; evidence: string }>;
   aiSupport: { used: boolean; description: string };
-  evidenceLink: string;
+  evidence: EvidenceItem[];
+  evidenceLink?: string; // Kept for migration from older versions
   notes: string;
 }
+
 
 export interface ChangelogSummary {
   completedFeatures: string;

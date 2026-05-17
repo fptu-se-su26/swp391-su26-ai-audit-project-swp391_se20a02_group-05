@@ -90,7 +90,18 @@ Nguyên tắc ghi changelog:
       markdown += `Nếu có, mô tả AI đã hỗ trợ phần nào:\n\n\`\`\`text\n${phase.aiSupport.description || ' '}\n\`\`\`\n\n`;
     }
 
-    markdown += `## Commit/Screenshot minh chứng\n\n\`\`\`text\n${phase.evidenceLink || ' '}\n\`\`\`\n\n`;
+    markdown += `## Minh chứng liên quan\n\n| Loại minh chứng | Nhãn | Nội dung |\n|---|---|---|\n`;
+    if (phase.evidence && phase.evidence.length > 0) {
+      phase.evidence.forEach((ev) => {
+        const typeLabel = evidenceTypeLabels[ev.type] || ev.type;
+        markdown += `| ${typeLabel} | ${ev.label || ' '} | ${ev.content || ev.fileName || ' '} |\n`;
+      });
+    } else if (phase.evidenceLink) {
+      markdown += `| Commit/PR | Migrated | ${phase.evidenceLink} |\n`;
+    } else {
+      markdown += `| File/Commit |  |  |\n`;
+    }
+    markdown += `\n`;
     markdown += `## Ghi chú\n\n\`\`\`text\n${phase.notes || ' '}\n\`\`\`\n\n`;
     markdown += `---\n\n`;
   });

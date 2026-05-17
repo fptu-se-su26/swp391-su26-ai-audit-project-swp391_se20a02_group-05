@@ -22,8 +22,8 @@ export default function Step5Form({ projectId }: { projectId: string }) {
       supportDetails: "",
       helpfulPoints: "",
       unhelpfulPoints: "",
-      dependencyLevel: "Không phụ thuộc",
-      dependencyReason: "",
+      dependencyLevel: "Phụ thuộc ít",
+      dependencyReason: "Sử dụng AI để tối ưu hóa thời gian nghiên cứu và tạo cấu trúc ban đầu.",
       verificationMethods: [],
       verificationDescription: "",
       verificationExample: { aiSuggestion: "", checkMethod: "", result: "", followUp: "" },
@@ -32,7 +32,14 @@ export default function Step5Form({ projectId }: { projectId: string }) {
       beforeAfter: [],
       lessonsLearnedText: "",
       responsibilityLessonsText: "",
-      commitments: [],
+      commitments: [
+        "Không dùng AI để làm toàn bộ bài mà không hiểu nội dung.",
+        "Không nộp nguyên văn kết quả AI nếu chưa kiểm tra.",
+        "Không che giấu việc sử dụng AI trong các phần quan trọng.",
+        "Không dùng AI để tạo nội dung sai lệch hoặc gian lận.",
+        "Không dùng AI thay thế hoàn toàn quá trình học.",
+        "Không bỏ qua yêu cầu, rubric hoặc hướng dẫn của giảng viên."
+      ],
       commitmentExplanation: "",
       improvementPlanText: "",
       selfEvaluation: [
@@ -44,7 +51,12 @@ export default function Step5Form({ projectId }: { projectId: string }) {
         { id: "eval-6", criteria: "Reflection có chiều sâu", score: 5, notes: "" },
         { id: "eval-7", criteria: "Sử dụng AI có trách nhiệm", score: 5, notes: "" }
       ],
-      finalQuestions: { explainable: "", canReproduce: "", coreCompetency: "", desiredSkill: "" }
+      finalQuestions: { 
+        explainable: "Có, nhóm đã đọc, kiểm tra và hiểu nội dung trước khi sử dụng.", 
+        canReproduce: "Có, nhưng sẽ mất nhiều thời gian hơn để nghiên cứu và triển khai.", 
+        coreCompetency: "Phần thiết kế workflow, chỉnh sửa logic và xử lý lỗi thực tế.", 
+        desiredSkill: "Kỹ năng thiết kế hệ thống, viết prompt và kiểm thử phần mềm." 
+      }
     }
   });
 
