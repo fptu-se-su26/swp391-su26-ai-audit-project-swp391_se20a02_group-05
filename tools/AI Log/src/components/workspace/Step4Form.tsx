@@ -4,11 +4,13 @@ import { useProjectStore } from "@/store/projectStore";
 import { useForm, Controller, useFieldArray } from "react-hook-form";
 import { Accordion, TextField, Input, Button, TextArea, Select, ListBox, CheckboxGroup, Checkbox, Card, Separator, Label } from "@heroui/react";
 import { Plus, Trash2, Save, ArrowRight, ArrowLeft, ChevronDown, Link2, Unlink } from "lucide-react";
-import { useEffect, useCallback, useState, useMemo } from "react";
+import { useEffect, useCallback, useState, useMemo, useRef } from "react";
 import { AiAuditData, PromptLogEntry, EvidenceItem } from "@/types/project";
 import EvidenceSection from "./EvidenceSection";
 import { useUnsavedChanges } from "@/lib/useUnsavedChanges";
 import ConfirmDeleteModal from "./ConfirmDeleteModal";
+import MemberSelect from "./MemberSelect";
+import { useFormDraft } from "@/hooks/useFormDraft";
 
 export default function Step4Form({ projectId }: { projectId: string }) {
   const { projects, updateAiAudit } = useProjectStore();
@@ -50,19 +52,61 @@ export default function Step4Form({ projectId }: { projectId: string }) {
     name: "groupContributions"
   });
 
-  useEffect(() => {
-    if (project) {
-      reset(project.aiAudit);
-    }
-  }, [project, reset]);
+  const originalData = {
+    toolsUsed: project?.aiAudit?.toolsUsed || [],
+    usageTargetsText: project?.aiAudit?.usageTargetsText || "",
+    auditEntries: project?.aiAudit?.auditEntries || [],
+    usageMatrix: project?.aiAudit?.usageMatrix || [],
+    issues: project?.aiAudit?.issues || [],
+    verificationMethodsText: project?.aiAudit?.verificationMethodsText || "",
+    personalContributionText: project?.aiAudit?.personalContributionText || "",
+    groupContributions: project?.aiAudit?.groupContributions || []
+  };
+
+  const { DraftStatusIndicator, isActuallyDirty } = useFormDraft({
+    projectId,
+    stepKey: "step4",
+    watch,
+    reset,
+    originalData
+  });
 
   const onSubmit = (data: AiAuditData) => {
     updateAiAudit(data);
     reset(data);
   };
 
+  const handleSaveForm = useCallback(async () => {
+    let success = false;
+    await new Promise<void>((resolve) => {
+      handleSubmit(
+        (data) => {
+          onSubmit(data);
+          success = true;
+          resolve();
+        },
+        () => {
+          success = false;
+          resolve();
+        }
+      )();
+    });
+    return success;
+  }, [handleSubmit, onSubmit]);
+
+  const saveHandlerRef = useRef(handleSaveForm);
+  useEffect(() => {
+    saveHandlerRef.current = handleSaveForm;
+  }, [handleSaveForm]);
+
+  useEffect(() => {
+    const { registerSaveHandler } = useProjectStore.getState();
+    registerSaveHandler(async () => saveHandlerRef.current());
+    return () => registerSaveHandler(null);
+  }, []);
+
   const { UnsavedModal, guardNavigation } = useUnsavedChanges({
-    isDirty,
+    isDirty: isActuallyDirty,
     onSave: handleSubmit(onSubmit),
   });
 
@@ -120,6 +164,10 @@ export default function Step4Form({ projectId }: { projectId: string }) {
 
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-6">
+      <div className="flex justify-between items-center bg-surface-secondary/20 p-4 rounded-xl border border-border/80">
+        <h3 className="text-lg font-bold">AI Audit & Contributions</h3>
+        <DraftStatusIndicator />
+      </div>
       <Card>
         <div className="flex flex-col gap-6 p-6">
           <h3 className="text-lg font-semibold">General AI Usage</h3>
@@ -466,19 +514,31 @@ export default function Step4Form({ projectId }: { projectId: string }) {
             {groupFields.map((field, index) => (
               <div key={field.id} className="flex flex-col gap-2 p-3 border border-border rounded-lg bg-surface-secondary/20">
                 <div className="flex justify-between">
-                  <div className="flex gap-2 flex-1 items-end">
-                    <Controller name={`groupContributions.${index}.memberName`} control={control} render={({ field }) => (
-                      <TextField className="w-1/3">
-                        <Input {...field} placeholder="Name" />
-                      </TextField>
-                    )} />
-                    <Controller name={`groupContributions.${index}.memberId`} control={control} render={({ field }) => (
-                      <TextField className="w-1/4">
-                        <Input {...field} placeholder="Student ID" />
-                      </TextField>
-                    )} />
+                  <div className="flex gap-4 flex-1 items-center">
+                    <div className="w-1/2">
+                      <MemberSelect
+                        members={project.members || []}
+                        selectedId={(() => {
+                          const mName = watch(`groupContributions.${index}.memberName`);
+                          const mId = watch(`groupContributions.${index}.memberId`);
+                          const match = (project.members || []).find(m => m.name === mName && m.studentId === mId);
+                          return match ? match.id : "";
+                        })()}
+                        onChange={(val) => {
+                          const selected = (project.members || []).find((m) => m.id === val);
+                          if (selected) {
+                            setValue(`groupContributions.${index}.memberName`, selected.name, { shouldDirty: true });
+                            setValue(`groupContributions.${index}.memberId`, selected.studentId, { shouldDirty: true });
+                          } else {
+                            setValue(`groupContributions.${index}.memberName`, "", { shouldDirty: true });
+                            setValue(`groupContributions.${index}.memberId`, "", { shouldDirty: true });
+                          }
+                        }}
+                        placeholder="Select team member..."
+                      />
+                    </div>
                     <Controller name={`groupContributions.${index}.aiUsed`} control={control} render={({ field: { value, onChange } }) => (
-                      <Checkbox isSelected={value} onChange={onChange} className="mb-2 ml-4">
+                      <Checkbox isSelected={value} onChange={onChange}>
                         <Checkbox.Control><Checkbox.Indicator /></Checkbox.Control>
                         <Checkbox.Content>Used AI?</Checkbox.Content>
                       </Checkbox>
@@ -510,9 +570,9 @@ export default function Step4Form({ projectId }: { projectId: string }) {
           Back
         </Button>
         <div className="flex gap-2">
-          <Button type="submit" variant={isDirty ? "secondary" : "ghost"}>
+          <Button type="submit" variant={isActuallyDirty ? "secondary" : "ghost"}>
             <Save className="w-4 h-4 mr-2 inline" />
-            {isDirty ? "Save Changes" : "Saved"}
+            {isActuallyDirty ? "Save Changes" : "Saved"}
           </Button>
           <Button onPress={() => guardNavigation(`/project/${projectId}/workspace/step5`)} variant="secondary">
             Next Step
