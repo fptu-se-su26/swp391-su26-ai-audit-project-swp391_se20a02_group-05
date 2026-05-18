@@ -39,6 +39,10 @@ interface ProjectState {
   updatePrompts: (prompts: PromptLogEntry[], lessons?: Partial<PromptLessons>) => void;
   updateAiAudit: (aiAudit: Partial<AiAuditData>) => void;
   updateReflection: (reflection: Partial<ReflectionData>) => void;
+
+  // Active form save registration
+  saveHandler: (() => Promise<boolean>) | null;
+  registerSaveHandler: (handler: (() => Promise<boolean>) | null) => void;
 }
 
 const generateId = () => Math.random().toString(36).substring(2, 9);
@@ -351,6 +355,9 @@ export const useProjectStore = create<ProjectState>()(
           }
         }));
       },
+
+      saveHandler: null,
+      registerSaveHandler: (handler) => set({ saveHandler: handler }),
     }),
     {
       name: 'ai-workflow-logger-storage',

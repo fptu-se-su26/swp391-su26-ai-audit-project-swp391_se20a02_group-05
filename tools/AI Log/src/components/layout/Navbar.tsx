@@ -1,10 +1,11 @@
 "use client";
 
 import { Button, Tooltip } from "@heroui/react";
-import { Save, SaveAll, HardDrive, Download, Clock } from "lucide-react";
+import { Save, HardDrive, Download, Clock, FileText, FileCode, ChevronDown } from "lucide-react";
 import { useProjectStore } from "@/store/projectStore";
 import { usePathname } from "next/navigation";
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
+import { generateChangelog, generatePrompts, generateAiAudit, generateReflection } from "@/lib/markdown/generators";
 
 function formatTimeAgo(dateStr: string | null): string {
   if (!dateStr) return "Not saved yet";
@@ -20,7 +21,7 @@ function formatTimeAgo(dateStr: string | null): string {
 
 export default function Navbar() {
   const pathname = usePathname();
-  const { activeProjectId, projects, lastSavedAt, persistenceMode, saveProject, saveProjectAs } = useProjectStore();
+  const { activeProjectId, projects, lastSavedAt, persistenceMode, saveProject, saveHandler } = useProjectStore();
   const [saving, setSaving] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [, setTick] = useState(0);
@@ -29,6 +30,20 @@ export default function Navbar() {
   const project = activeProjectId ? projects[activeProjectId] : null;
   const lastSaved = activeProjectId ? lastSavedAt[activeProjectId] : null;
   const isNative = persistenceMode === "native";
+
+  const [exportOpen, setExportOpen] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  // Close dropdown on click outside
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setExportOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
 
   // Refresh "time ago" every 30s
   useEffect(() => {
@@ -40,29 +55,75 @@ export default function Navbar() {
     if (!activeProjectId || saving) return;
     setSaving(true);
     try {
+      let formSuccess = true;
+      if (saveHandler) {
+        formSuccess = await saveHandler();
+      }
+      if (!formSuccess) return;
+
       const success = await saveProject(activeProjectId);
       if (success) {
         setSaveSuccess(true);
         setTimeout(() => setSaveSuccess(false), 2000);
-      }
-    } finally {
-      setSaving(false);
-    }
-  }, [activeProjectId, saving, saveProject]);
 
-  const handleSaveAs = useCallback(async () => {
-    if (!activeProjectId || saving) return;
-    setSaving(true);
-    try {
-      const success = await saveProjectAs(activeProjectId);
-      if (success) {
-        setSaveSuccess(true);
-        setTimeout(() => setSaveSuccess(false), 2000);
+        const stepMatch = pathname?.match(/\/workspace\/(step[1-5])/);
+        if (stepMatch && stepMatch[1]) {
+          const stepKey = stepMatch[1];
+          localStorage.removeItem(`draft_${activeProjectId}_${stepKey}_v1`);
+          window.dispatchEvent(new Event("storage"));
+        }
       }
     } finally {
       setSaving(false);
     }
-  }, [activeProjectId, saving, saveProjectAs]);
+  }, [activeProjectId, saving, saveProject, saveHandler, pathname]);
+
+  const downloadFile = (content: string, filename: string, mimeType: string = "text/markdown") => {
+    const element = document.createElement("a");
+    const file = new Blob([content], { type: mimeType });
+    element.href = URL.createObjectURL(file);
+    element.download = filename;
+    document.body.appendChild(element);
+    element.click();
+    document.body.removeChild(element);
+  };
+
+  const handleExport = useCallback((key: string) => {
+    if (!project || !activeProjectId) return;
+
+    const markdownFiles = [
+      { name: "AI_AUDIT_LOG.md", content: generateAiAudit(project) },
+      { name: "PROMPTS.md", content: generatePrompts(project) },
+      { name: "CHANGELOG.md", content: generateChangelog(project) },
+      { name: "REFLECTION.md", content: generateReflection(project) },
+    ];
+
+    const jsonFile = {
+      name: `${project.metadata.name || "project"}_export.json`,
+      content: JSON.stringify(project, null, 2),
+      mime: "application/json"
+    };
+
+    if (key === "markdown") {
+      markdownFiles.forEach((file, index) => {
+        setTimeout(() => {
+          downloadFile(file.content, file.name);
+        }, index * 200);
+      });
+    } else if (key === "json") {
+      downloadFile(jsonFile.content, jsonFile.name, jsonFile.mime);
+    } else if (key === "all") {
+      const allFiles = [
+        ...markdownFiles,
+        { name: jsonFile.name, content: jsonFile.content, mime: jsonFile.mime }
+      ];
+      allFiles.forEach((file, index) => {
+        setTimeout(() => {
+          downloadFile(file.content, file.name, (file as any).mime || "text/markdown");
+        }, index * 200);
+      });
+    }
+  }, [project, activeProjectId]);
 
   // Ctrl+S shortcut
   const handleKeyDown = useCallback((e: KeyboardEvent) => {
@@ -134,16 +195,57 @@ export default function Navbar() {
             Save
           </Button>
 
-          {/* Save As button */}
-          <Button
-            size="sm"
-            variant="ghost"
-            onPress={handleSaveAs}
-            isDisabled={saving}
-          >
-            <SaveAll className="w-4 h-4 mr-1.5 inline" />
-            <span className="hidden sm:inline">Save As</span>
-          </Button>
+          {/* Export dropdown */}
+          <div className="relative" ref={dropdownRef}>
+            <Button
+              size="sm"
+              variant="ghost"
+              className="flex items-center gap-1.5"
+              onPress={() => setExportOpen(!exportOpen)}
+            >
+              <Download className="w-4 h-4" />
+              Export
+              <ChevronDown className={`w-3.5 h-3.5 opacity-60 transition-transform duration-200 ${exportOpen ? 'rotate-180' : ''}`} />
+            </Button>
+
+            {exportOpen && (
+              <div className="absolute right-0 mt-2 w-52 rounded-xl border border-border bg-surface-secondary shadow-lg z-50 py-1.5 animate-in fade-in slide-in-from-top-2 duration-150">
+                <button
+                  type="button"
+                  onClick={() => {
+                    handleExport("markdown");
+                    setExportOpen(false);
+                  }}
+                  className="w-full flex items-center gap-2 px-3 py-2 text-sm text-default-800 hover:bg-surface/60 transition-colors text-left"
+                >
+                  <FileText className="w-4 h-4 text-default-500" />
+                  <span>Export as Markdown</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    handleExport("json");
+                    setExportOpen(false);
+                  }}
+                  className="w-full flex items-center gap-2 px-3 py-2 text-sm text-default-800 hover:bg-surface/60 transition-colors text-left"
+                >
+                  <FileCode className="w-4 h-4 text-default-500" />
+                  <span>Export as JSON</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    handleExport("all");
+                    setExportOpen(false);
+                  }}
+                  className="w-full flex items-center gap-2 px-3 py-2 text-sm text-primary font-medium hover:bg-primary/5 transition-colors text-left border-t border-border mt-1 pt-2"
+                >
+                  <Download className="w-4 h-4 text-primary" />
+                  <span>Export All Files</span>
+                </button>
+              </div>
+            )}
+          </div>
         </div>
       )}
     </header>

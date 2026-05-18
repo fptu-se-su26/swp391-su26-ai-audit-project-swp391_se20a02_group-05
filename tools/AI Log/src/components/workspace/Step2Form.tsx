@@ -4,23 +4,33 @@ import { useProjectStore } from "@/store/projectStore";
 import { useForm, Controller, useFieldArray } from "react-hook-form";
 import { Accordion, TextField, Input, Button, Card, TextArea, Checkbox, Select, ListBox, Label, Separator } from "@heroui/react";
 import { Plus, Trash2, Save, ArrowRight, ArrowLeft, ChevronDown, CheckCircle, XCircle, Rocket, ClipboardList, Sparkles } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { ChangelogEntry, ChangelogSummary } from "@/types/project";
 import { useUnsavedChanges } from "@/lib/useUnsavedChanges";
 import ConfirmDeleteModal from "./ConfirmDeleteModal";
 import EvidenceSection from "./EvidenceSection";
+import { useFormDraft } from "@/hooks/useFormDraft";
 
 interface Step2FormData {
   changelogs: ChangelogEntry[];
   changelogSummary: ChangelogSummary;
 }
 
+const phaseDefaults: Record<string, string> = {
+  "Phase 01": "Khởi tạo project",
+  "Phase 02": "Phân tích yêu cầu",
+  "Phase 03": "Thiết kế hệ thống",
+  "Phase 04": "Implementation",
+  "Phase 05": "Testing & Debug",
+  "Phase 06": "Hoàn thiện báo cáo và demo",
+};
+
 export default function Step2Form({ projectId }: { projectId: string }) {
   const { projects, updateChangelogs, updateChangelogSummary } = useProjectStore();
   const project = projects[projectId];
   const [deleteTarget, setDeleteTarget] = useState<{ index: number; name: string } | null>(null);
 
-  const { control, handleSubmit, formState: { isDirty }, reset, watch } = useForm<Step2FormData>({
+  const { control, handleSubmit, formState: { isDirty }, reset, watch, setValue } = useForm<Step2FormData>({
     defaultValues: {
       changelogs: [],
       changelogSummary: {
@@ -40,20 +50,29 @@ export default function Step2Form({ projectId }: { projectId: string }) {
     name: "changelogs"
   });
 
-  useEffect(() => {
-    if (project) {
-      reset({
-        changelogs: project.changelogs || [],
-        changelogSummary: project.changelogSummary || {
-          completedFeatures: "",
-          unfinishedFeatures: "",
-          majorImprovements: "",
-          overallSummary: "",
-          futureImprovements: "",
-        }
-      });
+  const originalData = {
+    changelogs: (project?.changelogs || []).map((c) => ({
+      ...c,
+      startDate: c.startDate || c.date || new Date().toISOString().split("T")[0],
+      endDate: c.endDate || c.date || new Date().toISOString().split("T")[0],
+      phaseDescription: c.phaseDescription || c.notes.split("\n")[0] || phaseDefaults[c.phaseName] || ""
+    })),
+    changelogSummary: project?.changelogSummary || {
+      completedFeatures: "",
+      unfinishedFeatures: "",
+      majorImprovements: "",
+      overallSummary: "",
+      futureImprovements: "",
     }
-  }, [project, reset]);
+  };
+
+  const { DraftStatusIndicator, isActuallyDirty } = useFormDraft({
+    projectId,
+    stepKey: "step2",
+    watch,
+    reset,
+    originalData
+  });
 
   const onSubmit = (data: Step2FormData) => {
     updateChangelogs(data.changelogs);
@@ -61,16 +80,50 @@ export default function Step2Form({ projectId }: { projectId: string }) {
     reset(data);
   };
 
+  const handleSaveForm = useCallback(async () => {
+    let success = false;
+    await new Promise<void>((resolve) => {
+      handleSubmit(
+        (data) => {
+          onSubmit(data);
+          success = true;
+          resolve();
+        },
+        () => {
+          success = false;
+          resolve();
+        }
+      )();
+    });
+    return success;
+  }, [handleSubmit, onSubmit]);
+
+  const saveHandlerRef = useRef(handleSaveForm);
+  useEffect(() => {
+    saveHandlerRef.current = handleSaveForm;
+  }, [handleSaveForm]);
+
+  useEffect(() => {
+    const { registerSaveHandler } = useProjectStore.getState();
+    registerSaveHandler(async () => saveHandlerRef.current());
+    return () => registerSaveHandler(null);
+  }, []);
+
   const { UnsavedModal, guardNavigation } = useUnsavedChanges({
-    isDirty,
+    isDirty: isActuallyDirty,
     onSave: handleSubmit(onSubmit),
   });
 
   const handleAddPhase = () => {
+    const nextPhaseNum = fields.length + 1;
+    const nextPhaseName = nextPhaseNum <= 6 ? `Phase 0${nextPhaseNum}` : `Phase ${nextPhaseNum}`;
     append({
       id: Math.random().toString(36).substr(2, 9),
-      phaseName: `Phase 0${fields.length + 1}`,
-      date: new Date().toISOString().split('T')[0],
+      phaseName: nextPhaseName,
+      startDate: new Date().toISOString().split('T')[0],
+      endDate: new Date().toISOString().split('T')[0],
+      phaseDescription: phaseDefaults[nextPhaseName] || "",
+      date: `${new Date().toISOString().split('T')[0]} ~ ${new Date().toISOString().split('T')[0]}`,
       status: "In Progress",
       completedChecklist: [],
       changes: [],
@@ -85,7 +138,11 @@ export default function Step2Form({ projectId }: { projectId: string }) {
 
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-6">
-      <div className="flex justify-end">
+      <div className="flex justify-between items-center bg-surface-secondary/20 p-4 rounded-xl border border-border/80">
+        <div className="flex items-center gap-3">
+          <h3 className="text-lg font-bold">Project Phases</h3>
+          <DraftStatusIndicator />
+        </div>
         <Button size="sm" variant="secondary" onPress={handleAddPhase}>
           <Plus className="w-4 h-4 mr-2 inline" />
           Add Phase
@@ -118,34 +175,111 @@ export default function Step2Form({ projectId }: { projectId: string }) {
                 <Accordion.Body className="bg-surface border border-border p-4 rounded-lg mb-4">
                   <div className="flex flex-col gap-6 pb-4">
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                      <Controller name={`changelogs.${index}.phaseName`} control={control} render={({ field }) => (
-                        <TextField>
-                          <Label>Phase Name</Label>
-                          <Input {...field} />
-                        </TextField>
-                      )} />
-                      <Controller name={`changelogs.${index}.date`} control={control} render={({ field }) => (
-                        <TextField>
-                          <Label>Date</Label>
-                          <Input {...field} type="date" />
-                        </TextField>
-                      )} />
-                      <Controller name={`changelogs.${index}.status`} control={control} render={({ field: { value, onChange } }) => (
-                        <Select selectedKey={value} onSelectionChange={onChange}>
-                          <Label>Status</Label>
-                          <Select.Trigger>
-                            <Select.Value />
-                            <Select.Indicator />
-                          </Select.Trigger>
-                          <Select.Popover>
-                            <ListBox>
-                              <ListBox.Item id="Not Started" textValue="Not Started">Not Started<ListBox.ItemIndicator /></ListBox.Item>
-                              <ListBox.Item id="In Progress" textValue="In Progress">In Progress<ListBox.ItemIndicator /></ListBox.Item>
-                              <ListBox.Item id="Completed" textValue="Completed">Completed<ListBox.ItemIndicator /></ListBox.Item>
-                            </ListBox>
-                          </Select.Popover>
-                        </Select>
-                      )} />
+                      <Controller
+                        name={`changelogs.${index}.phaseName`}
+                        control={control}
+                        render={({ field: { value, onChange } }) => (
+                          <Select
+                            selectedKey={value}
+                            onSelectionChange={(key) => {
+                              onChange(key);
+                              const desc = phaseDefaults[key as string];
+                              const currentDesc = watch(`changelogs.${index}.phaseDescription`);
+                              if (!currentDesc || Object.values(phaseDefaults).includes(currentDesc)) {
+                                setValue(`changelogs.${index}.phaseDescription`, desc || "", { shouldDirty: true });
+                              }
+                            }}
+                          >
+                            <Label>Phase</Label>
+                            <Select.Trigger>
+                              <Select.Value />
+                              <Select.Indicator />
+                            </Select.Trigger>
+                            <Select.Popover>
+                              <ListBox>
+                                {Object.keys(phaseDefaults).map((p) => (
+                                  <ListBox.Item key={p} id={p} textValue={p}>
+                                    {p}
+                                  </ListBox.Item>
+                                ))}
+                              </ListBox>
+                            </Select.Popover>
+                          </Select>
+                        )}
+                      />
+
+                      <div className="flex gap-2">
+                        <Controller
+                          name={`changelogs.${index}.startDate`}
+                          control={control}
+                          render={({ field }) => (
+                            <TextField className="flex-1">
+                              <Label>Start Date</Label>
+                              <Input
+                                {...field}
+                                type="date"
+                                value={field.value ? field.value.split("T")[0] : ""}
+                                onChange={(e) => {
+                                  field.onChange(e.target.value);
+                                  const end = watch(`changelogs.${index}.endDate`) || "";
+                                  setValue(`changelogs.${index}.date`, `${e.target.value} ~ ${end}`, { shouldDirty: true });
+                                }}
+                              />
+                            </TextField>
+                          )}
+                        />
+                        <Controller
+                          name={`changelogs.${index}.endDate`}
+                          control={control}
+                          render={({ field }) => (
+                            <TextField className="flex-1">
+                              <Label>End Date</Label>
+                              <Input
+                                {...field}
+                                type="date"
+                                value={field.value ? field.value.split("T")[0] : ""}
+                                onChange={(e) => {
+                                  field.onChange(e.target.value);
+                                  const start = watch(`changelogs.${index}.startDate`) || "";
+                                  setValue(`changelogs.${index}.date`, `${start} ~ ${e.target.value}`, { shouldDirty: true });
+                                }}
+                              />
+                            </TextField>
+                          )}
+                        />
+                      </div>
+
+                      <Controller
+                        name={`changelogs.${index}.status`}
+                        control={control}
+                        render={({ field: { value, onChange } }) => (
+                          <Select selectedKey={value} onSelectionChange={onChange}>
+                            <Label>Status</Label>
+                            <Select.Trigger>
+                              <Select.Value />
+                              <Select.Indicator />
+                            </Select.Trigger>
+                            <Select.Popover>
+                              <ListBox>
+                                <ListBox.Item id="Not Started" textValue="Not Started">Not Started<ListBox.ItemIndicator /></ListBox.Item>
+                                <ListBox.Item id="In Progress" textValue="In Progress">In Progress<ListBox.ItemIndicator /></ListBox.Item>
+                                <ListBox.Item id="Completed" textValue="Completed">Completed<ListBox.ItemIndicator /></ListBox.Item>
+                              </ListBox>
+                            </Select.Popover>
+                          </Select>
+                        )}
+                      />
+
+                      <Controller
+                        name={`changelogs.${index}.phaseDescription`}
+                        control={control}
+                        render={({ field }) => (
+                          <TextField className="md:col-span-3">
+                            <Label>Phase Description</Label>
+                            <Input {...field} placeholder="Description of this phase..." />
+                          </TextField>
+                        )}
+                      />
                     </div>
 
                     <div className="border border-border rounded-lg p-4 bg-surface-secondary/20">
@@ -327,9 +461,9 @@ export default function Step2Form({ projectId }: { projectId: string }) {
           Back
         </Button>
         <div className="flex gap-2">
-          <Button type="submit" variant={isDirty ? "secondary" : "ghost"}>
+          <Button type="submit" variant={isActuallyDirty ? "secondary" : "ghost"}>
             <Save className="w-4 h-4 mr-2 inline" />
-            {isDirty ? "Save Changes" : "Saved"}
+            {isActuallyDirty ? "Save Changes" : "Saved"}
           </Button>
           <Button onPress={() => guardNavigation(`/project/${projectId}/workspace/step3`)} variant="secondary">
             Next Step
