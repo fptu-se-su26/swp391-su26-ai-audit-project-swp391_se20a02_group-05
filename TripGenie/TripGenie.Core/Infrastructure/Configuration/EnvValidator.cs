@@ -41,6 +41,11 @@ public static class EnvValidator
         config.Auth.TrustedDomains = configuration["Auth:TrustedDomains"] ?? config.Auth.TrustedDomains;
         config.Auth.GoogleClientId = (configuration["Auth:GoogleClientId"] ?? configuration["GOOGLE_CLIENT_ID"])?.ResolveEnvironmentVariables()
             ?? throw new InvalidOperationException("Environment variable 'GOOGLE_CLIENT_ID' or setting 'Auth:GoogleClientId' is missing.");
+        
+        if (bool.TryParse(configuration["Auth:DisableCsrf"], out var disableCsrf))
+        {
+            config.Auth.DisableCsrf = disableCsrf;
+        }
 
         // 5. AuthRateLimitSettings
         if (int.TryParse(configuration["RateLimit:ForgotPasswordPermitLimit"], out var fpLimit))
@@ -67,6 +72,13 @@ public static class EnvValidator
             config.RateLimit.RegisterPermitLimit = regLimit;
         if (int.TryParse(configuration["RateLimit:RegisterWindowMinutes"], out var regWindow))
             config.RateLimit.RegisterWindowMinutes = regWindow;
+
+        // 6. AI Microservice Settings
+        config.Ai.FastApiBaseUrl = (configuration["Ai:FastApiBaseUrl"] ?? configuration["AI_SERVICE_URL"])?.ResolveEnvironmentVariables()?.Trim('"') ?? config.Ai.FastApiBaseUrl;
+        config.Ai.SharedSecret = (configuration["Ai:SharedSecret"] ?? configuration["AI_SERVICE_SHARED_SECRET"])?.ResolveEnvironmentVariables()?.Trim('"')
+            ?? throw new InvalidOperationException("Environment variable 'AI_SERVICE_SHARED_SECRET' or setting 'Ai:SharedSecret' is missing.");
+        config.Ai.ClientId = (configuration["Ai:ClientId"] ?? configuration["AI_SERVICE_CLIENT_ID"])?.ResolveEnvironmentVariables()?.Trim('"') ?? config.Ai.ClientId;
+        config.Ai.ClaudeModel = (configuration["Ai:ClaudeModel"] ?? configuration["CLAUDE_MODEL"])?.ResolveEnvironmentVariables()?.Trim('"') ?? config.Ai.ClaudeModel;
 
         return config;
     }

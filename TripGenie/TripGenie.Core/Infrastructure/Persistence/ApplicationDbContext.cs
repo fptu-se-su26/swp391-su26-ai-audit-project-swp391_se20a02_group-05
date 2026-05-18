@@ -52,6 +52,8 @@ public class ApplicationDbContext : DbContext
     public DbSet<ResetPasswordToken> ResetPasswordTokens => Set<ResetPasswordToken>();
     public DbSet<OutboxMessage> OutboxMessages => Set<OutboxMessage>();
     public DbSet<AuditLog> AuditLogs => Set<AuditLog>();
+    public DbSet<Conversation> Conversations => Set<Conversation>();
+    public DbSet<Message> Messages => Set<Message>();
 
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
@@ -185,6 +187,33 @@ public class ApplicationDbContext : DbContext
             entity.HasIndex(t => t.UserId).HasDatabaseName("idx_refresh_tokens_user_id");
             entity.HasIndex(t => t.SessionId).HasDatabaseName("idx_refresh_tokens_session_id");
             entity.HasIndex(t => t.ExpiresAt).HasDatabaseName("idx_refresh_tokens_expires_at");
+        });
+
+        // Configure Conversations
+        modelBuilder.Entity<Conversation>(entity =>
+        {
+            entity.ToTable("conversations");
+            entity.HasIndex(c => c.UserId).HasDatabaseName("idx_conversations_user_id");
+            
+            entity.HasOne(c => c.User)
+                .WithMany()
+                .HasForeignKey(c => c.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        // Configure Messages
+        modelBuilder.Entity<Message>(entity =>
+        {
+            entity.ToTable("messages");
+            entity.Property(m => m.Role).HasConversion<string>();
+            entity.Property(m => m.StreamingState).HasConversion<string>();
+            
+            entity.HasIndex(m => new { m.ConversationId, m.CreatedAt }).HasDatabaseName("idx_messages_conversation_id_created_at");
+            
+            entity.HasOne(m => m.Conversation)
+                .WithMany(c => c.Messages)
+                .HasForeignKey(m => m.ConversationId)
+                .OnDelete(DeleteBehavior.Cascade);
         });
     }
 }

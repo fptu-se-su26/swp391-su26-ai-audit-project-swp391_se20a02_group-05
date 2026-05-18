@@ -269,6 +269,27 @@ public static class DbInitializer
                 CONSTRAINT fk_audit_logs_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL
             );
 
+            -- Manages chat conversation sessions with the AI Assistant
+            CREATE TABLE IF NOT EXISTS conversations (
+                id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+                user_id UUID NOT NULL,
+                title VARCHAR(255) NOT NULL DEFAULT 'New Conversation',
+                created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+                updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+                CONSTRAINT fk_conversations_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+            );
+
+            -- Stores individual messages in a conversation
+            CREATE TABLE IF NOT EXISTS messages (
+                id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+                conversation_id UUID NOT NULL,
+                role VARCHAR(50) NOT NULL,
+                content TEXT NOT NULL,
+                streaming_state VARCHAR(50) NOT NULL DEFAULT 'Pending',
+                created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+                CONSTRAINT fk_messages_conversation FOREIGN KEY (conversation_id) REFERENCES conversations(id) ON DELETE CASCADE
+            );
+
             -- Optimized Indexes
             CREATE INDEX IF NOT EXISTS idx_refresh_tokens_token ON refresh_tokens(token);
             CREATE INDEX IF NOT EXISTS idx_refresh_tokens_user ON refresh_tokens(user_id);
@@ -277,6 +298,8 @@ public static class DbInitializer
             CREATE INDEX IF NOT EXISTS idx_outbox_messages_pending ON outbox_messages(created_at) WHERE processed_at IS NULL;
             CREATE INDEX IF NOT EXISTS idx_users_active ON users(status) WHERE deleted_at IS NULL;
             CREATE INDEX IF NOT EXISTS idx_permissions_hierarchy ON permissions (name varchar_pattern_ops);
+            CREATE INDEX IF NOT EXISTS idx_conversations_user_id ON conversations(user_id);
+            CREATE INDEX IF NOT EXISTS idx_messages_conversation_id_created_at ON messages(conversation_id, created_at);
 
             -- Triggers Registration
             DO $$
@@ -299,6 +322,14 @@ public static class DbInitializer
             BEGIN
                 IF NOT EXISTS (SELECT 1 FROM pg_trigger WHERE tgname = 'tr_permissions_timestamp') THEN
                     CREATE TRIGGER tr_permissions_timestamp BEFORE UPDATE ON permissions 
+                        FOR EACH ROW EXECUTE PROCEDURE fn_update_timestamp();
+                END IF;
+            END $$;
+
+            DO $$
+            BEGIN
+                IF NOT EXISTS (SELECT 1 FROM pg_trigger WHERE tgname = 'tr_conversations_timestamp') THEN
+                    CREATE TRIGGER tr_conversations_timestamp BEFORE UPDATE ON conversations 
                         FOR EACH ROW EXECUTE PROCEDURE fn_update_timestamp();
                 END IF;
             END $$;

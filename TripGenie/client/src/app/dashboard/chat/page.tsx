@@ -1,0 +1,392 @@
+"use client";
+
+import React, { useState, useEffect, useRef } from 'react';
+import { useAiStore, Message, Conversation } from '../../../store/use-ai-store';
+import { Card } from '../../../components/ui/card';
+import { Button } from '../../../components/ui/button';
+import { 
+  Sparkles, 
+  Send, 
+  Plus, 
+  Trash2, 
+  MessageSquare, 
+  StopCircle, 
+  RefreshCw, 
+  AlertCircle,
+  Copy,
+  Check
+} from 'lucide-react';
+import { Spinner } from '@heroui/react';
+
+// Custom Markdown to Premium HTML converter with secure HTML sanitization
+function parseAndSanitizeMarkdown(text: string): string {
+  if (!text) return '';
+
+  // 1. Basic HTML Sanitization - strip dangerous elements
+  let clean = text
+    .replace(/<script[^>]*>([\S\s]*?)<\/script>/gi, '')
+    .replace(/<iframe[^>]*>([\S\s]*?)<\/iframe>/gi, '')
+    .replace(/<object[^>]*>([\S\s]*?)<\/object>/gi, '')
+    .replace(/<embed[^>]*>([\S\s]*?)<\/embed>/gi, '')
+    .replace(/<style[^>]*>([\S\s]*?)<\/style>/gi, '')
+    .replace(/on\w+="[^"]*"/gi, '')
+    .replace(/on\w+='[^']*'/gi, '')
+    .replace(/javascript:[^"']*/gi, '');
+
+  // 2. Parse Code Blocks ```code```
+  clean = clean.replace(/```([\s\S]*?)```/g, (_, codeContent) => {
+    const lines = codeContent.trim().split('\n');
+    let language = 'text';
+    let code = codeContent;
+    if (lines.length > 0 && lines[0].length < 15 && !lines[0].includes(' ') && !lines[0].includes('\n')) {
+      language = lines[0].trim();
+      code = lines.slice(1).join('\n');
+    }
+    return `
+      <div class="my-4 rounded-xl border border-zinc-200/50 dark:border-zinc-800/50 bg-zinc-950 text-zinc-100 overflow-hidden font-mono text-xs select-text shadow-lg">
+        <div class="flex items-center justify-between px-4 py-2 border-b border-zinc-800 bg-zinc-900 select-none text-[10px] uppercase font-bold tracking-wider text-zinc-500">
+          <span>${language}</span>
+          <span class="text-zinc-400">code block</span>
+        </div>
+        <pre class="p-4 overflow-x-auto leading-relaxed"><code>${escapeHtml(code)}</code></pre>
+      </div>
+    `;
+  });
+
+  // 3. Inline Code `code`
+  clean = clean.replace(/`([^`\n]+)`/g, '<code class="px-1.5 py-0.5 rounded bg-zinc-100 dark:bg-zinc-800 text-zinc-800 dark:text-zinc-200 font-mono text-xs font-semibold">$1</code>');
+
+  // 4. Headers (#, ##, ###)
+  clean = clean.replace(/^### (.*?)$/gm, '<h4 class="text-sm font-bold text-zinc-900 dark:text-zinc-100 mt-4 mb-2 font-outfit">$1</h4>');
+  clean = clean.replace(/^## (.*?)$/gm, '<h3 class="text-base font-extrabold text-zinc-900 dark:text-zinc-100 mt-5 mb-2.5 font-outfit">$1</h3>');
+  clean = clean.replace(/^# (.*?)$/gm, '<h2 class="text-lg font-black text-zinc-900 dark:text-zinc-100 mt-6 mb-3 font-outfit">$1</h2>');
+
+  // 5. Bold & Italic
+  clean = clean.replace(/\*\*([^*]+)\*\*/g, '<strong class="font-extrabold text-zinc-950 dark:text-white">$1</strong>');
+  clean = clean.replace(/\*([^*]+)\*/g, '<em class="italic">$1</em>');
+
+  // 6. Bullet lists
+  clean = clean.replace(/^\s*[-*]\s+(.*?)$/gm, '<li class="ml-4 list-disc pl-1 text-zinc-700 dark:text-zinc-300 leading-relaxed">$1</li>');
+
+  // 7. Paragraphs (lines that don't look like block headers/lists/divs)
+  const lines = clean.split('\n');
+  const processedLines = lines.map(line => {
+    const trimmed = line.trim();
+    if (!trimmed) return '';
+    if (trimmed.startsWith('<h') || trimmed.startsWith('<li') || trimmed.startsWith('<div') || trimmed.startsWith('</div') || trimmed.startsWith('<pre') || trimmed.startsWith('</pre') || trimmed.startsWith('<code') || trimmed.startsWith('</code')) {
+      return line;
+    }
+    return `<p class="mb-2.5 leading-relaxed text-zinc-700 dark:text-zinc-300">${line}</p>`;
+  });
+
+  return processedLines.join('\n');
+}
+
+function escapeHtml(text: string): string {
+  return text
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+}
+
+export default function AiChatPage() {
+  const {
+    conversations,
+    activeConversationId,
+    messages,
+    isStreaming,
+    isLoadingConversations,
+    isLoadingMessages,
+    error,
+    fetchConversations,
+    setActiveConversationId,
+    deleteConversation,
+    sendMessage,
+    cancelStreaming,
+    clearError
+  } = useAiStore();
+
+  const [input, setInput] = useState('');
+  const [copiedMap, setCopiedMap] = useState<Record<string, boolean>>({});
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  // Initialize conversations list on mount and clean up streaming on unmount
+  useEffect(() => {
+    fetchConversations();
+    return () => {
+      cancelStreaming();
+    };
+  }, [fetchConversations, cancelStreaming]);
+
+  // Smooth scroll to bottom when new messages arrive
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages, isStreaming]);
+
+  const handleSend = async (e?: React.FormEvent) => {
+    e?.preventDefault();
+    if (!input.trim() || isStreaming) return;
+    const promptToSend = input;
+    setInput('');
+    await sendMessage(promptToSend);
+  };
+
+  const handleSuggestionClick = async (suggestion: string) => {
+    if (isStreaming) return;
+    await sendMessage(suggestion);
+  };
+
+  const startNewChat = () => {
+    if (isStreaming) return;
+    setActiveConversationId(null);
+  };
+
+  const handleCopy = (text: string, msgId: string) => {
+    navigator.clipboard.writeText(text);
+    setCopiedMap((prev) => ({ ...prev, [msgId]: true }));
+    setTimeout(() => {
+      setCopiedMap((prev) => ({ ...prev, [msgId]: false }));
+    }, 2000);
+  };
+
+  return (
+    <div className="flex h-[calc(100vh-140px)] w-full rounded-2xl overflow-hidden border border-zinc-200/80 dark:border-zinc-900 bg-white/50 dark:bg-zinc-950/40 backdrop-blur-xl shadow-xl select-none">
+      
+      {/* LEFT COLUMN: Sidebar Chat List */}
+      <aside className="w-80 border-r border-zinc-200/80 dark:border-zinc-900 flex flex-col bg-white/70 dark:bg-zinc-950/60 backdrop-blur-md shrink-0">
+        <div className="p-4 border-b border-zinc-200/50 dark:border-zinc-900/50 flex flex-col gap-3">
+          <Button 
+            onClick={startNewChat}
+            variant="solid" 
+            className="w-full flex items-center justify-center gap-2"
+            disabled={isStreaming}
+          >
+            <Plus size={16} />
+            New Trip Plan
+          </Button>
+        </div>
+
+        {/* Conversation List */}
+        <div className="flex-1 overflow-y-auto p-3 space-y-1.5 scrollbar-thin">
+          {isLoadingConversations ? (
+            <div className="flex flex-col items-center justify-center h-40 gap-2">
+              <Spinner size="sm" color="current" />
+              <span className="text-xs text-zinc-400 dark:text-zinc-500 font-semibold">Loading itineraries...</span>
+            </div>
+          ) : conversations.length === 0 ? (
+            <div className="p-6 text-center text-zinc-400 dark:text-zinc-600 text-xs">
+              No recent trip plans. Start a new prompt!
+            </div>
+          ) : (
+            conversations.map((c) => {
+              const isActive = activeConversationId === c.id;
+              return (
+                <div
+                  key={c.id}
+                  onClick={() => !isStreaming && setActiveConversationId(c.id)}
+                  className={[
+                    "group flex items-center justify-between px-3 py-2.5 rounded-xl cursor-pointer transition-all duration-200",
+                    isActive
+                      ? "bg-zinc-150/70 dark:bg-zinc-900/60 text-zinc-950 dark:text-zinc-50 border border-zinc-200/30 dark:border-zinc-800/30"
+                      : "text-zinc-500 dark:text-zinc-400 hover:bg-zinc-50 dark:hover:bg-zinc-900/20 hover:text-zinc-800 dark:hover:text-zinc-200"
+                  ].join(' ')}
+                >
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <MessageSquare size={16} className={isActive ? "text-zinc-900 dark:text-zinc-100" : "text-zinc-400"} />
+                    <span className="text-xs font-semibold truncate max-w-[170px] select-none">
+                      {c.title}
+                    </span>
+                  </div>
+
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      if (!isStreaming) {
+                        deleteConversation(c.id);
+                      }
+                    }}
+                    disabled={isStreaming}
+                    className="opacity-0 group-hover:opacity-100 hover:text-red-500 dark:hover:text-red-400 p-1 rounded transition-opacity duration-200"
+                  >
+                    <Trash2 size={13} />
+                  </button>
+                </div>
+              );
+            })
+          )}
+        </div>
+      </aside>
+
+      {/* RIGHT COLUMN: Chat Workspace */}
+      <section className="flex-1 flex flex-col bg-zinc-50/40 dark:bg-zinc-950/20">
+        
+        {/* Error Bar */}
+        {error && (
+          <div className="bg-red-50 dark:bg-red-950/15 border-b border-red-200/50 dark:border-red-900/30 px-6 py-2 flex items-center justify-between text-xs text-red-600 dark:text-red-400 select-none">
+            <span className="flex items-center gap-2">
+              <AlertCircle size={14} />
+              {error}
+            </span>
+            <button onClick={clearError} className="font-bold hover:underline">Dismiss</button>
+          </div>
+        )}
+
+        {/* Dynamic Messages Area */}
+        <div className="flex-1 overflow-y-auto p-6 md:p-8 space-y-6 scrollbar-thin select-text">
+          {isLoadingMessages ? (
+            <div className="flex flex-col items-center justify-center h-full gap-2">
+              <Spinner size="lg" color="current" />
+              <span className="text-sm font-medium text-zinc-400 dark:text-zinc-500">Retrieving trip blueprint...</span>
+            </div>
+          ) : messages.length === 0 ? (
+            // EMBED EMPTY STATE SUGGESTIONS
+            <div className="flex flex-col items-center justify-center h-full text-center max-w-2xl mx-auto space-y-8 select-none">
+              <div className="flex flex-col items-center gap-3">
+                <div className="w-12 h-12 rounded-2xl bg-zinc-950 dark:bg-white text-white dark:text-zinc-950 flex items-center justify-center shadow-lg border border-zinc-200/20">
+                  <Sparkles size={24} className="animate-pulse" />
+                </div>
+                <h2 className="text-xl font-bold tracking-tight text-zinc-800 dark:text-zinc-100 font-outfit mt-2">
+                  TripGenie Travel AI Planner
+                </h2>
+                <p className="text-zinc-400 dark:text-zinc-500 text-xs max-w-sm leading-normal">
+                  Your premium AI-powered concierge. Provide a destination, budget, or travel style to build custom itineraries instantly.
+                </p>
+              </div>
+
+              {/* Grid of suggest prompt cards */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 w-full">
+                <Card 
+                  onClick={() => handleSuggestionClick("Suggest a 5-day cultural itinerary for Kyoto, Japan focusing on historical temples and local dining spots.")}
+                  className="p-4 cursor-pointer hover:scale-[1.02] border border-zinc-200/50 dark:border-zinc-900/60 bg-white/40 dark:bg-zinc-950/40 hover:bg-zinc-50/60 dark:hover:bg-zinc-900/30 transition-all duration-200 text-left space-y-1.5"
+                  glow={false}
+                >
+                  <span className="text-[10px] font-bold tracking-wider text-indigo-500 uppercase">Cultural Explorer</span>
+                  <p className="text-[11px] font-semibold text-zinc-700 dark:text-zinc-300 leading-normal">
+                    "Suggest a 5-day cultural itinerary for Kyoto, Japan temple spots..."
+                  </p>
+                </Card>
+                
+                <Card 
+                  onClick={() => handleSuggestionClick("Design a budget-friendly weekend roadtrip to Yosemite National park including hiking trail guides.")}
+                  className="p-4 cursor-pointer hover:scale-[1.02] border border-zinc-200/50 dark:border-zinc-900/60 bg-white/40 dark:bg-zinc-950/40 hover:bg-zinc-50/60 dark:hover:bg-zinc-900/30 transition-all duration-200 text-left space-y-1.5"
+                  glow={false}
+                >
+                  <span className="text-[10px] font-bold tracking-wider text-emerald-500 uppercase">Nature & Roadtrip</span>
+                  <p className="text-[11px] font-semibold text-zinc-700 dark:text-zinc-300 leading-normal">
+                    "Design a budget-friendly weekend roadtrip to Yosemite park..."
+                  </p>
+                </Card>
+
+                <Card 
+                  onClick={() => handleSuggestionClick("Plan a culinary and food tour guide in Rome, Italy. Focus on authentic pizza, pasta, and gelaterias.")}
+                  className="p-4 cursor-pointer hover:scale-[1.02] border border-zinc-200/50 dark:border-zinc-900/60 bg-white/40 dark:bg-zinc-950/40 hover:bg-zinc-50/60 dark:hover:bg-zinc-900/30 transition-all duration-200 text-left space-y-1.5"
+                  glow={false}
+                >
+                  <span className="text-[10px] font-bold tracking-wider text-amber-500 uppercase">Food & Culinary</span>
+                  <p className="text-[11px] font-semibold text-zinc-700 dark:text-zinc-300 leading-normal">
+                    "Plan a culinary and food tour guide in Rome, Italy. Gelato spots..."
+                  </p>
+                </Card>
+              </div>
+            </div>
+          ) : (
+            messages.map((m) => {
+              const isUser = m.role === 'user';
+              return (
+                <div 
+                  key={m.id}
+                  className={[
+                    "flex flex-col max-w-[80%]",
+                    isUser ? "ml-auto items-end" : "mr-auto items-start"
+                  ].join(' ')}
+                >
+                  <div className="flex items-center gap-2 mb-1.5 select-none text-[10px] uppercase font-bold tracking-widest text-zinc-400 font-mono">
+                    <span>{isUser ? 'You' : 'TripGenie AI'}</span>
+                  </div>
+
+                  <div 
+                    className={[
+                      "px-4 py-3 rounded-2xl text-sm relative group",
+                      isUser
+                        ? "bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-950 shadow-md rounded-tr-none"
+                        : "bg-white/50 dark:bg-zinc-900/50 border border-zinc-200/40 dark:border-zinc-800/40 backdrop-blur-sm rounded-tl-none text-zinc-800 dark:text-zinc-200 shadow-sm"
+                    ].join(' ')}
+                  >
+                    {isUser ? (
+                      <p className="leading-relaxed whitespace-pre-wrap">{m.content}</p>
+                    ) : (
+                      <div>
+                        {/* Copy Code button for assistant messages */}
+                        <div className="absolute top-2.5 right-2.5 opacity-0 group-hover:opacity-100 transition-opacity duration-200 select-none">
+                          <button
+                            onClick={() => handleCopy(m.content, m.id)}
+                            className="p-1 rounded bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-750 text-zinc-500 dark:text-zinc-400 transition-colors"
+                            title="Copy response"
+                          >
+                            {copiedMap[m.id] ? <Check size={13} className="text-emerald-500" /> : <Copy size={13} />}
+                          </button>
+                        </div>
+                        
+                        {m.streamingState === 'Pending' ? (
+                          <div className="flex items-center gap-2.5 py-1 text-zinc-400 dark:text-zinc-500 select-none">
+                            <Spinner size="sm" color="current" />
+                            <span className="text-xs font-semibold animate-pulse">Drafting itinerary layout...</span>
+                          </div>
+                        ) : (
+                          <div 
+                            className="prose dark:prose-invert prose-xs leading-relaxed max-w-none text-zinc-700 dark:text-zinc-300"
+                            dangerouslySetInnerHTML={{ __html: parseAndSanitizeMarkdown(m.content) }}
+                          />
+                        )}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              );
+            })
+          )}
+          <div ref={messagesEndRef} />
+        </div>
+
+        {/* Prompt Input Form */}
+        <div className="p-4 border-t border-zinc-200/80 dark:border-zinc-900 bg-white/70 dark:bg-zinc-950/60 backdrop-blur-md">
+          <form onSubmit={handleSend} className="flex gap-3 relative items-center max-w-4xl mx-auto">
+            <input
+              type="text"
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              disabled={isStreaming}
+              placeholder="Ask anything (e.g. Plan a 3-day adventure roadtrip to Grand Canyon under $500)..."
+              className="flex-1 px-4 py-3 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white/50 dark:bg-zinc-900/50 backdrop-blur-sm text-sm text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-1 focus:ring-zinc-950 dark:focus:ring-zinc-50 transition-all select-text pr-24"
+            />
+            
+            <div className="absolute right-2 flex items-center gap-2 select-none">
+              {isStreaming ? (
+                <Button
+                  type="button"
+                  onClick={cancelStreaming}
+                  className="bg-red-500 hover:bg-red-600 text-white p-2.5 rounded-lg flex items-center justify-center shadow-lg border-0 hover:scale-[1.02] shrink-0"
+                >
+                  <StopCircle size={16} />
+                </Button>
+              ) : (
+                <Button
+                  type="submit"
+                  disabled={!input.trim()}
+                  className={[
+                    "p-2.5 rounded-lg flex items-center justify-center shrink-0 transition-transform duration-200",
+                    input.trim() ? "hover:scale-[1.02]" : "opacity-50 cursor-not-allowed"
+                  ].join(' ')}
+                >
+                  <Send size={16} />
+                </Button>
+              )}
+            </div>
+          </form>
+        </div>
+      </section>
+    </div>
+  );
+}

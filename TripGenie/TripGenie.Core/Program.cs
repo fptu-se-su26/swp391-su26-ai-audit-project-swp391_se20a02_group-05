@@ -143,6 +143,18 @@ builder.Services.AddRateLimiter(options =>
                 Window = TimeSpan.FromMinutes(envConfig.RateLimit.RegisterWindowMinutes),
                 QueueLimit = 0
             }));
+
+    options.AddPolicy("AiChatLimit", context =>
+        RateLimitPartition.GetFixedWindowLimiter(
+            partitionKey: context.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value 
+                          ?? context.Connection.RemoteIpAddress?.ToString() 
+                          ?? "unknown",
+            factory: _ => new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = 10,
+                Window = TimeSpan.FromMinutes(1),
+                QueueLimit = 0
+            }));
 });
 
 // Configure EF Core with PostgreSQL (MapEnum inside UseNpgsql handles both EF Core + ADO.NET layers)
@@ -166,6 +178,14 @@ builder.Services.AddScoped<ITokenService, TokenService>();
 builder.Services.AddScoped<IAccountService, AccountService>();
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IPermissionService, PermissionService>();
+
+// Register AI Service
+builder.Services.AddScoped<IHmacSignatureService, HmacSignatureService>();
+builder.Services.AddHttpClient("AiServiceClient", client =>
+{
+    client.BaseAddress = new Uri(envConfig.Ai.FastApiBaseUrl);
+    client.Timeout = TimeSpan.FromMinutes(5); // Long timeout for Claude planning
+});
 
 // Register Email Infrastructure & Transport Services
 builder.Services.AddEmailInfrastructure(builder.Configuration);
@@ -240,8 +260,8 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseExceptionHandler();
-app.UseMiddleware<SecurityHeadersMiddleware>();
 app.UseCors("AllowFrontend");
+app.UseMiddleware<SecurityHeadersMiddleware>();
 app.UseRateLimiter();
 app.UseAuthentication();
 app.UseAuthorization();

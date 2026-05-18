@@ -61,7 +61,7 @@ public class RegistrationFlowTests : BaseIntegrationTest
     }
 
     [Fact]
-    public async Task Register_With_Duplicate_Email_Active_Should_Return_Silent_Success()
+    public async Task Register_With_Duplicate_Email_Active_Should_Return_Conflict()
     {
         await SeedDefaultRolesAsync();
 
@@ -85,12 +85,12 @@ public class RegistrationFlowTests : BaseIntegrationTest
 
         // Try to register same email again
         var response2 = await Client.PostAsJsonAsync("/api/auth/register", userRequest).ConfigureAwait(false);
-        response2.StatusCode.Should().Be(HttpStatusCode.OK);
+        response2.StatusCode.Should().Be(HttpStatusCode.Conflict);
 
-        var data2 = await response2.Content.ReadFromJsonAsync<RegisterResponse>().ConfigureAwait(false);
-        data2.Should().NotBeNull();
-        data2!.StatusCode.Should().Be("REGISTRATION_ALREADY_ACTIVE");
-        data2.UiAction.Should().Be("SHOW_SUCCESS_TOAST");
+        var problem = await response2.Content.ReadFromJsonAsync<Microsoft.AspNetCore.Mvc.ProblemDetails>().ConfigureAwait(false);
+        problem.Should().NotBeNull();
+        problem!.Extensions.Should().ContainKey("code");
+        problem.Extensions["code"]!.ToString().Should().Be(TripGenie.API.Application.Exceptions.AuthErrorCodes.EmailAlreadyExists);
     }
 
     [Fact]

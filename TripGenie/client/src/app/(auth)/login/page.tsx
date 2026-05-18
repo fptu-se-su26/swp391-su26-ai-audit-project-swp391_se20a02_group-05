@@ -163,16 +163,26 @@ function LoginContent() {
 
   const initializeGoogleSignIn = () => {
     if (typeof window !== 'undefined' && (window as any).google?.accounts?.id) {
-      (window as any).google.accounts.id.initialize({
-        client_id: process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || 'your_google_client_id_here',
-        callback: handleGoogleCredentialResponse,
-      });
+      // Set the dynamic listener to point to the current callback context
+      (window as any).__googleIdentityListener = handleGoogleCredentialResponse;
+
+      if (!(window as any).__googleIdentityInitialized) {
+        (window as any).google.accounts.id.initialize({
+          client_id: process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || 'your_google_client_id_here',
+          callback: (response: any) => {
+            if (typeof (window as any).__googleIdentityListener === 'function') {
+              (window as any).__googleIdentityListener(response);
+            }
+          },
+        });
+        (window as any).__googleIdentityInitialized = true;
+      }
 
       const container = document.getElementById('google-signin-button');
       if (container) {
         (window as any).google.accounts.id.renderButton(
           container,
-          { theme: 'outline', size: 'large', width: '100%', text: 'continue_with' }
+          { theme: 'outline', size: 'large', width: 350, text: 'continue_with' }
         );
       }
     }
@@ -259,7 +269,7 @@ function LoginContent() {
       </div>
 
       {/* Google OAuth Premium Overlay Button */}
-      <div className="relative w-full h-11 select-none">
+      <div className="relative w-[350px] h-11 mx-auto select-none">
         {/* Beautiful Custom Premium Button */}
         <div className="absolute inset-0 flex items-center justify-center gap-3 w-full h-full bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl hover:bg-zinc-50 dark:hover:bg-zinc-850 active:scale-[0.98] transition-all duration-200 pointer-events-none shadow-sm">
           <svg className="w-5 h-5" viewBox="0 0 24 24">

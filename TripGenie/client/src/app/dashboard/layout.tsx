@@ -6,7 +6,7 @@ import { useSessionTimeout } from '../../hooks/use-session-timeout';
 import { SessionTimeoutModal } from '../../components/ui/session-timeout-modal';
 import { Button } from '../../components/ui/button';
 import { useRouter, usePathname } from 'next/navigation';
-import { Compass, User as UserIcon, Building2, ShieldAlert, LayoutDashboard, Globe } from 'lucide-react';
+import { Compass, User as UserIcon, Building2, ShieldAlert, LayoutDashboard, Globe, Sparkles } from 'lucide-react';
 import Link from 'next/link';
 import { AuthAvatar } from '../../components/ui/auth-avatar';
 
@@ -75,6 +75,19 @@ export default function DashboardLayout({
           >
             <LayoutDashboard size={18} />
             Traveler Hub
+          </Link>
+
+          <Link
+            href="/dashboard/chat"
+            className={[
+              "flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-all duration-200",
+              pathname === '/dashboard/chat'
+                ? "bg-zinc-100 dark:bg-zinc-900 text-zinc-950 dark:text-zinc-50"
+                : "text-zinc-500 hover:bg-zinc-50 dark:hover:bg-zinc-900/40 hover:text-zinc-800 dark:hover:text-zinc-200",
+            ].join(' ')}
+          >
+            <Sparkles size={18} />
+            AI Planner Chat
           </Link>
 
           {/* Business Link (gated display or direct path) */}
