@@ -23,7 +23,7 @@ The backend is built utilizing a high-performance, industry-standard stack desig
 The backend project structure is organized into decoupled layers, enforcing a strict dependency rule (outer layers depend inward, and the core domain depends on nothing):
 
 ```
-TripGenie/
+TripGenie.Core/
 ├── API/                    # Presentation Layer (REST Controllers, Middlewares, Extensions)
 │   ├── Controllers/        # HTTP Handlers (AuthController, SystemController, EmailTestController)
 │   ├── Extensions/         # Startup config helpers (Authorization, Email, Middlewares)

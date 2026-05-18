@@ -177,7 +177,7 @@ The client features a Next.js Edge Middleware proxy ([`src/proxy.ts`](file:///d:
 ### 1. Security Proxy Redirect Loop (Auth Page to Dashboard and back)
 *   **Symptom**: Logging in successfully redirects you to `/dashboard`, which immediately redirects you back to `/login`.
 *   **Root Cause**: The client-side `JWT_SECRET` in `.env.local` is missing, mismatched, or different from the backend's `JWT_KEY`. Because of this, Next.js Edge cannot cryptographically decrypt the token and flags the request as unauthorized, while the backend accepts it as valid.
-*   **Solution**: Ensure `client/.env.local` contains the exact same key as `TripGenie/.env`'s `JWT_KEY`.
+*   **Solution**: Ensure `client/.env.local` contains the exact same key as `TripGenie.Core/.env`'s `JWT_KEY`.
 
 ### 2. CORS Preflight Failures
 *   **Symptom**: Console shows `Access-Control-Allow-Origin` errors on API requests.
