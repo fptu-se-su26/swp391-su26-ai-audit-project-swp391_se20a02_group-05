@@ -12,6 +12,9 @@ using System.Text;
 using StackExchange.Redis;
 using Microsoft.OpenApi;
 using Npgsql;
+using System.Threading.RateLimiting;
+using Microsoft.AspNetCore.RateLimiting;
+using TripGenie.API.Infrastructure.Diagnostics;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -24,11 +27,32 @@ if (File.Exists(envPath)) {
             Environment.SetEnvironmentVariable(parts[0].Trim(), parts[1].Trim());
         }
     }
+    // Re-build configuration to populate dynamically injected variables
+    builder.Configuration.AddEnvironmentVariables();
 }
 
 // 2. Validate & Resolve Configuration (Enterprise Clean Code: Fail Fast)
 var envConfig = EnvValidator.Validate(builder.Configuration);
 builder.Services.AddSingleton(envConfig);
+
+// Configure CORS (Cross-Origin Resource Sharing)
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("AllowFrontend", policy =>
+    {
+        var allowedOrigins = new List<string> { "http://localhost:3000", "http://127.0.0.1:3000" };
+        var configuredFrontend = envConfig.Auth.FrontendUrl?.TrimEnd('/');
+        if (!string.IsNullOrEmpty(configuredFrontend) && !allowedOrigins.Contains(configuredFrontend))
+        {
+            allowedOrigins.Add(configuredFrontend);
+        }
+
+        policy.WithOrigins(allowedOrigins.ToArray())
+              .AllowAnyHeader()
+              .AllowAnyMethod()
+              .AllowCredentials();
+    });
+});
 
 // Add services to the container.
 builder.Services.AddOpenApi(options =>
@@ -60,7 +84,66 @@ builder.Services.AddOpenApi(options =>
     });
 });
 builder.Services.AddControllers();
+builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
+builder.Services.AddProblemDetails();
 builder.Services.AddHttpContextAccessor();
+
+
+// Configure IP-partitioned Rate Limiting
+builder.Services.AddRateLimiter(options =>
+{
+    options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+
+    options.AddPolicy("ForgotPasswordLimit", context =>
+        RateLimitPartition.GetFixedWindowLimiter(
+            partitionKey: context.Connection.RemoteIpAddress?.ToString() ?? context.Request.Headers["X-Forwarded-For"].ToString() ?? "unknown",
+            factory: _ => new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = envConfig.RateLimit.ForgotPasswordPermitLimit,
+                Window = TimeSpan.FromMinutes(envConfig.RateLimit.ForgotPasswordWindowMinutes),
+                QueueLimit = 0
+            }));
+
+    options.AddPolicy("ResetPasswordLimit", context =>
+        RateLimitPartition.GetFixedWindowLimiter(
+            partitionKey: context.Connection.RemoteIpAddress?.ToString() ?? context.Request.Headers["X-Forwarded-For"].ToString() ?? "unknown",
+            factory: _ => new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = envConfig.RateLimit.ResetPasswordPermitLimit,
+                Window = TimeSpan.FromMinutes(envConfig.RateLimit.ResetPasswordWindowMinutes),
+                QueueLimit = 0
+            }));
+
+    options.AddPolicy("ResendVerificationLimit", context =>
+        RateLimitPartition.GetFixedWindowLimiter(
+            partitionKey: context.Connection.RemoteIpAddress?.ToString() ?? context.Request.Headers["X-Forwarded-For"].ToString() ?? "unknown",
+            factory: _ => new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = envConfig.RateLimit.ResendVerificationPermitLimit,
+                Window = TimeSpan.FromMinutes(envConfig.RateLimit.ResendVerificationWindowMinutes),
+                QueueLimit = 0
+            }));
+
+    options.AddPolicy("VerifyEmailLimit", context =>
+        RateLimitPartition.GetFixedWindowLimiter(
+            partitionKey: context.Connection.RemoteIpAddress?.ToString() ?? context.Request.Headers["X-Forwarded-For"].ToString() ?? "unknown",
+            factory: _ => new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = envConfig.RateLimit.VerifyEmailPermitLimit,
+                Window = TimeSpan.FromMinutes(envConfig.RateLimit.VerifyEmailWindowMinutes),
+                QueueLimit = 0
+            }));
+
+    options.AddPolicy("RegisterLimit", context =>
+        RateLimitPartition.GetFixedWindowLimiter(
+            partitionKey: context.Connection.RemoteIpAddress?.ToString() ?? context.Request.Headers["X-Forwarded-For"].ToString() ?? "unknown",
+            factory: _ => new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = envConfig.RateLimit.RegisterPermitLimit,
+                Window = TimeSpan.FromMinutes(envConfig.RateLimit.RegisterWindowMinutes),
+                QueueLimit = 0
+            }));
+});
 
 // Configure EF Core with PostgreSQL (MapEnum inside UseNpgsql handles both EF Core + ADO.NET layers)
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
@@ -69,6 +152,9 @@ builder.Services.AddDbContext<ApplicationDbContext>(options =>
 
 // Configure Redis
 builder.Services.AddSingleton<IConnectionMultiplexer>(ConnectionMultiplexer.Connect(envConfig.Redis.ConnectionString));
+
+// Register Diagnostics & Telemetry
+builder.Services.AddSingleton<AuthMetrics>();
 
 // Register Infrastructure & Data Services
 builder.Services.AddScoped<IIdentityRepository, IdentityRepository>();
@@ -80,6 +166,13 @@ builder.Services.AddScoped<ITokenService, TokenService>();
 builder.Services.AddScoped<IAccountService, AccountService>();
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IPermissionService, PermissionService>();
+
+// Register Email Infrastructure & Transport Services
+builder.Services.AddEmailInfrastructure(builder.Configuration);
+
+// Register Background Outbox Processor and Token Sweeper Job
+builder.Services.AddHostedService<EmailOutboxBackgroundProcessor>();
+builder.Services.AddHostedService<TokenCleanupBackgroundJob>();
 
 
 // Configure JWT Authentication
@@ -116,6 +209,25 @@ builder.Services.AddCustomAuthorization();
 
 var app = builder.Build();
 
+// 3. Automatically initialize/sync the database schema at application startup
+using (var scope = app.Services.CreateScope())
+{
+    var services = scope.ServiceProvider;
+    try
+    {
+        var context = services.GetRequiredService<ApplicationDbContext>();
+        var logger = services.GetRequiredService<ILogger<Program>>();
+        logger.LogInformation("Initializing database schema and checking synchronization...");
+        await DbInitializer.InitializeAsync(context);
+        logger.LogInformation("Database schema initialized and synchronized successfully.");
+    }
+    catch (Exception ex)
+    {
+        var logger = services.GetRequiredService<ILogger<Program>>();
+        logger.LogError(ex, "An error occurred while initializing the database schema.");
+    }
+}
+
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
 {
@@ -127,9 +239,15 @@ if (app.Environment.IsDevelopment())
     });
 }
 
+app.UseExceptionHandler();
+app.UseMiddleware<SecurityHeadersMiddleware>();
+app.UseCors("AllowFrontend");
+app.UseRateLimiter();
 app.UseAuthentication();
 app.UseAuthorization();
 
+
+app.MapHealthChecks("/health");
 app.MapControllers();
 
 app.Run();

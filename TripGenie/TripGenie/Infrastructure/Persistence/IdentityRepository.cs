@@ -19,8 +19,8 @@ public class IdentityRepository : IIdentityRepository
         const string sql = @"
             SELECT r.name 
             FROM roles r
-            JOIN users u ON r.id = u.role_id
-            WHERE u.id = @UserId";
+            JOIN user_roles ur ON r.id = ur.role_id
+            WHERE ur.user_id = @UserId";
         
         return await _dbConnection.QueryAsync<string>(sql, new { UserId = userId });
     }
@@ -31,8 +31,8 @@ public class IdentityRepository : IIdentityRepository
             SELECT DISTINCT p.name 
             FROM permissions p
             JOIN role_permissions rp ON p.id = rp.permission_id
-            JOIN users u ON rp.role_id = u.role_id
-            WHERE u.id = @UserId";
+            JOIN user_roles ur ON rp.role_id = ur.role_id
+            WHERE ur.user_id = @UserId";
         
         return await _dbConnection.QueryAsync<string>(sql, new { UserId = userId });
     }

@@ -18,7 +18,7 @@ public class PermissionService : IPermissionService
     public async Task<List<string>> GetPermissionsByRoleIdAsync(Guid roleId)
     {
         const string sql = @"
-            SELECT p.code 
+            SELECT p.name 
             FROM permissions p
             JOIN role_permissions rp ON p.id = rp.permission_id
             WHERE rp.role_id = @RoleId";

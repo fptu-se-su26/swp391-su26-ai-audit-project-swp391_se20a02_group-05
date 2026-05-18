@@ -11,4 +11,7 @@ public interface ICacheService
     Task AddToSetAsync(string key, string value);
     Task<IEnumerable<string>> GetSetAsync(string key);
     Task RemoveFromSetAsync(string key, string value);
+    Task<bool> AcquireLockAsync(string key, string value, TimeSpan expiry);
+    Task<bool> ReleaseLockAsync(string key, string value);
 }
+

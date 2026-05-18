@@ -62,4 +62,15 @@ public class CacheService : ICacheService
     {
         await _db.SetRemoveAsync(key, value);
     }
+
+    public async Task<bool> AcquireLockAsync(string key, string value, TimeSpan expiry)
+    {
+        return await _db.LockTakeAsync(key, value, expiry);
+    }
+
+    public async Task<bool> ReleaseLockAsync(string key, string value)
+    {
+        return await _db.LockReleaseAsync(key, value);
+    }
 }
+

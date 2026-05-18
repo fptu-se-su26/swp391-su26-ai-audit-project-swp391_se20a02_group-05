@@ -1,0 +1,32 @@
+{
+  "roles": {
+    "SUPER_ADMIN": {
+      "displayName": "System Administrator",
+      "description": "Root access to all modules",
+      "permissions": ["*:*:*"]
+    },
+    "USER": {
+      "displayName": "General User",
+      "description": "Standard user access for trip planning",
+      "permissions": [
+        "trips:planner:view",
+        "trips:planner:create",
+        "trips:planner:edit",
+        "trips:collaborator:join",
+        "trips:collaborator:comment"
+      ]
+    }
+  },
+  "modules": {
+    "system": [
+      { "name": "*:*:*", "displayName": "Global Wildcard", "description": "Full system-wide override access" }
+    ],
+    "trips": [
+      { "name": "trips:planner:view", "displayName": "View Itineraries", "description": "Allows viewing assigned or public itineraries" },
+      { "name": "trips:planner:create", "displayName": "Create Itineraries", "description": "Allows creating new trip itineraries" },
+      { "name": "trips:planner:edit", "displayName": "Modify Itineraries", "description": "Allows editing own trip itineraries" },
+      { "name": "trips:collaborator:join", "displayName": "Join Collaboration", "description": "Allows joining shared dynamic planning boards" },
+      { "name": "trips:collaborator:comment", "displayName": "Comment on Plan", "description": "Allows commenting on shared trip items" }
+    ]
+  }
+}

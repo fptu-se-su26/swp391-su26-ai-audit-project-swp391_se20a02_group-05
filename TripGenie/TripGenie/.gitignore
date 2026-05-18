@@ -75,3 +75,6 @@ UserSecrets/
 
 # Local Environment Files
 .env
+
+# allow env example file
+!.env.example

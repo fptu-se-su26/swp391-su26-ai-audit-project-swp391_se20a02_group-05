@@ -36,22 +36,34 @@ public class SystemController : ControllerBase {
     }
 
     [HttpGet("health")]
-    public IActionResult GetHealth() {
+    public async Task<IActionResult> GetHealth() {
+        var result = await _systemService.CheckSystemHealthAsync();
+
+        if (!result.Success)
+        {
+            return StatusCode(503, result);
+        }
+
+        return Ok(result);
+    }
+
+    [HttpGet("ping")]
+    public IActionResult Ping() {
         return Ok(new {
-            Status = "Healthy",
-            Checks = new[] {
-                new { Name = "Database", Status = "Up" },
-                new { Name = "Storage", Status = "Up" }
-            }
+            success = true,
+            message = "pong",
+            timestamp = DateTime.UtcNow
         });
     }
 
     [HttpGet("version")]
     public IActionResult GetVersion() {
         return Ok(new {
-            Version = "1.0.0",
-            Environment = "Development",
-            BuildDate = "2026-05-14"
+            success = true,
+            version = "1.0.0",
+            environment = "Development",
+            buildDate = "2026-05-14",
+            timestamp = DateTime.UtcNow
         });
     }
 

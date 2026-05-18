@@ -127,6 +127,8 @@ CREATE TABLE refresh_tokens (
     created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
     revoked_at TIMESTAMP WITH TIME ZONE,       -- Marks token as invalid before expiration
     replaced_by_token VARCHAR(255),            -- Tracks token rotation chains for security
+    user_agent VARCHAR(500),
+    ip_address VARCHAR(45),
 
     CONSTRAINT fk_refresh_tokens_user FOREIGN KEY (user_id) 
         REFERENCES users(id) ON DELETE CASCADE
@@ -135,6 +137,62 @@ CREATE TABLE refresh_tokens (
 -- Optimize queries for token validation and user session retrieval
 CREATE INDEX idx_refresh_tokens_token ON refresh_tokens(token);
 CREATE INDEX idx_refresh_tokens_user ON refresh_tokens(user_id);
+
+-- Manages one-time-use email verification tokens
+CREATE TABLE verification_tokens (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID NOT NULL,
+    token_hash VARCHAR(255) NOT NULL UNIQUE,
+    expires_at TIMESTAMP WITH TIME ZONE NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+    consumed_at TIMESTAMP WITH TIME ZONE,
+
+    CONSTRAINT fk_verification_tokens_user FOREIGN KEY (user_id) 
+        REFERENCES users(id) ON DELETE CASCADE
+);
+
+-- Manages one-time-use password reset tokens
+CREATE TABLE reset_password_tokens (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID NOT NULL,
+    token_hash VARCHAR(255) NOT NULL UNIQUE,
+    expires_at TIMESTAMP WITH TIME ZONE NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+    consumed_at TIMESTAMP WITH TIME ZONE,
+
+    CONSTRAINT fk_reset_password_tokens_user FOREIGN KEY (user_id) 
+        REFERENCES users(id) ON DELETE CASCADE
+);
+
+-- Outbox Pattern Table for reliable asynchronous email delivery
+CREATE TABLE outbox_messages (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    type VARCHAR(100) NOT NULL,
+    payload TEXT NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+    processed_at TIMESTAMP WITH TIME ZONE,
+    error TEXT
+);
+
+-- Security Audit Logs Table for tracking major events
+CREATE TABLE audit_logs (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID,
+    event_type VARCHAR(100) NOT NULL,
+    description TEXT NOT NULL,
+    ip_address VARCHAR(45),
+    user_agent VARCHAR(500),
+    created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+
+    CONSTRAINT fk_audit_logs_user FOREIGN KEY (user_id) 
+        REFERENCES users(id) ON DELETE SET NULL
+);
+
+
+-- Optimized Partial Indexes (exclude consumed/processed entries to keep index small)
+CREATE INDEX idx_verification_tokens_active ON verification_tokens(token_hash) WHERE consumed_at IS NULL;
+CREATE INDEX idx_reset_password_tokens_active ON reset_password_tokens(token_hash) WHERE consumed_at IS NULL;
+CREATE INDEX idx_outbox_messages_pending ON outbox_messages(created_at) WHERE processed_at IS NULL;
 
 -- =========================================================
 -- 8. TRIGGERS REGISTRATION

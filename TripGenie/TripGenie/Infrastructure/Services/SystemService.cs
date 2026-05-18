@@ -1,16 +1,22 @@
 using TripGenie.API.Application.Interfaces;
 using TripGenie.API.Infrastructure.Persistence;
 using TripGenie.API.Application.DTOs;
+using StackExchange.Redis;
+using Microsoft.Extensions.Hosting;
 
 namespace TripGenie.API.Infrastructure.Services;
 
 public class SystemService : ISystemService
 {
     private readonly ApplicationDbContext _context;
+    private readonly IConnectionMultiplexer _redis;
+    private readonly IHostEnvironment _env;
 
-    public SystemService(ApplicationDbContext context)
+    public SystemService(ApplicationDbContext context, IConnectionMultiplexer redis, IHostEnvironment env)
     {
         _context = context;
+        _redis = redis;
+        _env = env;
     }
 
     public async Task<DatabaseStatusResponse> CheckDatabaseStatusAsync()
@@ -36,5 +42,47 @@ public class SystemService : ISystemService
                 Timestamp = DateTime.UtcNow
             };
         }
+    }
+
+    public async Task<SystemHealthResponse> CheckSystemHealthAsync()
+    {
+        bool databaseHealthy = false;
+        try
+        {
+            databaseHealthy = await _context.Database.CanConnectAsync();
+        }
+        catch (Exception)
+        {
+            databaseHealthy = false;
+        }
+
+        bool redisHealthy = false;
+        try
+        {
+            redisHealthy = _redis.IsConnected;
+        }
+        catch (Exception)
+        {
+            redisHealthy = false;
+        }
+
+        // Auth service depends on PostgreSQL (database) and Redis (permission/token cache) being online
+        bool authHealthy = databaseHealthy && redisHealthy;
+
+        bool success = databaseHealthy && redisHealthy && authHealthy;
+
+        return new SystemHealthResponse
+        {
+            Success = success,
+            Message = success ? "System operational" : "System degraded or experiencing issues",
+            Timestamp = DateTime.UtcNow,
+            Environment = _env.EnvironmentName,
+            Services = new HealthServices
+            {
+                Database = databaseHealthy ? "healthy" : "unhealthy",
+                Redis = redisHealthy ? "healthy" : "unhealthy",
+                Auth = authHealthy ? "healthy" : "unhealthy"
+            }
+        };
     }
 }
