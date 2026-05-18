@@ -1,0 +1,45 @@
+name: TripGenie Backend Integration & Verification CI
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+
+    services:
+      # Docker daemon is natively active in ubuntu-latest, so Testcontainers
+      # PostgreSQL and Redis containers boot up and run out-of-the-box.
+
+    steps:
+    - name: Checkout Codebase
+      uses: actions/checkout@v4
+
+    - name: Setup .NET SDK 10.0
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: '10.0.x'
+
+    - name: Restore NuGet Dependencies
+      run: dotnet restore TripGenie/TripGenie/TripGenie.sln
+
+    - name: Compile Solution (Release Configuration)
+      run: dotnet build TripGenie/TripGenie/TripGenie.sln --configuration Release --no-restore
+
+    - name: Run Test Suites (Excluding Performance & Stress Traits)
+      run: |
+        dotnet test TripGenie/TripGenie/TripGenie.sln \
+          --configuration Release \
+          --no-build \
+          --filter "Category!=Performance" \
+          --collect:"XPlat Code Coverage" \
+          --settings TripGenie/TripGenie/tests/coverlet.runsettings
+
+    - name: Upload Test Coverage Artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: code-coverage-report
+        path: '**/TestResults/**/*.xml'
