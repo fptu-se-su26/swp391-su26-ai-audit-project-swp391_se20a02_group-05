@@ -4,7 +4,7 @@ Welcome to **TripGenie AI**, an enterprise-grade full-stack travel planning appl
 
 This repository is structured as a monorepo containing:
 *   **Frontend (Client Layer)**: [`/client`](file:///d:/Coding%20Space/FPT/SWP391/swp391-su26-ai-audit-project-swp391_se20a02_group-05/TripGenie/client) — Built on Next.js 16 (App Router), React 19, HeroUI v3, Tailwind CSS v4, and Zustand.
-*   **Backend (Server Layer)**: [`/TripGenie`](file:///d:/Coding%20Space/FPT/SWP391/swp391-su26-ai-audit-project-swp391_se20a02_group-05/TripGenie/TripGenie) — Built on ASP.NET Core v10, PostgreSQL, Entity Framework Core, Redis, and Claude AI API.
+*   **Backend (Server Layer)**: [`/TripGenie.Core`](file:///d:/Coding%20Space/FPT/SWP391/swp391-su26-ai-audit-project-swp391_se20a02_group-05/TripGenie/TripGenie.Core) — Built on ASP.NET Core v10, PostgreSQL, Entity Framework Core, Redis, and Claude AI API.
 
 ---
 
@@ -90,7 +90,7 @@ CREATE DATABASE tripgenie_db;
 #### Step 3: Configure and Run the Backend
 1.  Navigate into the backend project root:
     ```bash
-    cd TripGenie
+    cd TripGenie.Core
     ```
 2.  Create your local `.env` configuration file by duplicating the provided template:
     ```bash
@@ -164,4 +164,4 @@ Verify that the full-stack setup is fully integrated and functioning by checking
 
 For detailed deep-dives into specialized layers, refer to:
 *   📚 **[Frontend Developer Guide](file:///d:/Coding%20Space/FPT/SWP391/swp391-su26-ai-audit-project-swp391_se20a02_group-05/TripGenie/client/README.md)**: Details on Next.js edge proxies, HeroUI styling variables, Zustand stores, and state hydration.
-*   📚 **[Backend Developer Guide](file:///d:/Coding%20Space/FPT/SWP391/swp391-su26-ai-audit-project-swp391_se20a02_group-05/TripGenie/TripGenie/README.md)**: Details on Clean Architecture layers, outbox patterns, rate limiter rules, MailKit SMTP transport failovers, and EF Core enum mappings.
+*   📚 **[Backend Developer Guide](file:///d:/Coding%20Space/FPT/SWP391/swp391-su26-ai-audit-project-swp391_se20a02_group-05/TripGenie/TripGenie.Core/README.md)**: Details on Clean Architecture layers, outbox patterns, rate limiter rules, MailKit SMTP transport failovers, and EF Core enum mappings.
