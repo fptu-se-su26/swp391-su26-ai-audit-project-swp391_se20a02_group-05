@@ -4,14 +4,16 @@ import React from 'react';
 import { useAuth } from '../../features/auth/hooks/use-auth';
 import { useRouter } from 'next/navigation';
 import { Dropdown, Avatar, Label, Separator, Button } from '@heroui/react';
-import { LogOut, LayoutDashboard, Settings, Check } from 'lucide-react';
+import { LogOut, LayoutDashboard, Settings, Check, Sun, Moon, Waves } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { setCookie } from '../../services/axios-client';
+import { useThemeStore } from '../../hooks/use-theme-store';
 
 export function AuthAvatar() {
   const { user, logout } = useAuth();
   const router = useRouter();
   const { t, i18n } = useTranslation(['navbar', 'common']);
+  const { theme, setTheme } = useThemeStore();
 
   if (!user) return null;
 
@@ -47,6 +49,15 @@ export function AuthAvatar() {
         }
         i18n.changeLanguage('en');
         break;
+      case 'theme-light':
+        setTheme('light');
+        break;
+      case 'theme-dark':
+        setTheme('dark');
+        break;
+      case 'theme-ocean':
+        setTheme('ocean');
+        break;
       case 'logout':
         await logout(true);
         router.push('/login');
@@ -72,7 +83,7 @@ export function AuthAvatar() {
         </Avatar>
       </Button>
 
-      <Dropdown.Popover className="min-w-[240px] bg-white/95 dark:bg-zinc-950/95 backdrop-blur-xl border border-zinc-200/80 dark:border-zinc-900 shadow-2xl rounded-2xl p-1.5 animate-in fade-in slide-in-from-top-2 duration-200 z-50">
+      <Dropdown.Popover className="min-w-[240px] bg-white/95 dark:bg-zinc-950/95 backdrop-blur-xl border border-zinc-200/80 dark:border-zinc-900 shadow-2xl rounded-xl p-1.5 animate-in fade-in slide-in-from-top-2 duration-200 z-50">
         <Dropdown.Menu onAction={handleAction} className="outline-none">
           {/* Header custom item (non-clickable info panel) */}
           <Dropdown.Item id="user-info" textValue={user.fullName} className="px-3 py-2.5 pointer-events-none select-none">
@@ -137,7 +148,6 @@ export function AuthAvatar() {
           >
             <div className="flex items-center justify-between w-full">
               <div className="flex items-center gap-2">
-                <span className="select-none text-base">🇻🇳</span>
                 <span>Tiếng Việt</span>
               </div>
               <div className="flex items-center gap-2">
@@ -157,7 +167,6 @@ export function AuthAvatar() {
           >
             <div className="flex items-center justify-between w-full">
               <div className="flex items-center gap-2">
-                <span className="select-none text-base">🇺🇸</span>
                 <span>English</span>
               </div>
               <div className="flex items-center gap-2">
@@ -168,6 +177,74 @@ export function AuthAvatar() {
           </Dropdown.Item>
 
           <Dropdown.Item id="separator-3" textValue="Separator" className="p-0 pointer-events-none select-none">
+            <Separator className="my-1.5 bg-zinc-200/50 dark:bg-zinc-900/50" />
+          </Dropdown.Item>
+
+          {/* Theme Selection Section */}
+          <Dropdown.Item id="theme-section-title" textValue="Theme" className="px-3 py-1 pointer-events-none select-none">
+            <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 dark:text-zinc-500">
+              {i18n.language === 'vi' ? 'Giao diện' : 'Theme'}
+            </span>
+          </Dropdown.Item>
+
+          <Dropdown.Item
+            id="theme-light"
+            textValue="Light Theme"
+            className={`flex items-center justify-between px-3 py-2 rounded-xl text-sm transition-all duration-150 cursor-pointer ${theme === 'light'
+              ? 'bg-zinc-100 dark:bg-zinc-900 text-zinc-950 dark:text-zinc-50 font-semibold'
+              : 'text-zinc-600 dark:text-zinc-400 hover:bg-zinc-50 dark:hover:bg-zinc-900/60 font-medium'
+              }`}
+          >
+            <div className="flex items-center justify-between w-full">
+              <div className="flex items-center gap-2">
+                <Sun size={14} className="opacity-80" />
+                <span>{i18n.language === 'vi' ? 'Sáng' : 'Light'}</span>
+              </div>
+              <div>
+                {theme === 'light' && <Check size={12} className="text-zinc-900 dark:text-zinc-50 stroke-3" />}
+              </div>
+            </div>
+          </Dropdown.Item>
+
+          <Dropdown.Item
+            id="theme-dark"
+            textValue="Dark Theme"
+            className={`flex items-center justify-between px-3 py-2 rounded-xl text-sm transition-all duration-150 cursor-pointer ${theme === 'dark'
+              ? 'bg-zinc-100 dark:bg-zinc-900 text-zinc-950 dark:text-zinc-50 font-semibold'
+              : 'text-zinc-600 dark:text-zinc-400 hover:bg-zinc-50 dark:hover:bg-zinc-900/60 font-medium'
+              }`}
+          >
+            <div className="flex items-center justify-between w-full">
+              <div className="flex items-center gap-2">
+                <Moon size={14} className="opacity-80" />
+                <span>{i18n.language === 'vi' ? 'Tối' : 'Dark'}</span>
+              </div>
+              <div>
+                {theme === 'dark' && <Check size={12} className="text-zinc-900 dark:text-zinc-50 stroke-3" />}
+              </div>
+            </div>
+          </Dropdown.Item>
+
+          <Dropdown.Item
+            id="theme-ocean"
+            textValue="Ocean Theme"
+            className={`flex items-center justify-between px-3 py-2 rounded-xl text-sm transition-all duration-150 cursor-pointer ${theme === 'ocean'
+              ? 'bg-zinc-100 dark:bg-zinc-900 text-zinc-950 dark:text-zinc-50 font-semibold'
+              : 'text-zinc-600 dark:text-zinc-400 hover:bg-zinc-50 dark:hover:bg-zinc-900/60 font-medium'
+              }`}
+          >
+            <div className="flex items-center justify-between w-full">
+              <div className="flex items-center gap-2">
+                <Waves size={14} className="opacity-80" />
+                <span>{i18n.language === 'vi' ? 'Đại dương' : 'Ocean'}</span>
+              </div>
+              <div>
+                {theme === 'ocean' && <Check size={12} className="text-zinc-900 dark:text-zinc-50 stroke-3" />}
+              </div>
+            </div>
+          </Dropdown.Item>
+
+          <Dropdown.Item id="separator-4" textValue="Separator" className="p-0 pointer-events-none select-none">
             <Separator className="my-1.5 bg-zinc-200/50 dark:bg-zinc-900/50" />
           </Dropdown.Item>
 

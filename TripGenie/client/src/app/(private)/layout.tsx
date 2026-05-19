@@ -55,7 +55,7 @@ export default function DashboardLayout({
     <div className="flex min-h-screen w-full bg-zinc-50 dark:bg-zinc-950 text-zinc-900 dark:text-zinc-100 transition-colors duration-300">
 
       {/* 1. Sidebar Nav Gated (Hidden on Mobile) */}
-      <aside className="hidden md:flex flex-col w-64 border-r border-zinc-200/80 dark:border-zinc-900 bg-white/70 dark:bg-zinc-950/60 backdrop-blur-xl shrink-0">
+      <aside className="hidden md:flex flex-col w-64 border-e border-zinc-200/80 dark:border-zinc-900 bg-white/70 dark:bg-zinc-950/60 backdrop-blur-xl shrink-0">
         <div className="p-6 flex items-center gap-2 select-none border-b border-zinc-200/50 dark:border-zinc-900/50">
           <div className="w-8 h-8 rounded-lg bg-zinc-950 dark:bg-white text-white dark:text-zinc-950 flex items-center justify-center shadow-md">
             <Compass size={18} />
@@ -126,7 +126,7 @@ export default function DashboardLayout({
               </Link>
               
               {/* Indented administrative permission-driven sub-routes */}
-              <div className="pl-6 space-y-1">
+              <div className="ps-6 space-y-1">
                 {hasPermission('users:view:list') && (
                   <Link
                     href="/admin/users"
@@ -138,7 +138,7 @@ export default function DashboardLayout({
                     ].join(' ')}
                   >
                     <Users size={14} />
-                    <span>Users</span>
+                    <span>{t('common:admin.users')}</span>
                   </Link>
                 )}
 
@@ -153,7 +153,7 @@ export default function DashboardLayout({
                     ].join(' ')}
                   >
                     <Shield size={14} />
-                    <span>Roles Matrix</span>
+                    <span>{t('common:admin.rolesMatrix')}</span>
                   </Link>
                 )}
 
@@ -168,7 +168,7 @@ export default function DashboardLayout({
                     ].join(' ')}
                   >
                     <FileText size={14} />
-                    <span>Audit Trail</span>
+                    <span>{t('common:admin.auditTrail')}</span>
                   </Link>
                 )}
               </div>

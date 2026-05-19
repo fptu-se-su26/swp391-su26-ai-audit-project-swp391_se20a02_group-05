@@ -6,9 +6,11 @@ import { Compass } from 'lucide-react';
 import { usePathname } from 'next/navigation';
 import { Toast, toast } from '@heroui/react';
 import i18n from '../lib/i18n';
+import { useThemeStore } from '../hooks/use-theme-store';
 
 export function Providers({ children, locale }: { children: React.ReactNode; locale: string }) {
   const { initializeSession, isInitialized } = useAuth();
+  const initializeTheme = useThemeStore(state => state.initializeTheme);
   const pathname = usePathname();
 
   // Synchronize server-resolved locale to client i18n instance before hydration (Server only)
@@ -17,6 +19,11 @@ export function Providers({ children, locale }: { children: React.ReactNode; loc
       i18n.changeLanguage(locale);
     }
   }
+
+  // Initialize theme on client-side boot to align storage and cookies
+  useEffect(() => {
+    initializeTheme();
+  }, [initializeTheme]);
 
   // Handle client-side changes post-hydration cleanly to satisfy React Compiler constraints
   useEffect(() => {

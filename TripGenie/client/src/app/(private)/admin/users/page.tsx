@@ -9,8 +9,10 @@ import { DialogModal } from '../../../../components/ui/dialog-modal';
 import { SelectDropdown } from '../../../../components/ui/select-dropdown';
 import { PaginationWrapper } from '../../../../components/ui/pagination-wrapper';
 import { SkeletonLoader, EmptyState } from '../../../../components/ui/states';
+import { useTranslation } from 'react-i18next';
 
 export default function UsersAdminPage() {
+  const { t } = useTranslation(['dashboard-admin', 'common']);
   const [users, setUsers] = useState<UserListItem[]>([]);
   const [roles, setRoles] = useState<RoleListItem[]>([]);
   const [totalCount, setTotalCount] = useState(0);
@@ -144,10 +146,10 @@ export default function UsersAdminPage() {
         <div>
           <h1 className="text-2xl font-extrabold tracking-tight flex items-center gap-2">
             <Users className="text-indigo-500" size={24} />
-            Users Management Directory
+            {t('dashboard-admin:users.title')}
           </h1>
           <p className="text-zinc-500 dark:text-zinc-400 text-sm">
-            Control user profiles, toggle active locks, and provision security credentials.
+            {t('dashboard-admin:users.subtitle')}
           </p>
         </div>
         <button
@@ -155,7 +157,7 @@ export default function UsersAdminPage() {
           className="w-fit px-4 py-2.5 bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-950 rounded-xl text-xs font-bold flex items-center gap-2 hover:opacity-90 transition-opacity select-none cursor-pointer"
         >
           <RotateCw size={14} className={isRefreshing ? 'animate-spin' : ''} />
-          Sync Records
+          {t('dashboard-admin:users.syncRecords')}
         </button>
       </div>
 
@@ -166,7 +168,7 @@ export default function UsersAdminPage() {
             <Search size={16} className="absolute left-3 top-3.5 text-zinc-400" />
             <input
               type="text"
-              placeholder="Search by full name or email address..."
+              placeholder={t('dashboard-admin:users.searchPlaceholder')}
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-zinc-200/60 dark:border-zinc-800 bg-white/50 dark:bg-zinc-900/50 text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
@@ -180,12 +182,12 @@ export default function UsersAdminPage() {
                 setPage(1);
               }}
               options={[
-                { value: "", label: "All Statuses" },
-                { value: "ACTIVE", label: "Active" },
-                { value: "SUSPENDED", label: "Suspended" },
-                { value: "BANNED", label: "Banned" },
+                { value: "", label: t('dashboard-admin:users.status.all') },
+                { value: "ACTIVE", label: t('dashboard-admin:users.status.active') },
+                { value: "SUSPENDED", label: t('dashboard-admin:users.status.suspended') },
+                { value: "BANNED", label: t('dashboard-admin:users.status.banned') },
               ]}
-              placeholder="All Statuses"
+              placeholder={t('dashboard-admin:users.status.all')}
             />
           </div>
           <div>
@@ -196,10 +198,10 @@ export default function UsersAdminPage() {
                 setPage(1);
               }}
               options={[
-                { value: "", label: "All Roles" },
+                { value: "", label: t('dashboard-admin:users.roles.all') },
                 ...roles.map((r) => ({ value: r.name, label: r.displayName })),
               ]}
-              placeholder="All Roles"
+              placeholder={t('dashboard-admin:users.roles.all')}
             />
           </div>
         </div>
@@ -211,20 +213,20 @@ export default function UsersAdminPage() {
           <SkeletonLoader rows={6} columns={6} />
         ) : users.length === 0 ? (
           <EmptyState
-            title="No travelers found"
-            description="We couldn't find any profile directories matching your search criteria."
+            title={t('dashboard-admin:users.empty.title')}
+            description={t('dashboard-admin:users.empty.description')}
           />
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full border-collapse text-left">
               <thead>
                 <tr className="border-b border-zinc-200 dark:border-zinc-950 bg-zinc-50/50 dark:bg-zinc-900/30">
-                  <th className="font-extrabold uppercase text-[10px] tracking-wider py-4 px-6 text-zinc-400">Full Name</th>
-                  <th className="font-extrabold uppercase text-[10px] tracking-wider py-4 px-6 text-zinc-400">Email Address</th>
-                  <th className="font-extrabold uppercase text-[10px] tracking-wider py-4 px-6 text-zinc-400">Current Status</th>
-                  <th className="font-extrabold uppercase text-[10px] tracking-wider py-4 px-6 text-zinc-400 hidden sm:table-cell">Roles Mapped</th>
-                  <th className="font-extrabold uppercase text-[10px] tracking-wider py-4 px-6 text-center text-zinc-400 hidden md:table-cell">Session Revocation</th>
-                  <th className="font-extrabold uppercase text-[10px] tracking-wider py-4 px-6 text-right text-zinc-400">Actions</th>
+                  <th className="font-extrabold uppercase text-[10px] tracking-wider py-4 px-6 text-zinc-400">{t('dashboard-admin:users.table.fullName')}</th>
+                  <th className="font-extrabold uppercase text-[10px] tracking-wider py-4 px-6 text-zinc-400">{t('dashboard-admin:users.table.email')}</th>
+                  <th className="font-extrabold uppercase text-[10px] tracking-wider py-4 px-6 text-zinc-400">{t('dashboard-admin:users.table.status')}</th>
+                  <th className="font-extrabold uppercase text-[10px] tracking-wider py-4 px-6 text-zinc-400 hidden sm:table-cell">{t('dashboard-admin:users.table.roles')}</th>
+                  <th className="font-extrabold uppercase text-[10px] tracking-wider py-4 px-6 text-center text-zinc-400 hidden md:table-cell">{t('dashboard-admin:users.table.session')}</th>
+                  <th className="font-extrabold uppercase text-[10px] tracking-wider py-4 px-6 text-right text-zinc-400">{t('dashboard-admin:users.table.actions')}</th>
                 </tr>
               </thead>
               <tbody>
@@ -259,7 +261,7 @@ export default function UsersAdminPage() {
                         className="font-bold text-xs text-indigo-500 hover:text-indigo-600 transition-colors flex items-center gap-1 ml-auto cursor-pointer"
                       >
                         <Edit2 size={12} />
-                        Adjust Roles & Status
+                        {t('dashboard-admin:users.table.adjust')}
                       </button>
                     </td>
                   </tr>
@@ -284,7 +286,7 @@ export default function UsersAdminPage() {
       <DialogModal
         isOpen={isEditOpen}
         onOpenChange={setIsEditOpen}
-        title="Adjust Roles & Security Status"
+        title={t('dashboard-admin:users.modal.title')}
         size="md"
         footer={
           <>
@@ -293,7 +295,7 @@ export default function UsersAdminPage() {
               disabled={isSaving}
               className="px-4 py-2 border border-zinc-200 dark:border-zinc-800 rounded-xl font-bold text-xs hover:bg-zinc-50 dark:hover:bg-zinc-900 disabled:opacity-50 select-none cursor-pointer"
             >
-              Cancel
+              {t('dashboard-admin:users.modal.cancel')}
             </button>
             <button
               onClick={handleSaveUser}
@@ -301,7 +303,7 @@ export default function UsersAdminPage() {
               className="px-4 py-2 bg-indigo-600 text-white hover:bg-indigo-700 font-bold rounded-xl text-xs hover:opacity-90 disabled:opacity-50 flex items-center gap-1.5 select-none cursor-pointer"
             >
               {isSaving && <Spinner size="sm" color="current" />}
-              Apply & Force Revoke
+              {t('dashboard-admin:users.modal.apply')}
             </button>
           </>
         }
@@ -309,20 +311,20 @@ export default function UsersAdminPage() {
         <div className="p-4 rounded-xl bg-amber-50 dark:bg-amber-950/20 border border-amber-200/30 dark:border-amber-900/40 text-amber-800 dark:text-amber-300 flex gap-3 text-xs leading-relaxed select-none">
           <AlertCircle size={18} className="shrink-0 text-amber-500 dark:text-amber-400 mt-0.5" />
           <div>
-            <span className="font-extrabold block mb-0.5">Session Revocation Warning</span>
-            Modifying this user&apos;s assigned roles or transition status will increment their security version, instantly invalidating all active JWTs. They will be forced to log out immediately.
+            <span className="font-extrabold block mb-0.5">{t('dashboard-admin:users.modal.warningTitle')}</span>
+            {t('dashboard-admin:users.modal.warningDesc')}
           </div>
         </div>
 
         <div className="space-y-1.5">
-          <label className="text-[10px] font-extrabold uppercase tracking-wider text-zinc-400 dark:text-zinc-500">Target User Details</label>
+          <label className="text-[10px] font-extrabold uppercase tracking-wider text-zinc-400 dark:text-zinc-500">{t('dashboard-admin:users.modal.targetDetails')}</label>
           <div className="p-3.5 rounded-xl border border-zinc-100 dark:border-zinc-900 bg-zinc-50/50 dark:bg-zinc-900/30 text-xs font-medium space-y-1">
             <div className="flex justify-between">
-              <span className="text-zinc-400">Name:</span>
+              <span className="text-zinc-400">{t('dashboard-admin:users.modal.name')}</span>
               <span className="font-bold text-zinc-800 dark:text-zinc-200">{selectedUser?.fullName}</span>
             </div>
             <div className="flex justify-between">
-              <span className="text-zinc-400">Email:</span>
+              <span className="text-zinc-400">{t('dashboard-admin:users.modal.email')}</span>
               <span className="font-mono font-bold text-zinc-800 dark:text-zinc-200">{selectedUser?.email}</span>
             </div>
           </div>
@@ -333,16 +335,16 @@ export default function UsersAdminPage() {
             value={editStatus}
             onChange={(val) => setEditStatus(val)}
             options={[
-              { value: "ACTIVE", label: "ACTIVE" },
-              { value: "SUSPENDED", label: "SUSPENDED (Locked Out)" },
-              { value: "BANNED", label: "BANNED (Permanently Disabled)" },
+              { value: "ACTIVE", label: t('dashboard-admin:users.modal.statusOptions.active') },
+              { value: "SUSPENDED", label: t('dashboard-admin:users.modal.statusOptions.suspended') },
+              { value: "BANNED", label: t('dashboard-admin:users.modal.statusOptions.banned') },
             ]}
-            label="User Account Status"
+            label={t('dashboard-admin:users.modal.statusLabel')}
           />
         </div>
 
         <div className="space-y-2.5">
-          <label className="text-[10px] font-extrabold uppercase tracking-wider text-zinc-400 dark:text-zinc-500">Assigned Roles Mapping</label>
+          <label className="text-[10px] font-extrabold uppercase tracking-wider text-zinc-400 dark:text-zinc-500">{t('dashboard-admin:users.modal.rolesLabel')}</label>
           <div className="space-y-2 max-h-[160px] overflow-y-auto pr-1">
             {roles.map((role) => {
               const isChecked = editRoles.includes(role.name);

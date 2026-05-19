@@ -11,8 +11,10 @@ import {
 import { Search, RotateCw, ShieldCheck } from 'lucide-react';
 import { PaginationWrapper } from '../../../../components/ui/pagination-wrapper';
 import { SkeletonLoader, EmptyState } from '../../../../components/ui/states';
+import { useTranslation } from 'react-i18next';
 
 export default function AuditLogsPage() {
+  const { t } = useTranslation(['dashboard-admin', 'common']);
   const [logs, setLogs] = useState<AuditLogListItem[]>([]);
   const [totalCount, setTotalCount] = useState(0);
   const [page, setPage] = useState(1);
@@ -86,10 +88,10 @@ export default function AuditLogsPage() {
         <div>
           <h1 className="text-2xl font-extrabold tracking-tight text-zinc-900 dark:text-zinc-550 flex items-center gap-2">
             <ShieldCheck className="text-emerald-500" size={24} />
-            System Audit Trail
+            {t('dashboard-admin:auditLogs.title')}
           </h1>
           <p className="text-zinc-500 dark:text-zinc-400 text-sm">
-            Immutable log trail capturing role adjustments, token revoking, and key auth events.
+            {t('dashboard-admin:auditLogs.subtitle')}
           </p>
         </div>
         <Button
@@ -98,7 +100,7 @@ export default function AuditLogsPage() {
           className="w-fit px-4 py-2.5 bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-950 font-bold rounded-xl text-xs flex items-center gap-2 hover:opacity-90 transition-opacity select-none cursor-pointer"
         >
           <RotateCw size={14} className={isRefreshing ? 'animate-spin' : ''} />
-          Sync Records
+          {t('dashboard-admin:auditLogs.syncRecords')}
         </Button>
       </div>
 
@@ -108,7 +110,7 @@ export default function AuditLogsPage() {
           <Search size={16} className="absolute left-3 top-3.5 text-zinc-400" />
           <input
             type="text"
-            placeholder="Search by user email, event name, or detail..."
+            placeholder={t('dashboard-admin:auditLogs.searchPlaceholder')}
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-zinc-200/60 dark:border-zinc-800 bg-white/50 dark:bg-zinc-900/50 text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
@@ -122,20 +124,20 @@ export default function AuditLogsPage() {
           <SkeletonLoader rows={6} columns={5} />
         ) : logs.length === 0 ? (
           <EmptyState
-            title="No logs found"
-            description="We couldn't find any log occurrences matching your query. Try broadening your keywords."
+            title={t('dashboard-admin:auditLogs.empty.title')}
+            description={t('dashboard-admin:auditLogs.empty.description')}
           />
         ) : (
           <div className="overflow-x-auto">
-            <Table aria-label="System Audit Trail Records" className="w-full">
+            <Table aria-label={t('dashboard-admin:auditLogs.table.ariaLabel')} className="w-full">
               <Table.ScrollContainer>
-                <Table.Content aria-label="System Audit Trail Records Table Content">
+                <Table.Content aria-label={t('dashboard-admin:auditLogs.table.ariaLabelContent')}>
                   <Table.Header>
-                    <Table.Column isRowHeader className="font-extrabold uppercase text-[10px] tracking-wider py-4">Timestamp</Table.Column>
-                    <Table.Column className="font-extrabold uppercase text-[10px] tracking-wider py-4">Triggered By</Table.Column>
-                    <Table.Column className="font-extrabold uppercase text-[10px] tracking-wider py-4">Event Type</Table.Column>
-                    <Table.Column className="font-extrabold uppercase text-[10px] tracking-wider py-4">Action Detail</Table.Column>
-                    <Table.Column className="font-extrabold uppercase text-[10px] tracking-wider py-4 hidden md:table-cell">Connection Origin</Table.Column>
+                    <Table.Column isRowHeader className="font-extrabold uppercase text-[10px] tracking-wider py-4">{t('dashboard-admin:auditLogs.table.timestamp')}</Table.Column>
+                    <Table.Column className="font-extrabold uppercase text-[10px] tracking-wider py-4">{t('dashboard-admin:auditLogs.table.triggeredBy')}</Table.Column>
+                    <Table.Column className="font-extrabold uppercase text-[10px] tracking-wider py-4">{t('dashboard-admin:auditLogs.table.eventType')}</Table.Column>
+                    <Table.Column className="font-extrabold uppercase text-[10px] tracking-wider py-4">{t('dashboard-admin:auditLogs.table.actionDetail')}</Table.Column>
+                    <Table.Column className="font-extrabold uppercase text-[10px] tracking-wider py-4 hidden md:table-cell">{t('dashboard-admin:auditLogs.table.connectionOrigin')}</Table.Column>
                   </Table.Header>
                   <Table.Body>
                     {logs.map((log) => {
@@ -146,7 +148,7 @@ export default function AuditLogsPage() {
                             {new Date(log.createdAt).toLocaleString()}
                           </Table.Cell>
                           <Table.Cell className="font-bold text-zinc-800 dark:text-zinc-200 text-xs py-4">
-                            {log.userEmail || <span className="text-zinc-400 dark:text-zinc-600 font-normal">System Context</span>}
+                            {log.userEmail || <span className="text-zinc-400 dark:text-zinc-600 font-normal">{t('dashboard-admin:auditLogs.systemContext')}</span>}
                           </Table.Cell>
                           <Table.Cell className="py-4">
                             <span className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-extrabold tracking-wide uppercase ${

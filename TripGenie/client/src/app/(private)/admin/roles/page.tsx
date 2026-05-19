@@ -9,8 +9,10 @@ import { Shield, Plus, RotateCw, AlertTriangle, Edit, Trash2 } from 'lucide-reac
 import { DialogModal } from '../../../../components/ui/dialog-modal';
 import { AccordionWrapper } from '../../../../components/ui/accordion-wrapper';
 import { SkeletonLoader } from '../../../../components/ui/states';
+import { useTranslation } from 'react-i18next';
 
 export default function RolesAdminPage() {
+  const { t } = useTranslation(['dashboard-admin', 'common']);
   const [roles, setRoles] = useState<RoleListItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -96,7 +98,7 @@ export default function RolesAdminPage() {
 
   const handleSaveRole = async () => {
     if (!displayName) {
-      setErrorMsg('Display name is required.');
+      setErrorMsg(t('dashboard-admin:roles.errors.displayNameRequired'));
       return;
     }
 
@@ -116,7 +118,7 @@ export default function RolesAdminPage() {
         await adminService.updateRole(editingRole.id, payload);
       } else {
         if (!payload.name) {
-          setErrorMsg('Role code name is required.');
+          setErrorMsg(t('dashboard-admin:roles.errors.codeNameRequired'));
           setIsSaving(false);
           return;
         }
@@ -128,9 +130,9 @@ export default function RolesAdminPage() {
       console.error('Failed to save role', err);
       const error = err as { code?: string; message?: string };
       if (error?.code === '409' || error?.message?.includes('conflict') || error?.message?.includes('concurrency')) {
-        setErrorMsg('Optimistic Concurrency Conflict: This role has been modified by another administrator. Please refresh and try again.');
+        setErrorMsg(t('dashboard-admin:roles.errors.concurrencyConflict'));
       } else {
-        setErrorMsg(error?.message || 'An error occurred while saving the role.');
+        setErrorMsg(error?.message || t('dashboard-admin:roles.errors.saveFailed'));
       }
     } finally {
       setIsSaving(false);
@@ -138,13 +140,13 @@ export default function RolesAdminPage() {
   };
 
   const handleDeleteRole = async (id: string) => {
-    if (!confirm('Are you sure you want to delete this custom role? This action cannot be undone.')) return;
+    if (!confirm(t('dashboard-admin:roles.deleteConfirm'))) return;
     try {
       await adminService.deleteRole(id);
       fetchRoles();
     } catch (err: unknown) {
       const error = err as { message?: string };
-      alert(error?.message || 'Failed to delete role. Ensure no users are assigned to it.');
+      alert(error?.message || t('dashboard-admin:roles.deleteError'));
     }
   };
 
@@ -155,7 +157,7 @@ export default function RolesAdminPage() {
 
     return {
       id: moduleName,
-      title: `${moduleName.charAt(0).toUpperCase() + moduleName.slice(1)} Module`,
+      title: t('dashboard-admin:roles.builder.moduleLabel', { name: moduleName.charAt(0).toUpperCase() + moduleName.slice(1) }),
       content: (
         <div className="space-y-4">
           <div className="flex justify-end select-none">
@@ -166,7 +168,7 @@ export default function RolesAdminPage() {
               }}
               className="text-[9px] font-extrabold uppercase tracking-wider px-2 py-1 rounded border border-zinc-200/60 dark:border-zinc-800 cursor-pointer bg-white dark:bg-zinc-950 hover:bg-zinc-50 dark:hover:bg-zinc-900 select-none text-zinc-600 dark:text-zinc-400"
             >
-              {allSelected ? 'Clear Module' : 'Grant Module'}
+              {allSelected ? t('dashboard-admin:roles.builder.clearModule') : t('dashboard-admin:roles.builder.grantModule')}
             </button>
           </div>
           <div className="space-y-2.5">
@@ -224,10 +226,10 @@ export default function RolesAdminPage() {
         <div>
           <h1 className="text-2xl font-extrabold tracking-tight flex items-center gap-2">
             <Shield className="text-emerald-500" size={24} />
-            Roles & Granular Access Control
+            {t('dashboard-admin:roles.title')}
           </h1>
           <p className="text-zinc-500 dark:text-zinc-400 text-sm">
-            Dynamically configure system permission models and authorization layout maps.
+            {t('dashboard-admin:roles.subtitle')}
           </p>
         </div>
         <div className="flex gap-2">
@@ -236,14 +238,14 @@ export default function RolesAdminPage() {
             className="px-4 py-2.5 border border-zinc-200 dark:border-zinc-800 rounded-xl text-xs font-bold flex items-center gap-2 hover:bg-zinc-50 dark:hover:bg-zinc-900 select-none cursor-pointer transition-colors"
           >
             <RotateCw size={14} className={isRefreshing ? 'animate-spin' : ''} />
-            Sync Schemas
+            {t('dashboard-admin:roles.syncSchemas')}
           </button>
           <button
             onClick={handleOpenCreate}
             className="px-4 py-2.5 bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-950 font-bold rounded-xl text-xs flex items-center gap-2 hover:opacity-90 transition-opacity select-none cursor-pointer"
           >
             <Plus size={14} />
-            Create Custom Role
+            {t('dashboard-admin:roles.createCustomRole')}
           </button>
         </div>
       </div>
@@ -278,14 +280,14 @@ export default function RolesAdminPage() {
                 </div>
 
                 <p className="text-xs text-zinc-500 dark:text-zinc-400 font-medium leading-relaxed mb-4">
-                  {role.description || 'No custom description provided for this security role mapping.'}
+                  {role.description || t('dashboard-admin:roles.noDescription')}
                 </p>
               </div>
 
               <div>
                 <div className="border-t border-zinc-100 dark:border-zinc-900/50 pt-4 mt-2 flex justify-between items-center select-none">
                   <span className="text-[10px] font-extrabold text-zinc-400 dark:text-zinc-500 uppercase tracking-wide">
-                    {role.permissions.includes('*:*:*') ? 'All Permissions (*)' : `${role.permissions.length} Granular Permissions`}
+                    {role.permissions.includes('*:*:*') ? t('dashboard-admin:roles.allPermissions') : t('dashboard-admin:roles.granularPermissions', { count: role.permissions.length })}
                   </span>
                   
                   <div className="flex gap-1.5">
@@ -294,7 +296,7 @@ export default function RolesAdminPage() {
                       className="font-bold text-xs text-indigo-500 hover:text-indigo-650 transition-colors flex items-center gap-1 cursor-pointer"
                     >
                       <Edit size={12} />
-                      Edit Matrix
+                      {t('dashboard-admin:roles.editMatrix')}
                     </button>
                     {!role.isSystem && (
                       <button
@@ -302,7 +304,7 @@ export default function RolesAdminPage() {
                         className="font-bold text-xs text-rose-500 hover:text-rose-650 transition-colors flex items-center gap-1 cursor-pointer"
                       >
                         <Trash2 size={12} />
-                        Delete
+                        {t('dashboard-admin:roles.delete')}
                       </button>
                     )}
                   </div>
@@ -317,7 +319,7 @@ export default function RolesAdminPage() {
       <DialogModal
         isOpen={isModalOpen}
         onOpenChange={setIsModalOpen}
-        title={editingRole ? `Edit Role Permission Matrix: ${displayName}` : 'Build Custom Role'}
+        title={editingRole ? t('dashboard-admin:roles.builder.editTitle', { name: displayName }) : t('dashboard-admin:roles.builder.createTitle')}
         size="lg"
         footer={
           <>
@@ -326,7 +328,7 @@ export default function RolesAdminPage() {
               disabled={isSaving}
               className="px-4 py-2 border border-zinc-200 dark:border-zinc-800 rounded-xl font-bold text-xs hover:bg-zinc-50 dark:hover:bg-zinc-900 disabled:opacity-50 select-none cursor-pointer"
             >
-              Close Matrix
+              {t('dashboard-admin:roles.builder.close')}
             </button>
             <button
               onClick={handleSaveRole}
@@ -334,7 +336,7 @@ export default function RolesAdminPage() {
               className="px-4 py-2 bg-emerald-600 text-white hover:bg-emerald-700 font-bold rounded-xl text-xs hover:opacity-90 disabled:opacity-50 flex items-center gap-1.5 select-none cursor-pointer"
             >
               {isSaving && <Spinner size="sm" color="current" />}
-              {editingRole ? 'Save Changes' : 'Build Custom Role'}
+              {editingRole ? t('dashboard-admin:roles.builder.saveChanges') : t('dashboard-admin:roles.builder.createTitle')}
             </button>
           </>
         }
@@ -349,10 +351,10 @@ export default function RolesAdminPage() {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {!editingRole && (
             <div className="space-y-1">
-              <label className="text-[10px] font-extrabold uppercase tracking-wider text-zinc-400 dark:text-zinc-500">Role Key (Immutable code-name)</label>
+              <label className="text-[10px] font-extrabold uppercase tracking-wider text-zinc-400 dark:text-zinc-500">{t('dashboard-admin:roles.builder.roleKey')}</label>
               <input
                 type="text"
-                placeholder="E.g. TRAVEL_MANAGER"
+                placeholder={t('dashboard-admin:roles.builder.roleKeyPlaceholder')}
                 value={roleName}
                 onChange={(e) => setRoleName(e.target.value)}
                 className="w-full px-3.5 py-2.5 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 font-mono text-xs focus:outline-none"
@@ -360,10 +362,10 @@ export default function RolesAdminPage() {
             </div>
           )}
           <div className="space-y-1">
-            <label className="text-[10px] font-extrabold uppercase tracking-wider text-zinc-400 dark:text-zinc-500">Display Title Name</label>
+            <label className="text-[10px] font-extrabold uppercase tracking-wider text-zinc-400 dark:text-zinc-500">{t('dashboard-admin:roles.builder.displayTitle')}</label>
             <input
               type="text"
-              placeholder="E.g. Travel Manager"
+              placeholder={t('dashboard-admin:roles.builder.displayTitlePlaceholder')}
               value={displayName}
               onChange={(e) => setDisplayName(e.target.value)}
               className="w-full px-3.5 py-2.5 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 text-xs focus:outline-none font-bold"
@@ -372,9 +374,9 @@ export default function RolesAdminPage() {
         </div>
 
         <div className="space-y-1">
-          <label className="text-[10px] font-extrabold uppercase tracking-wider text-zinc-400 dark:text-zinc-500">Role Purpose Description</label>
+          <label className="text-[10px] font-extrabold uppercase tracking-wider text-zinc-400 dark:text-zinc-500">{t('dashboard-admin:roles.builder.purposeDesc')}</label>
           <textarea
-            placeholder="Provide a detailed summary of what administrative responsibilities this security role entails..."
+            placeholder={t('dashboard-admin:roles.builder.purposeDescPlaceholder')}
             value={description}
             onChange={(e) => setDescription(e.target.value)}
             className="w-full px-3.5 py-2.5 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 text-xs focus:outline-none font-medium"
@@ -385,12 +387,12 @@ export default function RolesAdminPage() {
         {/* Granular visual matrix accordions grouped by modules */}
         <div className="space-y-3">
           <div className="flex justify-between items-center select-none">
-            <label className="text-[10px] font-extrabold uppercase tracking-wider text-zinc-400 dark:text-zinc-500">Visual Permission Mappings Matrix</label>
+            <label className="text-[10px] font-extrabold uppercase tracking-wider text-zinc-400 dark:text-zinc-500">{t('dashboard-admin:roles.builder.matrixLabel')}</label>
             <button
               onClick={() => setSelectedPermissions(['*:*:*'])}
               className="text-[10px] font-bold text-zinc-400 hover:text-zinc-500 cursor-pointer"
             >
-              Bypass to System Wildcard (*)
+              {t('dashboard-admin:roles.builder.bypassWildcard')}
             </button>
           </div>
 
