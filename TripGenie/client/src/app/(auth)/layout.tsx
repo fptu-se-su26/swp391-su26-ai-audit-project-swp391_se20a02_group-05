@@ -5,7 +5,7 @@ import { Compass } from 'lucide-react';
 import { useAuth } from '../../features/auth/hooks/use-auth';
 import { useRouter, usePathname } from 'next/navigation';
 import { useTranslation } from 'react-i18next';
-import { Spinner, Typography } from '@heroui/react';
+import { Typography } from '@heroui/react';
 
 export default function AuthLayout({
   children,

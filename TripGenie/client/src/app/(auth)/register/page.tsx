@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from 'react';
+import React, { useEffect } from 'react';
 import { useForm, FormProvider } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useRouter } from 'next/navigation';
@@ -15,6 +15,7 @@ import Link from 'next/link';
 import { toast, Typography } from '@heroui/react';
 import Script from 'next/script';
 import { useTranslation } from 'react-i18next';
+import { PasswordStrengthMeter } from './password-strength-meter';
 
 import { useAuthStore } from '../../../features/auth/store/use-auth-store';
 
@@ -62,53 +63,7 @@ export default function RegisterPage() {
     mode: 'onChange',
   });
 
-  const { handleSubmit, watch, formState: { isValid } } = methods;
-
-  // Watch the password field to calculate strength in real-time
-  const watchedPassword = watch('password') || '';
-
-  // States for password strength calculations
-  const [strengthScore, setStrengthScore] = useState(0);
-  const [strengthLabel, setStrengthLabel] = useState(t('auth:passwordStrength.tooWeak'));
-  const [strengthColor, setStrengthColor] = useState('bg-zinc-200');
-
-  useEffect(() => {
-    let score = 0;
-    if (watchedPassword.length >= 8) score += 1;
-    if (/[A-Z]/.test(watchedPassword)) score += 1;
-    if (/[a-z]/.test(watchedPassword)) score += 1;
-    if (/[0-9]/.test(watchedPassword)) score += 1;
-    if (/[@$!%*?&]/.test(watchedPassword)) score += 1;
-
-    // Standardize score to max of 4 steps
-    const finalScore = watchedPassword.length === 0 ? 0 : Math.min(4, Math.floor(score * 0.8));
-    setStrengthScore(finalScore);
-
-    switch (finalScore) {
-      case 0:
-        setStrengthLabel(t('auth:passwordStrength.tooWeak'));
-        setStrengthColor('bg-danger');
-        break;
-      case 1:
-        setStrengthLabel(t('auth:passwordStrength.weak'));
-        setStrengthColor('bg-danger');
-        break;
-      case 2:
-        setStrengthLabel(t('auth:passwordStrength.fair'));
-        setStrengthColor('bg-warning');
-        break;
-      case 3:
-        setStrengthLabel(t('auth:passwordStrength.strong'));
-        setStrengthColor('bg-accent');
-        break;
-      case 4:
-        setStrengthLabel(t('auth:passwordStrength.excellent'));
-        setStrengthColor('bg-success');
-        break;
-      default:
-        break;
-    }
-  }, [watchedPassword, t]);
+  const { handleSubmit, control, formState: { isValid } } = methods;
 
   const handleGoogleCredentialResponse = async (response: GoogleIdentityResponse) => {
     try {
@@ -262,51 +217,8 @@ export default function RegisterPage() {
             autoComplete="new-password"
           />
 
-          {/* Real-time Password Strength Progress Meter */}
-          {watchedPassword.length > 0 && (
-            <div className="space-y-1.5 px-1 py-0.5 select-none">
-              <div className="flex justify-between items-center text-xs">
-                <Typography type="body-xs" className="text-muted font-medium">
-                  {t('auth:passwordStrength.label')}
-                </Typography>
-                <span className={[
-                  "font-bold transition-colors",
-                  strengthScore <= 1 ? "text-danger" : "",
-                  strengthScore === 2 ? "text-warning" : "",
-                  strengthScore === 3 ? "text-accent" : "",
-                  strengthScore === 4 ? "text-success" : "",
-                ].join(' ')}>
-                  {strengthLabel}
-                </span>
-              </div>
-
-              <div className="flex gap-1 h-1.5 w-full bg-surface-secondary rounded-full overflow-hidden">
-                <div
-                  className={[
-                    "h-full rounded-full transition-all duration-300",
-                    strengthColor,
-                  ].join(' ')}
-                  style={{ width: `${(strengthScore / 4) * 100}%` }}
-                />
-              </div>
-
-              {/* Password checks guidance list */}
-              <div className="grid grid-cols-2 gap-x-3 gap-y-0.5 text-[10px] text-muted mt-1">
-                <span className={watchedPassword.length >= 8 ? 'text-foreground font-medium' : ''}>
-                  {t('auth:passwordStrength.minChars')}
-                </span>
-                <span className={/[A-Z]/.test(watchedPassword) ? 'text-foreground font-medium' : ''}>
-                  {t('auth:passwordStrength.uppercase')}
-                </span>
-                <span className={/[a-z]/.test(watchedPassword) ? 'text-foreground font-medium' : ''}>
-                  {t('auth:passwordStrength.lowercase')}
-                </span>
-                <span className={/[0-9]/.test(watchedPassword) ? 'text-foreground font-medium' : ''}>
-                  {t('auth:passwordStrength.numberSpecial')}
-                </span>
-              </div>
-            </div>
-          )}
+          {/* Isolated real-time Password Strength Progress Meter sub-component */}
+          <PasswordStrengthMeter control={control} />
 
           <FormInput
             name="confirmPassword"

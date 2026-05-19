@@ -15,7 +15,7 @@ export const useSessionTimeout = () => {
   const [showWarning, setShowWarning] = useState(false);
   const [secondsRemaining, setSecondsRemaining] = useState(WARNING_THRESHOLD_SECONDS);
   
-  const lastActivityTime = useRef<number>(Date.now());
+  const lastActivityTime = useRef<number>(0);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
   const isRefreshingRef = useRef<boolean>(false);
   const showWarningRef = useRef<boolean>(false);
@@ -72,7 +72,9 @@ export const useSessionTimeout = () => {
 
   useEffect(() => {
     if (!isAuthenticated) {
-      setShowWarning(false);
+      requestAnimationFrame(() => {
+        setShowWarning(false);
+      });
       return;
     }
 
@@ -89,7 +91,12 @@ export const useSessionTimeout = () => {
 
     // Unified dynamic high-precision check function
     const checkSession = () => {
-      const elapsed = (Date.now() - lastActivityTime.current) / 1000;
+      const currentTime = Date.now();
+      const activityTime = lastActivityTime.current === 0 ? currentTime : lastActivityTime.current;
+      if (lastActivityTime.current === 0) {
+        lastActivityTime.current = currentTime;
+      }
+      const elapsed = (currentTime - activityTime) / 1000;
       const totalSessionTime = INACTIVITY_LIMIT_SECONDS + WARNING_THRESHOLD_SECONDS;
 
       if (elapsed >= totalSessionTime) {
@@ -109,8 +116,9 @@ export const useSessionTimeout = () => {
       }
     };
 
-    // Immediate initial assessment on mount/auth-state change
-    checkSession();
+    // Immediate initial assessment on mount/auth-state change scheduled asynchronously
+    // to avoid synchronous setState calls inside the effect body
+    requestAnimationFrame(checkSession);
 
     // 1-second dynamic precise assessment interval
     timerRef.current = setInterval(checkSession, 1000);
