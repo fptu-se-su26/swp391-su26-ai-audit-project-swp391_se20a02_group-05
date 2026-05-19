@@ -28,10 +28,10 @@ export function AuthAvatar() {
     switch (key) {
       case 'dashboard':
         const role = user.role?.toLowerCase() || 'user';
-        router.push(`/dashboard/${role}`);
+        router.push(`/${role}`);
         break;
       case 'settings':
-        router.push('/dashboard/user'); // Fallback setting routing to dashboard traveler page
+        router.push('/user'); // Fallback setting routing to dashboard traveler page
         break;
       case 'lang-vi':
         setCookie('i18next', 'vi');

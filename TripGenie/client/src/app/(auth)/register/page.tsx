@@ -128,7 +128,7 @@ export default function RegisterPage() {
           toast.success(t('auth:toast.googleLoginWelcome'), {
             description: t('auth:toast.googleLoginSuccessDesc'),
           });
-          router.push('/dashboard');
+          router.push('/');
         }
       } else if (result.error) {
         toast.danger(t('auth:toast.googleLoginFailedTitle'), {

@@ -48,7 +48,7 @@ export async function proxy(request: NextRequest) {
   const accessToken = request.cookies.get('access_token')?.value;
 
   // Define route classifications
-  const isDashboardRoute = pathname.startsWith('/dashboard');
+  const isDashboardRoute = ['/admin', '/business', '/user'].some(p => pathname.startsWith(p));
   const isAuthRoute = ([
     ROUTES.LOGIN,
     ROUTES.REGISTER,
@@ -113,14 +113,14 @@ export async function proxy(request: NextRequest) {
     }
 
     if (isDev) {
-      console.log(`[Security Proxy] Logged-in verified user accessing auth route. Redirecting to: /dashboard`);
+      console.log(`[Security Proxy] Logged-in verified user accessing auth route. Redirecting to: /`);
     }
-    const response = NextResponse.redirect(new URL('/dashboard', request.url));
+    const response = NextResponse.redirect(new URL('/', request.url));
     handleLocale(request, response);
     return response;
   }
 
-  // 2. Root Dashboard Redirect (Exact match for '/dashboard' or '/dashboard/')
+  // 2. Root Dashboard Redirect
   if (pathname === '/dashboard' || pathname === '/dashboard/') {
     if (!isTokenValid) {
       const redirectUrl = new URL(ROUTES.LOGIN, request.url);
@@ -187,27 +187,27 @@ export async function proxy(request: NextRequest) {
     }
 
     // Role Gating Logic
-    if (pathname.startsWith('/dashboard/admin') && userRole !== 'ADMIN') {
+    if (pathname.startsWith('/admin') && userRole !== 'ADMIN') {
       if (isDev) {
-        console.warn(`[Security Proxy] Access denied for /dashboard/admin. Role: ${userRole}. Redirecting to unauthorized.`);
+        console.warn(`[Security Proxy] Access denied for /admin. Role: ${userRole}. Redirecting to unauthorized.`);
       }
       const response = NextResponse.redirect(new URL(ROUTES.UNAUTHORIZED, request.url));
       handleLocale(request, response);
       return response;
     }
 
-    if (pathname.startsWith('/dashboard/business') && !['BUSINESS', 'ADMIN'].includes(userRole)) {
+    if (pathname.startsWith('/business') && !['BUSINESS', 'ADMIN'].includes(userRole)) {
       if (isDev) {
-        console.warn(`[Security Proxy] Access denied for /dashboard/business. Role: ${userRole}. Redirecting to unauthorized.`);
+        console.warn(`[Security Proxy] Access denied for /business. Role: ${userRole}. Redirecting to unauthorized.`);
       }
       const response = NextResponse.redirect(new URL(ROUTES.UNAUTHORIZED, request.url));
       handleLocale(request, response);
       return response;
     }
 
-    if (pathname.startsWith('/dashboard/user') && !['USER', 'BUSINESS', 'ADMIN'].includes(userRole)) {
+    if (pathname.startsWith('/user') && !['USER', 'BUSINESS', 'ADMIN'].includes(userRole)) {
       if (isDev) {
-        console.warn(`[Security Proxy] Access denied for /dashboard/user. Role: ${userRole}. Redirecting to unauthorized.`);
+        console.warn(`[Security Proxy] Access denied for /user. Role: ${userRole}. Redirecting to unauthorized.`);
       }
       const response = NextResponse.redirect(new URL(ROUTES.UNAUTHORIZED, request.url));
       handleLocale(request, response);

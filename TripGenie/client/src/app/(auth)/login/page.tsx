@@ -46,7 +46,7 @@ function LoginContent() {
   const [cooldownSeconds, setCooldownSeconds] = useState<number>(0);
   
   // Callback URL for redirects
-  const callbackUrl = searchParams.get('callbackUrl') || '/dashboard';
+  const callbackUrl = searchParams.get('callbackUrl') || '/';
   const isSessionExpired = searchParams.get('session_expired') === 'true';
   const registered = searchParams.get('registered') === 'true';
   const resetSuccess = searchParams.get('reset_success') === 'true';

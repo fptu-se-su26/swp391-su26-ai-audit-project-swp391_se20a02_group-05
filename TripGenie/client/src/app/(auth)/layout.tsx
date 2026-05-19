@@ -22,7 +22,7 @@ export default function AuthLayout({
 
       if (isEmailVerified) {
         // Logged-in verified users are blocked from auth routes and routed to dashboard
-        router.replace('/dashboard');
+        router.replace('/');
       } else {
         // Logged-in unverified users are forced to verify their email
         if (pathname !== '/verify-email') {

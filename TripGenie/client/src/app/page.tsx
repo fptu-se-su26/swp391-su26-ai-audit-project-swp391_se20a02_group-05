@@ -36,7 +36,7 @@ export default function Home() {
         <div className="flex items-center gap-4">
           {isAuthenticated ? (
             <div className="flex items-center gap-4">
-              <Link href={`/dashboard/${user?.role?.toLowerCase() || 'user'}`} className="text-sm font-semibold text-zinc-400 hover:text-white transition-colors">
+              <Link href={`/${user?.role?.toLowerCase() || 'user'}`} className="text-sm font-semibold text-zinc-400 hover:text-white transition-colors">
                 {t('common:navigation.dashboard')}
               </Link>
               <AuthAvatar />
@@ -77,13 +77,13 @@ export default function Home() {
 
         {/* Action Buttons */}
         <div className="flex flex-col sm:flex-row gap-4 pt-4 select-none w-full max-w-md justify-center">
-          <Link href={isAuthenticated ? `/dashboard/${user?.role?.toLowerCase() || 'user'}` : "/dashboard/user"} className="w-full sm:w-auto">
+          <Link href={isAuthenticated ? `/${user?.role?.toLowerCase() || 'user'}` : "/user"} className="w-full sm:w-auto">
             <button className="w-full sm:w-[200px] h-12 rounded-xl text-sm font-bold bg-white text-zinc-950 hover:bg-zinc-100 transition-all flex items-center justify-center gap-2 group shadow-[0_4px_20px_rgba(255,255,255,0.06)] border border-white/10 cursor-pointer">
               {t('common:landing.enterHub')}
               <ArrowRight size={16} className="transition-transform group-hover:translate-x-0.5" />
             </button>
           </Link>
-          <Link href={isAuthenticated ? `/dashboard/${user?.role?.toLowerCase() || 'user'}` : "/login"} className="w-full sm:w-auto">
+          <Link href={isAuthenticated ? `/${user?.role?.toLowerCase() || 'user'}` : "/login"} className="w-full sm:w-auto">
             <button className="w-full sm:w-[200px] h-12 rounded-xl text-sm font-bold bg-white/5 hover:bg-white/10 transition-all border border-white/10 text-white backdrop-blur-sm flex items-center justify-center gap-2 cursor-pointer">
               {isAuthenticated ? t('common:landing.goConsole') : t('common:landing.accessConsole')}
             </button>

@@ -96,7 +96,7 @@ axiosClient.interceptors.response.use(
         
         if (typeof window !== 'undefined') {
           const currentPath = window.location.pathname;
-          const isProtectedPage = currentPath.startsWith('/dashboard');
+          const isProtectedPage = ['/admin', '/business', '/user'].some(p => currentPath.startsWith(p));
           
           if (isProtectedPage) {
             window.location.href = `/login?session_expired=true&callbackUrl=${encodeURIComponent(

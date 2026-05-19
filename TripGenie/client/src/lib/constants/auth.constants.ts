@@ -12,9 +12,9 @@ export const ROUTES = {
   VERIFY_EMAIL: '/verify-email',
   UNAUTHORIZED: '/unauthorized',
   DASHBOARD: {
-    USER: '/dashboard/user',
-    BUSINESS: '/dashboard/business',
-    ADMIN: '/dashboard/admin',
+    USER: '/user',
+    BUSINESS: '/business',
+    ADMIN: '/admin',
   },
 } as const;
 

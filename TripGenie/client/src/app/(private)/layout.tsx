@@ -68,10 +68,10 @@ export default function DashboardLayout({
         {/* Sidebar Nav Links */}
         <nav className="flex-1 p-4 space-y-1.5 select-none font-outfit">
           <Link
-            href="/dashboard/user"
+            href="/user"
             className={[
               "flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-all duration-200",
-              pathname === '/dashboard/user'
+              pathname === '/user'
                 ? "bg-zinc-100 dark:bg-zinc-900 text-zinc-950 dark:text-zinc-50"
                 : "text-zinc-500 hover:bg-zinc-50 dark:hover:bg-zinc-900/40 hover:text-zinc-800 dark:hover:text-zinc-200",
             ].join(' ')}
@@ -81,10 +81,10 @@ export default function DashboardLayout({
           </Link>
 
           <Link
-            href="/dashboard/chat"
+            href="/chat"
             className={[
               "flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-all duration-200",
-              pathname === '/dashboard/chat'
+              pathname === '/chat'
                 ? "bg-zinc-100 dark:bg-zinc-900 text-zinc-950 dark:text-zinc-50"
                 : "text-zinc-500 hover:bg-zinc-50 dark:hover:bg-zinc-900/40 hover:text-zinc-800 dark:hover:text-zinc-200",
             ].join(' ')}
@@ -96,10 +96,10 @@ export default function DashboardLayout({
           {/* Business Link (gated display or direct path) */}
           {(userRole === 'BUSINESS' || userRole === 'ADMIN') && (
             <Link
-              href="/dashboard/business"
+              href="/business"
               className={[
                 "flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-all duration-200",
-                pathname === '/dashboard/business'
+                pathname === '/business'
                   ? "bg-zinc-100 dark:bg-zinc-900 text-zinc-950 dark:text-zinc-50"
                   : "text-zinc-500 hover:bg-zinc-50 dark:hover:bg-zinc-900/40 hover:text-zinc-800 dark:hover:text-zinc-200",
               ].join(' ')}
@@ -112,10 +112,10 @@ export default function DashboardLayout({
           {/* Admin Link (gated display or direct path) */}
           {userRole === 'ADMIN' && (
             <Link
-              href="/dashboard/admin"
+              href="/admin"
               className={[
                 "flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-all duration-200",
-                pathname === '/dashboard/admin'
+                pathname === '/admin'
                   ? "bg-zinc-100 dark:bg-zinc-900 text-zinc-950 dark:text-zinc-50"
                   : "text-zinc-500 hover:bg-zinc-50 dark:hover:bg-zinc-900/40 hover:text-zinc-800 dark:hover:text-zinc-200",
               ].join(' ')}

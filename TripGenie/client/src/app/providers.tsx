@@ -37,7 +37,7 @@ export function Providers({ children, locale }: { children: React.ReactNode; loc
     }
   }, [pathname]);
 
-  const isDashboardRoute = pathname.startsWith('/dashboard');
+  const isDashboardRoute = ['/admin', '/business', '/user'].some(p => pathname.startsWith(p));
  
   // Hydration safety gate: only block UI on protected dashboard routes to prevent flashing protected layout
   if (isDashboardRoute && !isInitialized) {

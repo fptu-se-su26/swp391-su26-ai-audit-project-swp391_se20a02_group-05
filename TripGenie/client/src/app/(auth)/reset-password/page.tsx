@@ -69,7 +69,7 @@ function ResetPasswordContent() {
       
       // Auto-navigate to dashboard after 2 seconds
       setTimeout(() => {
-        router.push('/dashboard/user');
+        router.push('/user');
       }, 2000);
     } else {
       const error = result.error;
@@ -105,7 +105,7 @@ function ResetPasswordContent() {
             {t('auth:screens.resetSuccessDesc')}
           </p>
 
-          <Link href="/dashboard/user" className="w-full">
+          <Link href="/user" className="w-full">
             <Button variant="solid" className="w-full">
               {t('auth:actions.goToDashboard')}
             </Button>

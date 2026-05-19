@@ -92,7 +92,7 @@ function VerifyEmailContent() {
         });
 
         setTimeout(() => {
-          router.push('/dashboard');
+          router.push('/');
         }, 2000);
       } else {
         const error = result.error;
@@ -174,7 +174,7 @@ function VerifyEmailContent() {
           <Button
             variant="solid"
             className="w-full py-6 text-sm font-semibold rounded-xl bg-linear-to-r from-zinc-950 to-zinc-900 dark:from-white dark:to-zinc-100 hover:opacity-90 active:scale-[0.98] transition-all duration-200"
-            onClick={() => router.push('/dashboard')}
+            onClick={() => router.push('/')}
           >
             {t('auth:actions.goToDashboard')}
             <ArrowRight className="ml-2 w-4.5 h-4.5" />

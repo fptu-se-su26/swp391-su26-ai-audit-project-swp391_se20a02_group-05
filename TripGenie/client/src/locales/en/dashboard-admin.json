@@ -46,7 +46,7 @@
       "successRotation": "Silent Token Rotation completed. Session Extended for {{email}}",
       "warnBruteForce": "Brute-force block: 429 RateLimit lock engaged on IP {{ip}} (Login Endpoint)",
       "successOAuth": "Google OAuth Login processed for user {{email}}",
-      "infoJwt": "Edge verified & decoded signed JWT. Access granted to /dashboard/business (Partner role)"
+      "infoJwt": "Edge verified & decoded signed JWT. Access granted to /business (Partner role)"
     }
   }
 }
