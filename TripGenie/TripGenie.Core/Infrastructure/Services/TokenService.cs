@@ -38,10 +38,11 @@ using System.IdentityModel.Tokens.Jwt; using System.Security.Claims; using Syste
 
     public void SetTokenInsideCookie(string tokenName, string tokenValue, DateTime? expires = null)
     {
+        var isDevelopment = string.Equals(Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT"), "Development", StringComparison.OrdinalIgnoreCase);
         var cookieOptions = new CookieOptions
         {
             HttpOnly = true,
-            Secure = true,
+            Secure = !isDevelopment, // Secure only in production, false in local development HTTP
             SameSite = SameSiteMode.Lax,
             Expires = expires ?? DateTime.UtcNow.AddDays(7)
         };

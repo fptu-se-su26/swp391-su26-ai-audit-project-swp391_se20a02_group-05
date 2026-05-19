@@ -11,6 +11,7 @@ import {
 } from '@heroui/react';
 import { Button } from './button';
 import { AlertTriangle, Clock } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 
 interface SessionTimeoutModalProps {
   isOpen: boolean;
@@ -25,6 +26,8 @@ export const SessionTimeoutModal: React.FC<SessionTimeoutModalProps> = ({
   onExtend,
   onLogout,
 }) => {
+  const { t } = useTranslation(['auth', 'common']);
+
   const formatTime = (secs: number) => {
     const minutes = Math.floor(secs / 60);
     const seconds = secs % 60;
@@ -61,11 +64,11 @@ export const SessionTimeoutModal: React.FC<SessionTimeoutModalProps> = ({
             </div>
 
             <h3 className="text-zinc-900 dark:text-zinc-50 font-bold text-lg mb-1 tracking-tight">
-              Session Expiring Soon
+              {t('auth:sessionTimeout.title')}
             </h3>
             
             <p className="text-zinc-500 dark:text-zinc-400 text-sm leading-relaxed mb-4">
-              You have been inactive for a while. For security, your session will automatically lock in:
+              {t('auth:sessionTimeout.description')}
             </p>
 
             {/* Time Counter Ticker */}
@@ -87,7 +90,7 @@ export const SessionTimeoutModal: React.FC<SessionTimeoutModalProps> = ({
               onClick={onLogout}
               className="w-full sm:order-1 text-zinc-500 dark:text-zinc-400 border-zinc-200 dark:border-zinc-800"
             >
-              Sign Out
+              {t('auth:sessionTimeout.signOut')}
             </Button>
             <Button
               variant="solid"
@@ -99,7 +102,7 @@ export const SessionTimeoutModal: React.FC<SessionTimeoutModalProps> = ({
                   : "",
               ].join(' ')}
             >
-              Extend Session
+              {t('auth:sessionTimeout.extend')}
             </Button>
           </ModalFooter>
         </ModalDialog>

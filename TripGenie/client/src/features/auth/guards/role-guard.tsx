@@ -1,7 +1,7 @@
 "use client";
 
 import React from 'react';
-import { useAuth } from '../../../hooks/use-auth';
+import { useAuth } from '../hooks/use-auth';
 import { UserRole } from '../../../types/auth.types';
 import { Card } from '../../../components/ui/card';
 import { ShieldAlert } from 'lucide-react';

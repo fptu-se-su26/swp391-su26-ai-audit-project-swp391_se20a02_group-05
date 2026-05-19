@@ -54,6 +54,17 @@ public class IntegrationTestApplicationFactory : WebApplicationFactory<Program>
         Environment.SetEnvironmentVariable("JWT_KEY", "super_secret_key_super_secret_key_super_secret_key_32_characters");
         Environment.SetEnvironmentVariable("JWT_ISSUER", "TripGenie.API");
         Environment.SetEnvironmentVariable("JWT_AUDIENCE", "TripGenie.Client");
+        Environment.SetEnvironmentVariable("AI_SERVICE_URL", "http://localhost:8000");
+        Environment.SetEnvironmentVariable("AI_SERVICE_SHARED_SECRET", "test_shared_secret_test_shared_secret_32_chars");
+        Environment.SetEnvironmentVariable("AI_SERVICE_CLIENT_ID", "tripgenie-core");
+        Environment.SetEnvironmentVariable("CLAUDE_MODEL", "claude-3-5-sonnet-20241022");
+        Environment.SetEnvironmentVariable("EMAIL_SENDER_EMAIL", "test@tripgenie.ai");
+        Environment.SetEnvironmentVariable("SMTP_HOST", "127.0.0.1");
+        Environment.SetEnvironmentVariable("SMTP_PORT", "25");
+        Environment.SetEnvironmentVariable("SMTP_USERNAME", "test_user");
+        Environment.SetEnvironmentVariable("SMTP_PASSWORD", "test_pass");
+        Environment.SetEnvironmentVariable("SENDGRID_API_KEY", "mock-sendgrid-api-key");
+        Environment.SetEnvironmentVariable("Auth__DisableCsrf", "true");
 
         // Apply custom environment overrides if provided (e.g., stress test rate limit overrides)
         if (envOverrides != null)
@@ -86,6 +97,7 @@ public class IntegrationTestApplicationFactory : WebApplicationFactory<Program>
                 { "EmailSettings:EnableBackgroundQueue", "false" },
                 { "EmailSettings:TimeoutSeconds", "10" },
                 { "Auth:GoogleClientId", "mock-google-client-id" },
+                { "Auth:DisableCsrf", "true" },
                 { "Jwt:Key", "super_secret_key_super_secret_key_super_secret_key_32_characters" },
                 { "RateLimit:ForgotPasswordPermitLimit", "1000" },
                 { "RateLimit:ResetPasswordPermitLimit", "1000" },

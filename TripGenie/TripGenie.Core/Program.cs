@@ -35,6 +35,9 @@ if (File.Exists(envPath)) {
 var envConfig = EnvValidator.Validate(builder.Configuration);
 builder.Services.AddSingleton(envConfig);
 
+// Clear default loggers to prevent duplicate output and console noise
+builder.Logging.ClearProviders();
+
 // Configure CORS (Cross-Origin Resource Sharing)
 builder.Services.AddCors(options =>
 {
@@ -143,18 +146,45 @@ builder.Services.AddRateLimiter(options =>
                 Window = TimeSpan.FromMinutes(envConfig.RateLimit.RegisterWindowMinutes),
                 QueueLimit = 0
             }));
+
+    options.AddPolicy("AiChatLimit", context =>
+        RateLimitPartition.GetFixedWindowLimiter(
+            partitionKey: context.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value 
+                          ?? context.Connection.RemoteIpAddress?.ToString() 
+                          ?? "unknown",
+            factory: _ => new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = 10,
+                Window = TimeSpan.FromMinutes(1),
+                QueueLimit = 0
+            }));
 });
 
 // Configure EF Core with PostgreSQL (MapEnum inside UseNpgsql handles both EF Core + ADO.NET layers)
-builder.Services.AddDbContext<ApplicationDbContext>(options =>
+builder.Services.AddDbContext<ApplicationDbContext>((sp, options) =>
+{
     options.UseNpgsql(envConfig.Database.ConnectionString, o => o.MapEnum<UserStatus>("user_status"))
-           .UseSnakeCaseNamingConvention());
+           .UseSnakeCaseNamingConvention();
+
+    options.AddInterceptors(sp.GetRequiredService<SlowQueryInterceptor>());
+
+    if (envConfig.Database.EnableSqlLogging)
+    {
+        options.EnableSensitiveDataLogging();
+    }
+});
 
 // Configure Redis
 builder.Services.AddSingleton<IConnectionMultiplexer>(ConnectionMultiplexer.Connect(envConfig.Redis.ConnectionString));
 
 // Register Diagnostics & Telemetry
 builder.Services.AddSingleton<AuthMetrics>();
+builder.Services.AddSingleton<PipelineTelemetry>();
+builder.Services.AddSingleton<AppLoggerPipeline>();
+builder.Services.AddSingleton<IAppLogger, AppLogger>();
+builder.Services.AddSingleton<SlowQueryInterceptor>();
+builder.Services.AddSingleton<ILoggerProvider, AppLoggingProvider>();
+builder.Services.AddHostedService<AppLoggingBackgroundWorker>();
 
 // Register Infrastructure & Data Services
 builder.Services.AddScoped<IIdentityRepository, IdentityRepository>();
@@ -166,6 +196,14 @@ builder.Services.AddScoped<ITokenService, TokenService>();
 builder.Services.AddScoped<IAccountService, AccountService>();
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IPermissionService, PermissionService>();
+
+// Register AI Service
+builder.Services.AddScoped<IHmacSignatureService, HmacSignatureService>();
+builder.Services.AddHttpClient("AiServiceClient", client =>
+{
+    client.BaseAddress = new Uri(envConfig.Ai.FastApiBaseUrl);
+    client.Timeout = TimeSpan.FromMinutes(5); // Long timeout for Claude planning
+});
 
 // Register Email Infrastructure & Transport Services
 builder.Services.AddEmailInfrastructure(builder.Configuration);
@@ -239,9 +277,10 @@ if (app.Environment.IsDevelopment())
     });
 }
 
+app.UseMiddleware<RequestLoggingMiddleware>();
 app.UseExceptionHandler();
-app.UseMiddleware<SecurityHeadersMiddleware>();
 app.UseCors("AllowFrontend");
+app.UseMiddleware<SecurityHeadersMiddleware>();
 app.UseRateLimiter();
 app.UseAuthentication();
 app.UseAuthorization();

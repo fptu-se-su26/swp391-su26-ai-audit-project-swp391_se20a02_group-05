@@ -1,11 +1,11 @@
 "use client";
 
 import { useAuthStore } from '../store/use-auth-store';
-import { authApi, LoginPayload, RegisterPayload, ResetPasswordPayload } from '../lib/api/endpoints';
-import { User, UserRole, ResourceActionPermission } from '../types/auth.types';
+import { authApi, LoginPayload, RegisterPayload, ResetPasswordPayload } from '../services/auth.service';
+import { User, UserRole, ResourceActionPermission } from '../../../types/auth.types';
 import { useState } from 'react';
-import { normalizeError } from '../lib/api/axios-client';
-import { normalizeRole } from '../lib/utils/auth-utils';
+import { normalizeError } from '../../../services/axios-client';
+import { normalizeRole } from '../../../lib/utils/auth-utils';
 
 // Shared module-level bootstrap promise to deduplicate parallel mounts during app initialization
 let bootstrapPromise: Promise<{ authenticated: boolean; user: User | null }> | null = null;
@@ -41,8 +41,8 @@ export const useAuth = () => {
       store.login(user);
       store.setAuthStatusAndNextStep(response.status, response.nextStep);
       return { success: true, user, nextStep: response.nextStep };
-    } catch (err: any) {
-      const parsedError = err.code ? err : normalizeError(err);
+    } catch (err: unknown) {
+      const parsedError = normalizeError(err);
       setAuthError(parsedError.message);
       store.setLoading(false);
       return { success: false, error: parsedError };
@@ -76,8 +76,8 @@ export const useAuth = () => {
       store.login(user);
       store.setAuthStatusAndNextStep(response.status, response.nextStep);
       return { success: true, user, nextStep: response.nextStep };
-    } catch (err: any) {
-      const parsedError = err.code ? err : normalizeError(err);
+    } catch (err: unknown) {
+      const parsedError = normalizeError(err);
       setAuthError(parsedError.message);
       store.setLoading(false);
       return { success: false, error: parsedError };
@@ -97,8 +97,8 @@ export const useAuth = () => {
         statusCode: response.statusCode,
         uiAction: response.uiAction,
       };
-    } catch (err: any) {
-      const parsedError = err.code ? err : normalizeError(err);
+    } catch (err: unknown) {
+      const parsedError = normalizeError(err);
       setAuthError(parsedError.message);
       store.setLoading(false);
       return { success: false, error: parsedError };
@@ -126,8 +126,8 @@ export const useAuth = () => {
       store.setAuthStatusAndNextStep(response.status, response.nextStep);
       store.setLoading(false);
       return { success: true, user, nextStep: response.nextStep };
-    } catch (err: any) {
-      const parsedError = err.code ? err : normalizeError(err);
+    } catch (err: unknown) {
+      const parsedError = normalizeError(err);
       setAuthError(parsedError.message);
       store.setLoading(false);
       return { success: false, error: parsedError };
@@ -155,8 +155,8 @@ export const useAuth = () => {
       store.setAuthStatusAndNextStep(response.status, response.nextStep);
       store.setLoading(false);
       return { success: true, user, nextStep: response.nextStep };
-    } catch (err: any) {
-      const parsedError = err.code ? err : normalizeError(err);
+    } catch (err: unknown) {
+      const parsedError = normalizeError(err);
       setAuthError(parsedError.message);
       store.setLoading(false);
       return { success: false, error: parsedError };
@@ -208,7 +208,7 @@ export const useAuth = () => {
         store.login(user);
         store.setAuthStatusAndNextStep(response.status, response.nextStep);
         return { authenticated: true, user };
-      } catch (err) {
+      } catch {
         store.logout(false);
         return { authenticated: false, user: null };
       } finally {

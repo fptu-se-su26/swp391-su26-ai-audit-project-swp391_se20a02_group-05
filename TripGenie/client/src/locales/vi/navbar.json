@@ -1,0 +1,18 @@
+{
+  "search": "Tìm kiếm hành trình, địa điểm...",
+  "notifications": {
+    "title": "Thông báo",
+    "empty": "Không có thông báo mới",
+    "markAllRead": "Đánh dấu tất cả đã đọc"
+  },
+  "menu": {
+    "dashboard": "Bảng điều khiển",
+    "settings": "Cài đặt hồ sơ",
+    "logout": "Đăng xuất",
+    "avatarAlt": "Ảnh đại diện người dùng",
+    "userMenu": "Menu người dùng"
+  },
+  "badge": {
+    "sandbox": "Hộp cát"
+  }
+}

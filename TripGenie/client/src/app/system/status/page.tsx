@@ -1,28 +1,26 @@
 "use client";
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { 
-  Activity, 
-  Database, 
-  ShieldCheck, 
-  Cpu, 
-  Clock, 
-  RefreshCw, 
-  Server, 
-  CheckCircle2, 
-  AlertTriangle, 
-  Terminal, 
+import {
+  Database,
+  ShieldCheck,
+  Cpu,
+  Clock,
+  RefreshCw,
+  Server,
+  CheckCircle2,
+  AlertTriangle,
+  Terminal,
   Compass,
   ArrowUpRight,
-  RefreshCcw,
   Zap,
   Gauge
 } from 'lucide-react';
-import { systemApi } from '../../../lib/api/system.service';
+import { systemApi } from '../../../services/system.service';
 import { SystemTelemetryData } from '../../../types/system.types';
 
 // Helper to log telemetry updates in development environment only
-const logDev = (message: string, data?: any) => {
+const logDev = (message: string, data?: unknown) => {
   if (process.env.NODE_ENV === 'development') {
     console.log(`%c[Status Dashboard]%c ${message}`, 'color: #10b981; font-weight: bold;', 'color: inherit;', data || '');
   }
@@ -41,7 +39,7 @@ export default function SystemStatusPage() {
   const [isRefreshing, setIsRefreshing] = useState<boolean>(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [showRawJson, setShowRawJson] = useState<boolean>(false);
-  
+
   // Auto-refresh countdown tracking (30 seconds)
   const [countdown, setCountdown] = useState<number>(30);
 
@@ -60,10 +58,10 @@ export default function SystemStatusPage() {
     try {
       // 1. Measure ping latency
       const pingResult = await systemApi.ping();
-      
+
       // 2. Fetch multi-service health (resolves normally even if 503 degraded)
       const healthData = await systemApi.fetchHealth();
-      
+
       // 3. Fetch software versioning metadata
       const versionData = await systemApi.fetchVersion();
 
@@ -74,21 +72,22 @@ export default function SystemStatusPage() {
         latency: pingResult.latency,
         lastChecked: new Date().toLocaleTimeString(),
       });
-      
+
       logDev('Diagnostic sequence completed successfully.', {
         health: healthData,
         latency: pingResult.latency,
         version: versionData
       });
-    } catch (err: any) {
-      logDev('Diagnostic sequence encountered an execution error.', err);
-      
+    } catch (err: unknown) {
+      const error = err as Error;
+      logDev('Diagnostic sequence encountered an execution error.', error);
+
       // Attempt to retrieve fallback version data or general connection failure message
       setErrorMsg(
-        err.message || 
+        error.message ||
         'Unable to establish a socket connection to the TripGenie API server. Check your network or API endpoint status.'
       );
-      
+
       setTelemetry({
         health: null,
         ping: null,
@@ -105,7 +104,9 @@ export default function SystemStatusPage() {
 
   // Initial load
   useEffect(() => {
-    runDiagnostics();
+    queueMicrotask(() => {
+      runDiagnostics();
+    });
   }, [runDiagnostics]);
 
   // Countdown timer and auto-refresh loop
@@ -128,7 +129,7 @@ export default function SystemStatusPage() {
   const getOverallStatus = () => {
     if (isLoading && !telemetry.lastChecked) return 'loading';
     if (errorMsg || !telemetry.health) return 'offline';
-    
+
     const db = telemetry.health.services.database;
     const redis = telemetry.health.services.redis;
     const auth = telemetry.health.services.auth;
@@ -143,14 +144,14 @@ export default function SystemStatusPage() {
 
   return (
     <div className="min-h-screen flex flex-col justify-between bg-[#030712] text-zinc-100 font-sans selection:bg-cyan-500/30 selection:text-cyan-300 relative overflow-hidden">
-      
+
       {/* Visual Ambient Blur Accents */}
       <div className="absolute top-[-20%] left-[-10%] w-[500px] h-[500px] rounded-full bg-cyan-900/10 blur-[120px] pointer-events-none" />
       <div className="absolute bottom-[-10%] right-[-10%] w-[600px] h-[600px] rounded-full bg-indigo-950/10 blur-[150px] pointer-events-none" />
 
       {/* Main Status Container */}
       <main className="max-w-5xl w-full mx-auto px-4 py-12 md:py-16 flex-1 flex flex-col justify-center relative z-10">
-        
+
         {/* Brand Header */}
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 mb-10">
           <div className="flex items-center gap-4">
@@ -187,8 +188,8 @@ export default function SystemStatusPage() {
 
         {/* Global Progress Countdown Bar */}
         <div className="w-full h-[3px] bg-zinc-900 rounded-full mb-8 overflow-hidden">
-          <div 
-            className="h-full bg-gradient-to-r from-cyan-500 to-indigo-500 transition-all duration-1000 ease-linear rounded-full" 
+          <div
+            className="h-full bg-linear-to-r from-cyan-500 to-indigo-500 transition-all duration-1000 ease-linear rounded-full"
             style={{ width: `${(countdown / 30) * 100}%` }}
           />
         </div>
@@ -213,65 +214,60 @@ export default function SystemStatusPage() {
           </div>
         ) : (
           <div className="space-y-6">
-            
+
             {/* 1. HERO GENERAL STATUS BANNER */}
-            <div className={`p-6 md:p-8 rounded-2xl border backdrop-blur-md shadow-2xl relative overflow-hidden transition-all duration-500 ${
-              overallStatus === 'healthy' 
-                ? 'bg-emerald-950/20 border-emerald-500/30 shadow-emerald-950/10' 
-                : overallStatus === 'degraded' 
-                  ? 'bg-amber-950/20 border-amber-500/30 shadow-amber-950/10' 
+            <div className={`p-6 md:p-8 rounded-2xl border backdrop-blur-md shadow-2xl relative overflow-hidden transition-all duration-500 ${overallStatus === 'healthy'
+                ? 'bg-emerald-950/20 border-emerald-500/30 shadow-emerald-950/10'
+                : overallStatus === 'degraded'
+                  ? 'bg-amber-950/20 border-amber-500/30 shadow-amber-950/10'
                   : 'bg-rose-950/20 border-rose-500/30 shadow-rose-950/10'
-            }`}>
-              
+              }`}>
+
               {/* Corner status glow backdrop */}
-              <div className={`absolute top-0 right-0 w-60 h-60 rounded-full blur-[80px] opacity-20 pointer-events-none translate-x-20 -translate-y-20 transition-all ${
-                overallStatus === 'healthy' 
-                  ? 'bg-emerald-500' 
-                  : overallStatus === 'degraded' 
-                    ? 'bg-amber-500' 
+              <div className={`absolute top-0 right-0 w-60 h-60 rounded-full blur-[80px] opacity-20 pointer-events-none translate-x-20 -translate-y-20 transition-all ${overallStatus === 'healthy'
+                  ? 'bg-emerald-500'
+                  : overallStatus === 'degraded'
+                    ? 'bg-amber-500'
                     : 'bg-rose-500'
-              }`} />
+                }`} />
 
               <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 relative z-10">
                 <div className="space-y-2">
                   <div className="flex items-center gap-2.5">
                     <span className="relative flex h-3.5 w-3.5">
-                      <span className={`animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 ${
-                        overallStatus === 'healthy' 
-                          ? 'bg-emerald-400' 
-                          : overallStatus === 'degraded' 
-                            ? 'bg-amber-400' 
+                      <span className={`animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 ${overallStatus === 'healthy'
+                          ? 'bg-emerald-400'
+                          : overallStatus === 'degraded'
+                            ? 'bg-amber-400'
                             : 'bg-rose-400'
-                      }`}></span>
-                      <span className={`relative inline-flex rounded-full h-3.5 w-3.5 ${
-                        overallStatus === 'healthy' 
-                          ? 'bg-emerald-500' 
-                          : overallStatus === 'degraded' 
-                            ? 'bg-amber-500' 
+                        }`}></span>
+                      <span className={`relative inline-flex rounded-full h-3.5 w-3.5 ${overallStatus === 'healthy'
+                          ? 'bg-emerald-500'
+                          : overallStatus === 'degraded'
+                            ? 'bg-amber-500'
                             : 'bg-rose-500'
-                      }`}></span>
+                        }`}></span>
                     </span>
-                    <span className={`text-sm font-extrabold uppercase tracking-widest ${
-                      overallStatus === 'healthy' 
-                        ? 'text-emerald-400' 
-                        : overallStatus === 'degraded' 
-                          ? 'text-amber-400' 
+                    <span className={`text-sm font-extrabold uppercase tracking-widest ${overallStatus === 'healthy'
+                        ? 'text-emerald-400'
+                        : overallStatus === 'degraded'
+                          ? 'text-amber-400'
                           : 'text-rose-400'
-                    }`}>
-                      {overallStatus === 'healthy' 
-                        ? 'Operational' 
-                        : overallStatus === 'degraded' 
-                          ? 'Degraded Performance' 
+                      }`}>
+                      {overallStatus === 'healthy'
+                        ? 'Operational'
+                        : overallStatus === 'degraded'
+                          ? 'Degraded Performance'
                           : 'API Offline'}
                     </span>
                   </div>
-                  
+
                   <h2 className="text-2xl md:text-3xl font-extrabold tracking-tight text-white">
                     {overallStatus === 'healthy' && 'All systems are operating normally.'}
                     {overallStatus === 'degraded' && 'Some systems are experiencing outages.'}
                     {overallStatus === 'offline' && 'Failed to establish connection to core APIs.'}
                   </h2>
-                  
+
                   <p className="text-xs text-zinc-400 max-w-xl">
                     {overallStatus === 'healthy' && 'We are monitoring API gateways, background workers, permission models, database queries, and storage targets. No incidents detected.'}
                     {overallStatus === 'degraded' && 'We have detected minor health degradation on one or more services. Engineers are automatically alerted.'}
@@ -306,7 +302,7 @@ export default function SystemStatusPage() {
 
             {/* 3. CORE SERVICE GRID SUMMARY */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              
+
               {/* A. DATABASE SERVICE */}
               <div className="p-5 rounded-xl bg-zinc-900/40 border border-zinc-800/80 backdrop-blur-md shadow-lg transition-all duration-300 hover:border-zinc-700/80 group">
                 <div className="flex justify-between items-start mb-4">
@@ -314,11 +310,10 @@ export default function SystemStatusPage() {
                     <Database size={18} />
                   </div>
                   {telemetry.health ? (
-                    <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${
-                      telemetry.health.services.database === 'healthy' 
-                        ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' 
+                    <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${telemetry.health.services.database === 'healthy'
+                        ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
                         : 'bg-rose-500/10 text-rose-400 border border-rose-500/20'
-                    }`}>
+                      }`}>
                       {telemetry.health.services.database}
                     </span>
                   ) : (
@@ -344,11 +339,10 @@ export default function SystemStatusPage() {
                     <Cpu size={18} />
                   </div>
                   {telemetry.health ? (
-                    <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${
-                      telemetry.health.services.redis === 'healthy' 
-                        ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' 
+                    <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${telemetry.health.services.redis === 'healthy'
+                        ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
                         : 'bg-rose-500/10 text-rose-400 border border-rose-500/20'
-                    }`}>
+                      }`}>
                       {telemetry.health.services.redis}
                     </span>
                   ) : (
@@ -374,11 +368,10 @@ export default function SystemStatusPage() {
                     <ShieldCheck size={18} />
                   </div>
                   {telemetry.health ? (
-                    <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${
-                      telemetry.health.services.auth === 'healthy' 
-                        ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' 
+                    <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${telemetry.health.services.auth === 'healthy'
+                        ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
                         : 'bg-rose-500/10 text-rose-400 border border-rose-500/20'
-                    }`}>
+                      }`}>
                       {telemetry.health.services.auth}
                     </span>
                   ) : (
@@ -401,7 +394,7 @@ export default function SystemStatusPage() {
 
             {/* 4. PERFORMANCE TELEMETRY & SYSTEM DETAILS */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              
+
               {/* Telemetry Metrics */}
               <div className="p-6 rounded-xl bg-zinc-900/40 border border-zinc-800/80 backdrop-blur-md space-y-4">
                 <h3 className="text-xs font-bold text-zinc-400 uppercase tracking-widest flex items-center gap-2">
@@ -444,11 +437,11 @@ export default function SystemStatusPage() {
                     Estimated connection state:
                   </span>
                   <span className="font-semibold text-zinc-200">
-                    {telemetry.latency !== null 
-                      ? telemetry.latency < 50 
-                        ? 'Excellent (Local Host)' 
-                        : telemetry.latency < 200 
-                          ? 'Optimal (Broadband)' 
+                    {telemetry.latency !== null
+                      ? telemetry.latency < 50
+                        ? 'Excellent (Local Host)'
+                        : telemetry.latency < 200
+                          ? 'Optimal (Broadband)'
                           : 'Delayed'
                       : 'Offline'}
                   </span>
@@ -527,7 +520,7 @@ export default function SystemStatusPage() {
                       {JSON.stringify(telemetry.health, null, 2)}
                     </pre>
                   </div>
-                  
+
                   <div className="space-y-1">
                     <span className="text-cyan-400 text-xs font-bold font-sans flex items-center gap-1 select-none">
                       <ArrowUpRight size={10} /> Connection Ping Endpoint Payload (GET /api/system/ping)

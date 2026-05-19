@@ -1,9 +1,9 @@
-import { axiosClient } from './axios-client';
+import { axiosClient } from '../../../services/axios-client';
 import {
   LoginResponseData,
   UserProfileResponseData,
   AuthSuccessResponse,
-} from '../../types/auth.types';
+} from '../../../types/auth.types';
 import { z } from 'zod';
 import {
   loginSchema,

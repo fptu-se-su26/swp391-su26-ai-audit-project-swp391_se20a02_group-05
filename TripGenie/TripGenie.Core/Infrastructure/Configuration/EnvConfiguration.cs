@@ -7,11 +7,14 @@ public class EnvConfiguration
     public JwtSettings Jwt { get; set; } = new();
     public AuthSettings Auth { get; set; } = new();
     public AuthRateLimitSettings RateLimit { get; set; } = new();
+    public AiSettings Ai { get; set; } = new();
 }
 
 public class DatabaseSettings
 {
     public string ConnectionString { get; set; } = null!;
+    public bool EnableSqlLogging { get; set; } = false;
+    public int SlowQueryThresholdMs { get; set; } = 250;
 }
 
 public class RedisSettings
@@ -36,6 +39,7 @@ public class AuthSettings
     public string VerifyEmailUrlFormat => $"{FrontendUrl.TrimEnd('/')}/verify-email?token={{token}}";
     public string TrustedDomains { get; set; } = "tripgenie.ai;localhost;127.0.0.1";
     public string GoogleClientId { get; set; } = null!;
+    public bool DisableCsrf { get; set; } = false;
 }
 
 public class AuthRateLimitSettings
@@ -54,4 +58,12 @@ public class AuthRateLimitSettings
 
     public int RegisterPermitLimit { get; set; } = 5;
     public int RegisterWindowMinutes { get; set; } = 15;
+}
+
+public class AiSettings
+{
+    public string FastApiBaseUrl { get; set; } = "http://localhost:8000";
+    public string SharedSecret { get; set; } = null!;
+    public string ClientId { get; set; } = "tripgenie-core";
+    public string ClaudeModel { get; set; } = "claude-sonnet-4-6";
 }

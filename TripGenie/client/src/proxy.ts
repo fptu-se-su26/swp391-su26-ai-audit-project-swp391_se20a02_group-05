@@ -5,6 +5,41 @@ import { ROUTES } from './lib/constants/auth.constants';
 import { UserRole } from './types/auth.types';
 import { normalizeRole } from './lib/utils/auth-utils';
 
+const SUPPORTED_LANGS = ['vi', 'en'];
+const DEFAULT_LANG = 'vi';
+const LANG_COOKIE_NAME = 'i18next';
+
+function handleLocale(request: NextRequest, response: NextResponse): void {
+  const { cookies, headers } = request;
+  let locale = cookies.get(LANG_COOKIE_NAME)?.value;
+
+  if (!locale) {
+    const acceptLang = headers.get('accept-language');
+    if (acceptLang) {
+      const preferred = acceptLang
+        .split(',')
+        .map((lang) => lang.split(';')[0].trim().substring(0, 2).toLowerCase())
+        .find((lang) => SUPPORTED_LANGS.includes(lang));
+
+      if (preferred) {
+        locale = preferred;
+      }
+    }
+  }
+
+  if (!locale || !SUPPORTED_LANGS.includes(locale)) {
+    locale = DEFAULT_LANG;
+  }
+
+  if (cookies.get(LANG_COOKIE_NAME)?.value !== locale) {
+    response.cookies.set(LANG_COOKIE_NAME, locale, {
+      path: '/',
+      maxAge: 31536000, // 1 year
+      sameSite: 'lax',
+    });
+  }
+}
+
 export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
   const isDev = process.env.NODE_ENV === 'development';
@@ -14,13 +49,13 @@ export async function proxy(request: NextRequest) {
 
   // Define route classifications
   const isDashboardRoute = pathname.startsWith('/dashboard');
-  const isAuthRoute = [
+  const isAuthRoute = ([
     ROUTES.LOGIN,
     ROUTES.REGISTER,
     ROUTES.FORGOT_PASSWORD,
     ROUTES.RESET_PASSWORD,
     ROUTES.VERIFY_EMAIL,
-  ].includes(pathname as any);
+  ] as string[]).includes(pathname);
 
   let userRole: UserRole = 'USER';
   let isTokenValid = false;
@@ -68,15 +103,21 @@ export async function proxy(request: NextRequest) {
         if (isDev) {
           console.log(`[Security Proxy] Logged-in unverified user accessing auth route. Redirecting to verify-email.`);
         }
-        return NextResponse.redirect(new URL(ROUTES.VERIFY_EMAIL, request.url));
+        const response = NextResponse.redirect(new URL(ROUTES.VERIFY_EMAIL, request.url));
+        handleLocale(request, response);
+        return response;
       }
-      return NextResponse.next();
+      const response = NextResponse.next();
+      handleLocale(request, response);
+      return response;
     }
 
     if (isDev) {
       console.log(`[Security Proxy] Logged-in verified user accessing auth route. Redirecting to: /dashboard`);
     }
-    return NextResponse.redirect(new URL('/dashboard', request.url));
+    const response = NextResponse.redirect(new URL('/dashboard', request.url));
+    handleLocale(request, response);
+    return response;
   }
 
   // 2. Root Dashboard Redirect (Exact match for '/dashboard' or '/dashboard/')
@@ -86,7 +127,9 @@ export async function proxy(request: NextRequest) {
       if (isDev) {
         console.log(`[Security Proxy] Unauthenticated root dashboard access. Redirecting to: ${ROUTES.LOGIN}`);
       }
-      return NextResponse.redirect(redirectUrl);
+      const response = NextResponse.redirect(redirectUrl);
+      handleLocale(request, response);
+      return response;
     }
 
     // Force unverified authenticated users to verify their email
@@ -94,7 +137,9 @@ export async function proxy(request: NextRequest) {
       if (isDev) {
         console.log(`[Security Proxy] Authenticated unverified root dashboard access. Redirecting to verify-email.`);
       }
-      return NextResponse.redirect(new URL(ROUTES.VERIFY_EMAIL, request.url));
+      const response = NextResponse.redirect(new URL(ROUTES.VERIFY_EMAIL, request.url));
+      handleLocale(request, response);
+      return response;
     }
 
     let targetDashboard: string = ROUTES.DASHBOARD.USER;
@@ -107,7 +152,9 @@ export async function proxy(request: NextRequest) {
     if (isDev) {
       console.log(`[Security Proxy] Root dashboard redirect match. Routing to: ${targetDashboard}`);
     }
-    return NextResponse.redirect(new URL(targetDashboard, request.url));
+    const response = NextResponse.redirect(new URL(targetDashboard, request.url));
+    handleLocale(request, response);
+    return response;
   }
 
   // 3. Protecting Dashboard Sub-Routes
@@ -125,6 +172,7 @@ export async function proxy(request: NextRequest) {
       const response = NextResponse.redirect(redirectUrl);
       response.cookies.delete('access_token');
       response.cookies.delete('refresh_token');
+      handleLocale(request, response);
       return response;
     }
 
@@ -133,7 +181,9 @@ export async function proxy(request: NextRequest) {
       if (isDev) {
         console.warn(`[Security Proxy] Access denied for dashboard. Email unverified. Redirecting to verify-email.`);
       }
-      return NextResponse.redirect(new URL(ROUTES.VERIFY_EMAIL, request.url));
+      const response = NextResponse.redirect(new URL(ROUTES.VERIFY_EMAIL, request.url));
+      handleLocale(request, response);
+      return response;
     }
 
     // Role Gating Logic
@@ -141,25 +191,33 @@ export async function proxy(request: NextRequest) {
       if (isDev) {
         console.warn(`[Security Proxy] Access denied for /dashboard/admin. Role: ${userRole}. Redirecting to unauthorized.`);
       }
-      return NextResponse.redirect(new URL(ROUTES.UNAUTHORIZED, request.url));
+      const response = NextResponse.redirect(new URL(ROUTES.UNAUTHORIZED, request.url));
+      handleLocale(request, response);
+      return response;
     }
 
     if (pathname.startsWith('/dashboard/business') && !['BUSINESS', 'ADMIN'].includes(userRole)) {
       if (isDev) {
         console.warn(`[Security Proxy] Access denied for /dashboard/business. Role: ${userRole}. Redirecting to unauthorized.`);
       }
-      return NextResponse.redirect(new URL(ROUTES.UNAUTHORIZED, request.url));
+      const response = NextResponse.redirect(new URL(ROUTES.UNAUTHORIZED, request.url));
+      handleLocale(request, response);
+      return response;
     }
 
     if (pathname.startsWith('/dashboard/user') && !['USER', 'BUSINESS', 'ADMIN'].includes(userRole)) {
       if (isDev) {
         console.warn(`[Security Proxy] Access denied for /dashboard/user. Role: ${userRole}. Redirecting to unauthorized.`);
       }
-      return NextResponse.redirect(new URL(ROUTES.UNAUTHORIZED, request.url));
+      const response = NextResponse.redirect(new URL(ROUTES.UNAUTHORIZED, request.url));
+      handleLocale(request, response);
+      return response;
     }
   }
 
-  return NextResponse.next();
+  const response = NextResponse.next();
+  handleLocale(request, response);
+  return response;
 }
 
 // Next.js Proxy matcher configuration

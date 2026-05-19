@@ -217,9 +217,9 @@ public class AuthFlowsApiTests : BaseIntegrationTest
             var user = await db.Users.FirstOrDefaultAsync(u => u.Id == userId);
             BCrypt.Net.BCrypt.Verify("NewSecurePassword456!", user!.PasswordHash).Should().BeTrue();
 
-            // Verify all refresh tokens are revoked
+            // Verify all refresh tokens are revoked except the newly issued auto-login token
             var activeTokensCount = await db.RefreshTokens.CountAsync(t => t.UserId == userId && t.RevokedAt == null);
-            activeTokensCount.Should().Be(0);
+            activeTokensCount.Should().Be(1);
 
             var auditLog = await db.AuditLogs.FirstOrDefaultAsync(l => l.UserId == userId && l.EventType == "USER_PASSWORD_RESET_SUCCESS");
             auditLog.Should().NotBeNull();
@@ -298,8 +298,8 @@ public class AuthFlowsApiTests : BaseIntegrationTest
         // 2. Try to register same email again
         var response2 = await Client.PostAsJsonAsync("/api/auth/register", userRequest).ConfigureAwait(false);
         
-        // Assert: Silent generic success for active duplicates (Enumeration prevention)
-        response2.StatusCode.Should().Be(HttpStatusCode.OK);
+        // Assert: Conflict (409) returned for active duplicates (hardened security)
+        response2.StatusCode.Should().Be(HttpStatusCode.Conflict);
     }
 
     [Fact]

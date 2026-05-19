@@ -1,7 +1,7 @@
 import axios, { AxiosError, AxiosInstance, InternalAxiosRequestConfig } from 'axios';
-import { useAuthStore } from '../../store/use-auth-store';
-import { ApiError } from '../../types/auth.types';
-import { AUTH_KEYS } from '../constants';
+import { useAuthStore } from '../features/auth/store/use-auth-store';
+import { ApiError } from '../types/auth.types';
+import { AUTH_KEYS } from '../lib/constants';
 
 // Helper to extract a cookie value on the client side
 export function getCookie(name: string): string | undefined {
@@ -12,6 +12,12 @@ export function getCookie(name: string): string | undefined {
     return parts.pop()?.split(';').shift();
   }
   return undefined;
+}
+
+// Helper to set a cookie value on the client side
+export function setCookie(name: string, value: string, maxAgeSeconds: number = 31536000) {
+  if (typeof document === 'undefined') return;
+  document.cookie = `${name}=${value}; path=/; max-age=${maxAgeSeconds}; SameSite=Lax; Secure`;
 }
 
 // Configured base URL for API, using standard environment settings
@@ -41,11 +47,11 @@ axiosClient.interceptors.request.use(
     }
     return config;
   },
-  (error) => Promise.reject(error)
+  (error: unknown) => Promise.reject(error)
 );
 
 // Single cached refresh promise to prevent concurrent token rotation under heavy traffic
-let refreshPromise: Promise<any> | null = null;
+let refreshPromise: Promise<unknown> | null = null;
 
 // Response Interceptor
 axiosClient.interceptors.response.use(
@@ -99,7 +105,7 @@ axiosClient.interceptors.response.use(
           }
         }
         
-        return Promise.reject(normalizeError(refreshErr as AxiosError));
+        return Promise.reject(normalizeError(refreshErr));
       }
     }
 
@@ -116,60 +122,86 @@ axiosClient.interceptors.response.use(
  * Normalizes all kinds of HTTP and network exceptions into a standardized ApiError.
  * Properly parses C# ProblemDetails, extensions.code, and lowercases validation dictionaries.
  */
-export function normalizeError(error: AxiosError): ApiError {
-  const data = error.response?.data as any;
+export function normalizeError(error: unknown): ApiError {
+  if (axios.isAxiosError(error)) {
+    const data = error.response?.data as Record<string, unknown> | undefined;
 
-  if (data && typeof data === 'object') {
-    // 1. Map validation dictionaries from C# ProblemDetails (key: [messages]) to camelCase
-    const normalizedErrors: Record<string, string[]> = {};
-    let isValidationError = false;
-    
-    if (data.errors && typeof data.errors === 'object') {
-      isValidationError = true;
-      Object.entries(data.errors).forEach(([key, value]) => {
-        // Convert PascalCase C# properties (e.g. Email) to camelCase (e.g. email)
-        const camelKey = key.charAt(0).toLowerCase() + key.slice(1);
-        normalizedErrors[camelKey] = Array.isArray(value) ? value : [String(value)];
-      });
+    if (data && typeof data === 'object') {
+      // 1. Map validation dictionaries from C# ProblemDetails (key: [messages]) to camelCase
+      const normalizedErrors: Record<string, string[]> = {};
+      let isValidationError = false;
+      
+      const errors = data.errors as Record<string, unknown> | undefined;
+      if (errors && typeof errors === 'object') {
+        isValidationError = true;
+        Object.entries(errors).forEach(([key, value]) => {
+          // Convert PascalCase C# properties (e.g. Email) to camelCase (e.g. email)
+          const camelKey = key.charAt(0).toLowerCase() + key.slice(1);
+          normalizedErrors[camelKey] = Array.isArray(value) 
+            ? (value as unknown[]).map(String) 
+            : [String(value)];
+        });
+      }
+
+      // 2. Extract detailed message
+      const mainMessage = (data.detail as string) || 
+                          (data.message as string) || 
+                          (data.title as string) || 
+                          error.message || 
+                          'An unexpected error occurred.';
+
+      // 3. Extract custom error code from extensions.code or direct property
+      const extensions = data.extensions as Record<string, unknown> | undefined;
+      const customCode = (extensions?.code as string) || 
+                         (data.code as string) || 
+                         (isValidationError ? 'VALIDATION_ERROR' : 'UNKNOWN_ERROR');
+
+      return {
+        code: customCode,
+        message: mainMessage,
+        errors: isValidationError ? normalizedErrors : undefined,
+        remainingAttempts: typeof data.remainingAttempts === 'number' ? data.remainingAttempts : undefined,
+        cooldownSeconds: typeof data.cooldownSeconds === 'number' ? data.cooldownSeconds : undefined,
+      };
     }
 
-    // 2. Extract detailed message
-    const mainMessage = data.detail || data.message || data.title || error.message || 'An unexpected error occurred.';
+    // Handle Rate Limiter responses (429 Too Many Requests)
+    if (error.response?.status === 429) {
+      const retryAfter = error.response.headers['retry-after'];
+      const cooldown = retryAfter ? parseInt(retryAfter, 10) : 60;
+      return {
+        code: 'RATE_LIMIT_EXCEEDED',
+        message: 'Too many requests. Please slow down and try again later.',
+        cooldownSeconds: cooldown,
+      };
+    }
 
-    // 3. Extract custom error code from extensions.code or direct property
-    const customCode = data.extensions?.code || data.code || (isValidationError ? 'VALIDATION_ERROR' : 'UNKNOWN_ERROR');
+    // Handle Timeout
+    if (error.code === 'ECONNABORTED') {
+      return {
+        code: 'NETWORK_TIMEOUT',
+        message: 'Request timed out. Please check your network connection.',
+      };
+    }
 
+    // General fallback
     return {
-      code: customCode,
-      message: mainMessage,
-      errors: isValidationError ? normalizedErrors : undefined,
-      remainingAttempts: data.remainingAttempts !== undefined ? data.remainingAttempts : undefined,
-      cooldownSeconds: data.cooldownSeconds !== undefined ? data.cooldownSeconds : undefined,
+      code: 'NETWORK_ERROR',
+      message: error.message || 'Unable to connect to the server.',
     };
   }
 
-  // Handle Rate Limiter responses (429 Too Many Requests)
-  if (error.response?.status === 429) {
-    const retryAfter = error.response.headers['retry-after'];
-    const cooldown = retryAfter ? parseInt(retryAfter, 10) : 60;
+  // If it's a generic Error instance
+  if (error instanceof Error) {
     return {
-      code: 'RATE_LIMIT_EXCEEDED',
-      message: 'Too many requests. Please slow down and try again later.',
-      cooldownSeconds: cooldown,
+      code: 'UNKNOWN_ERROR',
+      message: error.message,
     };
   }
 
-  // Handle Timeout
-  if (error.code === 'ECONNABORTED') {
-    return {
-      code: 'NETWORK_TIMEOUT',
-      message: 'Request timed out. Please check your network connection.',
-    };
-  }
-
-  // General fallback
+  // Fallback
   return {
-    code: 'NETWORK_ERROR',
-    message: error.message || 'Unable to connect to the server.',
+    code: 'UNKNOWN_ERROR',
+    message: 'An unexpected error occurred.',
   };
 }

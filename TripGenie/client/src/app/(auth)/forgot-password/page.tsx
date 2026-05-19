@@ -3,16 +3,17 @@
 import React, { useState } from 'react';
 import { useForm, FormProvider } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { forgotPasswordSchema } from '../../../lib/validators/auth.validator';
-import { authApi } from '../../../lib/api/endpoints';
+import { forgotPasswordSchema } from '../../../features/auth/validators/auth.validator';
+import { authApi } from '../../../features/auth/services/auth.service';
 import { FormInput } from '../../../components/forms/form-input';
 import { Button } from '../../../components/ui/button';
 import { Card } from '../../../components/ui/card';
 import { z } from 'zod';
 import Link from 'next/link';
-import { MailCheck, ShieldAlert, ArrowLeft } from 'lucide-react';
-import { normalizeError } from '../../../lib/api/axios-client';
+import { MailCheck, ArrowLeft } from 'lucide-react';
+import { normalizeError } from '../../../services/axios-client';
 import { toast } from '@heroui/react';
+import { useTranslation } from 'react-i18next';
 
 type ForgotPasswordFormValues = z.infer<typeof forgotPasswordSchema>;
 
@@ -20,6 +21,7 @@ export default function ForgotPasswordPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [successText, setSuccessText] = useState<string | null>(null);
   const [submittedEmail, setSubmittedEmail] = useState('');
+  const { t } = useTranslation(['auth', 'common']);
 
   const methods = useForm<ForgotPasswordFormValues>({
     resolver: zodResolver(forgotPasswordSchema),
@@ -38,14 +40,14 @@ export default function ForgotPasswordPage() {
 
     try {
       const response = await authApi.forgotPassword(data);
-      setSuccessText(response.message || 'Verification link has been sent to your email.');
-      toast.success("Recovery Link Sent", {
-        description: `We've sent a secure password recovery link to ${data.email}.`,
+      setSuccessText(response.message || t('auth:screens.recoverySent'));
+      toast.success(t('auth:toast.recoverySentTitle'), {
+        description: t('auth:toast.recoverySentDesc', { email: data.email }),
       });
-    } catch (err: any) {
-      const parsedError = err.code ? err : normalizeError(err);
-      toast.danger("Request Failed", {
-        description: parsedError.message || "Could not send password recovery instructions.",
+    } catch (err: unknown) {
+      const parsedError = normalizeError(err);
+      toast.danger(t('auth:toast.requestFailedTitle'), {
+        description: parsedError.message || t('auth:toast.requestFailedDesc'),
       });
     } finally {
       setIsLoading(false);
@@ -61,27 +63,25 @@ export default function ForgotPasswordPage() {
             <MailCheck size={24} />
           </div>
           
-          <h2 className="text-2xl font-bold tracking-tight text-zinc-900 dark:text-zinc-50 mb-2">
-            Check your email
+          <h2 className="text-2xl font-bold tracking-tight text-zinc-900 dark:text-zinc-50 mb-2 font-outfit">
+            {t('auth:screens.checkEmail')}
           </h2>
           
-          <p className="text-zinc-500 dark:text-zinc-400 text-sm leading-relaxed mb-6">
-            We have sent a secure password recovery link to{' '}
-            <span className="font-semibold text-zinc-800 dark:text-zinc-200">{submittedEmail}</span>. 
-            Please follow the instructions inside the email to reset your credentials.
+          <p className="text-zinc-500 dark:text-zinc-400 text-sm leading-relaxed mb-6 font-outfit">
+            {t('auth:toast.recoverySentDesc', { email: submittedEmail })}
           </p>
 
           <Link href="/login" className="w-full">
             <Button variant="solid" className="w-full">
-              Back to Sign In
+              {t('auth:actions.backToLogin')}
             </Button>
           </Link>
           
           <button
             onClick={() => setSuccessText(null)}
-            className="text-xs font-semibold text-zinc-400 hover:text-zinc-600 dark:text-zinc-600 dark:hover:text-zinc-300 transition-colors mt-5 hover:underline"
+            className="text-xs font-semibold text-zinc-400 hover:text-zinc-600 dark:text-zinc-600 dark:hover:text-zinc-300 transition-colors mt-5 hover:underline cursor-pointer"
           >
-            Didn&apos;t receive the email? Try again
+            {t('auth:screens.didNotReceive')}
           </button>
         </div>
       </Card>
@@ -95,27 +95,25 @@ export default function ForgotPasswordPage() {
         className="inline-flex items-center gap-1.5 text-xs font-semibold text-zinc-500 hover:text-zinc-950 dark:hover:text-zinc-50 transition-colors mb-6 group w-fit select-none"
       >
         <ArrowLeft size={14} className="transition-transform group-hover:-translate-x-0.5" />
-        Back to login
+        {t('auth:actions.backToLogin')}
       </Link>
 
-      <div className="mb-6">
+      <div className="mb-6 font-outfit">
         <h2 className="text-2xl font-bold tracking-tight text-zinc-900 dark:text-zinc-50">
-          Reset password
+          {t('auth:title.forgot')}
         </h2>
         <p className="text-zinc-500 dark:text-zinc-400 text-sm mt-1">
-          Enter your registered email below, and we will send you recovery instructions.
+          {t('auth:subtitle.forgot')}
         </p>
       </div>
-
-
 
       <FormProvider {...methods}>
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
           <FormInput
             name="email"
             type="email"
-            label="Email address"
-            placeholder="name@example.com"
+            label={t('auth:labels.email')}
+            placeholder={t('auth:placeholders.email')}
             disabled={isLoading}
             autoComplete="email"
           />
@@ -126,7 +124,7 @@ export default function ForgotPasswordPage() {
             isLoading={isLoading}
             disabled={!isValid || isLoading}
           >
-            {isLoading ? 'Sending instructions...' : 'Send instructions'}
+            {isLoading ? t('auth:actions.sendingInstructions') : t('auth:actions.sendInstructions')}
           </Button>
         </form>
       </FormProvider>

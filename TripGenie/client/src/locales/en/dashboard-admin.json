@@ -1,0 +1,52 @@
+{
+  "title": "TripGenie Administration System",
+  "welcome": "Welcome back, {{name}}!",
+  "metrics": {
+    "users": "Total Platform Users",
+    "partners": "Active Vendors",
+    "aiQueries": "Total AI Requests",
+    "revenue": "Gross Merchandise Value"
+  },
+  "widgets": {
+    "systemSecurity": "System Security Node",
+    "threatLevel": "Threat Level: Minimal",
+    "diagnosticLogs": "Security Diagnostics Logs",
+    "rateLimiter": "Brute-Force Rate Limiter",
+    "rateLimitDesc": "Threshold: 5 attempts/min",
+    "aiServicePool": "Active AI Model Cluster"
+  },
+  "logs": {
+    "bypassSandbox": "Administrator activated sandboxed safety controls bypass...",
+    "initialized": "TripGenie system security successfully checked dynamic session...",
+    "authHydration": "Verifying secure hydration of traveler profile metadata..."
+  },
+  "actions": {
+    "viewSystemLogs": "Open Detailed Console",
+    "configureRateLimits": "Configure Thresholds",
+    "manageUsers": "Manage Accounts"
+  },
+  "banner": {
+    "title": "System Administrator Console",
+    "subtitle": "Platform control center. Monitor server health, manage users database, and enforce auth policies.",
+    "lockApi": "Lock API"
+  },
+  "kpis": {
+    "platformLoad": "PLATFORM LOAD",
+    "platformLoadSub": "Memory usage: {{used}}GB / {{total}}GB",
+    "apiHealth": "API HEALTH",
+    "apiHealthSub": "Mean latency: {{ms}}ms",
+    "totalUsers": "TOTAL USER RECORDS",
+    "totalUsersSub": "Active sessions right now: {{count}}"
+  },
+  "console": {
+    "title": "Recent System Security Logs",
+    "subtitle": "Simulated live edge-guard authentication status events",
+    "auditTrail": "Audit trail",
+    "logs": {
+      "successRotation": "Silent Token Rotation completed. Session Extended for {{email}}",
+      "warnBruteForce": "Brute-force block: 429 RateLimit lock engaged on IP {{ip}} (Login Endpoint)",
+      "successOAuth": "Google OAuth Login processed for user {{email}}",
+      "infoJwt": "Edge verified & decoded signed JWT. Access granted to /dashboard/business (Partner role)"
+    }
+  }
+}

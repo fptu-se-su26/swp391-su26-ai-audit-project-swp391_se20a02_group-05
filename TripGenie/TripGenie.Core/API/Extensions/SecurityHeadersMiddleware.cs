@@ -18,7 +18,8 @@ public class SecurityHeadersMiddleware
         "/api/auth/register",
         "/api/auth/google",
         "/health",
-        "/api/system/status"
+        "/api/system/status",
+        "/api/ai/chat/stream"
     };
 
     public SecurityHeadersMiddleware(RequestDelegate next)
@@ -26,7 +27,7 @@ public class SecurityHeadersMiddleware
         _next = next;
     }
 
-    public async Task InvokeAsync(HttpContext context)
+    public async Task InvokeAsync(HttpContext context, Microsoft.Extensions.Logging.ILogger<SecurityHeadersMiddleware> logger)
     {
         // 1. Centralized Cache-Control and standard security headers for /api/auth endpoints
         context.Response.OnStarting(() =>
@@ -39,6 +40,7 @@ public class SecurityHeadersMiddleware
                 context.Response.Headers["X-Frame-Options"] = "DENY";
                 context.Response.Headers["X-XSS-Protection"] = "1; mode=block";
                 context.Response.Headers["Referrer-Policy"] = "no-referrer";
+                context.Response.Headers["Cross-Origin-Opener-Policy"] = "same-origin-allow-popups";
             }
             return Task.CompletedTask;
         });
@@ -46,6 +48,7 @@ public class SecurityHeadersMiddleware
         // Get Configuration for CORS/Origin check
         var envConfig = context.RequestServices.GetRequiredService<EnvConfiguration>();
         var frontendUrl = envConfig.Auth.FrontendUrl?.TrimEnd('/');
+        var isDevelopment = string.Equals(Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT"), "Development", StringComparison.OrdinalIgnoreCase);
 
         // 2. Generate and Set CSRF-TOKEN Cookie if not present
         if (!context.Request.Cookies.ContainsKey("CSRF-TOKEN"))
@@ -60,7 +63,7 @@ public class SecurityHeadersMiddleware
             var cookieOptions = new CookieOptions
             {
                 HttpOnly = false, // Must be readable by Axios on frontend
-                Secure = true,    // Enforce Secure in production
+                Secure = !isDevelopment,    // Enforce Secure in production, false in development
                 SameSite = SameSiteMode.Lax,
                 Path = "/"
             };
@@ -76,15 +79,18 @@ public class SecurityHeadersMiddleware
             // Check if the endpoint is explicitly excluded from CSRF checks
             bool isExcluded = ExcludedMutatingPaths.Any(excluded => path.Equals(excluded, StringComparison.OrdinalIgnoreCase));
 
-            if (!isExcluded)
+            if (!isExcluded && !envConfig.Auth.DisableCsrf)
             {
                 // Double Submit Cookie Check
-                if (!context.Request.Headers.TryGetValue("X-CSRF-Token", out var headerCsrfToken) ||
-                    !context.Request.Cookies.TryGetValue("CSRF-TOKEN", out var cookieCsrfToken) ||
-                    string.IsNullOrEmpty(headerCsrfToken) ||
+                context.Request.Headers.TryGetValue("X-CSRF-Token", out var headerCsrfToken);
+                context.Request.Cookies.TryGetValue("CSRF-TOKEN", out var cookieCsrfToken);
+
+                if (string.IsNullOrEmpty(headerCsrfToken) ||
                     string.IsNullOrEmpty(cookieCsrfToken) ||
                     !string.Equals(headerCsrfToken, cookieCsrfToken, StringComparison.Ordinal))
                 {
+                    logger.LogWarning("CSRF Token Validation Failed for path {Path}. Header Token present: {HeaderTokenPresent}, Cookie Token present: {CookieTokenPresent}",
+                        path, !string.IsNullOrEmpty(headerCsrfToken), !string.IsNullOrEmpty(cookieCsrfToken));
                     context.Response.StatusCode = StatusCodes.Status403Forbidden;
                     context.Response.ContentType = "application/json";
                     await context.Response.WriteAsync("{\"error\": \"CSRF token validation failed.\"}");
@@ -95,22 +101,31 @@ public class SecurityHeadersMiddleware
                 var origin = context.Request.Headers["Origin"].ToString()?.TrimEnd('/');
                 var referer = context.Request.Headers["Referer"].ToString()?.TrimEnd('/');
 
-                bool isValidOrigin = false;
+                var allowedOrigins = new List<string> { "http://localhost:3000", "http://127.0.0.1:3000" };
                 if (!string.IsNullOrEmpty(frontendUrl))
                 {
-                    if (!string.IsNullOrEmpty(origin) && origin.Equals(frontendUrl, StringComparison.OrdinalIgnoreCase))
+                    var cleanFrontend = frontendUrl.TrimEnd('/');
+                    if (!allowedOrigins.Contains(cleanFrontend, StringComparer.OrdinalIgnoreCase))
                     {
-                        isValidOrigin = true;
+                        allowedOrigins.Add(cleanFrontend);
                     }
-                    else if (!string.IsNullOrEmpty(referer) && referer.StartsWith(frontendUrl, StringComparison.OrdinalIgnoreCase))
-                    {
-                        isValidOrigin = true;
-                    }
+                }
+
+                bool isValidOrigin = false;
+                if (!string.IsNullOrEmpty(origin))
+                {
+                    isValidOrigin = allowedOrigins.Contains(origin, StringComparer.OrdinalIgnoreCase);
+                }
+                else if (!string.IsNullOrEmpty(referer))
+                {
+                    isValidOrigin = allowedOrigins.Any(allowed => referer.StartsWith(allowed, StringComparison.OrdinalIgnoreCase));
                 }
 
                 // If Origin/Referer present and doesn't match configured frontend, block the request
                 if ((!string.IsNullOrEmpty(origin) || !string.IsNullOrEmpty(referer)) && !isValidOrigin)
                 {
+                    logger.LogWarning("CSRF Origin Validation Failed for path {Path}. Origin: {Origin}, Referer: {Referer}, Allowed: {AllowedOrigins}",
+                        path, origin, referer, string.Join(", ", allowedOrigins));
                     context.Response.StatusCode = StatusCodes.Status403Forbidden;
                     context.Response.ContentType = "application/json";
                     await context.Response.WriteAsync("{\"error\": \"Invalid request origin or referer.\"}");
