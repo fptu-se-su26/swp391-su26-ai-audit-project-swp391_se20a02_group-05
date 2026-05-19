@@ -13,17 +13,21 @@ export interface User {
   isEmailVerified?: boolean;
 }
 
+export type BootstrapState = 'IDLE' | 'BOOTSTRAPPING' | 'VALIDATING' | 'READY';
+
 export interface AuthSession {
   user: User | null;
   isAuthenticated: boolean;
   isLoading: boolean;
   isInitialized: boolean;
+  bootstrapState: BootstrapState;
 }
 
 // Enterprise standardized API error container
 export interface ApiError {
   code: string; // E.g., 'AUTH_INVALID_CREDENTIALS', 'RATE_LIMIT_EXCEEDED', 'ACCOUNT_LOCKED'
   message: string;
+  status?: number; // HTTP status code
   errors?: Record<string, string[]>; // Form validation errors (e.g., email: ['Invalid email format'])
   remainingAttempts?: number; // Lockout mitigation
   cooldownSeconds?: number; // Rate-limit countdown remaining

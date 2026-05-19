@@ -20,11 +20,11 @@ export const RoleGuard: React.FC<RoleGuardProps> = ({
   children,
   fallback,
 }) => {
-  const { user, isAuthenticated, hasRole, isInitialized } = useAuth();
+  const { user, isAuthenticated, hasRole, bootstrapState } = useAuth();
   const router = useRouter();
 
   // If session hydration is still active, wait and prevent flashing
-  if (!isInitialized) {
+  if (bootstrapState !== 'READY') {
     return (
       <div className="flex flex-1 items-center justify-center min-h-[400px]">
         <Spinner color="accent" size="md" />

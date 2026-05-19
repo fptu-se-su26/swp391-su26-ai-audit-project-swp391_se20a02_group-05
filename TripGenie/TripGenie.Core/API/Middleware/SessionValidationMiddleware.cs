@@ -68,8 +68,17 @@ public class SessionValidationMiddleware
 
     private static void InvalidateSession(HttpContext context)
     {
-        context.Response.Cookies.Delete("access_token");
-        context.Response.Cookies.Delete("refresh_token");
+        var isDevelopment = string.Equals(Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT"), "Development", StringComparison.OrdinalIgnoreCase);
+        var cookieOptions = new CookieOptions
+        {
+            HttpOnly = true,
+            Secure = !isDevelopment,
+            SameSite = SameSiteMode.Lax,
+            Path = "/"
+        };
+
+        context.Response.Cookies.Delete("access_token", cookieOptions);
+        context.Response.Cookies.Delete("refresh_token", cookieOptions);
         context.Response.StatusCode = StatusCodes.Status401Unauthorized;
     }
 }

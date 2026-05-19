@@ -8,8 +8,10 @@ import { Toast, toast, Typography } from '@heroui/react';
 import i18n from '../lib/i18n';
 import { useThemeStore } from '../hooks/use-theme-store';
 
+import { AuthOrchestrator } from '../features/auth/components/auth-orchestrator';
+
 export function Providers({ children, locale }: { children: React.ReactNode; locale: string }) {
-  const { initializeSession, isInitialized } = useAuth();
+  const { initializeSession } = useAuth();
   const initializeTheme = useThemeStore(state => state.initializeTheme);
   const pathname = usePathname();
 
@@ -44,34 +46,10 @@ export function Providers({ children, locale }: { children: React.ReactNode; loc
     }
   }, [pathname]);
 
-  const isDashboardRoute = ['/admin', '/business', '/user'].some(p => pathname.startsWith(p));
- 
-  // Hydration safety gate: only block UI on protected dashboard routes to prevent flashing protected layout
-  if (isDashboardRoute && !isInitialized) {
-    return (
-      <div className="flex min-h-screen w-full items-center justify-center bg-background transition-colors duration-300">
-        <div className="flex flex-col items-center gap-4 text-center select-none animate-pulse">
-          {/* Pulsing Brand Logo */}
-          <div className="w-14 h-14 rounded-2xl bg-foreground text-background flex items-center justify-center shadow-surface border border-border">
-            <Compass size={32} className="text-background animate-spin-slow" />
-          </div>
-          
-          <div className="space-y-1">
-            <Typography type="body-sm" className="font-extrabold tracking-tight text-foreground">
-              TripGenie AI
-            </Typography>
-            <Typography type="body-xs" className="text-muted font-medium mt-1">
-              {locale === 'vi' ? 'Đang khởi tạo phiên làm việc bảo mật...' : 'Establishing secure session...'}
-            </Typography>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
   return (
     <>
       <Toast.Provider />
+      <AuthOrchestrator />
       {children}
     </>
   );

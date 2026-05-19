@@ -50,8 +50,20 @@ axiosClient.interceptors.request.use(
   (error: unknown) => Promise.reject(error)
 );
 
-// Single cached refresh promise to prevent concurrent token rotation under heavy traffic
-let refreshPromise: Promise<unknown> | null = null;
+// Single-flight refresh queue variables
+let isRefreshing = false;
+let failedQueue: Array<{ resolve: (value?: any) => void; reject: (err: any) => void }> = [];
+
+const processQueue = (error: any) => {
+  failedQueue.forEach((prom) => {
+    if (error) {
+      prom.reject(error);
+    } else {
+      prom.resolve();
+    }
+  });
+  failedQueue = [];
+};
 
 // Response Interceptor
 axiosClient.interceptors.response.use(
@@ -70,43 +82,68 @@ axiosClient.interceptors.response.use(
       
       // If any auth flow request failed with a 401, do not attempt to refresh
       if (isAuthFlowRequest) {
-        refreshPromise = null;
+        console.log(`[Auth Interceptor] Auth flow request 401: ${originalRequest.url}. Skipping refresh rotation.`);
         if (isRefreshRequest || isLogoutRequest) {
           useAuthStore.getState().logout(true); // logout and broadcast to all tabs
         }
         return Promise.reject(apiError);
       }
 
-      originalRequest._retry = true;
-
-      try {
-        // Enforce a single active refresh token rotation promise for all concurrent 401 failures
-        if (!refreshPromise) {
-          refreshPromise = axiosClient.post('/auth/refresh-token').finally(() => {
-            refreshPromise = null;
+      if (isRefreshing) {
+        console.log(`[Auth Interceptor] Queueing concurrent request: ${originalRequest.url}`);
+        return new Promise((resolve, reject) => {
+          failedQueue.push({ resolve, reject });
+        })
+          .then(() => {
+            originalRequest._retry = true;
+            return axiosClient(originalRequest);
+          })
+          .catch((err) => {
+            return Promise.reject(err);
           });
-        }
-        
-        await refreshPromise;
-        return axiosClient(originalRequest); // Retry the original failed request
-      } catch (refreshErr) {
-        refreshPromise = null;
-        // Clear auth store and force redirects to login
-        useAuthStore.getState().logout(true);
-        
-        if (typeof window !== 'undefined') {
-          const currentPath = window.location.pathname;
-          const isProtectedPage = ['/admin', '/business', '/user'].some(p => currentPath.startsWith(p));
-          
-          if (isProtectedPage) {
-            window.location.href = `/login?session_expired=true&callbackUrl=${encodeURIComponent(
-              window.location.pathname + window.location.search
-            )}`;
-          }
-        }
-        
-        return Promise.reject(normalizeError(refreshErr));
       }
+
+      originalRequest._retry = true;
+      isRefreshing = true;
+      console.log(`[Auth Interceptor] Starting token refresh rotation for request: ${originalRequest.url}`);
+
+      return new Promise((resolve, reject) => {
+        axiosClient.post('/auth/refresh-token')
+          .then(() => {
+            console.log('[Auth Interceptor] Token refresh succeeded. Retrying original request and queued requests.');
+            processQueue(null);
+            resolve(axiosClient(originalRequest));
+          })
+          .catch((refreshErr) => {
+            const parsedRefreshErr = normalizeError(refreshErr);
+            console.error(`[Auth Interceptor] Token refresh failed (status: ${parsedRefreshErr.status}): ${parsedRefreshErr.message}`);
+            
+            processQueue(parsedRefreshErr);
+            
+            // Only trigger global logout/redirect on definitive authentication failure (401 or 403)
+            const isAuthFailure = parsedRefreshErr.status === 401 || parsedRefreshErr.status === 403;
+            if (isAuthFailure) {
+              console.log('[Auth Interceptor] Session invalidation complete. Invoking store logout.');
+              useAuthStore.getState().logout(true);
+              
+              if (typeof window !== 'undefined') {
+                const currentPath = window.location.pathname;
+                const isProtectedPage = ['/admin', '/business', '/user'].some(p => currentPath.startsWith(p));
+                
+                if (isProtectedPage) {
+                  console.log(`[Auth Interceptor] Redirecting user away from protected page: ${currentPath}`);
+                  window.location.href = `/login?session_expired=true&callbackUrl=${encodeURIComponent(
+                    window.location.pathname + window.location.search
+                  )}`;
+                }
+              }
+            }
+            reject(parsedRefreshErr);
+          })
+          .finally(() => {
+            isRefreshing = false;
+          });
+      });
     }
 
     // 2. Access Gated (403 Forbidden)
@@ -159,6 +196,7 @@ export function normalizeError(error: unknown): ApiError {
       return {
         code: customCode,
         message: mainMessage,
+        status: error.response?.status,
         errors: isValidationError ? normalizedErrors : undefined,
         remainingAttempts: typeof data.remainingAttempts === 'number' ? data.remainingAttempts : undefined,
         cooldownSeconds: typeof data.cooldownSeconds === 'number' ? data.cooldownSeconds : undefined,
@@ -172,6 +210,7 @@ export function normalizeError(error: unknown): ApiError {
       return {
         code: 'RATE_LIMIT_EXCEEDED',
         message: 'Too many requests. Please slow down and try again later.',
+        status: 429,
         cooldownSeconds: cooldown,
       };
     }
@@ -181,6 +220,7 @@ export function normalizeError(error: unknown): ApiError {
       return {
         code: 'NETWORK_TIMEOUT',
         message: 'Request timed out. Please check your network connection.',
+        status: 408,
       };
     }
 
@@ -188,6 +228,7 @@ export function normalizeError(error: unknown): ApiError {
     return {
       code: 'NETWORK_ERROR',
       message: error.message || 'Unable to connect to the server.',
+      status: error.response?.status || 500,
     };
   }
 
@@ -196,6 +237,7 @@ export function normalizeError(error: unknown): ApiError {
     return {
       code: 'UNKNOWN_ERROR',
       message: error.message,
+      status: 500,
     };
   }
 
@@ -203,5 +245,6 @@ export function normalizeError(error: unknown): ApiError {
   return {
     code: 'UNKNOWN_ERROR',
     message: 'An unexpected error occurred.',
+    status: 500,
   };
 }
