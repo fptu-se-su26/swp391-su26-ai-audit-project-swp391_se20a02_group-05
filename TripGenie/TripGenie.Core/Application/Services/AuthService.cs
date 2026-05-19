@@ -279,9 +279,10 @@ public class AuthService : IAuthService
         var lockKey = $"lock:token:rotate:{refreshTokenStr}";
         var lockValue = Guid.NewGuid().ToString("N");
         var acquired = await _cacheService.AcquireLockAsync(lockKey, lockValue, TimeSpan.FromSeconds(10));
+        var maskedToken = refreshTokenStr.Length > 8 ? $"{refreshTokenStr[..4]}...{refreshTokenStr[^4..]}" : "***MASKED***";
         if (!acquired)
         {
-            _logger.LogWarning("Token rotation request rejected due to lock contention: {Token}", refreshTokenStr);
+            _logger.LogWarning("Token rotation request rejected due to lock contention: {Token}", maskedToken);
             throw new AuthException(AuthErrorCodes.InvalidToken, "Concurrent token rotation detected.");
         }
 
@@ -322,7 +323,7 @@ public class AuthService : IAuthService
                     storedToken.SessionId, storedToken.UserId, currentIp, currentUa);
 
                 await LogAuditEventAsync(storedToken.UserId, "TOKEN_THEFT_DETECTED",
-                    $"Refresh token reuse/theft detected for token {refreshTokenStr}. Session {storedToken.SessionId} isolated and revoked. IP: {currentIp}, UA: {currentUa}");
+                    $"Refresh token reuse/theft detected for token {maskedToken}. Session {storedToken.SessionId} isolated and revoked. IP: {currentIp}, UA: {currentUa}");
 
                 throw new AuthException(AuthErrorCodes.InvalidToken, "Token reuse detected.");
             }

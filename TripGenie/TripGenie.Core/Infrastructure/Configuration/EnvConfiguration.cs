@@ -13,6 +13,8 @@ public class EnvConfiguration
 public class DatabaseSettings
 {
     public string ConnectionString { get; set; } = null!;
+    public bool EnableSqlLogging { get; set; } = false;
+    public int SlowQueryThresholdMs { get; set; } = 250;
 }
 
 public class RedisSettings

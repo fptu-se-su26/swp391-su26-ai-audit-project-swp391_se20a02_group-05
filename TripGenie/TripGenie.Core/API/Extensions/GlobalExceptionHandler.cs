@@ -6,16 +6,17 @@ using System;
 using System.Threading;
 using System.Threading.Tasks;
 using TripGenie.API.Application.Exceptions;
+using TripGenie.API.Infrastructure.Diagnostics;
 
 namespace TripGenie.API.API.Extensions;
 
 public class GlobalExceptionHandler : IExceptionHandler
 {
-    private readonly ILogger<GlobalExceptionHandler> _logger;
+    private readonly IAppLogger _logger;
 
-    public GlobalExceptionHandler(ILogger<GlobalExceptionHandler> _loggerVal)
+    public GlobalExceptionHandler(IAppLogger logger)
     {
-        _logger = _loggerVal;
+        _logger = logger;
     }
 
     public async ValueTask<bool> TryHandleAsync(
@@ -23,8 +24,6 @@ public class GlobalExceptionHandler : IExceptionHandler
         Exception exception,
         CancellationToken cancellationToken)
     {
-        _logger.LogError(exception, "An unhandled exception occurred: {Message}", exception.Message);
-
         var problemDetails = new ProblemDetails
         {
             Status = StatusCodes.Status500InternalServerError,
@@ -33,8 +32,11 @@ public class GlobalExceptionHandler : IExceptionHandler
             Detail = exception.Message
         };
 
+        bool isHandled = false;
+
         if (exception is DuplicateEmailException dupEx)
         {
+            isHandled = true;
             problemDetails.Status = StatusCodes.Status409Conflict;
             problemDetails.Title = "Duplicate Email Conflict";
             problemDetails.Type = "https://tools.ietf.org/html/rfc7231#section-6.5.8";
@@ -42,6 +44,7 @@ public class GlobalExceptionHandler : IExceptionHandler
         }
         else if (exception is AuthException authEx)
         {
+            isHandled = true;
             problemDetails.Status = StatusCodes.Status400BadRequest;
             problemDetails.Title = "Authentication Error";
             problemDetails.Type = "https://tools.ietf.org/html/rfc7231#section-6.5.1";
@@ -49,9 +52,20 @@ public class GlobalExceptionHandler : IExceptionHandler
         }
         else if (exception is UnauthorizedAccessException)
         {
+            isHandled = true;
             problemDetails.Status = StatusCodes.Status401Unauthorized;
             problemDetails.Title = "Unauthorized";
             problemDetails.Type = "https://tools.ietf.org/html/rfc7235#section-3.1";
+        }
+
+        // Centralized Exception Log routing
+        if (isHandled)
+        {
+            _logger.Log(LogLevel.Warning, "SYSTEM", $"Handled exception: {exception.GetType().Name} - {exception.Message}");
+        }
+        else
+        {
+            _logger.Log(LogLevel.Error, "SYSTEM", $"An unhandled exception occurred: {exception.Message}", exception);
         }
 
         httpContext.Response.StatusCode = problemDetails.Status.Value;

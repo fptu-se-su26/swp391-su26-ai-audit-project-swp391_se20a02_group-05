@@ -14,6 +14,16 @@ public static class EnvValidator
         config.Database.ConnectionString = configuration.GetConnectionString("DefaultConnection")?.ResolveEnvironmentVariables()
             ?? throw new InvalidOperationException("Environment variable 'DATABASE_URL' is missing or connection string 'DefaultConnection' is not configured.");
 
+        if (bool.TryParse(configuration["Database:EnableSqlLogging"] ?? configuration["ENABLE_SQL_LOGGING"], out var enableSql))
+        {
+            config.Database.EnableSqlLogging = enableSql;
+        }
+
+        if (int.TryParse(configuration["Database:SlowQueryThresholdMs"] ?? configuration["SLOW_QUERY_THRESHOLD_MS"], out var slowThreshold))
+        {
+            config.Database.SlowQueryThresholdMs = slowThreshold;
+        }
+
         // 2. Redis
         config.Redis.ConnectionString = configuration.GetConnectionString("Redis")?.ResolveEnvironmentVariables()
             ?? throw new InvalidOperationException("Environment variable 'REDIS_URL' is missing or connection string 'Redis' is not configured.");
