@@ -8,13 +8,13 @@ import { Button } from '../../../components/ui/button';
 import { useAuth } from '../../../features/auth/hooks/use-auth';
 import { useAuthStore } from '../../../features/auth/store/use-auth-store';
 import Link from 'next/link';
-import { 
-  ShieldCheck, 
-  ShieldAlert, 
-  Shield, 
-  Mail, 
-  ArrowRight, 
-  CheckCircle2, 
+import {
+  ShieldCheck,
+  ShieldAlert,
+  Shield,
+  Mail,
+  ArrowRight,
+  CheckCircle2,
   ChevronLeft,
   RefreshCw
 } from 'lucide-react';
@@ -86,7 +86,7 @@ function VerifyEmailContent() {
       if (result.success) {
         setState('success');
         setMessage(t('auth:screens.verifySuccess'));
-        
+
         toast.success(t('auth:toast.verifiedSuccessTitle'), {
           description: t('auth:toast.verifiedSuccessDesc'),
         });
@@ -104,7 +104,7 @@ function VerifyEmailContent() {
           setMessage(t('auth:screens.verifyFailed'));
         }
         setErrorText(error?.message || t('auth:screens.verifyFailed'));
-        
+
         toast.danger(t('auth:toast.verifiedFailedTitle'), {
           description: error?.message || t('auth:toast.verifiedFailedDesc'),
         });
@@ -173,7 +173,7 @@ function VerifyEmailContent() {
 
           <Button
             variant="solid"
-            className="w-full py-6 text-sm font-semibold rounded-xl bg-gradient-to-r from-zinc-950 to-zinc-900 dark:from-white dark:to-zinc-100 hover:opacity-90 active:scale-[0.98] transition-all duration-200"
+            className="w-full py-6 text-sm font-semibold rounded-xl bg-linear-to-r from-zinc-950 to-zinc-900 dark:from-white dark:to-zinc-100 hover:opacity-90 active:scale-[0.98] transition-all duration-200"
             onClick={() => router.push('/dashboard')}
           >
             {t('auth:actions.goToDashboard')}
@@ -212,8 +212,8 @@ function VerifyEmailContent() {
             >
               {t('auth:toast.linkSentTitle')}
             </Button>
-            <Button 
-              variant="bordered" 
+            <Button
+              variant="bordered"
               className="w-full py-6 text-sm font-semibold font-outfit"
               onClick={() => router.push('/login')}
             >
@@ -249,8 +249,8 @@ function VerifyEmailContent() {
             >
               {t('auth:toast.linkSentTitle')}
             </Button>
-            <Button 
-              variant="bordered" 
+            <Button
+              variant="bordered"
               className="w-full py-6 text-sm font-semibold font-outfit"
               onClick={() => router.push('/login')}
             >
@@ -307,8 +307,8 @@ function VerifyEmailContent() {
                     disabled={resendLoading}
                     className={[
                       "w-full px-4 py-3 rounded-xl text-sm transition-all duration-200 bg-zinc-50/30 dark:bg-zinc-900/20 border outline-none",
-                      errors.email 
-                        ? "border-red-500 focus:border-red-500 focus:ring-1 focus:ring-red-500" 
+                      errors.email
+                        ? "border-red-500 focus:border-red-500 focus:ring-1 focus:ring-red-500"
                         : "border-zinc-200 dark:border-zinc-800 focus:border-zinc-900 dark:focus:border-zinc-100 focus:ring-1 focus:ring-zinc-950 dark:focus:ring-zinc-50"
                     ].join(' ')}
                   />
@@ -324,7 +324,7 @@ function VerifyEmailContent() {
 
             <Button
               type="submit"
-              className="w-full mt-2 py-6 text-sm font-semibold rounded-xl bg-gradient-to-r from-zinc-950 to-zinc-900 dark:from-white dark:to-zinc-100 text-white dark:text-zinc-950 hover:opacity-90 active:scale-[0.98] transition-all duration-200"
+              className="w-full mt-2 py-6 text-sm font-semibold rounded-xl bg-linear-to-r from-zinc-950 to-zinc-900 dark:from-white dark:to-zinc-100 text-white dark:text-zinc-950 hover:opacity-90 active:scale-[0.98] transition-all duration-200"
               isLoading={resendLoading}
               disabled={(!isValid && showManualForm) || resendLoading}
             >
@@ -354,7 +354,7 @@ function VerifyEmailContent() {
                 {t('auth:actions.backToSentInfo')}
               </button>
             )}
-            
+
             <div className="text-xs text-zinc-500 dark:text-zinc-400">
               {t('auth:actions.haveAccount')}{' '}
               <Link

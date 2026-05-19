@@ -17,11 +17,11 @@ export function AuthAvatar() {
 
   const initials = user.fullName
     ? user.fullName
-        .split(' ')
-        .map((n) => n[0])
-        .join('')
-        .slice(0, 2)
-        .toUpperCase()
+      .split(' ')
+      .map((n) => n[0])
+      .join('')
+      .slice(0, 2)
+      .toUpperCase()
     : 'U';
 
   const handleAction = async (key: React.Key) => {
@@ -59,11 +59,11 @@ export function AuthAvatar() {
   return (
     <Dropdown>
       <Dropdown.Trigger>
-        <button 
+        <button
           aria-label={t('navbar:menu.userMenu')}
           className="outline-none focus:ring-2 focus:ring-zinc-500 rounded-full transition-all duration-200 select-none shrink-0"
         >
-          <Avatar className="cursor-pointer size-10 select-none hover:opacity-90 active:scale-95 transition-all bg-gradient-to-tr from-indigo-500 to-emerald-500">
+          <Avatar className="cursor-pointer size-10 select-none hover:opacity-90 active:scale-95 transition-all bg-linear-to-tr from-indigo-500 to-emerald-500">
             {user.avatarUrl && (
               <Avatar.Image src={user.avatarUrl} alt={user.fullName} />
             )}
@@ -96,9 +96,9 @@ export function AuthAvatar() {
           </Dropdown.Item>
 
           {/* Action items */}
-          <Dropdown.Item 
-            id="dashboard" 
-            textValue={t('navbar:menu.dashboard')} 
+          <Dropdown.Item
+            id="dashboard"
+            textValue={t('navbar:menu.dashboard')}
             className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-sm font-medium text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-900 hover:text-zinc-950 dark:hover:text-zinc-50 transition-all duration-150 cursor-pointer"
           >
             <div className="flex items-center gap-2.5 w-full">
@@ -107,9 +107,9 @@ export function AuthAvatar() {
             </div>
           </Dropdown.Item>
 
-          <Dropdown.Item 
-            id="settings" 
-            textValue={t('navbar:menu.settings')} 
+          <Dropdown.Item
+            id="settings"
+            textValue={t('navbar:menu.settings')}
             className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-sm font-medium text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-900 hover:text-zinc-950 dark:hover:text-zinc-50 transition-all duration-150 cursor-pointer"
           >
             <div className="flex items-center gap-2.5 w-full">
@@ -129,14 +129,13 @@ export function AuthAvatar() {
             </span>
           </Dropdown.Item>
 
-          <Dropdown.Item 
-            id="lang-vi" 
+          <Dropdown.Item
+            id="lang-vi"
             textValue="Tiếng Việt (VI)"
-            className={`flex items-center justify-between px-3 py-2 rounded-xl text-sm transition-all duration-150 cursor-pointer ${
-              i18n.language === 'vi' 
-                ? 'bg-zinc-100 dark:bg-zinc-900 text-zinc-950 dark:text-zinc-50 font-semibold' 
-                : 'text-zinc-600 dark:text-zinc-400 hover:bg-zinc-50 dark:hover:bg-zinc-900/60 font-medium'
-            }`}
+            className={`flex items-center justify-between px-3 py-2 rounded-xl text-sm transition-all duration-150 cursor-pointer ${i18n.language === 'vi'
+              ? 'bg-zinc-100 dark:bg-zinc-900 text-zinc-950 dark:text-zinc-50 font-semibold'
+              : 'text-zinc-600 dark:text-zinc-400 hover:bg-zinc-50 dark:hover:bg-zinc-900/60 font-medium'
+              }`}
           >
             <div className="flex items-center justify-between w-full">
               <div className="flex items-center gap-2">
@@ -145,19 +144,18 @@ export function AuthAvatar() {
               </div>
               <div className="flex items-center gap-2">
                 <span className="text-[10px] font-bold font-mono opacity-60">VI</span>
-                {i18n.language === 'vi' && <Check size={12} className="text-zinc-900 dark:text-zinc-50 stroke-[3]" />}
+                {i18n.language === 'vi' && <Check size={12} className="text-zinc-900 dark:text-zinc-50 stroke-3" />}
               </div>
             </div>
           </Dropdown.Item>
 
-          <Dropdown.Item 
-            id="lang-en" 
+          <Dropdown.Item
+            id="lang-en"
             textValue="English (EN)"
-            className={`flex items-center justify-between px-3 py-2 rounded-xl text-sm transition-all duration-150 cursor-pointer ${
-              i18n.language === 'en' 
-                ? 'bg-zinc-100 dark:bg-zinc-900 text-zinc-950 dark:text-zinc-50 font-semibold' 
-                : 'text-zinc-600 dark:text-zinc-400 hover:bg-zinc-50 dark:hover:bg-zinc-900/60 font-medium'
-            }`}
+            className={`flex items-center justify-between px-3 py-2 rounded-xl text-sm transition-all duration-150 cursor-pointer ${i18n.language === 'en'
+              ? 'bg-zinc-100 dark:bg-zinc-900 text-zinc-950 dark:text-zinc-50 font-semibold'
+              : 'text-zinc-600 dark:text-zinc-400 hover:bg-zinc-50 dark:hover:bg-zinc-900/60 font-medium'
+              }`}
           >
             <div className="flex items-center justify-between w-full">
               <div className="flex items-center gap-2">
@@ -166,7 +164,7 @@ export function AuthAvatar() {
               </div>
               <div className="flex items-center gap-2">
                 <span className="text-[10px] font-bold font-mono opacity-60">EN</span>
-                {i18n.language === 'en' && <Check size={12} className="text-zinc-900 dark:text-zinc-50 stroke-[3]" />}
+                {i18n.language === 'en' && <Check size={12} className="text-zinc-900 dark:text-zinc-50 stroke-3" />}
               </div>
             </div>
           </Dropdown.Item>
@@ -175,9 +173,9 @@ export function AuthAvatar() {
             <Separator className="my-1.5 bg-zinc-200/50 dark:bg-zinc-900/50" />
           </Dropdown.Item>
 
-          <Dropdown.Item 
-            id="logout" 
-            textValue={t('navbar:menu.logout')} 
+          <Dropdown.Item
+            id="logout"
+            textValue={t('navbar:menu.logout')}
             className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-sm font-semibold text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/20 transition-all duration-150 cursor-pointer"
           >
             <div className="flex items-center gap-2.5 w-full">

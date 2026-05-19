@@ -39,7 +39,7 @@ export const FormCheckbox: React.FC<FormCheckboxProps> = ({
             <Checkbox.Control className="w-4 h-4 rounded border border-zinc-300 dark:border-zinc-700 flex items-center justify-center bg-white dark:bg-zinc-950 group-data-[selected=true]:bg-zinc-950 dark:group-data-[selected=true]:bg-zinc-50 group-data-[selected=true]:border-zinc-950 dark:group-data-[selected=true]:border-zinc-50 transition-all shrink-0">
               <Checkbox.Indicator className="text-white dark:text-zinc-950 flex items-center justify-center">
                 {/* Crisp premium Checkmark Icon */}
-                <svg className="w-2.5 h-2.5 fill-none stroke-current stroke-[3]" viewBox="0 0 24 24">
+                <svg className="w-2.5 h-2.5 fill-none stroke-current stroke-3" viewBox="0 0 24 24">
                   <polyline points="20 6 9 17 4 12" />
                 </svg>
               </Checkbox.Indicator>

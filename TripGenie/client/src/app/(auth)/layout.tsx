@@ -19,7 +19,7 @@ export default function AuthLayout({
   useEffect(() => {
     if (isInitialized && isAuthenticated) {
       const isEmailVerified = user?.isEmailVerified;
-      
+
       if (isEmailVerified) {
         // Logged-in verified users are blocked from auth routes and routed to dashboard
         router.replace('/dashboard');
@@ -43,7 +43,7 @@ export default function AuthLayout({
           <div className="w-14 h-14 rounded-2xl bg-zinc-900 dark:bg-white text-white dark:text-zinc-950 flex items-center justify-center shadow-xl border border-zinc-200/20">
             <Compass size={32} className="text-white dark:text-zinc-950 animate-spin" style={{ animationDuration: '3s' }} />
           </div>
-          
+
           <div className="space-y-1">
             <h3 className="font-extrabold tracking-tight text-zinc-800 dark:text-zinc-100 text-base font-outfit">
               {t('common:branding.title')}
@@ -64,16 +64,16 @@ export default function AuthLayout({
         {/* Subtle decorative radial lights */}
         <div className="absolute top-[-10%] right-[-10%] w-[80%] h-[80%] rounded-full bg-indigo-500/10 blur-[120px] pointer-events-none" />
         <div className="absolute bottom-[-10%] left-[-10%] w-[60%] h-[60%] rounded-full bg-emerald-500/10 blur-[100px] pointer-events-none" />
-        
+
         {/* Glowing grid backdrop pattern pattern */}
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,rgba(255,255,255,0.02)_1px,transparent_1px)] bg-[size:24px_24px] pointer-events-none opacity-60" />
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,rgba(255,255,255,0.02)_1px,transparent_1px)] bg-size-[24px_24px] pointer-events-none opacity-60" />
 
         {/* Top: Logo */}
         <div className="relative z-10 flex items-center gap-2.5">
           <div className="w-10 h-10 rounded-xl bg-white text-zinc-950 flex items-center justify-center shadow-lg border border-white/10">
             <Compass size={22} className="text-zinc-950" />
           </div>
-          <span className="font-extrabold text-xl tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-white via-zinc-100 to-zinc-400">
+          <span className="font-extrabold text-xl tracking-tight bg-clip-text text-transparent bg-linear-to-r from-white via-zinc-100 to-zinc-400">
             {t('common:branding.title')}
           </span>
         </div>
@@ -83,7 +83,7 @@ export default function AuthLayout({
           <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-white/5 border border-white/10 text-zinc-300 backdrop-blur-md">
             ✨ {t('common:branding.tagline')}
           </span>
-          <h1 className="text-4xl font-extrabold tracking-tight leading-[1.1] bg-gradient-to-b from-white to-zinc-400 bg-clip-text text-transparent">
+          <h1 className="text-4xl font-extrabold tracking-tight leading-[1.1] bg-linear-to-b from-white to-zinc-400 bg-clip-text text-transparent">
             {t('common:branding.journeyPrompt')}
           </h1>
           <p className="text-zinc-400 text-base leading-relaxed font-light font-outfit">

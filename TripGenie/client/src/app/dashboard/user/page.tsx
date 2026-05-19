@@ -15,7 +15,7 @@ export default function UserDashboardPage() {
   return (
     <div className="space-y-6 font-outfit">
       {/* Top Banner Message */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 p-6 rounded-2xl bg-gradient-to-r from-zinc-950 via-zinc-900 to-zinc-800 text-white select-none">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 p-6 rounded-2xl bg-linear-to-r from-zinc-950 via-zinc-900 to-zinc-800 text-white select-none">
         <div className="space-y-1">
           <h2 className="text-xl font-bold flex items-center gap-2">
             {t('dashboard-user:banner.welcome', { name: user?.fullName || 'Traveler' })}{' '}
@@ -32,7 +32,7 @@ export default function UserDashboardPage() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        
+
         {/* Card 1: Traveler Profile card */}
         <Card className="lg:col-span-1" glow={false}>
           <div className="flex items-center gap-3 mb-6 select-none">
@@ -147,7 +147,7 @@ export default function UserDashboardPage() {
                 </Button>
               </div>
             </PermissionGuard>
-            
+
             {/* Feature gated on 'admin:system:view' */}
             <PermissionGuard
               permission="admin:system:view"
