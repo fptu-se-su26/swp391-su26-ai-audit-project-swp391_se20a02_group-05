@@ -50,6 +50,15 @@ export const navigationConfig: NavigationNode[] = [
         icon: ShieldAlert,
         children: [
           {
+            id: 'admin-overview',
+            type: 'item',
+            label: 'Admin',
+            translationKey: 'common:admin.dashboard',
+            href: '/admin',
+            exactMatch: true,
+            icon: LayoutDashboard,
+          },
+          {
             id: 'admin-users',
             type: 'item',
             label: 'Users',

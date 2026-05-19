@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { Modal, Typography } from '@heroui/react';
+import { X } from 'lucide-react';
 
 interface DialogModalProps {
   isOpen: boolean;
@@ -50,7 +51,12 @@ export const DialogModal: React.FC<DialogModalProps> = ({
     >
       <Modal.Container size={size}>
         <Modal.Dialog className="w-full max-w-2xl bg-overlay border border-border rounded-2xl shadow-modal p-[var(--modal-padding)] text-left relative focus-visible:outline-hidden focus:outline-hidden">
-          <Modal.CloseTrigger className="absolute right-4 top-4 p-1 rounded-full hover:bg-surface-secondary text-muted hover:text-foreground cursor-pointer transition-colors" />
+          <Modal.CloseTrigger 
+            aria-label="Close dialog"
+            className="absolute right-4 top-4 p-1 rounded-full hover:bg-surface-secondary text-muted hover:text-foreground cursor-pointer transition-colors"
+          >
+            <X size={15} />
+          </Modal.CloseTrigger>
           <Modal.Header className="mb-4">
             <Modal.Heading className="outline-hidden">
               <Typography type="h4" className="font-extrabold text-foreground font-display">

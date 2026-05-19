@@ -5,9 +5,12 @@ import { ResourceActionPermission, UserRole } from '../types/auth.types';
  * Checks if a navigation item's href matches the current route pathname.
  * Handles exact matching and active-descendant path prefixes.
  */
-export const isActiveRoute = (pathname: string, href: string): boolean => {
+export const isActiveRoute = (pathname: string, href: string, exact: boolean = false): boolean => {
   if (href === '/') {
     return pathname === '/';
+  }
+  if (exact) {
+    return pathname === href;
   }
   
   // Standard exact match or matching dynamic paths underneath
@@ -70,7 +73,7 @@ export const getExpandedGroupsForPath = (
 
   const traverse = (node: NavigationNode, parentIds: string[]): boolean => {
     if (node.type === 'item') {
-      if (isActiveRoute(pathname, node.href)) {
+      if (isActiveRoute(pathname, node.href, node.exactMatch)) {
         parentIds.forEach((id) => {
           expanded[id] = true;
         });

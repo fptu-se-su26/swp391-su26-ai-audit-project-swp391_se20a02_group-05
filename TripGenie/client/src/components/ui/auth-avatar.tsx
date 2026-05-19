@@ -3,7 +3,7 @@
 import React from 'react';
 import { useAuth } from '../../features/auth/hooks/use-auth';
 import { useRouter } from 'next/navigation';
-import { Dropdown, Avatar, Label, Separator, Button, Typography } from '@heroui/react';
+import { Dropdown, Avatar, Label, Separator, Typography, Button } from '@heroui/react';
 import { LogOut, LayoutDashboard, Settings, Check, Sun, Moon, Waves } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { setCookie } from '../../services/axios-client';
@@ -69,19 +69,21 @@ export function AuthAvatar() {
 
   return (
     <Dropdown>
-      <Button
-        aria-label={t('navbar:menu.userMenu')}
-        className="p-0 bg-transparent hover:bg-transparent border-none min-w-0 min-h-0 size-10 rounded-full outline-hidden focus-visible:ring-2 focus-visible:ring-focus select-none shrink-0"
-      >
-        <Avatar className="cursor-pointer size-10 select-none hover:opacity-90 active:scale-95 transition-all bg-linear-to-tr from-indigo-500 to-emerald-500">
-          {user.avatarUrl && (
-            <Avatar.Image src={user.avatarUrl} alt={user.fullName} />
-          )}
-          <Avatar.Fallback className="text-background font-bold text-sm">
-            {initials}
-          </Avatar.Fallback>
-        </Avatar>
-      </Button>
+      <Dropdown.Trigger>
+        <Button
+          aria-label={t('navbar:menu.userMenu')}
+          className="p-0 bg-transparent hover:bg-transparent border-none min-w-0 min-h-0 size-10 rounded-full outline-hidden focus-visible:ring-2 focus-visible:ring-focus select-none shrink-0 cursor-pointer"
+        >
+          <Avatar className="cursor-pointer size-10 select-none hover:opacity-90 active:scale-95 transition-all bg-linear-to-tr from-indigo-500 to-emerald-500">
+            {user.avatarUrl && (
+              <Avatar.Image src={user.avatarUrl} alt={user.fullName} />
+            )}
+            <Avatar.Fallback className="text-background font-bold text-sm">
+              {initials}
+            </Avatar.Fallback>
+          </Avatar>
+        </Button>
+      </Dropdown.Trigger>
 
       <Dropdown.Popover className="min-w-[240px] bg-overlay border border-border shadow-overlay rounded-xl p-1.5 z-50">
         <Dropdown.Menu onAction={handleAction} className="outline-hidden">

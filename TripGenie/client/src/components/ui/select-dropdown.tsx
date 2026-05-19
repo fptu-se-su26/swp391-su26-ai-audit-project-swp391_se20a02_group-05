@@ -51,6 +51,7 @@ export const SelectDropdown: React.FC<SelectDropdownProps> = ({
       className={className}
       placeholder={placeholder}
       variant="secondary"
+      aria-label={label || placeholder || "Select dropdown"}
     >
       {label && <Label className="text-xs font-bold text-muted mb-1.5 block">{label}</Label>}
       <Select.Trigger className="w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl border border-field-border bg-field text-foreground text-xs font-semibold focus:outline-hidden cursor-pointer hover:border-border transition-all select-none focus-visible:ring-2 focus-visible:ring-focus">
@@ -58,7 +59,10 @@ export const SelectDropdown: React.FC<SelectDropdownProps> = ({
         <Select.Indicator className="size-4 text-muted" />
       </Select.Trigger>
       <Select.Popover className="border border-border rounded-xl bg-overlay shadow-overlay overflow-hidden min-w-[200px] z-50">
-        <ListBox className="p-1 max-h-60 overflow-y-auto outline-hidden focus:outline-hidden">
+        <ListBox 
+          aria-label={label || placeholder || "Options"}
+          className="p-1 max-h-60 overflow-y-auto outline-hidden focus:outline-hidden"
+        >
           {options.map((option) => (
             <ListBox.Item
               key={option.value}

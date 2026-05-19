@@ -46,7 +46,10 @@ export default async function RootLayout({
       data-theme={theme}
       suppressHydrationWarning
     >
-      <body className="min-h-full flex flex-col font-sans bg-background text-foreground transition-colors duration-300">
+      <body 
+        className="min-h-full flex flex-col font-sans bg-background text-foreground transition-colors duration-300"
+        suppressHydrationWarning
+      >
         <Providers locale={locale}>
           {children}
         </Providers>

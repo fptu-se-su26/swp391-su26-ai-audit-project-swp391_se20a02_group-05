@@ -15,6 +15,7 @@ export interface BaseNavigationNode {
 export interface NavigationLinkItem extends BaseNavigationNode {
   type: 'item';
   href: string;
+  exactMatch?: boolean;
   icon?: LucideIcon;
   badge?: string | number;
   badgeColor?: 'default' | 'primary' | 'secondary' | 'success' | 'warning' | 'danger';
@@ -23,6 +24,7 @@ export interface NavigationLinkItem extends BaseNavigationNode {
 export interface NavigationGroupItem extends BaseNavigationNode {
   type: 'group';
   icon?: LucideIcon;
+  href?: string;
   children: NavigationNode[];
 }
 

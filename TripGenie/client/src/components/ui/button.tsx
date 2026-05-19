@@ -1,6 +1,6 @@
 "use client";
 
-import React from 'react';
+import React, { forwardRef } from 'react';
 import { Button as HeroButton, ButtonProps as HeroButtonProps } from '@heroui/react';
 
 interface ButtonProps extends Omit<HeroButtonProps, 'variant' | 'children'> {
@@ -10,7 +10,7 @@ interface ButtonProps extends Omit<HeroButtonProps, 'variant' | 'children'> {
   children?: React.ReactNode;
 }
 
-export const Button: React.FC<ButtonProps> = ({
+export const Button = forwardRef<HTMLButtonElement, ButtonProps>(({
   children,
   variant = 'solid',
   className = '',
@@ -18,7 +18,7 @@ export const Button: React.FC<ButtonProps> = ({
   disabled = false,
   isDisabled = false,
   ...props
-}) => {
+}, ref) => {
   // Map our premium styles
   const baseClasses = "font-semibold transition-all duration-200 active:scale-[0.98] select-none flex items-center justify-center rounded-xl focus-visible:ring-2 focus-visible:ring-focus focus-visible:outline-hidden";
   
@@ -64,6 +64,7 @@ export const Button: React.FC<ButtonProps> = ({
 
   return (
     <HeroButton
+      ref={ref}
       {...props}
       variant={mappedVariant}
       className={`${baseClasses} ${variantClasses} ${className}`}
@@ -78,5 +79,7 @@ export const Button: React.FC<ButtonProps> = ({
       {children}
     </HeroButton>
   );
-};
+});
+
+Button.displayName = 'Button';
 export default Button;

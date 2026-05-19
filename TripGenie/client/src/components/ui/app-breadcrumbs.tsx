@@ -1,14 +1,14 @@
 "use client";
 
 import React from 'react';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { Breadcrumbs, BreadcrumbsItem } from '@heroui/react';
 import { useTranslation } from 'react-i18next';
-import Link from 'next/link';
 import { getRouteMetadata, getDynamicSegmentLabel } from '../../config/routes';
 
 export const AppBreadcrumbs: React.FC = () => {
   const pathname = usePathname();
+  const router = useRouter();
   const { t } = useTranslation(['common']);
 
   if (!pathname) return null;
@@ -54,30 +54,37 @@ export const AppBreadcrumbs: React.FC = () => {
         className="flex items-center"
       >
         {/* Static Root Node */}
-        <BreadcrumbsItem>
-          <Link
-            href="/user"
-            className="text-xs font-semibold text-muted hover:text-foreground transition-colors duration-150 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-focus rounded-lg px-1.5 py-0.5"
-          >
-            {t('common:dashboard.pages')}
-          </Link>
+        <BreadcrumbsItem
+          href="/user"
+          onClick={(e) => {
+            e.preventDefault();
+            router.push('/user');
+          }}
+          className="text-xs font-semibold text-muted hover:text-foreground transition-colors duration-150 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-focus rounded-lg px-1.5 py-0.5 cursor-pointer"
+        >
+          {t('common:dashboard.pages')}
         </BreadcrumbsItem>
 
         {/* Dynamic Nodes */}
         {breadcrumbItems.map((item) => (
-          <BreadcrumbsItem key={item.href}>
-            {item.isLast ? (
-              <span className="text-xs font-extrabold text-foreground tracking-tight select-text px-1.5 py-0.5">
-                {item.label}
-              </span>
-            ) : (
-              <Link
-                href={item.href}
-                className="text-xs font-semibold text-muted/80 hover:text-foreground transition-colors duration-150 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-focus rounded-lg px-1.5 py-0.5"
-              >
-                {item.label}
-              </Link>
-            )}
+          <BreadcrumbsItem
+            key={item.href}
+            href={item.isLast ? undefined : item.href}
+            onClick={
+              item.isLast
+                ? undefined
+                : (e) => {
+                    e.preventDefault();
+                    router.push(item.href);
+                  }
+            }
+            className={
+              item.isLast
+                ? "text-xs font-extrabold text-foreground tracking-tight select-text px-1.5 py-0.5"
+                : "text-xs font-semibold text-muted/80 hover:text-foreground transition-colors duration-150 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-focus rounded-lg px-1.5 py-0.5 cursor-pointer"
+            }
+          >
+            {item.label}
           </BreadcrumbsItem>
         ))}
       </Breadcrumbs>
@@ -86,3 +93,4 @@ export const AppBreadcrumbs: React.FC = () => {
 };
 
 export default AppBreadcrumbs;
+

@@ -52,7 +52,10 @@ export const PaginationWrapper: React.FC<PaginationWrapperProps> = ({
   const endItem = Math.min(page * itemsPerPage, totalItems);
 
   return (
-    <Pagination className="w-full flex flex-col sm:flex-row items-center justify-between gap-4 p-4 border-t border-separator select-none">
+    <Pagination 
+      aria-label="Pagination navigation"
+      className="w-full flex flex-col sm:flex-row items-center justify-between gap-4 p-4 border-t border-separator select-none"
+    >
       <Pagination.Summary>
         <Typography type="body-xs" className="text-muted font-medium">
           Showing {startItem}-{endItem} of {totalItems} results
@@ -64,6 +67,7 @@ export const PaginationWrapper: React.FC<PaginationWrapperProps> = ({
             isDisabled={page === 1}
             onPress={() => onPageChange(Math.max(1, page - 1))}
             className="cursor-pointer font-bold text-xs focus-visible:ring-2 focus-visible:ring-focus focus-visible:outline-hidden"
+            aria-label="Previous page"
           >
             <Pagination.PreviousIcon />
             <span className="hidden sm:inline">Previous</span>
@@ -91,6 +95,7 @@ export const PaginationWrapper: React.FC<PaginationWrapperProps> = ({
             isDisabled={page === totalPages || totalPages === 0}
             onPress={() => onPageChange(Math.min(totalPages, page + 1))}
             className="cursor-pointer font-bold text-xs focus-visible:ring-2 focus-visible:ring-focus focus-visible:outline-hidden"
+            aria-label="Next page"
           >
             <span className="hidden sm:inline">Next</span>
             <Pagination.NextIcon />

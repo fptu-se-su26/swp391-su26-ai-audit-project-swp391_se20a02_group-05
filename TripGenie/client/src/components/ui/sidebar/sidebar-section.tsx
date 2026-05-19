@@ -18,16 +18,16 @@ export const SidebarSection: React.FC<SidebarSectionProps> = ({ section, collaps
   const { t } = useTranslation(['common']);
 
   // Localized section title with fallback
-  const label = section.translationKey 
-    ? t(section.translationKey, { defaultValue: section.label }) 
+  const label = section.translationKey
+    ? t(section.translationKey, { defaultValue: section.label })
     : section.label;
 
   return (
     <div className="flex flex-col gap-1 w-full select-none">
       {/* Visual Section Header Label */}
       {collapsed ? (
-        <div className="px-3 my-2 shrink-0">
-          <Separator className="bg-border/60" />
+        <div className="my-2 shrink-0">
+          <Separator variant="tertiary" />
         </div>
       ) : (
         <div className="px-4 pt-4 pb-1 shrink-0">
@@ -45,23 +45,23 @@ export const SidebarSection: React.FC<SidebarSectionProps> = ({ section, collaps
         {section.children.map((child) => {
           if (child.type === 'item') {
             return (
-              <SidebarLink 
-                key={child.id} 
-                item={child} 
+              <SidebarLink
+                key={child.id}
+                item={child}
                 collapsed={collapsed}
                 isMobile={isMobile}
-                depth={depth} 
+                depth={depth}
               />
             );
           }
           if (child.type === 'group') {
             return (
-              <SidebarGroup 
-                key={child.id} 
-                group={child} 
+              <SidebarGroup
+                key={child.id}
+                group={child}
                 collapsed={collapsed}
                 isMobile={isMobile}
-                depth={depth} 
+                depth={depth}
               />
             );
           }

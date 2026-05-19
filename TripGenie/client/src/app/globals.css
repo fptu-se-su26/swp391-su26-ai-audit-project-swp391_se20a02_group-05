@@ -68,6 +68,11 @@
   --shadow-surface: 0 1px 3px 0 rgba(0, 0, 0, 0.05), 0 1px 2px 0 rgba(0, 0, 0, 0.02);
   --shadow-overlay: 0 4px 6px -1px rgba(0, 0, 0, 0.08), 0 2px 4px -1px rgba(0, 0, 0, 0.04);
   --shadow-modal: 0 20px 25px -5px rgba(0, 0, 0, 0.15), 0 10px 10px -5px rgba(0, 0, 0, 0.08);
+
+  --pagination-active-bg: #09090b;
+  --pagination-active-fg: #ffffff;
+  --pagination-inactive-fg: #71717a;
+  --pagination-hover-bg: #f4f4f5;
 }
 
 .dark, [data-theme="dark"] {
@@ -117,6 +122,11 @@
   --shadow-surface: 0 1px 2px 0 rgba(0, 0, 0, 0.5);
   --shadow-overlay: 0 4px 6px -1px rgba(0, 0, 0, 0.6), 0 2px 4px -1px rgba(0, 0, 0, 0.4);
   --shadow-modal: 0 20px 25px -5px rgba(0, 0, 0, 0.8), 0 10px 10px -5px rgba(0, 0, 0, 0.7);
+
+  --pagination-active-bg: #ffffff;
+  --pagination-active-fg: #09090b;
+  --pagination-inactive-fg: #fafafa;
+  --pagination-hover-bg: rgba(255, 255, 255, 0.1);
 }
 
 /* Custom Extensible Ocean Theme */
@@ -164,6 +174,15 @@
   --shadow-surface: 0 1px 2px 0 rgba(0, 0, 0, 0.5);
   --shadow-overlay: 0 4px 6px -1px rgba(0, 0, 0, 0.6), 0 2px 4px -1px rgba(0, 0, 0, 0.4);
   --shadow-modal: 0 20px 25px -5px rgba(0, 0, 0, 0.8), 0 10px 10px -5px rgba(0, 0, 0, 0.7);
+
+  /* Sync default states with Ocean theme surfaces */
+  --default: var(--surface-secondary);
+  --default-foreground: var(--foreground);
+
+  --pagination-active-bg: #ffffff;
+  --pagination-active-fg: #0b111e;
+  --pagination-inactive-fg: #ffffff;
+  --pagination-hover-bg: rgba(255, 255, 255, 0.1);
 }
 
 @theme inline {
@@ -274,4 +293,33 @@ h1, h2, h3, h4, h5, h6 {
 
 ::-webkit-scrollbar-thumb:hover {
   background: rgba(120, 120, 120, 0.4);
+}
+
+/* Custom Pagination Theme Adaptation */
+[data-slot="pagination-link"],
+[data-slot="pagination-previous"],
+[data-slot="pagination-next"] {
+  --pagination-link-fg: var(--pagination-inactive-fg) !important;
+  --pagination-link-bg-hover: var(--pagination-hover-bg) !important;
+  color: var(--pagination-inactive-fg) !important;
+
+  &[data-active="true"] {
+    --pagination-link-bg: var(--pagination-active-bg) !important;
+    background-color: var(--pagination-active-bg) !important;
+    color: var(--pagination-active-fg) !important;
+  }
+
+  &:hover:not([data-active="true"]):not(:disabled):not([aria-disabled="true"]) {
+    background-color: var(--pagination-hover-bg) !important;
+  }
+
+  &:disabled,
+  &[aria-disabled="true"] {
+    opacity: 0.4 !important;
+    cursor: not-allowed !important;
+  }
+}
+
+[data-slot="pagination-ellipsis"] {
+  color: var(--pagination-inactive-fg) !important;
 }

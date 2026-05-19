@@ -68,6 +68,7 @@
     "pages": "Trang"
   },
   "admin": {
+    "dashboard": "Quản trị",
     "users": "Người dùng",
     "rolesMatrix": "Ma trận phân quyền",
     "auditTrail": "Nhật ký kiểm toán"

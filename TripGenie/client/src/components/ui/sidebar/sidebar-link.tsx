@@ -1,8 +1,7 @@
 "use client";
 
 import React from 'react';
-import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { useRouter, usePathname } from 'next/navigation';
 import { useTranslation } from 'react-i18next';
 import { Tooltip } from '@heroui/react';
 import { useSidebarStore } from '../../../stores/use-sidebar-store';
@@ -17,16 +16,17 @@ interface SidebarLinkProps {
 }
 
 export const SidebarLink: React.FC<SidebarLinkProps> = ({ item, collapsed, isMobile, depth = 0 }) => {
+  const router = useRouter();
   const pathname = usePathname();
   const { t } = useTranslation(['common']);
   const { setMobileOpen } = useSidebarStore();
 
-  const active = isActiveRoute(pathname, item.href);
+  const active = isActiveRoute(pathname, item.href, item.exactMatch);
   const Icon = item.icon;
-  
+
   // Localized label with fallback
-  const label = item.translationKey 
-    ? t(item.translationKey, { defaultValue: item.label }) 
+  const label = item.translationKey
+    ? t(item.translationKey, { defaultValue: item.label })
     : item.label;
 
   // Badge styles
@@ -42,21 +42,24 @@ export const SidebarLink: React.FC<SidebarLinkProps> = ({ item, collapsed, isMob
     }
   };
 
-  // Close mobile drawer when link is clicked
-  const handleLinkClick = () => {
+  // Close mobile drawer and navigate when link is clicked
+  const handleLinkClick = (e: React.MouseEvent<HTMLAnchorElement>) => {
+    e.preventDefault();
     setMobileOpen(false);
+    router.push(item.href);
   };
 
   // Standard interactive link component content
   const linkContent = (
-    <Link
+    <a
       href={item.href}
       onClick={handleLinkClick}
+      aria-label={label}
       aria-current={active ? 'page' : undefined}
-      style={{ paddingLeft: collapsed ? undefined : `${depth * (isMobile ? 18 : 12) + (isMobile ? 20 : 16)}px` }}
+      style={{ paddingLeft: collapsed ? undefined : `${depth > 0 ? (isMobile ? 12 : 12) : (isMobile ? 14 : 16)}px` }}
       className={[
-        "relative flex items-center w-full rounded-xl font-semibold transition-all duration-200 focus-visible:ring-2 focus-visible:ring-focus focus-visible:outline-hidden group",
-        isMobile ? "h-12 text-base px-5 gap-4" : "h-10 text-sm px-4 gap-3",
+        "relative flex items-center w-full rounded-xl font-semibold transition-all duration-200 focus-visible:ring-2 focus-visible:ring-focus focus-visible:outline-hidden group cursor-pointer",
+        isMobile ? "h-12 text-base px-3.5 gap-3" : "h-10 text-sm px-4 gap-3",
         active
           ? "bg-surface-secondary text-foreground font-bold"
           : "text-muted hover:bg-surface-secondary/40 hover:text-foreground",
@@ -73,12 +76,12 @@ export const SidebarLink: React.FC<SidebarLinkProps> = ({ item, collapsed, isMob
 
       {/* Render icon if provided */}
       {Icon && (
-        <Icon 
-          size={isMobile ? 20 : 18} 
+        <Icon
+          size={isMobile ? 20 : 18}
           className={[
             "shrink-0 transition-transform duration-200 group-hover:scale-105",
             active ? "text-accent" : "text-muted group-hover:text-foreground"
-          ].join(' ')} 
+          ].join(' ')}
         />
       )}
 
@@ -95,7 +98,7 @@ export const SidebarLink: React.FC<SidebarLinkProps> = ({ item, collapsed, isMob
           {item.badge}
         </span>
       )}
-    </Link>
+    </a>
   );
 
   // If collapsed desktop, wrap item inside HeroUI Tooltip for visual hover accessibility

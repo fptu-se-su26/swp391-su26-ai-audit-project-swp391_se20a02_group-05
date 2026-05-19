@@ -68,6 +68,7 @@
     "pages": "Pages"
   },
   "admin": {
+    "dashboard": "Admin",
     "users": "Users",
     "rolesMatrix": "Roles Matrix",
     "auditTrail": "Audit Trail"

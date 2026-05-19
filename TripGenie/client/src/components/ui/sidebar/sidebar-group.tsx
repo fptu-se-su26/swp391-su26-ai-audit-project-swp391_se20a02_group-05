@@ -2,7 +2,7 @@
 
 import React, { useEffect } from 'react';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { useTranslation } from 'react-i18next';
 import { Accordion, Tooltip, Typography } from '@heroui/react';
 import { ChevronDown } from 'lucide-react';
@@ -20,14 +20,15 @@ interface SidebarGroupProps {
 
 export const SidebarGroup: React.FC<SidebarGroupProps> = ({ group, collapsed, isMobile, depth = 0 }) => {
   const pathname = usePathname();
+  const router = useRouter();
   const { t } = useTranslation(['common']);
-  const { expandedGroups, toggleGroup, setGroupExpanded } = useSidebarStore();
+  const { expandedGroups, toggleGroup, setGroupExpanded, setMobileOpen } = useSidebarStore();
 
   const Icon = group.icon;
-  
+
   // Localized label with fallback
-  const label = group.translationKey 
-    ? t(group.translationKey, { defaultValue: group.label }) 
+  const label = group.translationKey
+    ? t(group.translationKey, { defaultValue: group.label })
     : group.label;
 
   // Recursively check if any descendant is active
@@ -36,12 +37,12 @@ export const SidebarGroup: React.FC<SidebarGroupProps> = ({ group, collapsed, is
       return isActiveRoute(pathname, node.href);
     }
     if (node.type === 'group') {
-      return node.children.some(isAnyChildActive);
+      return node.children.some(isAnyChildActive) || (node.href ? isActiveRoute(pathname, node.href) : false);
     }
     return false;
   };
 
-  const hasActiveDescendant = group.children.some(isAnyChildActive);
+  const hasActiveDescendant = group.children.some(isAnyChildActive) || (group.href ? isActiveRoute(pathname, group.href) : false);
   const isExpanded = !!expandedGroups[group.id];
 
   // Auto-expand parent group on mount or pathname change if a child is active
@@ -51,9 +52,15 @@ export const SidebarGroup: React.FC<SidebarGroupProps> = ({ group, collapsed, is
     }
   }, [pathname, hasActiveDescendant, group.id, setGroupExpanded]);
 
-  // Handle manual toggle
+  // Handle manual toggle and optional navigation
   const handleToggle = () => {
     toggleGroup(group.id);
+    if (group.href) {
+      router.push(group.href);
+      if (isMobile) {
+        setMobileOpen(false);
+      }
+    }
   };
 
   // Convert expandedGroups record into a React Aria / HeroUI compliant key set
@@ -79,16 +86,16 @@ export const SidebarGroup: React.FC<SidebarGroupProps> = ({ group, collapsed, is
             <Accordion.Heading>
               <Accordion.Trigger className={[
                 "w-full flex items-center justify-between rounded-xl font-semibold text-muted hover:text-foreground hover:bg-surface-secondary/40 select-none cursor-pointer outline-hidden focus-visible:ring-2 focus-visible:ring-focus focus-visible:outline-hidden transition-all duration-200",
-                isMobile ? "h-12 px-5 text-base" : "h-10 px-4 text-sm"
+                isMobile ? "h-12 px-3.5 text-base" : "h-10 px-4 text-sm"
               ].join(' ')}>
                 <div className="flex items-center gap-3 min-w-0">
                   {Icon && (
-                    <Icon 
-                      size={isMobile ? 20 : 18} 
+                    <Icon
+                      size={isMobile ? 20 : 18}
                       className={[
                         "shrink-0 transition-colors duration-200",
                         hasActiveDescendant ? "text-accent" : "text-muted"
-                      ].join(' ')} 
+                      ].join(' ')}
                     />
                   )}
                   <span className={[
@@ -108,28 +115,28 @@ export const SidebarGroup: React.FC<SidebarGroupProps> = ({ group, collapsed, is
                 {/* Indented recursive items container with a subtle vertical guide line */}
                 <div className={[
                   "border-l border-border/70 flex flex-col",
-                  isMobile ? "ml-8 pl-3.5 gap-2 my-2" : "ml-6 pl-2.5 gap-1.5 my-1.5"
+                  isMobile ? "ml-4 pl-1.5 gap-2 my-2" : "ml-4.5 pl-1.5 gap-1.5 my-1.5"
                 ].join(' ')}>
                   {group.children.map((child) => {
                     if (child.type === 'item') {
                       return (
-                        <SidebarLink 
-                          key={child.id} 
-                          item={child} 
+                        <SidebarLink
+                          key={child.id}
+                          item={child}
                           collapsed={collapsed}
                           isMobile={isMobile}
-                          depth={depth + 1} 
+                          depth={depth + 1}
                         />
                       );
                     }
                     if (child.type === 'group') {
                       return (
-                        <SidebarGroup 
-                          key={child.id} 
-                          group={child} 
+                        <SidebarGroup
+                          key={child.id}
+                          group={child}
                           collapsed={collapsed}
                           isMobile={isMobile}
-                          depth={depth + 1} 
+                          depth={depth + 1}
                         />
                       );
                     }
@@ -163,25 +170,36 @@ export const SidebarGroup: React.FC<SidebarGroupProps> = ({ group, collapsed, is
               <span className="relative inline-flex rounded-full h-2 w-2 bg-accent"></span>
             </span>
           )}
-          
+
           {Icon && (
-            <Icon 
-              size={18} 
+            <Icon
+              size={18}
               className={[
                 "shrink-0",
                 hasActiveDescendant ? "text-accent" : "text-muted"
-              ].join(' ')} 
+              ].join(' ')}
             />
           )}
         </button>
         <Tooltip.Content placement="right" className="flex flex-col gap-1.5 p-2 bg-surface border border-border shadow-lg rounded-xl min-w-44 select-none">
           {/* Header title inside the hover popover */}
           <div className="px-2.5 py-1 border-b border-separator mb-1">
-            <Typography type="body-xs" className="font-bold text-foreground font-outfit uppercase tracking-wider text-[10px]">
-              {label}
-            </Typography>
+            {group.href ? (
+              <Link
+                href={group.href}
+                className="hover:underline flex items-center justify-between"
+              >
+                <Typography type="body-xs" className="font-bold text-foreground font-outfit uppercase tracking-wider text-[10px]">
+                  {label}
+                </Typography>
+              </Link>
+            ) : (
+              <Typography type="body-xs" className="font-bold text-foreground font-outfit uppercase tracking-wider text-[10px]">
+                {label}
+              </Typography>
+            )}
           </div>
-          
+
           {/* Render children in a list inside the popover */}
           <div className="flex flex-col gap-1">
             {group.children.map((child) => {
@@ -192,7 +210,7 @@ export const SidebarGroup: React.FC<SidebarGroupProps> = ({ group, collapsed, is
                     href={child.href}
                     className={[
                       "flex items-center h-8 px-2.5 rounded-lg text-xs font-semibold font-outfit transition-colors",
-                      isActiveRoute(pathname, child.href)
+                      isActiveRoute(pathname, child.href, child.exactMatch)
                         ? "bg-surface-secondary text-foreground font-bold"
                         : "text-muted hover:bg-surface-secondary/40 hover:text-foreground"
                     ].join(' ')}
