@@ -80,6 +80,7 @@ public static class DbInitializer
                 failed_attempts INT DEFAULT 0,
                 last_failed_at TIMESTAMP WITH TIME ZONE,
                 lock_until TIMESTAMP WITH TIME ZONE,
+                session_version INTEGER NOT NULL DEFAULT 1,
                 created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
                 updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
                 deleted_at TIMESTAMP WITH TIME ZONE
@@ -118,6 +119,15 @@ public static class DbInitializer
 
                     -- Safely drop the old role_id column
                     ALTER TABLE users DROP COLUMN role_id;
+                END IF;
+
+                -- Safely provision session_version column if missing
+                IF NOT EXISTS (
+                    SELECT 1 
+                    FROM information_schema.columns 
+                    WHERE table_name = 'users' AND column_name = 'session_version'
+                ) THEN
+                    ALTER TABLE users ADD COLUMN session_version INTEGER NOT NULL DEFAULT 1;
                 END IF;
             END $$;
 

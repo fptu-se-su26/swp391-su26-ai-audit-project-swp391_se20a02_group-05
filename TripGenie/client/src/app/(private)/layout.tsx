@@ -5,7 +5,7 @@ import { useAuth } from '../../features/auth/hooks/use-auth';
 import { useSessionTimeout } from '../../hooks/use-session-timeout';
 import { SessionTimeoutModal } from '../../components/ui/session-timeout-modal';
 import { useRouter, usePathname } from 'next/navigation';
-import { Compass, Building2, ShieldAlert, LayoutDashboard, Sparkles } from 'lucide-react';
+import { Compass, Building2, ShieldAlert, LayoutDashboard, Sparkles, Users, Shield, FileText } from 'lucide-react';
 import Link from 'next/link';
 import { AuthAvatar } from '../../components/ui/auth-avatar';
 import { useTranslation } from 'react-i18next';
@@ -15,7 +15,7 @@ export default function DashboardLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const { user, logout, isInitialized, isAuthenticated } = useAuth();
+  const { user, logout, isInitialized, isAuthenticated, hasPermission } = useAuth();
   const { showWarning, secondsRemaining, extendSession } = useSessionTimeout();
   const router = useRouter();
   const pathname = usePathname();
@@ -109,20 +109,70 @@ export default function DashboardLayout({
             </Link>
           )}
 
-          {/* Admin Link (gated display or direct path) */}
+          {/* Admin Section (gated display or direct path) */}
           {userRole === 'ADMIN' && (
-            <Link
-              href="/admin"
-              className={[
-                "flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-all duration-200",
-                pathname === '/admin'
-                  ? "bg-zinc-100 dark:bg-zinc-900 text-zinc-950 dark:text-zinc-50"
-                  : "text-zinc-500 hover:bg-zinc-50 dark:hover:bg-zinc-900/40 hover:text-zinc-800 dark:hover:text-zinc-200",
-              ].join(' ')}
-            >
-              <ShieldAlert size={18} />
-              {t('common:dashboard.systemAdmin')}
-            </Link>
+            <div className="space-y-1">
+              <Link
+                href="/admin"
+                className={[
+                  "flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-all duration-200",
+                  pathname === '/admin'
+                    ? "bg-zinc-100 dark:bg-zinc-900 text-zinc-950 dark:text-zinc-50"
+                    : "text-zinc-500 hover:bg-zinc-50 dark:hover:bg-zinc-900/40 hover:text-zinc-800 dark:hover:text-zinc-200",
+                ].join(' ')}
+              >
+                <ShieldAlert size={18} />
+                {t('common:dashboard.systemAdmin')}
+              </Link>
+              
+              {/* Indented administrative permission-driven sub-routes */}
+              <div className="pl-6 space-y-1">
+                {hasPermission('users:view:list') && (
+                  <Link
+                    href="/admin/users"
+                    className={[
+                      "flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-medium transition-all duration-200",
+                      pathname === '/admin/users'
+                        ? "bg-zinc-100 dark:bg-zinc-900 text-zinc-950 dark:text-zinc-50 font-bold"
+                        : "text-zinc-400 hover:bg-zinc-50 dark:hover:bg-zinc-900/40 hover:text-zinc-700 dark:hover:text-zinc-200",
+                    ].join(' ')}
+                  >
+                    <Users size={14} />
+                    <span>Users</span>
+                  </Link>
+                )}
+
+                {hasPermission('roles:view:list') && (
+                  <Link
+                    href="/admin/roles"
+                    className={[
+                      "flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-medium transition-all duration-200",
+                      pathname === '/admin/roles'
+                        ? "bg-zinc-100 dark:bg-zinc-900 text-zinc-950 dark:text-zinc-50 font-bold"
+                        : "text-zinc-400 hover:bg-zinc-50 dark:hover:bg-zinc-900/40 hover:text-zinc-700 dark:hover:text-zinc-200",
+                    ].join(' ')}
+                  >
+                    <Shield size={14} />
+                    <span>Roles Matrix</span>
+                  </Link>
+                )}
+
+                {hasPermission('ai:audit:view') && (
+                  <Link
+                    href="/admin/audit-logs"
+                    className={[
+                      "flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-medium transition-all duration-200",
+                      pathname === '/admin/audit-logs'
+                        ? "bg-zinc-100 dark:bg-zinc-900 text-zinc-950 dark:text-zinc-50 font-bold"
+                        : "text-zinc-400 hover:bg-zinc-50 dark:hover:bg-zinc-900/40 hover:text-zinc-700 dark:hover:text-zinc-200",
+                    ].join(' ')}
+                  >
+                    <FileText size={14} />
+                    <span>Audit Trail</span>
+                  </Link>
+                )}
+              </div>
+            </div>
           )}
         </nav>
 

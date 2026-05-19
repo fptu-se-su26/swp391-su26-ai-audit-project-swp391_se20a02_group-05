@@ -1,0 +1,408 @@
+"use client";
+
+import React, { useState, useEffect, useCallback } from 'react';
+import { adminService } from '../../../../services/admin.service';
+import { RoleListItem } from '../../../../types/admin.types';
+import { getPermissionsByModule } from '@/shared/permissions/permission.metadata';
+import { Spinner, Checkbox, Label } from '@heroui/react';
+import { Shield, Plus, RotateCw, AlertTriangle, Edit, Trash2 } from 'lucide-react';
+import { DialogModal } from '../../../../components/ui/dialog-modal';
+import { AccordionWrapper } from '../../../../components/ui/accordion-wrapper';
+import { SkeletonLoader } from '../../../../components/ui/states';
+
+export default function RolesAdminPage() {
+  const [roles, setRoles] = useState<RoleListItem[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+
+  // Edit / Create Dialog State
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [editingRole, setEditingRole] = useState<RoleListItem | null>(null);
+  const [roleName, setRoleName] = useState('');
+  const [displayName, setDisplayName] = useState('');
+  const [description, setDescription] = useState('');
+  const [selectedPermissions, setSelectedPermissions] = useState<string[]>([]);
+  const [isSaving, setIsSaving] = useState(false);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
+
+  const permissionModules = getPermissionsByModule();
+
+  const fetchRoles = useCallback(async (silent = false) => {
+    if (!silent) setIsLoading(true);
+    try {
+      const rolesList = await adminService.getRoles();
+      setRoles(rolesList);
+    } catch (err) {
+      console.error('Failed to fetch roles', err);
+    } finally {
+      setIsLoading(false);
+      setIsRefreshing(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      fetchRoles();
+    }, 0);
+    return () => clearTimeout(timer);
+  }, [fetchRoles]);
+
+  const handleRefresh = () => {
+    setIsRefreshing(true);
+    fetchRoles(true);
+  };
+
+  const handleOpenCreate = () => {
+    setEditingRole(null);
+    setRoleName('');
+    setDisplayName('');
+    setDescription('');
+    setSelectedPermissions([]);
+    setErrorMsg(null);
+    setIsModalOpen(true);
+  };
+
+  const handleOpenEdit = (role: RoleListItem) => {
+    setEditingRole(role);
+    setRoleName(role.name);
+    setDisplayName(role.displayName);
+    setDescription(role.description || '');
+    setSelectedPermissions(role.permissions);
+    setErrorMsg(null);
+    setIsModalOpen(true);
+  };
+
+  const handlePermissionToggle = (permName: string) => {
+    setSelectedPermissions((prev) => {
+      if (prev.includes(permName)) {
+        return prev.filter((p) => p !== permName);
+      } else {
+        return [...prev, permName];
+      }
+    });
+  };
+
+  const handleSelectAllInModule = (moduleName: string, permNames: string[]) => {
+    setSelectedPermissions((prev) => {
+      const others = prev.filter((p) => !permNames.includes(p));
+      const allSelected = permNames.every((p) => prev.includes(p));
+      if (allSelected) {
+        return others;
+      } else {
+        return [...others, ...permNames];
+      }
+    });
+  };
+
+  const handleSaveRole = async () => {
+    if (!displayName) {
+      setErrorMsg('Display name is required.');
+      return;
+    }
+
+    setIsSaving(true);
+    setErrorMsg(null);
+
+    const payload = {
+      name: editingRole ? editingRole.name : roleName.toUpperCase().replace(/\s+/g, '_'),
+      displayName,
+      description: description || null,
+      permissions: selectedPermissions,
+      version: editingRole?.version
+    };
+
+    try {
+      if (editingRole) {
+        await adminService.updateRole(editingRole.id, payload);
+      } else {
+        if (!payload.name) {
+          setErrorMsg('Role code name is required.');
+          setIsSaving(false);
+          return;
+        }
+        await adminService.createRole(payload);
+      }
+      setIsModalOpen(false);
+      fetchRoles();
+    } catch (err: unknown) {
+      console.error('Failed to save role', err);
+      const error = err as { code?: string; message?: string };
+      if (error?.code === '409' || error?.message?.includes('conflict') || error?.message?.includes('concurrency')) {
+        setErrorMsg('Optimistic Concurrency Conflict: This role has been modified by another administrator. Please refresh and try again.');
+      } else {
+        setErrorMsg(error?.message || 'An error occurred while saving the role.');
+      }
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleDeleteRole = async (id: string) => {
+    if (!confirm('Are you sure you want to delete this custom role? This action cannot be undone.')) return;
+    try {
+      await adminService.deleteRole(id);
+      fetchRoles();
+    } catch (err: unknown) {
+      const error = err as { message?: string };
+      alert(error?.message || 'Failed to delete role. Ensure no users are assigned to it.');
+    }
+  };
+
+  // Convert permission module groups into clean Accordion item list
+  const accordionItems = Object.entries(permissionModules).map(([moduleName, perms]) => {
+    const permNames = perms.map((p) => p.name);
+    const allSelected = permNames.every((p) => selectedPermissions.includes(p));
+
+    return {
+      id: moduleName,
+      title: `${moduleName.charAt(0).toUpperCase() + moduleName.slice(1)} Module`,
+      content: (
+        <div className="space-y-4">
+          <div className="flex justify-end select-none">
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                handleSelectAllInModule(moduleName, permNames);
+              }}
+              className="text-[9px] font-extrabold uppercase tracking-wider px-2 py-1 rounded border border-zinc-200/60 dark:border-zinc-800 cursor-pointer bg-white dark:bg-zinc-950 hover:bg-zinc-50 dark:hover:bg-zinc-900 select-none text-zinc-600 dark:text-zinc-400"
+            >
+              {allSelected ? 'Clear Module' : 'Grant Module'}
+            </button>
+          </div>
+          <div className="space-y-2.5">
+            {perms.map((perm) => {
+              const isChecked = selectedPermissions.includes(perm.name) || selectedPermissions.includes('*:*:*');
+              return (
+                <div key={perm.name} className="p-1 rounded-xl hover:bg-zinc-50 dark:hover:bg-zinc-900/40 transition-colors">
+                  <Checkbox
+                    id={`perm-${perm.name}`}
+                    isSelected={isChecked}
+                    onChange={() => handlePermissionToggle(perm.name)}
+                    isDisabled={selectedPermissions.includes('*:*:*') && perm.name !== '*:*:*'}
+                    className="flex items-start gap-3 w-full cursor-pointer select-none"
+                  >
+                    <Checkbox.Control className="mt-1 border-2 border-zinc-300 dark:border-zinc-800 data-[selected=true]:bg-indigo-500 data-[selected=true]:border-indigo-500 rounded size-4 before:rounded">
+                      <Checkbox.Indicator className="text-white size-3" />
+                    </Checkbox.Control>
+                    <Checkbox.Content className="flex flex-col text-left">
+                      <div className="flex flex-wrap items-center gap-1.5">
+                        <Label htmlFor={`perm-${perm.name}`} className="text-xs font-bold text-zinc-800 dark:text-zinc-250 cursor-pointer">
+                          {perm.displayName}
+                        </Label>
+                        {perm.dangerous && (
+                          <span className="px-1.5 py-0.5 rounded bg-rose-50 text-rose-700 dark:bg-rose-950/30 dark:text-rose-400 border border-rose-200/20 text-[7px] font-extrabold tracking-wider uppercase">
+                            DANGEROUS
+                          </span>
+                        )}
+                        {perm.system && (
+                          <span className="px-1.5 py-0.5 rounded bg-purple-50 text-purple-700 dark:bg-purple-950/30 dark:text-purple-400 border border-purple-200/20 text-[7px] font-extrabold tracking-wider uppercase">
+                            SYSTEM
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-[10px] text-zinc-450 dark:text-zinc-500 leading-normal mt-0.5 font-medium font-outfit">
+                        {perm.description}
+                      </p>
+                      <span className="font-mono text-[9px] text-zinc-400 dark:text-zinc-505 block mt-1 font-bold">
+                        {perm.name}
+                      </span>
+                    </Checkbox.Content>
+                  </Checkbox>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      ),
+    };
+  });
+
+  return (
+    <div className="space-y-6 font-outfit max-w-7xl mx-auto p-4 md:p-6 text-zinc-900 dark:text-zinc-50">
+      {/* Title */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-extrabold tracking-tight flex items-center gap-2">
+            <Shield className="text-emerald-500" size={24} />
+            Roles & Granular Access Control
+          </h1>
+          <p className="text-zinc-500 dark:text-zinc-400 text-sm">
+            Dynamically configure system permission models and authorization layout maps.
+          </p>
+        </div>
+        <div className="flex gap-2">
+          <button
+            onClick={handleRefresh}
+            className="px-4 py-2.5 border border-zinc-200 dark:border-zinc-800 rounded-xl text-xs font-bold flex items-center gap-2 hover:bg-zinc-50 dark:hover:bg-zinc-900 select-none cursor-pointer transition-colors"
+          >
+            <RotateCw size={14} className={isRefreshing ? 'animate-spin' : ''} />
+            Sync Schemas
+          </button>
+          <button
+            onClick={handleOpenCreate}
+            className="px-4 py-2.5 bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-950 font-bold rounded-xl text-xs flex items-center gap-2 hover:opacity-90 transition-opacity select-none cursor-pointer"
+          >
+            <Plus size={14} />
+            Create Custom Role
+          </button>
+        </div>
+      </div>
+
+      {/* Grid List of Roles */}
+      {isLoading ? (
+        <SkeletonLoader rows={4} columns={3} />
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {roles.map((role) => (
+            <div key={role.id} className="p-6 rounded-2xl border border-zinc-200/50 dark:border-zinc-900/60 bg-white/70 dark:bg-zinc-950/60 backdrop-blur-xl flex flex-col justify-between min-h-[220px] shadow-sm hover:shadow-md transition-shadow">
+              <div>
+                <div className="flex justify-between items-start gap-2 mb-3">
+                  <div className="space-y-1">
+                    <h3 className="font-extrabold text-sm text-zinc-900 dark:text-zinc-50 tracking-tight">
+                      {role.displayName}
+                    </h3>
+                    <span className="font-mono text-[10px] text-zinc-400 dark:text-zinc-505 block uppercase font-bold">
+                      {role.name}
+                    </span>
+                  </div>
+                  <div className="flex gap-1.5 select-none">
+                    {role.isSystem && (
+                      <span className="px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-700 dark:bg-indigo-950/30 dark:text-indigo-400 border border-indigo-200/20 text-[8px] font-extrabold tracking-wider uppercase">
+                        SYSTEM
+                      </span>
+                    )}
+                    <span className="px-2 py-0.5 rounded-full bg-zinc-50 text-zinc-700 dark:bg-zinc-900 dark:text-zinc-400 border border-zinc-200/20 font-mono font-extrabold text-[8px]">
+                      v{role.version}
+                    </span>
+                  </div>
+                </div>
+
+                <p className="text-xs text-zinc-500 dark:text-zinc-400 font-medium leading-relaxed mb-4">
+                  {role.description || 'No custom description provided for this security role mapping.'}
+                </p>
+              </div>
+
+              <div>
+                <div className="border-t border-zinc-100 dark:border-zinc-900/50 pt-4 mt-2 flex justify-between items-center select-none">
+                  <span className="text-[10px] font-extrabold text-zinc-400 dark:text-zinc-500 uppercase tracking-wide">
+                    {role.permissions.includes('*:*:*') ? 'All Permissions (*)' : `${role.permissions.length} Granular Permissions`}
+                  </span>
+                  
+                  <div className="flex gap-1.5">
+                    <button
+                      onClick={() => handleOpenEdit(role)}
+                      className="font-bold text-xs text-indigo-500 hover:text-indigo-650 transition-colors flex items-center gap-1 cursor-pointer"
+                    >
+                      <Edit size={12} />
+                      Edit Matrix
+                    </button>
+                    {!role.isSystem && (
+                      <button
+                        onClick={() => handleDeleteRole(role.id)}
+                        className="font-bold text-xs text-rose-500 hover:text-rose-650 transition-colors flex items-center gap-1 cursor-pointer"
+                      >
+                        <Trash2 size={12} />
+                        Delete
+                      </button>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Visual Permission Builder Dialog Overlay */}
+      <DialogModal
+        isOpen={isModalOpen}
+        onOpenChange={setIsModalOpen}
+        title={editingRole ? `Edit Role Permission Matrix: ${displayName}` : 'Build Custom Role'}
+        size="lg"
+        footer={
+          <>
+            <button
+              onClick={() => setIsModalOpen(false)}
+              disabled={isSaving}
+              className="px-4 py-2 border border-zinc-200 dark:border-zinc-800 rounded-xl font-bold text-xs hover:bg-zinc-50 dark:hover:bg-zinc-900 disabled:opacity-50 select-none cursor-pointer"
+            >
+              Close Matrix
+            </button>
+            <button
+              onClick={handleSaveRole}
+              disabled={isSaving}
+              className="px-4 py-2 bg-emerald-600 text-white hover:bg-emerald-700 font-bold rounded-xl text-xs hover:opacity-90 disabled:opacity-50 flex items-center gap-1.5 select-none cursor-pointer"
+            >
+              {isSaving && <Spinner size="sm" color="current" />}
+              {editingRole ? 'Save Changes' : 'Build Custom Role'}
+            </button>
+          </>
+        }
+      >
+        {errorMsg && (
+          <div className="p-3.5 rounded-xl bg-rose-50 dark:bg-rose-950/20 border border-rose-200/30 dark:border-rose-900/40 text-rose-800 dark:text-rose-300 flex gap-2.5 text-xs font-semibold select-none leading-relaxed">
+            <AlertTriangle size={16} className="shrink-0 text-rose-500" />
+            <div>{errorMsg}</div>
+          </div>
+        )}
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {!editingRole && (
+            <div className="space-y-1">
+              <label className="text-[10px] font-extrabold uppercase tracking-wider text-zinc-400 dark:text-zinc-500">Role Key (Immutable code-name)</label>
+              <input
+                type="text"
+                placeholder="E.g. TRAVEL_MANAGER"
+                value={roleName}
+                onChange={(e) => setRoleName(e.target.value)}
+                className="w-full px-3.5 py-2.5 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 font-mono text-xs focus:outline-none"
+              />
+            </div>
+          )}
+          <div className="space-y-1">
+            <label className="text-[10px] font-extrabold uppercase tracking-wider text-zinc-400 dark:text-zinc-500">Display Title Name</label>
+            <input
+              type="text"
+              placeholder="E.g. Travel Manager"
+              value={displayName}
+              onChange={(e) => setDisplayName(e.target.value)}
+              className="w-full px-3.5 py-2.5 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 text-xs focus:outline-none font-bold"
+            />
+          </div>
+        </div>
+
+        <div className="space-y-1">
+          <label className="text-[10px] font-extrabold uppercase tracking-wider text-zinc-400 dark:text-zinc-500">Role Purpose Description</label>
+          <textarea
+            placeholder="Provide a detailed summary of what administrative responsibilities this security role entails..."
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+            className="w-full px-3.5 py-2.5 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 text-xs focus:outline-none font-medium"
+            rows={2}
+          />
+        </div>
+
+        {/* Granular visual matrix accordions grouped by modules */}
+        <div className="space-y-3">
+          <div className="flex justify-between items-center select-none">
+            <label className="text-[10px] font-extrabold uppercase tracking-wider text-zinc-400 dark:text-zinc-500">Visual Permission Mappings Matrix</label>
+            <button
+              onClick={() => setSelectedPermissions(['*:*:*'])}
+              className="text-[10px] font-bold text-zinc-400 hover:text-zinc-500 cursor-pointer"
+            >
+              Bypass to System Wildcard (*)
+            </button>
+          </div>
+
+          <div className="border border-zinc-200/50 dark:border-zinc-900 rounded-xl overflow-hidden bg-zinc-50/30 dark:bg-zinc-950/20 max-h-[300px] overflow-y-auto p-2">
+            <AccordionWrapper
+              items={accordionItems}
+              variant="default"
+              allowsMultipleExpanded
+            />
+          </div>
+        </div>
+      </DialogModal>
+    </div>
+  );
+}

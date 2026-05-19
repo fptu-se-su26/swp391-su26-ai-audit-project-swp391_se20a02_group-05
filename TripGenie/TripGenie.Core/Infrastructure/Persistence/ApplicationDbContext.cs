@@ -14,6 +14,7 @@ public class ApplicationDbContext : DbContext
 
     public override async Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
     {
+        EnforceImmutableAuditLogs();
         try
         {
             return await base.SaveChangesAsync(cancellationToken);
@@ -30,6 +31,7 @@ public class ApplicationDbContext : DbContext
 
     public override async Task<int> SaveChangesAsync(bool acceptAllChangesOnSuccess, CancellationToken cancellationToken = default)
     {
+        EnforceImmutableAuditLogs();
         try
         {
             return await base.SaveChangesAsync(acceptAllChangesOnSuccess, cancellationToken);
@@ -41,6 +43,17 @@ public class ApplicationDbContext : DbContext
                 throw new DuplicateEmailException("A user with this email address already exists.", ex);
             }
             throw;
+        }
+    }
+
+    private void EnforceImmutableAuditLogs()
+    {
+        var auditLogEntries = ChangeTracker.Entries<AuditLog>()
+            .Where(e => e.State == EntityState.Modified || e.State == EntityState.Deleted);
+        
+        if (auditLogEntries.Any())
+        {
+            throw new InvalidOperationException("Audit logs are strictly immutable and cannot be updated or deleted.");
         }
     }
 
@@ -118,6 +131,19 @@ public class ApplicationDbContext : DbContext
         // Optimistic Concurrency Control mapping utilizing PostgreSQL xmin system column
         modelBuilder.Entity<User>()
             .Property(u => u.Version)
+            .HasColumnName("xmin")
+            .HasColumnType("xid")
+            .ValueGeneratedOnAddOrUpdate()
+            .IsConcurrencyToken();
+
+        modelBuilder.Entity<User>()
+            .Property(u => u.SessionVersion)
+            .HasColumnName("session_version")
+            .HasDefaultValue(1)
+            .IsRequired();
+
+        modelBuilder.Entity<Role>()
+            .Property(r => r.Version)
             .HasColumnName("xmin")
             .HasColumnType("xid")
             .ValueGeneratedOnAddOrUpdate()

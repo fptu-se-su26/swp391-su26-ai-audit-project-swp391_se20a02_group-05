@@ -8,6 +8,7 @@ using System.IdentityModel.Tokens.Jwt; using System.Security.Claims; using Syste
             new(ClaimTypes.Name, user.FullName),
             new("isEmailVerified", (user.EmailVerifiedAt.HasValue || user.Status == UserStatus.ACTIVE).ToString().ToLowerInvariant()),
             new("status", user.Status.ToString()),
+            new("session_version", user.SessionVersion.ToString()),
             new(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString())
         };
 

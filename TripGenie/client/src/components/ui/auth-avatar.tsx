@@ -3,7 +3,7 @@
 import React from 'react';
 import { useAuth } from '../../features/auth/hooks/use-auth';
 import { useRouter } from 'next/navigation';
-import { Dropdown, Avatar, Label, Separator } from '@heroui/react';
+import { Dropdown, Avatar, Label, Separator, Button } from '@heroui/react';
 import { LogOut, LayoutDashboard, Settings, Check } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { setCookie } from '../../services/axios-client';
@@ -58,21 +58,19 @@ export function AuthAvatar() {
 
   return (
     <Dropdown>
-      <Dropdown.Trigger>
-        <button
-          aria-label={t('navbar:menu.userMenu')}
-          className="outline-none focus:ring-2 focus:ring-zinc-500 rounded-full transition-all duration-200 select-none shrink-0"
-        >
-          <Avatar className="cursor-pointer size-10 select-none hover:opacity-90 active:scale-95 transition-all bg-linear-to-tr from-indigo-500 to-emerald-500">
-            {user.avatarUrl && (
-              <Avatar.Image src={user.avatarUrl} alt={user.fullName} />
-            )}
-            <Avatar.Fallback className="text-white font-bold text-sm">
-              {initials}
-            </Avatar.Fallback>
-          </Avatar>
-        </button>
-      </Dropdown.Trigger>
+      <Button
+        aria-label={t('navbar:menu.userMenu')}
+        className="p-0 bg-transparent hover:bg-transparent border-none min-w-0 min-h-0 size-10 rounded-full outline-none focus:ring-2 focus:ring-zinc-500 select-none shrink-0"
+      >
+        <Avatar className="cursor-pointer size-10 select-none hover:opacity-90 active:scale-95 transition-all bg-linear-to-tr from-indigo-500 to-emerald-500">
+          {user.avatarUrl && (
+            <Avatar.Image src={user.avatarUrl} alt={user.fullName} />
+          )}
+          <Avatar.Fallback className="text-white font-bold text-sm">
+            {initials}
+          </Avatar.Fallback>
+        </Avatar>
+      </Button>
 
       <Dropdown.Popover className="min-w-[240px] bg-white/95 dark:bg-zinc-950/95 backdrop-blur-xl border border-zinc-200/80 dark:border-zinc-900 shadow-2xl rounded-2xl p-1.5 animate-in fade-in slide-in-from-top-2 duration-200 z-50">
         <Dropdown.Menu onAction={handleAction} className="outline-none">

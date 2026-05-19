@@ -49,6 +49,8 @@ public class User
     [ConcurrencyCheck]
     public uint Version { get; set; } // Map PostgreSQL xmin system column
 
+    public int SessionVersion { get; set; } = 1;
+
     public virtual ICollection<RefreshToken> RefreshTokens { get; set; } = new List<RefreshToken>();
 
     /// <summary>

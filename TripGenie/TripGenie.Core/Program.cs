@@ -87,6 +87,7 @@ builder.Services.AddOpenApi(options =>
     });
 });
 builder.Services.AddControllers();
+builder.Services.AddSignalR();
 builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
 builder.Services.AddProblemDetails();
 builder.Services.AddHttpContextAccessor();
@@ -283,10 +284,12 @@ app.UseCors("AllowFrontend");
 app.UseMiddleware<SecurityHeadersMiddleware>();
 app.UseRateLimiter();
 app.UseAuthentication();
+app.UseMiddleware<TripGenie.API.API.Middleware.SessionValidationMiddleware>();
 app.UseAuthorization();
 
 
 app.MapHealthChecks("/health");
 app.MapControllers();
+app.MapHub<TripGenie.API.API.Hubs.AdminHub>("/hubs/admin");
 
 app.Run();
