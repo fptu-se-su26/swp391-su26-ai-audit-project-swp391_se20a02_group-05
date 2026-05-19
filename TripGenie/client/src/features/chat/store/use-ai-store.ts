@@ -1,6 +1,6 @@
 import { create } from 'zustand';
-import { axiosClient, getCookie } from '../lib/api/axios-client';
-import { AUTH_KEYS } from '../lib/constants/auth.constants';
+import { axiosClient, getCookie } from '../../../services/axios-client';
+import { AUTH_KEYS } from '../../../lib/constants/auth.constants';
 
 export interface Message {
   id: string;
@@ -57,9 +57,10 @@ export const useAiStore = create<AIState>((set, get) => ({
     try {
       const response = await axiosClient.get<Conversation[]>('/ai/chat/conversations');
       set({ conversations: response.data, isLoadingConversations: false });
-    } catch (err: any) {
-      console.error('Error fetching conversations:', err);
-      set({ error: err.message || 'Failed to load conversations', isLoadingConversations: false });
+    } catch (err: unknown) {
+      const error = err as Error;
+      console.error('Error fetching conversations:', error);
+      set({ error: error.message || 'Failed to load conversations', isLoadingConversations: false });
     }
   },
 
@@ -68,9 +69,10 @@ export const useAiStore = create<AIState>((set, get) => ({
     try {
       const response = await axiosClient.get<Message[]>(`/ai/chat/conversations/${conversationId}/messages`);
       set({ messages: response.data, isLoadingMessages: false });
-    } catch (err: any) {
-      console.error('Error fetching messages:', err);
-      set({ error: err.message || 'Failed to load messages', isLoadingMessages: false });
+    } catch (err: unknown) {
+      const error = err as Error;
+      console.error('Error fetching messages:', error);
+      set({ error: error.message || 'Failed to load messages', isLoadingMessages: false });
     }
   },
 
@@ -92,9 +94,10 @@ export const useAiStore = create<AIState>((set, get) => ({
         activeConversationId: state.activeConversationId === id ? null : state.activeConversationId,
         messages: state.activeConversationId === id ? [] : state.messages
       }));
-    } catch (err: any) {
-      console.error('Error deleting conversation:', err);
-      set({ error: err.message || 'Failed to delete conversation' });
+    } catch (err: unknown) {
+      const error = err as Error;
+      console.error('Error deleting conversation:', error);
+      set({ error: error.message || 'Failed to delete conversation' });
     }
   },
 
@@ -240,9 +243,10 @@ export const useAiStore = create<AIState>((set, get) => ({
                   )
                 }));
               }
-            } catch (e: any) {
-              if (e.message?.includes('stream error') || e.message?.includes('FastAPI')) {
-                throw e;
+            } catch (e: unknown) {
+              const error = e as Error;
+              if (error.message?.includes('stream error') || error.message?.includes('FastAPI')) {
+                throw error;
               }
               // Ignore standard parse warnings on raw metadata
             }
@@ -276,13 +280,14 @@ export const useAiStore = create<AIState>((set, get) => ({
           await get().fetchMessages(latestConv.id);
         }
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       // Ignore errors if the stream session has changed
       if (get().currentGenerationId !== generationId) {
         return;
       }
 
-      if (err.name === 'AbortError') {
+      const error = err as Error;
+      if (error.name === 'AbortError') {
         console.log('Stream cancelled by user');
         set((state) => ({
           messages: state.messages.map((m) =>
@@ -292,12 +297,12 @@ export const useAiStore = create<AIState>((set, get) => ({
           )
         }));
       } else {
-        console.error('Stream processing error:', err);
+        console.error('Stream processing error:', error);
         set((state) => ({
-          error: err.message || 'Stream connection error.',
+          error: error.message || 'Stream connection error.',
           messages: state.messages.map((m) =>
             m.id === tempAssistantMsgId
-              ? { ...m, content: m.content + `\n\n[Error: ${err.message || 'Connection failure'}]`, streamingState: 'Failed' }
+              ? { ...m, content: m.content + `\n\n[Error: ${error.message || 'Connection failure'}]`, streamingState: 'Failed' }
               : m
           )
         }));

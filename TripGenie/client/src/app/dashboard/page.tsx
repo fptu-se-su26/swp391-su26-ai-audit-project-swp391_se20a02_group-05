@@ -37,7 +37,7 @@ export default async function DashboardResolutionPage() {
     }
 
     redirect(targetDashboard);
-  } catch (error) {
+  } catch {
     redirect(ROUTES.LOGIN);
   }
 }

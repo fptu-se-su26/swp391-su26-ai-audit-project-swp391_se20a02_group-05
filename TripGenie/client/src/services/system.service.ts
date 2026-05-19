@@ -1,8 +1,8 @@
 import { axiosClient } from './axios-client';
-import { SystemHealthResponse, SystemPingResponse, SystemVersionResponse } from '../../types/system.types';
+import { SystemHealthResponse, SystemPingResponse, SystemVersionResponse } from '../types/system.types';
 
 // Central helper for development mode logging
-const logDev = (message: string, ...optionalParams: any[]) => {
+const logDev = (message: string, ...optionalParams: unknown[]) => {
   if (process.env.NODE_ENV === 'development') {
     console.log(`%c[System Telemetry Service]%c ${message}`, 'color: #06b6d4; font-weight: bold;', 'color: inherit;', ...optionalParams);
   }

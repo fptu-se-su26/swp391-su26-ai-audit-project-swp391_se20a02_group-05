@@ -1,0 +1,44 @@
+{
+  "title": "Trò chuyện AI Lập Kế Hoạch",
+  "welcome": "Tôi có thể giúp gì cho hành trình của bạn?",
+  "welcomeDesc": "Lên kế hoạch thông minh dựa trên sở thích, ngân sách và thời gian của riêng bạn. Hãy thử chọn một gợi ý dưới đây hoặc nhập yêu cầu của bạn.",
+  "placeholders": {
+    "input": "Hỏi TripGenie về hành trình của bạn (ví dụ: 'Lên kế hoạch du lịch Đà Nẵng 3 ngày 2 đêm tự túc')...",
+    "sidebarSearch": "Tìm kiếm cuộc trò chuyện...",
+    "streaming": "TripGenie đang phân tích và lập kế hoạch..."
+  },
+  "suggestions": {
+    "hanoiTitle": "Khám phá Hà Nội Cổ Kính",
+    "hanoiDesc": "Trải nghiệm văn hóa 36 phố phường và ẩm thực truyền thống đặc sắc.",
+    "saigonTitle": "Sài Gòn Năng Động",
+    "saigonDesc": "Khám phá nhịp sống hiện đại, các khu phố sầm uất và di tích lịch sử.",
+    "phuquocTitle": "Thiên đường Nghỉ dưỡng Phú Quốc",
+    "phuquocDesc": "Thư giãn tại các bãi biển cát trắng, lặn ngắm san hô và thưởng thức hải sản.",
+    "kyotoTitle": "Khám phá Văn hóa",
+    "kyotoDesc": "Gợi ý lịch trình văn hóa 5 ngày tại Kyoto, Nhật Bản tập trung vào các ngôi đền lịch sử và ẩm thực địa phương.",
+    "kyotoPrompt": "Hãy gợi ý lịch trình văn hóa 5 ngày tại Kyoto, Nhật Bản tập trung vào các ngôi đền lịch sử và địa điểm ẩm thực địa phương.",
+    "yosemiteTitle": "Thiên nhiên & Dã ngoại",
+    "yosemiteDesc": "Thiết kế chuyến dã ngoại cuối tuần tiết kiệm đến Vườn quốc gia Yosemite bao gồm hướng dẫn đường mòn.",
+    "yosemitePrompt": "Hãy thiết kế chuyến dã ngoại cuối tuần tiết kiệm đến Vườn quốc gia Yosemite bao gồm các hướng dẫn về đường mòn dã ngoại.",
+    "romeTitle": "Ẩm thực & Món ăn",
+    "romeDesc": "Lập kế hoạch tour ẩm thực tại Rome, Ý. Tập trung vào pizza, pasta đích thực và các tiệm kem gelateria.",
+    "romePrompt": "Hãy lập kế hoạch tour ẩm thực tại Rome, Ý. Tập trung vào pizza, pasta đích thực và các tiệm kem gelateria nổi tiếng."
+  },
+  "sidebar": {
+    "history": "Lịch sử trò chuyện",
+    "newChat": "Cuộc trò chuyện mới",
+    "empty": "Chưa có cuộc trò chuyện nào gần đây."
+  },
+  "actions": {
+    "send": "Gửi yêu cầu",
+    "copy": "Sao chép",
+    "copied": "Đã sao chép!",
+    "regenerate": "Tạo lại câu trả lời",
+    "deleteChat": "Xóa cuộc trò chuyện",
+    "share": "Chia sẻ hành trình"
+  },
+  "errors": {
+    "failedToStream": "Không thể kết nối với luồng phản hồi AI. Vui lòng kiểm tra lại kết nối.",
+    "emptyPrompt": "Vui lòng nhập nội dung yêu cầu."
+  }
+}

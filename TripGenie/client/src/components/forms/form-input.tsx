@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import { useFormContext, Controller } from 'react-hook-form';
 import { TextField, Input, Label, FieldError } from '@heroui/react';
 import { Eye, EyeOff } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 
 interface FormInputProps {
   name: string;
@@ -23,8 +24,12 @@ export const FormInput: React.FC<FormInputProps> = ({
   autoComplete,
 }) => {
   const { control, formState: { errors } } = useFormContext();
+  const { t } = useTranslation();
   const error = errors[name];
   const errorMessage = error?.message as string | undefined;
+  const translatedMessage = errorMessage
+    ? (errorMessage.includes(':') ? (t as (key: string) => string)(errorMessage) : errorMessage)
+    : undefined;
 
   const [showPassword, setShowPassword] = useState(false);
 
@@ -42,7 +47,7 @@ export const FormInput: React.FC<FormInputProps> = ({
         control={control}
         render={({ field: { value, onChange, onBlur } }) => (
           <TextField
-            isInvalid={!!errorMessage}
+            isInvalid={!!translatedMessage}
             className="flex flex-col gap-1.5 w-full"
           >
             {label && (
@@ -62,7 +67,7 @@ export const FormInput: React.FC<FormInputProps> = ({
                 autoComplete={autoComplete}
                 className={[
                   "w-full px-3.5 py-2.5 rounded-xl border transition-all text-xs outline-none bg-white dark:bg-zinc-950 text-zinc-900 dark:text-zinc-50 placeholder-zinc-400 dark:placeholder-zinc-600 font-medium",
-                  errorMessage
+                  translatedMessage
                     ? "border-red-500 focus:border-red-500 focus:ring-1 focus:ring-red-500/50"
                     : "border-zinc-200 dark:border-zinc-800 focus:border-zinc-950 dark:focus:border-zinc-50 focus:ring-1 focus:ring-zinc-950/20 dark:focus:ring-white/20",
                   disabled ? "opacity-50 cursor-not-allowed bg-zinc-50 dark:bg-zinc-900/30" : "",
@@ -82,9 +87,9 @@ export const FormInput: React.FC<FormInputProps> = ({
               )}
             </div>
 
-            {errorMessage && (
+            {translatedMessage && (
               <FieldError className="text-red-500 text-[10px] pl-1 font-medium animate-fade-in block">
-                {errorMessage}
+                {translatedMessage}
               </FieldError>
             )}
           </TextField>

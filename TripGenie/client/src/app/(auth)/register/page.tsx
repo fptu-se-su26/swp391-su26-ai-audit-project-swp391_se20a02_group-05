@@ -4,19 +4,43 @@ import React, { useState, useEffect } from 'react';
 import { useForm, FormProvider } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useRouter } from 'next/navigation';
-import { registerSchema } from '../../../lib/validators/auth.validator';
-import { useAuth } from '../../../hooks/use-auth';
+import { registerSchema } from '../../../features/auth/validators/auth.validator';
+import { useAuth } from '../../../features/auth/hooks/use-auth';
 import { FormInput } from '../../../components/forms/form-input';
 import { FormCheckbox } from '../../../components/forms/form-checkbox';
 import { Button } from '../../../components/ui/button';
 import { Card } from '../../../components/ui/card';
 import { z } from 'zod';
 import Link from 'next/link';
-import { Check, ShieldAlert, Sparkles } from 'lucide-react';
 import { toast } from '@heroui/react';
 import Script from 'next/script';
+import { useTranslation } from 'react-i18next';
 
-import { useAuthStore } from '../../../store/use-auth-store';
+import { useAuthStore } from '../../../features/auth/store/use-auth-store';
+
+interface GoogleIdentityResponse {
+  credential?: string;
+  select_by?: string;
+}
+
+interface CustomWindow extends Window {
+  google?: {
+    accounts: {
+      id: {
+        initialize: (config: {
+          client_id: string;
+          callback: (response: GoogleIdentityResponse) => void;
+        }) => void;
+        renderButton: (
+          parent: HTMLElement,
+          options: { theme: string; size: string; width: number; text: string }
+        ) => void;
+      };
+    };
+  };
+  __googleIdentityListener?: (response: GoogleIdentityResponse) => void;
+  __googleIdentityInitialized?: boolean;
+}
 
 type RegisterFormValues = z.infer<typeof registerSchema>;
 
@@ -24,6 +48,7 @@ export default function RegisterPage() {
   const router = useRouter();
   const { register: registerUser, isLoading, loginWithGoogle } = useAuth();
   const { setPendingVerificationEmail } = useAuthStore();
+  const { t } = useTranslation(['auth', 'common']);
 
   const methods = useForm<RegisterFormValues>({
     resolver: zodResolver(registerSchema),
@@ -37,14 +62,14 @@ export default function RegisterPage() {
     mode: 'onChange',
   });
 
-  const { handleSubmit, watch, formState: { isValid, errors } } = methods;
+  const { handleSubmit, watch, formState: { isValid } } = methods;
 
   // Watch the password field to calculate strength in real-time
   const watchedPassword = watch('password') || '';
 
   // States for password strength calculations
   const [strengthScore, setStrengthScore] = useState(0);
-  const [strengthLabel, setStrengthLabel] = useState('Too Weak');
+  const [strengthLabel, setStrengthLabel] = useState(t('auth:passwordStrength.tooWeak'));
   const [strengthColor, setStrengthColor] = useState('bg-zinc-200');
 
   useEffect(() => {
@@ -61,81 +86,83 @@ export default function RegisterPage() {
 
     switch (finalScore) {
       case 0:
-        setStrengthLabel('Too Weak');
+        setStrengthLabel(t('auth:passwordStrength.tooWeak'));
         setStrengthColor('bg-red-500');
         break;
       case 1:
-        setStrengthLabel('Weak');
+        setStrengthLabel(t('auth:passwordStrength.weak'));
         setStrengthColor('bg-red-500');
         break;
       case 2:
-        setStrengthLabel('Fair');
+        setStrengthLabel(t('auth:passwordStrength.fair'));
         setStrengthColor('bg-amber-500');
         break;
       case 3:
-        setStrengthLabel('Strong');
+        setStrengthLabel(t('auth:passwordStrength.strong'));
         setStrengthColor('bg-indigo-500');
         break;
       case 4:
-        setStrengthLabel('Excellent');
+        setStrengthLabel(t('auth:passwordStrength.excellent'));
         setStrengthColor('bg-emerald-500');
         break;
       default:
         break;
     }
-  }, [watchedPassword]);
+  }, [watchedPassword, t]);
 
-  const handleGoogleCredentialResponse = async (response: any) => {
+  const handleGoogleCredentialResponse = async (response: GoogleIdentityResponse) => {
     try {
+      if (!response.credential) return;
       const result = await loginWithGoogle(response.credential);
 
       if (result.success) {
         if (result.isUnverified || result.nextStep === 'VERIFY_EMAIL') {
-          toast.warning("Verification Pending", {
-            description: "Your email has not been verified yet. Please verify to continue.",
+          toast.warning(t('auth:toast.verificationPendingTitle'), {
+            description: t('auth:toast.verificationPendingDesc'),
           });
           router.push('/verify-email');
           return;
         }
 
         if (result.user) {
-          toast.success("Welcome!", {
-            description: "Google Sign-in successful.",
+          toast.success(t('auth:toast.googleLoginWelcome'), {
+            description: t('auth:toast.googleLoginSuccessDesc'),
           });
           router.push('/dashboard');
         }
       } else if (result.error) {
-        toast.danger("Google Sign-in Failed", {
+        toast.danger(t('auth:toast.googleLoginFailedTitle'), {
           description: result.error.message,
         });
       }
-    } catch (err: any) {
-      toast.danger("Google Sign-in Failed", {
-        description: 'An unexpected error occurred during Google Sign-in.',
+    } catch {
+      toast.danger(t('auth:toast.googleLoginFailedTitle'), {
+        description: t('auth:toast.googleLoginFailedDesc'),
       });
     }
   };
 
   const initializeGoogleSignIn = () => {
-    if (typeof window !== 'undefined' && (window as any).google?.accounts?.id) {
+    const customWindow = typeof window !== 'undefined' ? (window as unknown as CustomWindow) : null;
+    if (customWindow?.google?.accounts?.id) {
       // Set the dynamic listener to point to the current callback context
-      (window as any).__googleIdentityListener = handleGoogleCredentialResponse;
+      customWindow.__googleIdentityListener = handleGoogleCredentialResponse;
 
-      if (!(window as any).__googleIdentityInitialized) {
-        (window as any).google.accounts.id.initialize({
+      if (!customWindow.__googleIdentityInitialized) {
+        customWindow.google.accounts.id.initialize({
           client_id: process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || 'your_google_client_id_here',
-          callback: (response: any) => {
-            if (typeof (window as any).__googleIdentityListener === 'function') {
-              (window as any).__googleIdentityListener(response);
+          callback: (response: GoogleIdentityResponse) => {
+            if (typeof customWindow.__googleIdentityListener === 'function') {
+              customWindow.__googleIdentityListener(response);
             }
           },
         });
-        (window as any).__googleIdentityInitialized = true;
+        customWindow.__googleIdentityInitialized = true;
       }
 
       const container = document.getElementById('google-signin-button');
       if (container) {
-        (window as any).google.accounts.id.renderButton(
+        customWindow.google.accounts.id.renderButton(
           container,
           { theme: 'outline', size: 'large', width: 350, text: 'continue_with' }
         );
@@ -146,6 +173,7 @@ export default function RegisterPage() {
   // Sync Google script initialization
   useEffect(() => {
     initializeGoogleSignIn();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isLoading]);
 
   const onSubmit = async (data: RegisterFormValues) => {
@@ -156,12 +184,12 @@ export default function RegisterPage() {
       setPendingVerificationEmail(data.email);
 
       if (result.uiAction === 'SHOW_WARNING_TOAST') {
-        toast.warning("Verification Pending", {
-          description: result.message || "An unverified registration already exists for this email. We have resent your verification link.",
+        toast.warning(t('auth:toast.verificationPendingTitle'), {
+          description: result.message || t('auth:toast.verificationPendingDesc'),
         });
       } else {
-        toast.success("Account Created", {
-          description: result.message || "Please check your email inbox to verify your account.",
+        toast.success(t('auth:toast.registerSuccessTitle'), {
+          description: result.message || t('auth:toast.registerSuccessDesc'),
         });
       }
       methods.reset();
@@ -172,20 +200,20 @@ export default function RegisterPage() {
       const err = result.error;
 
       if (err.code === 'AUTH_EMAIL_ALREADY_EXISTS') {
-        toast.danger("Account Already Exists", {
-          description: "This email is already registered and verified. Please sign in to continue.",
+        toast.danger(t('auth:toast.accountAlreadyExistsTitle'), {
+          description: t('auth:toast.accountAlreadyExistsDesc'),
         });
         router.push('/login');
       } else {
-        toast.danger("Registration Failed", {
-          description: err.message || "An unexpected error occurred during account creation.",
+        toast.danger(t('auth:toast.registrationFailedTitle'), {
+          description: err.message || t('auth:toast.registrationFailedDesc'),
         });
       }
 
       // Propagate server-side validation errors to React Hook Form fields
       if (err.errors) {
         Object.entries(err.errors).forEach(([field, messages]) => {
-          methods.setError(field as any, {
+          methods.setError(field as keyof RegisterFormValues, {
             type: 'server',
             message: (messages as string[])[0],
           });
@@ -197,11 +225,11 @@ export default function RegisterPage() {
   return (
     <Card className="shadow-2xl" glow={true}>
       <div className="text-center mb-6">
-        <h2 className="text-2xl font-bold tracking-tight text-zinc-900 dark:text-zinc-50">
-          Create an account
+        <h2 className="text-2xl font-bold tracking-tight text-zinc-900 dark:text-zinc-50 font-outfit">
+          {t('auth:title.register')}
         </h2>
         <p className="text-zinc-500 dark:text-zinc-400 text-sm mt-1">
-          Join TripGenie AI to unleash smart travels
+          {t('auth:subtitle.register')}
         </p>
       </div>
 
@@ -210,8 +238,8 @@ export default function RegisterPage() {
           <FormInput
             name="fullName"
             type="text"
-            label="Full name"
-            placeholder="John Doe"
+            label={t('auth:labels.fullName')}
+            placeholder={t('auth:placeholders.fullName')}
             disabled={isLoading}
             autoComplete="name"
           />
@@ -219,8 +247,8 @@ export default function RegisterPage() {
           <FormInput
             name="email"
             type="email"
-            label="Email address"
-            placeholder="john.doe@example.com"
+            label={t('auth:labels.email')}
+            placeholder={t('auth:placeholders.email')}
             disabled={isLoading}
             autoComplete="email"
           />
@@ -228,8 +256,8 @@ export default function RegisterPage() {
           <FormInput
             name="password"
             type="password"
-            label="Password"
-            placeholder="••••••••"
+            label={t('auth:labels.password')}
+            placeholder={t('auth:placeholders.password')}
             disabled={isLoading}
             autoComplete="new-password"
           />
@@ -238,7 +266,9 @@ export default function RegisterPage() {
           {watchedPassword.length > 0 && (
             <div className="space-y-1.5 px-1 py-0.5 select-none">
               <div className="flex justify-between items-center text-xs">
-                <span className="text-zinc-500 dark:text-zinc-500 font-medium">Password strength:</span>
+                <span className="text-zinc-500 dark:text-zinc-500 font-medium">
+                  {t('auth:passwordStrength.label')}
+                </span>
                 <span className={[
                   "font-bold transition-colors",
                   strengthScore <= 1 ? "text-red-500" : "",
@@ -263,16 +293,16 @@ export default function RegisterPage() {
               {/* Password checks guidance list */}
               <div className="grid grid-cols-2 gap-x-3 gap-y-0.5 text-[10px] text-zinc-400 dark:text-zinc-600 mt-1">
                 <span className={watchedPassword.length >= 8 ? 'text-zinc-800 dark:text-zinc-300 font-medium' : ''}>
-                  • Min 8 characters
+                  {t('auth:passwordStrength.minChars')}
                 </span>
                 <span className={/[A-Z]/.test(watchedPassword) ? 'text-zinc-800 dark:text-zinc-300 font-medium' : ''}>
-                  • 1 uppercase letter
+                  {t('auth:passwordStrength.uppercase')}
                 </span>
                 <span className={/[a-z]/.test(watchedPassword) ? 'text-zinc-800 dark:text-zinc-300 font-medium' : ''}>
-                  • 1 lowercase letter
+                  {t('auth:passwordStrength.lowercase')}
                 </span>
                 <span className={/[0-9]/.test(watchedPassword) ? 'text-zinc-800 dark:text-zinc-300 font-medium' : ''}>
-                  • 1 number & special
+                  {t('auth:passwordStrength.numberSpecial')}
                 </span>
               </div>
             </div>
@@ -281,23 +311,16 @@ export default function RegisterPage() {
           <FormInput
             name="confirmPassword"
             type="password"
-            label="Confirm password"
-            placeholder="••••••••"
+            label={t('auth:labels.confirmPassword')}
+            placeholder={t('auth:placeholders.confirmPassword')}
             disabled={isLoading}
             autoComplete="new-password"
           />
 
-          <div className="pt-1 select-none">
+          <div className="pt-1 select-none font-outfit">
             <FormCheckbox name="agreeTerms" disabled={isLoading}>
               <span className="flex items-center gap-1 whitespace-nowrap">
-                I agree to the{' '}
-                <a href="#" className="font-semibold text-zinc-950 dark:text-zinc-50 hover:underline">
-                  Terms of Service
-                </a>
-                {' '}and{' '}
-                <a href="#" className="font-semibold text-zinc-950 dark:text-zinc-50 hover:underline">
-                  Privacy Policy.
-                </a>
+                {t('auth:labels.acceptTerms')}
               </span>
             </FormCheckbox>
           </div>
@@ -308,10 +331,11 @@ export default function RegisterPage() {
             isLoading={isLoading}
             disabled={!isValid || isLoading}
           >
-            {isLoading ? 'Creating Account...' : 'Sign Up'}
+            {isLoading ? t('auth:actions.creatingAccount') : t('auth:actions.register')}
           </Button>
         </form>
       </FormProvider>
+      
       {/* Visual Divider separator */}
       <div className="relative my-6 select-none">
         <div className="absolute inset-0 flex items-center">
@@ -319,7 +343,7 @@ export default function RegisterPage() {
         </div>
         <div className="relative flex justify-center text-xs uppercase font-bold tracking-wider">
           <span className="bg-white dark:bg-zinc-950 px-3 text-zinc-400 dark:text-zinc-600 text-[10px]">
-            Or continue with
+            {t('auth:labels.orContinueWith')}
           </span>
         </div>
       </div>
@@ -347,7 +371,7 @@ export default function RegisterPage() {
             />
           </svg>
           <span className="text-sm font-semibold text-zinc-700 dark:text-zinc-200">
-            Continue with Google
+            {t('auth:actions.googleSso')}
           </span>
         </div>
 
@@ -359,13 +383,13 @@ export default function RegisterPage() {
       </div>
 
       {/* Call to Login */}
-      <div className="text-center text-xs text-zinc-500 dark:text-zinc-500 mt-6 select-none">
-        Already have an account?{' '}
+      <div className="text-center text-xs text-zinc-500 dark:text-zinc-500 mt-6 select-none font-outfit">
+        {t('auth:actions.haveAccount')}{' '}
         <Link
           href="/login"
           className="font-semibold text-zinc-950 dark:text-zinc-50 hover:underline"
         >
-          Sign in
+          {t('auth:actions.signInNow')}
         </Link>
       </div>
 

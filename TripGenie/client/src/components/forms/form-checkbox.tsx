@@ -3,6 +3,7 @@
 import React from 'react';
 import { useFormContext, Controller } from 'react-hook-form';
 import { Checkbox } from '@heroui/react';
+import { useTranslation } from 'react-i18next';
 
 interface FormCheckboxProps {
   name: string;
@@ -16,8 +17,12 @@ export const FormCheckbox: React.FC<FormCheckboxProps> = ({
   disabled = false,
 }) => {
   const { control, formState: { errors } } = useFormContext();
+  const { t } = useTranslation();
   const error = errors[name];
   const errorMessage = error?.message as string | undefined;
+  const translatedMessage = errorMessage
+    ? (errorMessage.includes(':') ? (t as (key: string) => string)(errorMessage) : errorMessage)
+    : undefined;
 
   return (
     <div className="flex flex-col gap-1 w-full">
@@ -45,9 +50,9 @@ export const FormCheckbox: React.FC<FormCheckboxProps> = ({
           </Checkbox>
         )}
       />
-      {errorMessage && (
+      {translatedMessage && (
         <span className="text-red-500 text-[10px] mt-1 pl-1 block font-medium" role="alert">
-          {errorMessage}
+          {translatedMessage}
         </span>
       )}
     </div>

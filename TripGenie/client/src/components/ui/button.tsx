@@ -48,10 +48,25 @@ export const Button: React.FC<ButtonProps> = ({
     ].join(' ');
   }
 
+  let mappedVariant: 'ghost' | 'outline' | 'primary' | 'secondary' | 'danger' | 'danger-soft' | 'tertiary' = 'primary';
+  if (variant === 'solid') {
+    mappedVariant = 'primary';
+  } else if (variant === 'bordered' || variant === 'outline') {
+    mappedVariant = 'outline';
+  } else if (variant === 'flat' || variant === 'secondary') {
+    mappedVariant = 'secondary';
+  } else if (variant === 'light') {
+    mappedVariant = 'tertiary';
+  } else if (variant === 'ghost') {
+    mappedVariant = 'ghost';
+  } else if (variant === 'danger') {
+    mappedVariant = 'danger';
+  }
+
   return (
     <HeroButton
       {...props}
-      variant={variant as any}
+      variant={mappedVariant}
       className={`${baseClasses} ${variantClasses} ${className}`}
       isDisabled={disabled || isLoading || isDisabled}
     >
@@ -61,7 +76,7 @@ export const Button: React.FC<ButtonProps> = ({
           <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
         </svg>
       )}
-      {children as any}
+      {children}
     </HeroButton>
   );
 };

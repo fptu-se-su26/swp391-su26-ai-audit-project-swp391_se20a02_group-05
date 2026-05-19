@@ -1,0 +1,52 @@
+{
+  "title": "Hệ Thống Quản Trị TripGenie",
+  "welcome": "Chào mừng quản trị viên, {{name}}!",
+  "metrics": {
+    "users": "Tổng số người dùng",
+    "partners": "Đối tác hoạt động",
+    "aiQueries": "Lượt truy vấn AI",
+    "revenue": "Tổng giao dịch nền tảng"
+  },
+  "widgets": {
+    "systemSecurity": "Bảo mật hệ thống",
+    "threatLevel": "Mức độ đe dọa: Thấp",
+    "diagnosticLogs": "Nhật ký chẩn đoán bảo mật",
+    "rateLimiter": "Bộ giới hạn tốc độ API",
+    "rateLimitDesc": "Giới hạn brute-force: 5 lần/phút",
+    "aiServicePool": "Nhóm mô hình AI hoạt động"
+  },
+  "logs": {
+    "bypassSandbox": "Quản trị viên đã kích hoạt hộp cát kiểm soát quyền lực hệ thống...",
+    "initialized": "Hệ thống TripGenie đã sẵn sàng kiểm tra phiên...",
+    "authHydration": "Đang xác thực bảo mật traveler profile..."
+  },
+  "actions": {
+    "viewSystemLogs": "Xem nhật ký chi tiết",
+    "configureRateLimits": "Cấu hình giới hạn tốc độ",
+    "manageUsers": "Quản lý người dùng"
+  },
+  "banner": {
+    "title": "Bảng Điều Khiển Quản Trị Hệ Thống",
+    "subtitle": "Trung tâm kiểm soát nền tảng. Giám sát sức khỏe máy chủ, quản lý cơ sở dữ liệu người dùng và thực thi các chính sách xác thực.",
+    "lockApi": "Khóa API"
+  },
+  "kpis": {
+    "platformLoad": "TẢI NỀN TẢNG",
+    "platformLoadSub": "Sử dụng bộ nhớ: {{used}}GB / {{total}}GB",
+    "apiHealth": "SỨC KHỎE API",
+    "apiHealthSub": "Độ trễ trung bình: {{ms}}ms",
+    "totalUsers": "TỔNG TÀI KHOẢN NGƯỜI DÙNG",
+    "totalUsersSub": "Phiên hoạt động hiện tại: {{count}}"
+  },
+  "console": {
+    "title": "Nhật ký Bảo mật Hệ thống Gần đây",
+    "subtitle": "Giả lập các sự kiện trạng thái xác thực bảo mật live",
+    "auditTrail": "Kiểm toán hệ thống",
+    "logs": {
+      "successRotation": "Silent Token Rotation hoàn thành. Gia hạn phiên cho {{email}}",
+      "warnBruteForce": "Chặn Brute-force: Khóa RateLimit 429 kích hoạt trên IP {{ip}} (Cổng đăng nhập)",
+      "successOAuth": "Đăng nhập Google OAuth thành công cho tài khoản {{email}}",
+      "infoJwt": "Đã xác thực & giải mã chữ ký JWT. Cấp quyền truy cập /dashboard/business (Vai trò đối tác)"
+    }
+  }
+}

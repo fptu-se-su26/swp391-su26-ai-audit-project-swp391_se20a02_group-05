@@ -1,6 +1,6 @@
 import { create } from 'zustand';
-import { User, UserRole, ResourceActionPermission } from '../types/auth.types';
-import { AUTH_KEYS, AUTH_EVENTS } from '../lib/constants';
+import { User, UserRole, ResourceActionPermission } from '../../../types/auth.types';
+import { AUTH_KEYS, AUTH_EVENTS } from '../../../lib/constants';
 
 interface AuthState {
   user: User | null;

@@ -1,12 +1,11 @@
 "use client";
 
-import { useEffect, useState, useRef } from 'react';
-import { useAuth } from './use-auth';
-import { authApi } from '../lib/api/endpoints';
+import { useEffect, useState, useRef, useCallback } from 'react';
+import { useAuth } from '../features/auth/hooks/use-auth';
+import { authApi } from '../features/auth/services/auth.service';
 import { AUTH_KEYS, AUTH_EVENTS } from '../lib/constants';
 
 // Session configuration constants
-const TOKEN_LIFETIME_SECONDS = 15 * 60; // 15 minutes
 const WARNING_THRESHOLD_SECONDS = 2 * 60; // 2 minutes (120 seconds warning)
 const INACTIVITY_LIMIT_SECONDS = 13 * 60; // Inactivity lock at 13 minutes
 
@@ -16,19 +15,21 @@ export const useSessionTimeout = () => {
   const [showWarning, setShowWarning] = useState(false);
   const [secondsRemaining, setSecondsRemaining] = useState(WARNING_THRESHOLD_SECONDS);
   
-  const lastActivityTime = useRef<number>(Date.now());
+  const lastActivityTime = useRef<number>(0);
   const countdownIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const inactivityCheckRef = useRef<NodeJS.Timeout | null>(null);
   
   // Method to trigger silent refresh and extend session
-  const extendSession = async () => {
+  const extendSession = useCallback(async () => {
     try {
       await authApi.refreshToken();
       
-      // Reset state and hide warning modal
-      setShowWarning(false);
-      setSecondsRemaining(WARNING_THRESHOLD_SECONDS);
-      lastActivityTime.current = Date.now();
+      // Reset state and hide warning modal safely via microtask
+      queueMicrotask(() => {
+        setShowWarning(false);
+        setSecondsRemaining(WARNING_THRESHOLD_SECONDS);
+        lastActivityTime.current = Date.now();
+      });
       
       // Broadcast extension to other open tabs
       if (typeof window !== 'undefined') {
@@ -41,12 +42,14 @@ export const useSessionTimeout = () => {
       }
     } catch (error) {
       console.error('[Session Expiry Sync] Failed to silent-extend session:', error);
-      logout(true);
+      queueMicrotask(() => {
+        logout(true);
+      });
     }
-  };
+  }, [logout, user]);
 
   // Reset inactivity timer on human input
-  const resetInactivityTimer = () => {
+  const resetInactivityTimer = useCallback(() => {
     lastActivityTime.current = Date.now();
     
     // If the modal was showing but we didn't officially trigger extend yet,
@@ -54,11 +57,18 @@ export const useSessionTimeout = () => {
     if (showWarning && secondsRemaining > 10) {
       extendSession();
     }
-  };
+  }, [showWarning, secondsRemaining, extendSession]);
+
+  useEffect(() => {
+    // Initialize inactivity timer safely on mount
+    lastActivityTime.current = Date.now();
+  }, []);
 
   useEffect(() => {
     if (!isAuthenticated) {
-      setShowWarning(false);
+      queueMicrotask(() => {
+        setShowWarning(false);
+      });
       return;
     }
 
@@ -84,9 +94,11 @@ export const useSessionTimeout = () => {
     const syncChannel = new BroadcastChannel(AUTH_KEYS.BROADCAST_CHANNEL);
     syncChannel.onmessage = (event) => {
       if (event.data.type === AUTH_EVENTS.SESSION_EXTEND) {
-        setShowWarning(false);
-        setSecondsRemaining(WARNING_THRESHOLD_SECONDS);
-        lastActivityTime.current = Date.now();
+        queueMicrotask(() => {
+          setShowWarning(false);
+          setSecondsRemaining(WARNING_THRESHOLD_SECONDS);
+          lastActivityTime.current = Date.now();
+        });
       }
     };
 
@@ -97,7 +109,7 @@ export const useSessionTimeout = () => {
       if (inactivityCheckRef.current) clearInterval(inactivityCheckRef.current);
       syncChannel.close();
     };
-  }, [isAuthenticated, showWarning]);
+  }, [isAuthenticated, showWarning, resetInactivityTimer]);
 
   // 2. Warning Modal Active Countdown
   useEffect(() => {
@@ -112,7 +124,9 @@ export const useSessionTimeout = () => {
       setSecondsRemaining((prev) => {
         if (prev <= 1) {
           clearInterval(countdownIntervalRef.current!);
-          logout(true); // Terminate session and redirect on zero
+          queueMicrotask(() => {
+            logout(true); // Terminate session and redirect on zero
+          });
           return 0;
         }
         return prev - 1;

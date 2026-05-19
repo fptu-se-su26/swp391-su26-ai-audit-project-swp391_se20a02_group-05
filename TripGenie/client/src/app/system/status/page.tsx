@@ -2,7 +2,6 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { 
-  Activity, 
   Database, 
   ShieldCheck, 
   Cpu, 
@@ -14,15 +13,14 @@ import {
   Terminal, 
   Compass,
   ArrowUpRight,
-  RefreshCcw,
   Zap,
   Gauge
 } from 'lucide-react';
-import { systemApi } from '../../../lib/api/system.service';
+import { systemApi } from '../../../services/system.service';
 import { SystemTelemetryData } from '../../../types/system.types';
 
 // Helper to log telemetry updates in development environment only
-const logDev = (message: string, data?: any) => {
+const logDev = (message: string, data?: unknown) => {
   if (process.env.NODE_ENV === 'development') {
     console.log(`%c[Status Dashboard]%c ${message}`, 'color: #10b981; font-weight: bold;', 'color: inherit;', data || '');
   }
@@ -80,12 +78,13 @@ export default function SystemStatusPage() {
         latency: pingResult.latency,
         version: versionData
       });
-    } catch (err: any) {
-      logDev('Diagnostic sequence encountered an execution error.', err);
+    } catch (err: unknown) {
+      const error = err as Error;
+      logDev('Diagnostic sequence encountered an execution error.', error);
       
       // Attempt to retrieve fallback version data or general connection failure message
       setErrorMsg(
-        err.message || 
+        error.message || 
         'Unable to establish a socket connection to the TripGenie API server. Check your network or API endpoint status.'
       );
       
@@ -105,7 +104,9 @@ export default function SystemStatusPage() {
 
   // Initial load
   useEffect(() => {
-    runDiagnostics();
+    queueMicrotask(() => {
+      runDiagnostics();
+    });
   }, [runDiagnostics]);
 
   // Countdown timer and auto-refresh loop

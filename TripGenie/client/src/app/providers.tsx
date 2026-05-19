@@ -1,19 +1,34 @@
 "use client";
 
 import React, { useEffect } from 'react';
-import { useAuth } from '../hooks/use-auth';
+import { useAuth } from '../features/auth/hooks/use-auth';
 import { Compass } from 'lucide-react';
 import { usePathname } from 'next/navigation';
 import { Toast, toast } from '@heroui/react';
+import i18n from '../lib/i18n';
 
-export function Providers({ children }: { children: React.ReactNode }) {
+export function Providers({ children, locale }: { children: React.ReactNode; locale: string }) {
   const { initializeSession, isInitialized } = useAuth();
   const pathname = usePathname();
+
+  // Synchronize server-resolved locale to client i18n instance before hydration (Server only)
+  if (typeof window === 'undefined') {
+    if (i18n.language !== locale) {
+      i18n.changeLanguage(locale);
+    }
+  }
+
+  // Handle client-side changes post-hydration cleanly to satisfy React Compiler constraints
+  useEffect(() => {
+    if (i18n.language !== locale) {
+      i18n.changeLanguage(locale);
+    }
+  }, [locale]);
 
   // Run secure session hydration immediately on app boots
   useEffect(() => {
     initializeSession();
-  }, []);
+  }, [initializeSession]);
 
   // Clear toasts on navigation to decouple page contexts
   useEffect(() => {
@@ -39,7 +54,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
               TripGenie AI
             </h3>
             <p className="text-zinc-400 dark:text-zinc-500 text-xs font-medium">
-              Establishing cryptographically secure session...
+              {locale === 'vi' ? 'Đang khởi tạo phiên làm việc bảo mật...' : 'Establishing secure session...'}
             </p>
           </div>
         </div>

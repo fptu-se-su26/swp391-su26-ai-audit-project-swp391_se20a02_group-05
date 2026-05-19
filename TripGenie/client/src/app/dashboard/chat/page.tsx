@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useRef } from 'react';
-import { useAiStore, Message, Conversation } from '../../../store/use-ai-store';
+import { useAiStore } from '../../../features/chat/store/use-ai-store';
 import { Card } from '../../../components/ui/card';
 import { Button } from '../../../components/ui/button';
 import { 
@@ -11,12 +11,12 @@ import {
   Trash2, 
   MessageSquare, 
   StopCircle, 
-  RefreshCw, 
   AlertCircle,
   Copy,
   Check
 } from 'lucide-react';
 import { Spinner } from '@heroui/react';
+import { useTranslation } from 'react-i18next';
 
 // Custom Markdown to Premium HTML converter with secure HTML sanitization
 function parseAndSanitizeMarkdown(text: string): string {
@@ -111,6 +111,7 @@ export default function AiChatPage() {
   const [input, setInput] = useState('');
   const [copiedMap, setCopiedMap] = useState<Record<string, boolean>>({});
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const { t } = useTranslation(['chat-planner', 'common']);
 
   // Initialize conversations list on mount and clean up streaming on unmount
   useEffect(() => {
@@ -152,7 +153,7 @@ export default function AiChatPage() {
   };
 
   return (
-    <div className="flex h-[calc(100vh-140px)] w-full rounded-2xl overflow-hidden border border-zinc-200/80 dark:border-zinc-900 bg-white/50 dark:bg-zinc-950/40 backdrop-blur-xl shadow-xl select-none">
+    <div className="flex h-[calc(100vh-140px)] w-full rounded-2xl overflow-hidden border border-zinc-200/80 dark:border-zinc-900 bg-white/50 dark:bg-zinc-950/40 backdrop-blur-xl shadow-xl select-none font-outfit">
       
       {/* LEFT COLUMN: Sidebar Chat List */}
       <aside className="w-80 border-r border-zinc-200/80 dark:border-zinc-900 flex flex-col bg-white/70 dark:bg-zinc-950/60 backdrop-blur-md shrink-0">
@@ -160,24 +161,24 @@ export default function AiChatPage() {
           <Button 
             onClick={startNewChat}
             variant="solid" 
-            className="w-full flex items-center justify-center gap-2"
+            className="w-full flex items-center justify-center gap-2 cursor-pointer"
             disabled={isStreaming}
           >
             <Plus size={16} />
-            New Trip Plan
+            {t('chat-planner:sidebar.newChat')}
           </Button>
         </div>
 
         {/* Conversation List */}
         <div className="flex-1 overflow-y-auto p-3 space-y-1.5 scrollbar-thin">
           {isLoadingConversations ? (
-            <div className="flex flex-col items-center justify-center h-40 gap-2">
+            <div className="flex flex-col items-center justify-center h-40 gap-2 select-none">
               <Spinner size="sm" color="current" />
-              <span className="text-xs text-zinc-400 dark:text-zinc-500 font-semibold">Loading itineraries...</span>
+              <span className="text-xs text-zinc-400 dark:text-zinc-500 font-semibold">{t('common:buttons.loading')}</span>
             </div>
           ) : conversations.length === 0 ? (
-            <div className="p-6 text-center text-zinc-400 dark:text-zinc-600 text-xs">
-              No recent trip plans. Start a new prompt!
+            <div className="p-6 text-center text-zinc-400 dark:text-zinc-600 text-xs select-none">
+              {t('chat-planner:sidebar.empty')}
             </div>
           ) : (
             conversations.map((c) => {
@@ -208,7 +209,7 @@ export default function AiChatPage() {
                       }
                     }}
                     disabled={isStreaming}
-                    className="opacity-0 group-hover:opacity-100 hover:text-red-500 dark:hover:text-red-400 p-1 rounded transition-opacity duration-200"
+                    className="opacity-0 group-hover:opacity-100 hover:text-red-500 dark:hover:text-red-400 p-1 rounded transition-opacity duration-200 cursor-pointer"
                   >
                     <Trash2 size={13} />
                   </button>
@@ -229,7 +230,7 @@ export default function AiChatPage() {
               <AlertCircle size={14} />
               {error}
             </span>
-            <button onClick={clearError} className="font-bold hover:underline">Dismiss</button>
+            <button onClick={clearError} className="font-bold hover:underline cursor-pointer">{t('common:buttons.close')}</button>
           </div>
         )}
 
@@ -238,7 +239,7 @@ export default function AiChatPage() {
           {isLoadingMessages ? (
             <div className="flex flex-col items-center justify-center h-full gap-2">
               <Spinner size="lg" color="current" />
-              <span className="text-sm font-medium text-zinc-400 dark:text-zinc-500">Retrieving trip blueprint...</span>
+              <span className="text-sm font-medium text-zinc-400 dark:text-zinc-500">{t('common:buttons.loading')}</span>
             </div>
           ) : messages.length === 0 ? (
             // EMBED EMPTY STATE SUGGESTIONS
@@ -248,45 +249,45 @@ export default function AiChatPage() {
                   <Sparkles size={24} className="animate-pulse" />
                 </div>
                 <h2 className="text-xl font-bold tracking-tight text-zinc-800 dark:text-zinc-100 font-outfit mt-2">
-                  TripGenie Travel AI Planner
+                  {t('chat-planner:title')}
                 </h2>
                 <p className="text-zinc-400 dark:text-zinc-500 text-xs max-w-sm leading-normal">
-                  Your premium AI-powered concierge. Provide a destination, budget, or travel style to build custom itineraries instantly.
+                  {t('chat-planner:welcomeDesc')}
                 </p>
               </div>
 
               {/* Grid of suggest prompt cards */}
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4 w-full">
                 <Card 
-                  onClick={() => handleSuggestionClick("Suggest a 5-day cultural itinerary for Kyoto, Japan focusing on historical temples and local dining spots.")}
+                  onClick={() => handleSuggestionClick(t('chat-planner:suggestions.kyotoPrompt'))}
                   className="p-4 cursor-pointer hover:scale-[1.02] border border-zinc-200/50 dark:border-zinc-900/60 bg-white/40 dark:bg-zinc-950/40 hover:bg-zinc-50/60 dark:hover:bg-zinc-900/30 transition-all duration-200 text-left space-y-1.5"
                   glow={false}
                 >
-                  <span className="text-[10px] font-bold tracking-wider text-indigo-500 uppercase">Cultural Explorer</span>
+                  <span className="text-[10px] font-extrabold tracking-wider text-indigo-500 uppercase">{t('chat-planner:suggestions.kyotoTitle')}</span>
                   <p className="text-[11px] font-semibold text-zinc-700 dark:text-zinc-300 leading-normal">
-                    "Suggest a 5-day cultural itinerary for Kyoto, Japan temple spots..."
+                    &quot;{t('chat-planner:suggestions.kyotoDesc')}&quot;
                   </p>
                 </Card>
                 
                 <Card 
-                  onClick={() => handleSuggestionClick("Design a budget-friendly weekend roadtrip to Yosemite National park including hiking trail guides.")}
+                  onClick={() => handleSuggestionClick(t('chat-planner:suggestions.yosemitePrompt'))}
                   className="p-4 cursor-pointer hover:scale-[1.02] border border-zinc-200/50 dark:border-zinc-900/60 bg-white/40 dark:bg-zinc-950/40 hover:bg-zinc-50/60 dark:hover:bg-zinc-900/30 transition-all duration-200 text-left space-y-1.5"
                   glow={false}
                 >
-                  <span className="text-[10px] font-bold tracking-wider text-emerald-500 uppercase">Nature & Roadtrip</span>
+                  <span className="text-[10px] font-extrabold tracking-wider text-emerald-500 uppercase">{t('chat-planner:suggestions.yosemiteTitle')}</span>
                   <p className="text-[11px] font-semibold text-zinc-700 dark:text-zinc-300 leading-normal">
-                    "Design a budget-friendly weekend roadtrip to Yosemite park..."
+                    &quot;{t('chat-planner:suggestions.yosemiteDesc')}&quot;
                   </p>
                 </Card>
 
                 <Card 
-                  onClick={() => handleSuggestionClick("Plan a culinary and food tour guide in Rome, Italy. Focus on authentic pizza, pasta, and gelaterias.")}
+                  onClick={() => handleSuggestionClick(t('chat-planner:suggestions.romePrompt'))}
                   className="p-4 cursor-pointer hover:scale-[1.02] border border-zinc-200/50 dark:border-zinc-900/60 bg-white/40 dark:bg-zinc-950/40 hover:bg-zinc-50/60 dark:hover:bg-zinc-900/30 transition-all duration-200 text-left space-y-1.5"
                   glow={false}
                 >
-                  <span className="text-[10px] font-bold tracking-wider text-amber-500 uppercase">Food & Culinary</span>
+                  <span className="text-[10px] font-extrabold tracking-wider text-amber-500 uppercase">{t('chat-planner:suggestions.romeTitle')}</span>
                   <p className="text-[11px] font-semibold text-zinc-700 dark:text-zinc-300 leading-normal">
-                    "Plan a culinary and food tour guide in Rome, Italy. Gelato spots..."
+                    &quot;{t('chat-planner:suggestions.romeDesc')}&quot;
                   </p>
                 </Card>
               </div>
@@ -322,8 +323,8 @@ export default function AiChatPage() {
                         <div className="absolute top-2.5 right-2.5 opacity-0 group-hover:opacity-100 transition-opacity duration-200 select-none">
                           <button
                             onClick={() => handleCopy(m.content, m.id)}
-                            className="p-1 rounded bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-750 text-zinc-500 dark:text-zinc-400 transition-colors"
-                            title="Copy response"
+                            className="p-1 rounded bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-750 text-zinc-500 dark:text-zinc-400 transition-colors cursor-pointer"
+                            title={t('chat-planner:actions.copy')}
                           >
                             {copiedMap[m.id] ? <Check size={13} className="text-emerald-500" /> : <Copy size={13} />}
                           </button>
@@ -332,7 +333,7 @@ export default function AiChatPage() {
                         {m.streamingState === 'Pending' ? (
                           <div className="flex items-center gap-2.5 py-1 text-zinc-400 dark:text-zinc-500 select-none">
                             <Spinner size="sm" color="current" />
-                            <span className="text-xs font-semibold animate-pulse">Drafting itinerary layout...</span>
+                            <span className="text-xs font-semibold animate-pulse">{t('chat-planner:placeholders.streaming')}</span>
                           </div>
                         ) : (
                           <div 
@@ -358,7 +359,7 @@ export default function AiChatPage() {
               value={input}
               onChange={(e) => setInput(e.target.value)}
               disabled={isStreaming}
-              placeholder="Ask anything (e.g. Plan a 3-day adventure roadtrip to Grand Canyon under $500)..."
+              placeholder={t('chat-planner:placeholders.input')}
               className="flex-1 px-4 py-3 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white/50 dark:bg-zinc-900/50 backdrop-blur-sm text-sm text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-1 focus:ring-zinc-950 dark:focus:ring-zinc-50 transition-all select-text pr-24"
             />
             
@@ -367,7 +368,7 @@ export default function AiChatPage() {
                 <Button
                   type="button"
                   onClick={cancelStreaming}
-                  className="bg-red-500 hover:bg-red-600 text-white p-2.5 rounded-lg flex items-center justify-center shadow-lg border-0 hover:scale-[1.02] shrink-0"
+                  className="bg-red-500 hover:bg-red-600 text-white p-2.5 rounded-lg flex items-center justify-center shadow-lg border-0 hover:scale-[1.02] shrink-0 cursor-pointer"
                 >
                   <StopCircle size={16} />
                 </Button>
@@ -376,7 +377,7 @@ export default function AiChatPage() {
                   type="submit"
                   disabled={!input.trim()}
                   className={[
-                    "p-2.5 rounded-lg flex items-center justify-center shrink-0 transition-transform duration-200",
+                    "p-2.5 rounded-lg flex items-center justify-center shrink-0 transition-transform duration-200 cursor-pointer",
                     input.trim() ? "hover:scale-[1.02]" : "opacity-50 cursor-not-allowed"
                   ].join(' ')}
                 >
