@@ -19,7 +19,7 @@ import {
   RefreshCw
 } from 'lucide-react';
 import { normalizeError } from '../../../services/axios-client';
-import { toast } from '@heroui/react';
+import { toast, Typography, Spinner } from '@heroui/react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -141,39 +141,39 @@ function VerifyEmailContent() {
       {state === 'verifying' && (
         <div className="text-center py-6 flex flex-col items-center select-none">
           <div className="relative mb-6">
-            <div className="w-16 h-16 rounded-full bg-zinc-950 text-indigo-500 flex items-center justify-center border border-indigo-500/20 shadow-[0_0_20px_rgba(99,102,241,0.15)] animate-pulse">
+            <div className="w-16 h-16 rounded-full bg-background text-accent flex items-center justify-center border border-accent/20 shadow-[0_0_20px_rgba(var(--color-accent),0.15)] animate-pulse">
               <Shield size={32} className="animate-spin-slow" />
             </div>
-            <div className="absolute inset-0 rounded-full border-t-2 border-indigo-500 animate-spin" />
+            <div className="absolute inset-0 rounded-full border-t-2 border-accent animate-spin" />
           </div>
 
-          <h2 className="text-2xl font-extrabold tracking-tight text-zinc-900 dark:text-zinc-50 mb-3 font-outfit">
+          <Typography type="h2" className="text-2xl font-extrabold tracking-tight text-foreground mb-3 font-outfit">
             {t('auth:screens.verifyingTitle')}
-          </h2>
-          <p className="text-zinc-500 dark:text-zinc-400 text-sm leading-relaxed mb-8 max-w-sm">
+          </Typography>
+          <Typography type="body-sm" className="text-muted leading-relaxed mb-8 max-w-sm">
             {message}
-          </p>
+          </Typography>
         </div>
       )}
 
       {/* 2. SUCCESS STATE */}
       {state === 'success' && (
         <div className="text-center py-6 flex flex-col items-center select-none">
-          <div className="w-16 h-16 rounded-full bg-emerald-950/30 text-emerald-500 flex items-center justify-center mb-6 shadow-[0_0_25px_rgba(16,185,129,0.3)] border border-emerald-500/20 animate-scale-up">
-            <ShieldCheck size={36} className="text-emerald-400" />
+          <div className="w-16 h-16 rounded-full bg-success/10 text-success flex items-center justify-center mb-6 shadow-[0_0_25px_rgba(var(--color-success),0.3)] border border-success/20 animate-scale-up">
+            <ShieldCheck size={36} className="text-success" />
           </div>
 
-          <h2 className="text-2xl font-extrabold tracking-tight text-zinc-900 dark:text-zinc-50 mb-3 font-outfit">
+          <Typography type="h2" className="text-2xl font-extrabold tracking-tight text-foreground mb-3 font-outfit">
             {t('auth:toast.verifiedSuccessTitle')}
-          </h2>
+          </Typography>
 
-          <p className="text-zinc-500 dark:text-zinc-400 text-sm leading-relaxed mb-8 max-w-sm">
+          <Typography type="body-sm" className="text-muted leading-relaxed mb-8 max-w-sm">
             {t('auth:screens.verifySuccess')}
-          </p>
+          </Typography>
 
           <Button
             variant="solid"
-            className="w-full py-6 text-sm font-semibold rounded-xl bg-linear-to-r from-zinc-950 to-zinc-900 dark:from-white dark:to-zinc-100 hover:opacity-90 active:scale-[0.98] transition-all duration-200"
+            className="w-full py-6 text-sm font-semibold rounded-xl bg-foreground text-background hover:bg-foreground/90 active:scale-[0.98] transition-all duration-200"
             onClick={() => router.push('/')}
           >
             {t('auth:actions.goToDashboard')}
@@ -185,17 +185,17 @@ function VerifyEmailContent() {
       {/* 3. EXPIRED STATE */}
       {state === 'expired' && (
         <div className="text-center py-6 flex flex-col items-center select-none">
-          <div className="w-16 h-16 rounded-full bg-amber-950/30 text-amber-500 flex items-center justify-center mb-6 shadow-[0_0_25px_rgba(245,158,11,0.3)] border border-amber-500/20 animate-bounce-short">
-            <RefreshCw size={32} className="text-amber-400" />
+          <div className="w-16 h-16 rounded-full bg-warning/10 text-warning flex items-center justify-center mb-6 shadow-[0_0_25px_rgba(var(--color-warning),0.3)] border border-warning/20 animate-bounce-short">
+            <RefreshCw size={32} className="text-warning" />
           </div>
 
-          <h2 className="text-2xl font-extrabold tracking-tight text-zinc-900 dark:text-zinc-50 mb-3 font-outfit">
+          <Typography type="h2" className="text-2xl font-extrabold tracking-tight text-foreground mb-3 font-outfit">
             {t('auth:screens.verifyExpiredTitle')}
-          </h2>
+          </Typography>
 
-          <p className="text-zinc-500 dark:text-zinc-400 text-sm leading-relaxed mb-8 max-w-sm font-outfit">
+          <Typography type="body-sm" className="text-muted leading-relaxed mb-8 max-w-sm font-outfit">
             {t('auth:screens.verifyExpired')}
-          </p>
+          </Typography>
 
           <div className="flex flex-col gap-3 w-full">
             <Button
@@ -226,17 +226,17 @@ function VerifyEmailContent() {
       {/* 4. FAILED STATE */}
       {state === 'failed' && (
         <div className="text-center py-6 flex flex-col items-center select-none">
-          <div className="w-16 h-16 rounded-full bg-red-950/30 text-red-500 flex items-center justify-center mb-6 shadow-[0_0_25px_rgba(239,68,68,0.3)] border border-red-500/20 animate-bounce-short">
-            <ShieldAlert size={36} className="text-red-400" />
+          <div className="w-16 h-16 rounded-full bg-danger/10 text-danger flex items-center justify-center mb-6 shadow-[0_0_25px_rgba(var(--color-danger),0.3)] border border-danger/20 animate-bounce-short">
+            <ShieldAlert size={36} className="text-danger" />
           </div>
 
-          <h2 className="text-2xl font-extrabold tracking-tight text-zinc-900 dark:text-zinc-50 mb-3 font-outfit">
+          <Typography type="h2" className="text-2xl font-extrabold tracking-tight text-foreground mb-3 font-outfit">
             {t('auth:screens.verifyFailedTitle')}
-          </h2>
+          </Typography>
 
-          <p className="text-zinc-500 dark:text-zinc-400 text-sm leading-relaxed mb-8 max-w-sm font-outfit">
+          <Typography type="body-sm" className="text-muted leading-relaxed mb-8 max-w-sm font-outfit">
             {errorText || t('auth:screens.verifyFailed')}
-          </p>
+          </Typography>
 
           <div className="flex flex-col gap-3 w-full">
             <Button
@@ -264,39 +264,39 @@ function VerifyEmailContent() {
       {state === 'pending' && (
         <div className="py-2 flex flex-col select-none">
           <div className="text-center mb-6">
-            <div className="inline-flex w-12 h-12 rounded-full bg-zinc-100 dark:bg-zinc-900 text-zinc-600 dark:text-zinc-400 items-center justify-center mb-4 border border-zinc-200/20">
+            <div className="inline-flex w-12 h-12 rounded-full bg-surface-secondary text-muted items-center justify-center mb-4 border border-zinc-200/20">
               <Mail size={22} />
             </div>
-            <h2 className="text-2xl font-extrabold tracking-tight text-zinc-900 dark:text-zinc-50 font-outfit">
+            <Typography type="h2" className="text-2xl font-extrabold tracking-tight text-foreground font-outfit">
               {t('auth:title.verify')}
-            </h2>
-            <p className="text-zinc-500 dark:text-zinc-400 text-sm mt-2 max-w-xs mx-auto font-outfit">
+            </Typography>
+            <Typography type="body-sm" className="text-muted mt-2 max-w-xs mx-auto font-outfit">
               {t('auth:subtitle.verify')}
-            </p>
+            </Typography>
           </div>
 
           {targetEmail && !showManualForm && (
-            <div className="mb-6 p-4 rounded-2xl bg-zinc-50/50 dark:bg-zinc-900/30 border border-zinc-200/50 dark:border-zinc-800/40 flex flex-col items-center text-center gap-2 font-outfit animate-scale-up">
-              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
+            <div className="mb-6 p-4 rounded-2xl bg-surface-secondary border border-separator flex flex-col items-center text-center gap-2 font-outfit animate-scale-up">
+              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-success/10 text-success border border-success/20">
                 <CheckCircle2 size={12} />
                 <span>{t('auth:labels.verificationLinkSent')}</span>
               </div>
-              <p className="text-xs text-zinc-400 dark:text-zinc-500 mt-1 max-w-[280px]">
+              <Typography type="body-xs" className="text-muted mt-1 max-w-[280px]">
                 {t('auth:screens.verifyPending').split(':')[0]}:
-              </p>
-              <span className="font-bold text-sm text-zinc-800 dark:text-zinc-200 bg-zinc-200/40 dark:bg-zinc-800/60 px-3 py-1 rounded-lg select-all">
+              </Typography>
+              <span className="font-bold text-sm text-foreground bg-surface-secondary px-3 py-1 rounded-lg select-all">
                 {targetEmail}
               </span>
-              <p className="text-[11px] text-zinc-400 dark:text-zinc-500 mt-2 max-w-[300px] leading-relaxed">
+              <Typography type="body-xs" className="text-muted mt-2 max-w-[300px] leading-relaxed">
                 {t('auth:screens.verifyPendingInstructions')}
-              </p>
+              </Typography>
             </div>
           )}
 
           <form onSubmit={handleSubmit(onResend)} className="space-y-4 font-outfit">
             {showManualForm && (
               <div className="flex flex-col gap-1.5 animate-scale-up">
-                <label className="text-xs font-semibold text-zinc-500 dark:text-zinc-400 mb-0.5">
+                <label className="text-xs font-semibold text-muted mb-0.5">
                   {t('auth:labels.email')}
                 </label>
                 <div className="relative">
@@ -306,14 +306,14 @@ function VerifyEmailContent() {
                     {...register('email')}
                     disabled={resendLoading}
                     className={[
-                      "w-full px-4 py-3 rounded-xl text-sm transition-all duration-200 bg-zinc-50/30 dark:bg-zinc-900/20 border outline-none",
+                      "w-full px-4 py-3 rounded-xl text-sm transition-all duration-200 bg-surface border outline-none focus:border-foreground focus:ring-1 focus:ring-focus",
                       errors.email
-                        ? "border-red-500 focus:border-red-500 focus:ring-1 focus:ring-red-500"
-                        : "border-zinc-200 dark:border-zinc-800 focus:border-zinc-900 dark:focus:border-zinc-100 focus:ring-1 focus:ring-zinc-950 dark:focus:ring-zinc-50"
+                        ? "border-danger focus:border-danger focus:ring-1 focus:ring-danger"
+                        : "border-border"
                     ].join(' ')}
                   />
                   {errors.email && (
-                    <span className="text-xs text-red-500 font-medium mt-1.5 flex items-center gap-1.5">
+                    <span className="text-xs text-danger font-medium mt-1.5 flex items-center gap-1.5">
                       <ShieldAlert size={14} className="shrink-0" />
                       {errors.email.message}
                     </span>
@@ -324,7 +324,7 @@ function VerifyEmailContent() {
 
             <Button
               type="submit"
-              className="w-full mt-2 py-6 text-sm font-semibold rounded-xl bg-linear-to-r from-zinc-950 to-zinc-900 dark:from-white dark:to-zinc-100 text-white dark:text-zinc-950 hover:opacity-90 active:scale-[0.98] transition-all duration-200"
+              className="w-full mt-2 py-6 text-sm font-semibold rounded-xl bg-foreground text-background hover:bg-foreground/90 active:scale-[0.98] transition-all duration-200"
               isLoading={resendLoading}
               disabled={(!isValid && showManualForm) || resendLoading}
             >
@@ -338,7 +338,7 @@ function VerifyEmailContent() {
               <button
                 type="button"
                 onClick={() => setShowManualForm(true)}
-                className="text-xs font-semibold text-zinc-500 dark:text-zinc-400 hover:text-zinc-950 dark:hover:text-zinc-50 hover:underline transition-colors inline-flex items-center justify-center gap-1.5 cursor-pointer"
+                className="text-xs font-semibold text-muted hover:text-foreground hover:underline transition-colors inline-flex items-center justify-center gap-1.5 cursor-pointer"
               >
                 {t('auth:actions.useDifferentEmail')}
               </button>
@@ -348,18 +348,18 @@ function VerifyEmailContent() {
               <button
                 type="button"
                 onClick={() => setShowManualForm(false)}
-                className="text-xs font-semibold text-zinc-500 dark:text-zinc-400 hover:text-zinc-950 dark:hover:text-zinc-50 hover:underline transition-colors inline-flex items-center justify-center gap-1.5 cursor-pointer"
+                className="text-xs font-semibold text-muted hover:text-foreground hover:underline transition-colors inline-flex items-center justify-center gap-1.5 cursor-pointer"
               >
                 <ChevronLeft size={14} />
                 {t('auth:actions.backToSentInfo')}
               </button>
             )}
 
-            <div className="text-xs text-zinc-500 dark:text-zinc-400">
+            <div className="text-xs text-muted">
               {t('auth:actions.haveAccount')}{' '}
               <Link
                 href="/login"
-                className="font-semibold text-zinc-950 dark:text-zinc-50 hover:underline"
+                className="font-semibold text-foreground hover:underline"
               >
                 {t('auth:actions.signInNow')}
               </Link>
@@ -375,7 +375,7 @@ export default function VerifyEmailPage() {
   return (
     <Suspense fallback={
       <div className="flex items-center justify-center p-8 min-h-[400px]">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-zinc-950 dark:border-zinc-50" />
+        <Spinner size="md" color="accent" />
       </div>
     }>
       <VerifyEmailContent />

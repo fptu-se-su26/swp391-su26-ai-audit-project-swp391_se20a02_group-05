@@ -15,7 +15,7 @@ import {
   Copy,
   Check
 } from 'lucide-react';
-import { Spinner } from '@heroui/react';
+import { Spinner, Typography } from '@heroui/react';
 import { useTranslation } from 'react-i18next';
 
 // Custom Markdown to Premium HTML converter with secure HTML sanitization
@@ -43,7 +43,7 @@ function parseAndSanitizeMarkdown(text: string): string {
       code = lines.slice(1).join('\n');
     }
     return `
-      <div class="my-4 rounded-xl border border-zinc-200/50 dark:border-zinc-800/50 bg-zinc-950 text-zinc-100 overflow-hidden font-mono text-xs select-text shadow-lg">
+      <div class="my-4 rounded-xl border border-separator bg-zinc-950 text-zinc-100 overflow-hidden font-mono text-xs select-text shadow-lg">
         <div class="flex items-center justify-between px-4 py-2 border-b border-zinc-800 bg-zinc-900 select-none text-[10px] uppercase font-bold tracking-wider text-zinc-500">
           <span>${language}</span>
           <span class="text-zinc-400">code block</span>
@@ -54,19 +54,19 @@ function parseAndSanitizeMarkdown(text: string): string {
   });
 
   // 3. Inline Code `code`
-  clean = clean.replace(/`([^`\n]+)`/g, '<code class="px-1.5 py-0.5 rounded bg-zinc-100 dark:bg-zinc-800 text-zinc-800 dark:text-zinc-200 font-mono text-xs font-semibold">$1</code>');
+  clean = clean.replace(/`([^`\n]+)`/g, '<code class="px-1.5 py-0.5 rounded bg-surface-secondary text-foreground font-mono text-xs font-semibold">$1</code>');
 
   // 4. Headers (#, ##, ###)
-  clean = clean.replace(/^### (.*?)$/gm, '<h4 class="text-sm font-bold text-zinc-900 dark:text-zinc-100 mt-4 mb-2 font-outfit">$1</h4>');
-  clean = clean.replace(/^## (.*?)$/gm, '<h3 class="text-base font-extrabold text-zinc-900 dark:text-zinc-100 mt-5 mb-2.5 font-outfit">$1</h3>');
-  clean = clean.replace(/^# (.*?)$/gm, '<h2 class="text-lg font-black text-zinc-900 dark:text-zinc-100 mt-6 mb-3 font-outfit">$1</h2>');
+  clean = clean.replace(/^### (.*?)$/gm, '<h4 class="text-sm font-bold text-foreground mt-4 mb-2 font-outfit">$1</h4>');
+  clean = clean.replace(/^## (.*?)$/gm, '<h3 class="text-base font-extrabold text-foreground mt-5 mb-2.5 font-outfit">$1</h3>');
+  clean = clean.replace(/^# (.*?)$/gm, '<h2 class="text-lg font-black text-foreground mt-6 mb-3 font-outfit">$1</h2>');
 
   // 5. Bold & Italic
-  clean = clean.replace(/\*\*([^*]+)\*\*/g, '<strong class="font-extrabold text-zinc-950 dark:text-white">$1</strong>');
+  clean = clean.replace(/\*\*([^*]+)\*\*/g, '<strong class="font-extrabold text-foreground">$1</strong>');
   clean = clean.replace(/\*([^*]+)\*/g, '<em class="italic">$1</em>');
 
   // 6. Bullet lists
-  clean = clean.replace(/^\s*[-*]\s+(.*?)$/gm, '<li class="ml-4 list-disc pl-1 text-zinc-700 dark:text-zinc-300 leading-relaxed">$1</li>');
+  clean = clean.replace(/^\s*[-*]\s+(.*?)$/gm, '<li class="ml-4 list-disc pl-1 text-foreground/90 leading-relaxed">$1</li>');
 
   // 7. Paragraphs (lines that don't look like block headers/lists/divs)
   const lines = clean.split('\n');
@@ -76,7 +76,7 @@ function parseAndSanitizeMarkdown(text: string): string {
     if (trimmed.startsWith('<h') || trimmed.startsWith('<li') || trimmed.startsWith('<div') || trimmed.startsWith('</div') || trimmed.startsWith('<pre') || trimmed.startsWith('</pre') || trimmed.startsWith('<code') || trimmed.startsWith('</code')) {
       return line;
     }
-    return `<p class="mb-2.5 leading-relaxed text-zinc-700 dark:text-zinc-300">${line}</p>`;
+    return `<p class="mb-2.5 leading-relaxed text-foreground/95">${line}</p>`;
   });
 
   return processedLines.join('\n');
@@ -153,11 +153,11 @@ export default function AiChatPage() {
   };
 
   return (
-    <div className="flex h-[calc(100vh-140px)] w-full rounded-2xl overflow-hidden border border-zinc-200/80 dark:border-zinc-900 bg-white/50 dark:bg-zinc-950/40 backdrop-blur-xl shadow-xl select-none font-outfit">
+    <div className="flex h-[calc(100vh-140px)] w-full rounded-2xl overflow-hidden border border-border bg-background/50 backdrop-blur-xl shadow-xl select-none font-outfit">
       
       {/* LEFT COLUMN: Sidebar Chat List */}
-      <aside className="w-80 border-r border-zinc-200/80 dark:border-zinc-900 flex flex-col bg-white/70 dark:bg-zinc-950/60 backdrop-blur-md shrink-0">
-        <div className="p-4 border-b border-zinc-200/50 dark:border-zinc-900/50 flex flex-col gap-3">
+      <aside className="w-80 border-r border-border flex flex-col bg-background/70 backdrop-blur-md shrink-0">
+        <div className="p-4 border-b border-separator flex flex-col gap-3">
           <Button 
             onClick={startNewChat}
             variant="solid" 
@@ -173,11 +173,11 @@ export default function AiChatPage() {
         <div className="flex-1 overflow-y-auto p-3 space-y-1.5 scrollbar-thin">
           {isLoadingConversations ? (
             <div className="flex flex-col items-center justify-center h-40 gap-2 select-none">
-              <Spinner size="sm" color="current" />
-              <span className="text-xs text-zinc-400 dark:text-zinc-500 font-semibold">{t('common:buttons.loading')}</span>
+              <Spinner size="sm" color="accent" />
+              <Typography type="body-xs" className="text-muted font-semibold">{t('common:buttons.loading')}</Typography>
             </div>
           ) : conversations.length === 0 ? (
-            <div className="p-6 text-center text-zinc-400 dark:text-zinc-600 text-xs select-none">
+            <div className="p-6 text-center text-muted text-xs select-none">
               {t('chat-planner:sidebar.empty')}
             </div>
           ) : (
@@ -188,14 +188,14 @@ export default function AiChatPage() {
                   key={c.id}
                   onClick={() => !isStreaming && setActiveConversationId(c.id)}
                   className={[
-                    "group flex items-center justify-between px-3 py-2.5 rounded-xl cursor-pointer transition-all duration-200",
+                    "group flex items-center justify-between px-3 py-2.5 rounded-xl cursor-pointer transition-all duration-200 focus-visible:ring-2 focus-visible:ring-focus focus-visible:outline-hidden",
                     isActive
-                      ? "bg-zinc-150/70 dark:bg-zinc-900/60 text-zinc-950 dark:text-zinc-50 border border-zinc-200/30 dark:border-zinc-800/30"
-                      : "text-zinc-500 dark:text-zinc-400 hover:bg-zinc-50 dark:hover:bg-zinc-900/20 hover:text-zinc-800 dark:hover:text-zinc-200"
+                      ? "bg-surface-secondary text-foreground border border-border/30"
+                      : "text-muted hover:bg-surface-secondary/40 hover:text-foreground"
                   ].join(' ')}
                 >
                   <div className="flex items-center gap-2.5 min-w-0">
-                    <MessageSquare size={16} className={isActive ? "text-zinc-900 dark:text-zinc-100" : "text-zinc-400"} />
+                    <MessageSquare size={16} className={isActive ? "text-foreground" : "text-muted"} />
                     <span className="text-xs font-semibold truncate max-w-[170px] select-none">
                       {c.title}
                     </span>
@@ -209,7 +209,7 @@ export default function AiChatPage() {
                       }
                     }}
                     disabled={isStreaming}
-                    className="opacity-0 group-hover:opacity-100 hover:text-red-500 dark:hover:text-red-400 p-1 rounded transition-opacity duration-200 cursor-pointer"
+                    className="opacity-0 group-hover:opacity-100 hover:text-danger p-1 rounded transition-opacity duration-200 cursor-pointer"
                   >
                     <Trash2 size={13} />
                   </button>
@@ -221,11 +221,11 @@ export default function AiChatPage() {
       </aside>
 
       {/* RIGHT COLUMN: Chat Workspace */}
-      <section className="flex-1 flex flex-col bg-zinc-50/40 dark:bg-zinc-950/20">
+      <section className="flex-1 flex flex-col bg-background/20">
         
         {/* Error Bar */}
         {error && (
-          <div className="bg-red-50 dark:bg-red-950/15 border-b border-red-200/50 dark:border-red-900/30 px-6 py-2 flex items-center justify-between text-xs text-red-600 dark:text-red-400 select-none">
+          <div className="bg-danger/10 border-b border-danger/20 px-6 py-2 flex items-center justify-between text-xs text-danger select-none">
             <span className="flex items-center gap-2">
               <AlertCircle size={14} />
               {error}
@@ -238,55 +238,55 @@ export default function AiChatPage() {
         <div className="flex-1 overflow-y-auto p-6 md:p-8 space-y-6 scrollbar-thin select-text">
           {isLoadingMessages ? (
             <div className="flex flex-col items-center justify-center h-full gap-2">
-              <Spinner size="lg" color="current" />
-              <span className="text-sm font-medium text-zinc-400 dark:text-zinc-500">{t('common:buttons.loading')}</span>
+              <Spinner size="lg" color="accent" />
+              <Typography type="body-sm" className="text-muted font-medium">{t('common:buttons.loading')}</Typography>
             </div>
           ) : messages.length === 0 ? (
             // EMBED EMPTY STATE SUGGESTIONS
             <div className="flex flex-col items-center justify-center h-full text-center max-w-2xl mx-auto space-y-8 select-none">
               <div className="flex flex-col items-center gap-3">
-                <div className="w-12 h-12 rounded-2xl bg-zinc-950 dark:bg-white text-white dark:text-zinc-950 flex items-center justify-center shadow-lg border border-zinc-200/20">
+                <div className="w-12 h-12 rounded-2xl bg-foreground text-background flex items-center justify-center shadow-lg border border-border/20">
                   <Sparkles size={24} className="animate-pulse" />
                 </div>
-                <h2 className="text-xl font-bold tracking-tight text-zinc-800 dark:text-zinc-100 font-outfit mt-2">
+                <Typography type="h2" className="text-xl font-bold tracking-tight text-foreground font-outfit mt-2">
                   {t('chat-planner:title')}
-                </h2>
-                <p className="text-zinc-400 dark:text-zinc-500 text-xs max-w-sm leading-normal">
+                </Typography>
+                <Typography type="body-xs" className="text-muted max-w-sm leading-normal">
                   {t('chat-planner:welcomeDesc')}
-                </p>
+                </Typography>
               </div>
 
               {/* Grid of suggest prompt cards */}
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4 w-full">
                 <Card 
                   onClick={() => handleSuggestionClick(t('chat-planner:suggestions.kyotoPrompt'))}
-                  className="p-4 cursor-pointer hover:scale-[1.02] border border-zinc-200/50 dark:border-zinc-900/60 bg-white/40 dark:bg-zinc-950/40 hover:bg-zinc-50/60 dark:hover:bg-zinc-900/30 transition-all duration-200 text-left space-y-1.5"
+                  className="p-4 cursor-pointer hover:scale-[1.02] border border-border/60 bg-surface-secondary/40 hover:bg-surface-secondary/80 transition-all duration-200 text-left space-y-1.5"
                   glow={false}
                 >
-                  <span className="text-[10px] font-extrabold tracking-wider text-indigo-500 uppercase">{t('chat-planner:suggestions.kyotoTitle')}</span>
-                  <p className="text-[11px] font-semibold text-zinc-700 dark:text-zinc-300 leading-normal">
+                  <span className="text-[10px] font-extrabold tracking-wider text-accent uppercase">{t('chat-planner:suggestions.kyotoTitle')}</span>
+                  <p className="text-[11px] font-semibold text-foreground/90 leading-normal">
                     &quot;{t('chat-planner:suggestions.kyotoDesc')}&quot;
                   </p>
                 </Card>
                 
                 <Card 
                   onClick={() => handleSuggestionClick(t('chat-planner:suggestions.yosemitePrompt'))}
-                  className="p-4 cursor-pointer hover:scale-[1.02] border border-zinc-200/50 dark:border-zinc-900/60 bg-white/40 dark:bg-zinc-950/40 hover:bg-zinc-50/60 dark:hover:bg-zinc-900/30 transition-all duration-200 text-left space-y-1.5"
+                  className="p-4 cursor-pointer hover:scale-[1.02] border border-border/60 bg-surface-secondary/40 hover:bg-surface-secondary/80 transition-all duration-200 text-left space-y-1.5"
                   glow={false}
                 >
-                  <span className="text-[10px] font-extrabold tracking-wider text-emerald-500 uppercase">{t('chat-planner:suggestions.yosemiteTitle')}</span>
-                  <p className="text-[11px] font-semibold text-zinc-700 dark:text-zinc-300 leading-normal">
+                  <span className="text-[10px] font-extrabold tracking-wider text-success uppercase">{t('chat-planner:suggestions.yosemiteTitle')}</span>
+                  <p className="text-[11px] font-semibold text-foreground/90 leading-normal">
                     &quot;{t('chat-planner:suggestions.yosemiteDesc')}&quot;
                   </p>
                 </Card>
 
                 <Card 
                   onClick={() => handleSuggestionClick(t('chat-planner:suggestions.romePrompt'))}
-                  className="p-4 cursor-pointer hover:scale-[1.02] border border-zinc-200/50 dark:border-zinc-900/60 bg-white/40 dark:bg-zinc-950/40 hover:bg-zinc-50/60 dark:hover:bg-zinc-900/30 transition-all duration-200 text-left space-y-1.5"
+                  className="p-4 cursor-pointer hover:scale-[1.02] border border-border/60 bg-surface-secondary/40 hover:bg-surface-secondary/80 transition-all duration-200 text-left space-y-1.5"
                   glow={false}
                 >
-                  <span className="text-[10px] font-extrabold tracking-wider text-amber-500 uppercase">{t('chat-planner:suggestions.romeTitle')}</span>
-                  <p className="text-[11px] font-semibold text-zinc-700 dark:text-zinc-300 leading-normal">
+                  <span className="text-[10px] font-extrabold tracking-wider text-warning uppercase">{t('chat-planner:suggestions.romeTitle')}</span>
+                  <p className="text-[11px] font-semibold text-foreground/90 leading-normal">
                     &quot;{t('chat-planner:suggestions.romeDesc')}&quot;
                   </p>
                 </Card>
@@ -303,7 +303,7 @@ export default function AiChatPage() {
                     isUser ? "ml-auto items-end" : "mr-auto items-start"
                   ].join(' ')}
                 >
-                  <div className="flex items-center gap-2 mb-1.5 select-none text-[10px] uppercase font-bold tracking-widest text-zinc-400 font-mono">
+                  <div className="flex items-center gap-2 mb-1.5 select-none text-[10px] uppercase font-bold tracking-widest text-muted font-mono">
                     <span>{isUser ? 'You' : 'TripGenie AI'}</span>
                   </div>
 
@@ -311,8 +311,8 @@ export default function AiChatPage() {
                     className={[
                       "px-4 py-3 rounded-2xl text-sm relative group",
                       isUser
-                        ? "bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-950 shadow-md rounded-tr-none"
-                        : "bg-white/50 dark:bg-zinc-900/50 border border-zinc-200/40 dark:border-zinc-800/40 backdrop-blur-sm rounded-tl-none text-zinc-800 dark:text-zinc-200 shadow-sm"
+                        ? "bg-foreground text-background shadow-md rounded-tr-none"
+                        : "bg-surface border border-border/40 backdrop-blur-sm rounded-tl-none text-foreground shadow-sm"
                     ].join(' ')}
                   >
                     {isUser ? (
@@ -323,21 +323,21 @@ export default function AiChatPage() {
                         <div className="absolute top-2.5 right-2.5 opacity-0 group-hover:opacity-100 transition-opacity duration-200 select-none">
                           <button
                             onClick={() => handleCopy(m.content, m.id)}
-                            className="p-1 rounded bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-750 text-zinc-500 dark:text-zinc-400 transition-colors cursor-pointer"
+                            className="p-1 rounded bg-surface hover:bg-surface-secondary text-muted transition-colors cursor-pointer"
                             title={t('chat-planner:actions.copy')}
                           >
-                            {copiedMap[m.id] ? <Check size={13} className="text-emerald-500" /> : <Copy size={13} />}
+                            {copiedMap[m.id] ? <Check size={13} className="text-success" /> : <Copy size={13} />}
                           </button>
                         </div>
                         
                         {m.streamingState === 'Pending' ? (
-                          <div className="flex items-center gap-2.5 py-1 text-zinc-400 dark:text-zinc-500 select-none">
-                            <Spinner size="sm" color="current" />
+                          <div className="flex items-center gap-2.5 py-1 text-muted select-none">
+                            <Spinner size="sm" color="accent" />
                             <span className="text-xs font-semibold animate-pulse">{t('chat-planner:placeholders.streaming')}</span>
                           </div>
                         ) : (
                           <div 
-                            className="prose dark:prose-invert prose-xs leading-relaxed max-w-none text-zinc-700 dark:text-zinc-300"
+                            className="prose dark:prose-invert prose-xs leading-relaxed max-w-none text-foreground/90"
                             dangerouslySetInnerHTML={{ __html: parseAndSanitizeMarkdown(m.content) }}
                           />
                         )}
@@ -352,7 +352,7 @@ export default function AiChatPage() {
         </div>
 
         {/* Prompt Input Form */}
-        <div className="p-4 border-t border-zinc-200/80 dark:border-zinc-900 bg-white/70 dark:bg-zinc-950/60 backdrop-blur-md">
+        <div className="p-4 border-t border-border bg-background/70 backdrop-blur-md">
           <form onSubmit={handleSend} className="flex gap-3 relative items-center max-w-4xl mx-auto">
             <input
               type="text"
@@ -360,7 +360,7 @@ export default function AiChatPage() {
               onChange={(e) => setInput(e.target.value)}
               disabled={isStreaming}
               placeholder={t('chat-planner:placeholders.input')}
-              className="flex-1 px-4 py-3 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white/50 dark:bg-zinc-900/50 backdrop-blur-sm text-sm text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-1 focus:ring-zinc-950 dark:focus:ring-zinc-50 transition-all select-text pr-24"
+              className="flex-1 px-4 py-3 rounded-xl border border-border bg-surface-secondary/50 backdrop-blur-sm text-sm text-foreground focus:outline-hidden focus:ring-2 focus:ring-focus transition-all select-text pr-24"
             />
             
             <div className="absolute right-2 flex items-center gap-2 select-none">
@@ -368,7 +368,7 @@ export default function AiChatPage() {
                 <Button
                   type="button"
                   onClick={cancelStreaming}
-                  className="bg-red-500 hover:bg-red-600 text-white p-2.5 rounded-lg flex items-center justify-center shadow-lg border-0 hover:scale-[1.02] shrink-0 cursor-pointer"
+                  className="bg-danger hover:bg-danger/90 text-white p-2.5 rounded-lg flex items-center justify-center shadow-lg border-0 hover:scale-[1.02] shrink-0 cursor-pointer"
                 >
                   <StopCircle size={16} />
                 </Button>

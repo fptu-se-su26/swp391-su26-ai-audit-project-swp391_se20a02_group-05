@@ -1,7 +1,6 @@
 "use client";
 
-import React from 'react';
-import { Pagination } from '@heroui/react';
+import { Pagination, Typography } from '@heroui/react';
 
 interface PaginationWrapperProps {
   page: number;
@@ -53,16 +52,18 @@ export const PaginationWrapper: React.FC<PaginationWrapperProps> = ({
   const endItem = Math.min(page * itemsPerPage, totalItems);
 
   return (
-    <Pagination className="w-full flex flex-col sm:flex-row items-center justify-between gap-4 p-4 border-t border-zinc-200/50 dark:border-zinc-900 select-none">
-      <Pagination.Summary className="text-xs text-zinc-500 dark:text-zinc-400 font-medium">
-        Showing {startItem}-{endItem} of {totalItems} results
+    <Pagination className="w-full flex flex-col sm:flex-row items-center justify-between gap-4 p-4 border-t border-separator select-none">
+      <Pagination.Summary>
+        <Typography type="body-xs" className="text-muted font-medium">
+          Showing {startItem}-{endItem} of {totalItems} results
+        </Typography>
       </Pagination.Summary>
       <Pagination.Content className="flex items-center gap-1">
         <Pagination.Item>
           <Pagination.Previous
             isDisabled={page === 1}
             onPress={() => onPageChange(Math.max(1, page - 1))}
-            className="cursor-pointer font-bold text-xs"
+            className="cursor-pointer font-bold text-xs focus-visible:ring-2 focus-visible:ring-focus focus-visible:outline-hidden"
           >
             <Pagination.PreviousIcon />
             <span className="hidden sm:inline">Previous</span>
@@ -78,7 +79,7 @@ export const PaginationWrapper: React.FC<PaginationWrapperProps> = ({
               <Pagination.Link
                 isActive={p === page}
                 onPress={() => onPageChange(p)}
-                className="cursor-pointer text-xs font-semibold"
+                className="cursor-pointer text-xs font-semibold focus-visible:ring-2 focus-visible:ring-focus focus-visible:outline-hidden"
               >
                 {p}
               </Pagination.Link>
@@ -89,7 +90,7 @@ export const PaginationWrapper: React.FC<PaginationWrapperProps> = ({
           <Pagination.Next
             isDisabled={page === totalPages || totalPages === 0}
             onPress={() => onPageChange(Math.min(totalPages, page + 1))}
-            className="cursor-pointer font-bold text-xs"
+            className="cursor-pointer font-bold text-xs focus-visible:ring-2 focus-visible:ring-focus focus-visible:outline-hidden"
           >
             <span className="hidden sm:inline">Next</span>
             <Pagination.NextIcon />

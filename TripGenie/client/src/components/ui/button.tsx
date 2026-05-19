@@ -20,31 +20,30 @@ export const Button: React.FC<ButtonProps> = ({
   ...props
 }) => {
   // Map our premium styles
-  const baseClasses = "font-semibold transition-all duration-200 active:scale-[0.98] select-none flex items-center justify-center rounded-xl";
+  const baseClasses = "font-semibold transition-all duration-200 active:scale-[0.98] select-none flex items-center justify-center rounded-xl focus-visible:ring-2 focus-visible:ring-focus focus-visible:outline-hidden";
   
   let variantClasses = "";
   
   if (variant === 'solid') {
     variantClasses = [
-      "bg-zinc-950 hover:bg-zinc-900 text-white dark:bg-zinc-50 dark:hover:bg-zinc-100 dark:text-zinc-950",
-      "shadow-[0_4px_12px_rgba(0,0,0,0.08)] dark:shadow-[0_4px_20px_rgba(255,255,255,0.06)]",
-      "border border-zinc-900 dark:border-zinc-100",
+      "bg-foreground text-background hover:opacity-90",
+      "shadow-surface",
+      "border border-foreground",
     ].join(' ');
   } else if (variant === 'bordered' || variant === 'outline') {
     variantClasses = [
-      "bg-transparent border border-zinc-200 dark:border-zinc-800 text-zinc-800 dark:text-zinc-200",
-      "hover:bg-zinc-50 dark:hover:bg-zinc-900/60 hover:border-zinc-300 dark:hover:border-zinc-700/80",
+      "bg-transparent border border-border text-foreground",
+      "hover:bg-surface-secondary",
     ].join(' ');
   } else if (variant === 'flat' || variant === 'secondary') {
     variantClasses = [
-      "bg-zinc-100 dark:bg-zinc-900 text-zinc-800 dark:text-zinc-200",
-      "hover:bg-zinc-200/80 dark:hover:bg-zinc-800/80",
+      "bg-surface-secondary text-foreground",
+      "hover:opacity-90",
     ].join(' ');
   } else if (variant === 'danger') {
     variantClasses = [
-      "bg-red-600 hover:bg-red-500 text-white dark:bg-red-500 dark:hover:bg-red-400 dark:text-zinc-950",
-      "shadow-[0_4px_12px_rgba(220,38,38,0.15)]",
-      "border border-red-600 dark:border-red-500",
+      "bg-danger text-danger-foreground hover:opacity-90",
+      "border border-danger",
     ].join(' ');
   }
 

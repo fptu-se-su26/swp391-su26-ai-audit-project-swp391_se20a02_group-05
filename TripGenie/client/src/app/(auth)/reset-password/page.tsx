@@ -11,7 +11,7 @@ import { Card } from '../../../components/ui/card';
 import { z } from 'zod';
 import Link from 'next/link';
 import { CheckCircle2, KeyRound } from 'lucide-react';
-import { toast } from '@heroui/react';
+import { toast, Typography, Spinner } from '@heroui/react';
 import { useAuth } from '../../../features/auth/hooks/use-auth';
 import { Suspense } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -93,17 +93,17 @@ function ResetPasswordContent() {
     return (
       <Card glow={true}>
         <div className="text-center py-4 flex flex-col items-center">
-          <div className="w-12 h-12 rounded-full bg-emerald-50 dark:bg-emerald-950/30 text-emerald-500 flex items-center justify-center mb-4">
+          <div className="w-12 h-12 rounded-full bg-success/10 text-success flex items-center justify-center mb-4">
             <CheckCircle2 size={24} />
           </div>
           
-          <h2 className="text-2xl font-bold tracking-tight text-zinc-900 dark:text-zinc-50 mb-2 font-outfit">
+          <Typography type="h2" className="text-2xl font-bold tracking-tight text-foreground mb-2 font-outfit">
             {t('auth:screens.resetSuccessTitle')}
-          </h2>
+          </Typography>
           
-          <p className="text-zinc-500 dark:text-zinc-400 text-sm leading-relaxed mb-6 font-outfit">
+          <Typography type="body-sm" className="text-muted leading-relaxed mb-6 font-outfit">
             {t('auth:screens.resetSuccessDesc')}
-          </p>
+          </Typography>
 
           <Link href="/user" className="w-full">
             <Button variant="solid" className="w-full">
@@ -118,15 +118,15 @@ function ResetPasswordContent() {
   return (
     <Card glow={true}>
       <div className="text-center mb-6">
-        <div className="mx-auto w-10 h-10 rounded-xl bg-zinc-50 dark:bg-zinc-900 text-zinc-800 dark:text-zinc-200 flex items-center justify-center mb-3">
+        <div className="mx-auto w-10 h-10 rounded-xl bg-surface-secondary text-foreground flex items-center justify-center mb-3">
           <KeyRound size={20} />
         </div>
-        <h2 className="text-2xl font-bold tracking-tight text-zinc-900 dark:text-zinc-50 font-outfit">
+        <Typography type="h2" className="text-2xl font-bold tracking-tight text-foreground font-outfit">
           {t('auth:title.reset')}
-        </h2>
-        <p className="text-zinc-500 dark:text-zinc-400 text-sm mt-1 font-outfit">
+        </Typography>
+        <Typography type="body-sm" className="text-muted mt-1 font-outfit">
           {t('auth:subtitle.reset')}
-        </p>
+        </Typography>
       </div>
 
       <FormProvider {...methods}>
@@ -167,7 +167,7 @@ export default function ResetPasswordPage() {
   return (
     <Suspense fallback={
       <div className="flex items-center justify-center p-8 min-h-[400px]">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-zinc-950 dark:border-zinc-50" />
+        <Spinner size="md" color="accent" />
       </div>
     }>
       <ResetPasswordContent />

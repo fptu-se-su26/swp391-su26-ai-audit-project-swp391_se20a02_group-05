@@ -4,12 +4,13 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { adminService } from '../../../../services/admin.service';
 import { RoleListItem } from '../../../../types/admin.types';
 import { getPermissionsByModule } from '@/shared/permissions/permission.metadata';
-import { Spinner, Checkbox, Label } from '@heroui/react';
+import { Spinner, Checkbox, Label, Typography } from '@heroui/react';
 import { Shield, Plus, RotateCw, AlertTriangle, Edit, Trash2 } from 'lucide-react';
 import { DialogModal } from '../../../../components/ui/dialog-modal';
 import { AccordionWrapper } from '../../../../components/ui/accordion-wrapper';
 import { SkeletonLoader } from '../../../../components/ui/states';
 import { useTranslation } from 'react-i18next';
+import { TableActionDropdown } from '../../../../components/ui/table-action-dropdown';
 
 export default function RolesAdminPage() {
   const { t } = useTranslation(['dashboard-admin', 'common']);
@@ -139,8 +140,7 @@ export default function RolesAdminPage() {
     }
   };
 
-  const handleDeleteRole = async (id: string) => {
-    if (!confirm(t('dashboard-admin:roles.deleteConfirm'))) return;
+  const handleDeleteRoleDirectly = async (id: string) => {
     try {
       await adminService.deleteRole(id);
       fetchRoles();
@@ -166,7 +166,7 @@ export default function RolesAdminPage() {
                 e.stopPropagation();
                 handleSelectAllInModule(moduleName, permNames);
               }}
-              className="text-[9px] font-extrabold uppercase tracking-wider px-2 py-1 rounded border border-zinc-200/60 dark:border-zinc-800 cursor-pointer bg-white dark:bg-zinc-950 hover:bg-zinc-50 dark:hover:bg-zinc-900 select-none text-zinc-600 dark:text-zinc-400"
+              className="text-[9px] font-extrabold uppercase tracking-wider px-2 py-1 rounded border border-border cursor-pointer bg-surface hover:bg-surface-secondary select-none text-muted transition-colors"
             >
               {allSelected ? t('dashboard-admin:roles.builder.clearModule') : t('dashboard-admin:roles.builder.grantModule')}
             </button>
@@ -175,7 +175,7 @@ export default function RolesAdminPage() {
             {perms.map((perm) => {
               const isChecked = selectedPermissions.includes(perm.name) || selectedPermissions.includes('*:*:*');
               return (
-                <div key={perm.name} className="p-1 rounded-xl hover:bg-zinc-50 dark:hover:bg-zinc-900/40 transition-colors">
+                <div key={perm.name} className="p-1 rounded-xl hover:bg-surface-secondary/40 transition-colors">
                   <Checkbox
                     id={`perm-${perm.name}`}
                     isSelected={isChecked}
@@ -183,29 +183,29 @@ export default function RolesAdminPage() {
                     isDisabled={selectedPermissions.includes('*:*:*') && perm.name !== '*:*:*'}
                     className="flex items-start gap-3 w-full cursor-pointer select-none"
                   >
-                    <Checkbox.Control className="mt-1 border-2 border-zinc-300 dark:border-zinc-800 data-[selected=true]:bg-indigo-500 data-[selected=true]:border-indigo-500 rounded size-4 before:rounded">
+                    <Checkbox.Control className="mt-1 border-2 border-border data-[selected=true]:bg-accent data-[selected=true]:border-accent rounded size-4 before:rounded">
                       <Checkbox.Indicator className="text-white size-3" />
                     </Checkbox.Control>
                     <Checkbox.Content className="flex flex-col text-left">
                       <div className="flex flex-wrap items-center gap-1.5">
-                        <Label htmlFor={`perm-${perm.name}`} className="text-xs font-bold text-zinc-800 dark:text-zinc-250 cursor-pointer">
+                        <Label htmlFor={`perm-${perm.name}`} className="text-xs font-bold text-foreground cursor-pointer">
                           {perm.displayName}
                         </Label>
                         {perm.dangerous && (
-                          <span className="px-1.5 py-0.5 rounded bg-rose-50 text-rose-700 dark:bg-rose-950/30 dark:text-rose-400 border border-rose-200/20 text-[7px] font-extrabold tracking-wider uppercase">
+                          <span className="px-1.5 py-0.5 rounded bg-danger/10 text-danger border border-danger/20 text-[7px] font-extrabold tracking-wider uppercase">
                             DANGEROUS
                           </span>
                         )}
                         {perm.system && (
-                          <span className="px-1.5 py-0.5 rounded bg-purple-50 text-purple-700 dark:bg-purple-950/30 dark:text-purple-400 border border-purple-200/20 text-[7px] font-extrabold tracking-wider uppercase">
+                          <span className="px-1.5 py-0.5 rounded bg-accent/10 text-accent border border-accent/20 text-[7px] font-extrabold tracking-wider uppercase">
                             SYSTEM
                           </span>
                         )}
                       </div>
-                      <p className="text-[10px] text-zinc-450 dark:text-zinc-500 leading-normal mt-0.5 font-medium font-outfit">
+                      <Typography type="body-xs" className="text-muted leading-normal mt-0.5 font-medium font-outfit">
                         {perm.description}
-                      </p>
-                      <span className="font-mono text-[9px] text-zinc-400 dark:text-zinc-505 block mt-1 font-bold">
+                      </Typography>
+                      <span className="font-mono text-[9px] text-muted/80 block mt-1 font-bold">
                         {perm.name}
                       </span>
                     </Checkbox.Content>
@@ -220,29 +220,29 @@ export default function RolesAdminPage() {
   });
 
   return (
-    <div className="space-y-6 font-outfit max-w-7xl mx-auto p-4 md:p-6 text-zinc-900 dark:text-zinc-50">
+    <div className="space-y-6 font-outfit max-w-7xl mx-auto p-4 md:p-6 text-foreground">
       {/* Title */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-extrabold tracking-tight flex items-center gap-2">
+          <Typography type="h2" className="text-2xl font-extrabold tracking-tight flex items-center gap-2 font-display">
             <Shield className="text-emerald-500" size={24} />
             {t('dashboard-admin:roles.title')}
-          </h1>
-          <p className="text-zinc-500 dark:text-zinc-400 text-sm">
+          </Typography>
+          <Typography type="body-sm" className="text-muted mt-1 font-outfit">
             {t('dashboard-admin:roles.subtitle')}
-          </p>
+          </Typography>
         </div>
         <div className="flex gap-2">
           <button
             onClick={handleRefresh}
-            className="px-4 py-2.5 border border-zinc-200 dark:border-zinc-800 rounded-xl text-xs font-bold flex items-center gap-2 hover:bg-zinc-50 dark:hover:bg-zinc-900 select-none cursor-pointer transition-colors"
+            className="px-4 py-2.5 border border-border rounded-xl text-xs font-bold flex items-center gap-2 hover:bg-surface-secondary select-none cursor-pointer transition-colors"
           >
             <RotateCw size={14} className={isRefreshing ? 'animate-spin' : ''} />
             {t('dashboard-admin:roles.syncSchemas')}
           </button>
           <button
             onClick={handleOpenCreate}
-            className="px-4 py-2.5 bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-950 font-bold rounded-xl text-xs flex items-center gap-2 hover:opacity-90 transition-opacity select-none cursor-pointer"
+            className="px-4 py-2.5 bg-foreground text-background font-bold rounded-xl text-xs flex items-center gap-2 hover:bg-foreground/90 transition-all select-none cursor-pointer"
           >
             <Plus size={14} />
             {t('dashboard-admin:roles.createCustomRole')}
@@ -256,58 +256,64 @@ export default function RolesAdminPage() {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {roles.map((role) => (
-            <div key={role.id} className="p-6 rounded-2xl border border-zinc-200/50 dark:border-zinc-900/60 bg-white/70 dark:bg-zinc-950/60 backdrop-blur-xl flex flex-col justify-between min-h-[220px] shadow-sm hover:shadow-md transition-shadow">
+            <div key={role.id} className="p-6 rounded-2xl border border-border bg-surface/70 backdrop-blur-xl flex flex-col justify-between min-h-[220px] shadow-surface hover:shadow-overlay transition-all duration-200">
               <div>
                 <div className="flex justify-between items-start gap-2 mb-3">
                   <div className="space-y-1">
-                    <h3 className="font-extrabold text-sm text-zinc-900 dark:text-zinc-50 tracking-tight">
+                    <Typography type="body-sm" className="font-extrabold text-foreground tracking-tight">
                       {role.displayName}
-                    </h3>
-                    <span className="font-mono text-[10px] text-zinc-400 dark:text-zinc-505 block uppercase font-bold">
+                    </Typography>
+                    <span className="font-mono text-[10px] text-muted block uppercase font-bold">
                       {role.name}
                     </span>
                   </div>
                   <div className="flex gap-1.5 select-none">
                     {role.isSystem && (
-                      <span className="px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-700 dark:bg-indigo-950/30 dark:text-indigo-400 border border-indigo-200/20 text-[8px] font-extrabold tracking-wider uppercase">
+                      <span className="px-2 py-0.5 rounded-full bg-accent/10 text-accent border border-accent/20 text-[8px] font-extrabold tracking-wider uppercase">
                         SYSTEM
                       </span>
                     )}
-                    <span className="px-2 py-0.5 rounded-full bg-zinc-50 text-zinc-700 dark:bg-zinc-900 dark:text-zinc-400 border border-zinc-200/20 font-mono font-extrabold text-[8px]">
+                    <span className="px-2 py-0.5 rounded-full bg-surface-secondary text-muted border border-border font-mono font-extrabold text-[8px]">
                       v{role.version}
                     </span>
                   </div>
                 </div>
 
-                <p className="text-xs text-zinc-500 dark:text-zinc-400 font-medium leading-relaxed mb-4">
+                <Typography type="body-xs" className="text-muted font-medium leading-relaxed mb-4">
                   {role.description || t('dashboard-admin:roles.noDescription')}
-                </p>
+                </Typography>
               </div>
 
               <div>
-                <div className="border-t border-zinc-100 dark:border-zinc-900/50 pt-4 mt-2 flex justify-between items-center select-none">
-                  <span className="text-[10px] font-extrabold text-zinc-400 dark:text-zinc-500 uppercase tracking-wide">
+                <div className="border-t border-separator pt-4 mt-2 flex justify-between items-center select-none">
+                  <span className="text-[10px] font-extrabold text-muted uppercase tracking-wide">
                     {role.permissions.includes('*:*:*') ? t('dashboard-admin:roles.allPermissions') : t('dashboard-admin:roles.granularPermissions', { count: role.permissions.length })}
                   </span>
                   
-                  <div className="flex gap-1.5">
-                    <button
-                      onClick={() => handleOpenEdit(role)}
-                      className="font-bold text-xs text-indigo-500 hover:text-indigo-650 transition-colors flex items-center gap-1 cursor-pointer"
-                    >
-                      <Edit size={12} />
-                      {t('dashboard-admin:roles.editMatrix')}
-                    </button>
-                    {!role.isSystem && (
-                      <button
-                        onClick={() => handleDeleteRole(role.id)}
-                        className="font-bold text-xs text-rose-500 hover:text-rose-650 transition-colors flex items-center gap-1 cursor-pointer"
-                      >
-                        <Trash2 size={12} />
-                        {t('dashboard-admin:roles.delete')}
-                      </button>
-                    )}
-                  </div>
+                    <TableActionDropdown
+                      actions={[
+                        {
+                          id: 'edit',
+                          label: t('dashboard-admin:roles.editMatrix'),
+                          icon: Edit,
+                          onSelect: () => handleOpenEdit(role),
+                        },
+                        ...(!role.isSystem ? [{
+                          id: 'delete',
+                          label: t('dashboard-admin:roles.delete'),
+                          icon: Trash2,
+                          variant: 'danger' as const,
+                          requiresConfirmation: true,
+                          confirmationConfig: {
+                            title: t('dashboard-admin:roles.deleteConfirm') || 'Delete Role',
+                            description: 'Are you sure you want to permanently delete this security role? This action cannot be undone and may immediately revoke privileges for assigned users.',
+                            confirmText: 'Delete',
+                            cancelText: 'Cancel'
+                          },
+                          onSelect: () => handleDeleteRoleDirectly(role.id),
+                        }] : [])
+                      ]}
+                    />
                 </div>
               </div>
             </div>
@@ -326,24 +332,24 @@ export default function RolesAdminPage() {
             <button
               onClick={() => setIsModalOpen(false)}
               disabled={isSaving}
-              className="px-4 py-2 border border-zinc-200 dark:border-zinc-800 rounded-xl font-bold text-xs hover:bg-zinc-50 dark:hover:bg-zinc-900 disabled:opacity-50 select-none cursor-pointer"
+              className="px-4 py-2 border border-border rounded-xl font-bold text-xs hover:bg-surface-secondary disabled:opacity-50 select-none cursor-pointer transition-colors"
             >
               {t('dashboard-admin:roles.builder.close')}
             </button>
             <button
               onClick={handleSaveRole}
               disabled={isSaving}
-              className="px-4 py-2 bg-emerald-600 text-white hover:bg-emerald-700 font-bold rounded-xl text-xs hover:opacity-90 disabled:opacity-50 flex items-center gap-1.5 select-none cursor-pointer"
+              className="px-4 py-2 bg-success text-success-foreground hover:bg-success/90 font-bold rounded-xl text-xs hover:opacity-90 disabled:opacity-50 flex items-center gap-1.5 select-none cursor-pointer transition-colors"
             >
-              {isSaving && <Spinner size="sm" color="current" />}
+              {isSaving && <Spinner size="sm" color="accent" />}
               {editingRole ? t('dashboard-admin:roles.builder.saveChanges') : t('dashboard-admin:roles.builder.createTitle')}
             </button>
           </>
         }
       >
         {errorMsg && (
-          <div className="p-3.5 rounded-xl bg-rose-50 dark:bg-rose-950/20 border border-rose-200/30 dark:border-rose-900/40 text-rose-800 dark:text-rose-300 flex gap-2.5 text-xs font-semibold select-none leading-relaxed">
-            <AlertTriangle size={16} className="shrink-0 text-rose-500" />
+          <div className="p-3.5 rounded-xl bg-danger/10 border border-danger/20 text-danger flex gap-2.5 text-xs font-semibold select-none leading-relaxed">
+            <AlertTriangle size={16} className="shrink-0 text-danger" />
             <div>{errorMsg}</div>
           </div>
         )}
@@ -351,35 +357,35 @@ export default function RolesAdminPage() {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {!editingRole && (
             <div className="space-y-1">
-              <label className="text-[10px] font-extrabold uppercase tracking-wider text-zinc-400 dark:text-zinc-500">{t('dashboard-admin:roles.builder.roleKey')}</label>
+              <label className="text-[10px] font-extrabold uppercase tracking-wider text-muted">{t('dashboard-admin:roles.builder.roleKey')}</label>
               <input
                 type="text"
                 placeholder={t('dashboard-admin:roles.builder.roleKeyPlaceholder')}
                 value={roleName}
                 onChange={(e) => setRoleName(e.target.value)}
-                className="w-full px-3.5 py-2.5 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 font-mono text-xs focus:outline-none"
+                className="w-full px-3.5 py-2.5 rounded-xl border border-border bg-surface font-mono text-xs focus:outline-none focus:border-foreground"
               />
             </div>
           )}
           <div className="space-y-1">
-            <label className="text-[10px] font-extrabold uppercase tracking-wider text-zinc-400 dark:text-zinc-500">{t('dashboard-admin:roles.builder.displayTitle')}</label>
+            <label className="text-[10px] font-extrabold uppercase tracking-wider text-muted">{t('dashboard-admin:roles.builder.displayTitle')}</label>
             <input
               type="text"
               placeholder={t('dashboard-admin:roles.builder.displayTitlePlaceholder')}
               value={displayName}
               onChange={(e) => setDisplayName(e.target.value)}
-              className="w-full px-3.5 py-2.5 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 text-xs focus:outline-none font-bold"
+              className="w-full px-3.5 py-2.5 rounded-xl border border-border bg-surface text-xs focus:outline-none focus:border-foreground font-bold"
             />
           </div>
         </div>
 
         <div className="space-y-1">
-          <label className="text-[10px] font-extrabold uppercase tracking-wider text-zinc-400 dark:text-zinc-500">{t('dashboard-admin:roles.builder.purposeDesc')}</label>
+          <label className="text-[10px] font-extrabold uppercase tracking-wider text-muted">{t('dashboard-admin:roles.builder.purposeDesc')}</label>
           <textarea
             placeholder={t('dashboard-admin:roles.builder.purposeDescPlaceholder')}
             value={description}
             onChange={(e) => setDescription(e.target.value)}
-            className="w-full px-3.5 py-2.5 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 text-xs focus:outline-none font-medium"
+            className="w-full px-3.5 py-2.5 rounded-xl border border-border bg-surface text-xs focus:outline-none focus:border-foreground font-medium"
             rows={2}
           />
         </div>
@@ -387,16 +393,16 @@ export default function RolesAdminPage() {
         {/* Granular visual matrix accordions grouped by modules */}
         <div className="space-y-3">
           <div className="flex justify-between items-center select-none">
-            <label className="text-[10px] font-extrabold uppercase tracking-wider text-zinc-400 dark:text-zinc-500">{t('dashboard-admin:roles.builder.matrixLabel')}</label>
+            <label className="text-[10px] font-extrabold uppercase tracking-wider text-muted">{t('dashboard-admin:roles.builder.matrixLabel')}</label>
             <button
               onClick={() => setSelectedPermissions(['*:*:*'])}
-              className="text-[10px] font-bold text-zinc-400 hover:text-zinc-500 cursor-pointer"
+              className="text-[10px] font-bold text-muted hover:text-foreground cursor-pointer"
             >
               {t('dashboard-admin:roles.builder.bypassWildcard')}
             </button>
           </div>
 
-          <div className="border border-zinc-200/50 dark:border-zinc-900 rounded-xl overflow-hidden bg-zinc-50/30 dark:bg-zinc-950/20 max-h-[300px] overflow-y-auto p-2">
+          <div className="border border-separator rounded-xl overflow-hidden bg-surface-secondary max-h-[300px] overflow-y-auto p-2">
             <AccordionWrapper
               items={accordionItems}
               variant="default"

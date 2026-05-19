@@ -2,6 +2,8 @@
 
 import React from 'react';
 import { AlertTriangle, RefreshCcw, FolderOpen } from 'lucide-react';
+import { Skeleton, Typography } from '@heroui/react';
+import { Button } from './button';
 
 // SKELETON TABLE ROW LOADER
 interface SkeletonLoaderProps {
@@ -14,25 +16,26 @@ export const SkeletonLoader: React.FC<SkeletonLoaderProps> = ({
   columns = 5,
 }) => {
   return (
-    <div className="w-full space-y-4 p-5 animate-pulse">
+    <div className="w-full space-y-4 p-5 select-none pointer-events-none">
       {/* Table Header skeleton */}
-      <div className="flex items-center gap-4 py-2 border-b border-zinc-200 dark:border-zinc-800">
+      <div className="flex items-center gap-4 py-2 border-b border-separator">
         {Array.from({ length: columns }).map((_, idx) => (
-          <div key={`h-${idx}`} className="h-4 bg-zinc-200 dark:bg-zinc-850 rounded-lg flex-1" />
+          <Skeleton key={`h-${idx}`} className="h-4 rounded-lg flex-1" />
         ))}
       </div>
       {/* Table Body rows */}
       {Array.from({ length: rows }).map((_, rowIdx) => (
         <div
           key={`r-${rowIdx}`}
-          className="flex items-center gap-4 py-4 border-b border-zinc-150/50 dark:border-zinc-900/50"
+          className="flex items-center gap-4 py-4 border-b border-separator"
         >
           {Array.from({ length: columns }).map((_, colIdx) => (
-            <div
+            <Skeleton
               key={`c-${rowIdx}-${colIdx}`}
-              className={`h-3 bg-zinc-100 dark:bg-zinc-900 rounded-lg flex-1 ${
-                colIdx === 0 ? "w-3/4" : colIdx === columns - 1 ? "w-1/2" : "w-full"
-              }`}
+              className="h-3 rounded-lg flex-1"
+              style={{
+                width: colIdx === 0 ? "75%" : colIdx === columns - 1 ? "50%" : "100%"
+              }}
             />
           ))}
         </div>
@@ -55,15 +58,15 @@ export const EmptyState: React.FC<EmptyStateProps> = ({
 }) => {
   return (
     <div className="flex flex-col items-center justify-center text-center p-12 md:p-20 max-w-md mx-auto select-none">
-      <div className="size-16 rounded-2xl bg-indigo-50 dark:bg-indigo-950/30 flex items-center justify-center border border-indigo-150/30 dark:border-indigo-900/30 mb-5 text-indigo-500 animate-bounce duration-[2000ms]">
+      <div className="size-16 rounded-2xl bg-accent/10 flex items-center justify-center border border-accent/20 mb-5 text-accent animate-bounce duration-[2000ms]">
         <FolderOpen size={28} />
       </div>
-      <h3 className="text-base font-extrabold text-zinc-900 dark:text-zinc-50 tracking-tight mb-2">
+      <Typography type="h4" className="font-bold text-foreground mb-2">
         {title}
-      </h3>
-      <p className="text-xs text-zinc-500 dark:text-zinc-400 leading-relaxed mb-6">
+      </Typography>
+      <Typography type="body-xs" className="text-muted leading-relaxed mb-6 select-text">
         {description}
-      </p>
+      </Typography>
       {action && <div className="flex justify-center">{action}</div>}
     </div>
   );
@@ -81,23 +84,24 @@ export const ErrorState: React.FC<ErrorStateProps> = ({
 }) => {
   return (
     <div className="flex flex-col items-center justify-center text-center p-12 md:p-20 max-w-md mx-auto select-none">
-      <div className="size-16 rounded-2xl bg-rose-50 dark:bg-rose-950/30 flex items-center justify-center border border-rose-150/30 dark:border-rose-900/30 mb-5 text-rose-500">
+      <div className="size-16 rounded-2xl bg-danger/10 flex items-center justify-center border border-danger/20 mb-5 text-danger">
         <AlertTriangle size={28} className="animate-pulse" />
       </div>
-      <h3 className="text-base font-extrabold text-zinc-900 dark:text-zinc-50 tracking-tight mb-2">
+      <Typography type="h4" className="font-bold text-foreground mb-2">
         Database Synchronization Failure
-      </h3>
-      <p className="text-xs text-zinc-500 dark:text-zinc-400 leading-relaxed mb-6">
+      </Typography>
+      <Typography type="body-xs" className="text-muted leading-relaxed mb-6 select-text">
         {message || "We encountered a network timeout while attempting to update your administrative data feeds."}
-      </p>
+      </Typography>
       {onRetry && (
-        <button
+        <Button
+          variant="solid"
           onClick={onRetry}
-          className="px-4 py-2.5 bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-950 text-xs font-bold rounded-xl flex items-center gap-2 hover:opacity-90 transition-opacity cursor-pointer shadow-sm"
+          className="flex items-center gap-2"
         >
           <RefreshCcw size={14} />
           Retry Connection
-        </button>
+        </Button>
       )}
     </div>
   );

@@ -3,13 +3,14 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { adminService } from '../../../../services/admin.service';
 import { UserListItem, RoleListItem } from '../../../../types/admin.types';
-import { Spinner, Checkbox, Label, Description } from '@heroui/react';
+import { Spinner, Checkbox, Label, Typography } from '@heroui/react';
 import { Search, RotateCw, Users, Edit2, AlertCircle } from 'lucide-react';
 import { DialogModal } from '../../../../components/ui/dialog-modal';
 import { SelectDropdown } from '../../../../components/ui/select-dropdown';
 import { PaginationWrapper } from '../../../../components/ui/pagination-wrapper';
 import { SkeletonLoader, EmptyState } from '../../../../components/ui/states';
 import { useTranslation } from 'react-i18next';
+import { TableActionDropdown } from '../../../../components/ui/table-action-dropdown';
 
 export default function UsersAdminPage() {
   const { t } = useTranslation(['dashboard-admin', 'common']);
@@ -121,13 +122,13 @@ export default function UsersAdminPage() {
   const getUserStatusStyle = (status: string) => {
     switch (status.toUpperCase()) {
       case 'ACTIVE':
-        return 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-400 border border-emerald-200/20';
+        return 'bg-success/10 text-success border border-success/20';
       case 'SUSPENDED':
-        return 'bg-amber-50 text-amber-700 dark:bg-amber-950/30 dark:text-amber-400 border border-amber-200/20';
+        return 'bg-warning/10 text-warning border border-warning/20';
       case 'BANNED':
-        return 'bg-rose-50 text-rose-700 dark:bg-rose-950/30 dark:text-rose-400 border border-rose-200/20';
+        return 'bg-danger/10 text-danger border border-danger/20';
       default:
-        return 'bg-zinc-50 text-zinc-700 dark:bg-zinc-900 dark:text-zinc-400 border border-zinc-200/20';
+        return 'bg-surface-secondary text-muted border border-border';
     }
   };
 
@@ -140,21 +141,21 @@ export default function UsersAdminPage() {
   };
 
   return (
-    <div className="space-y-6 font-outfit max-w-7xl mx-auto p-4 md:p-6 text-zinc-900 dark:text-zinc-50">
+    <div className="space-y-6 font-outfit max-w-7xl mx-auto p-4 md:p-6 text-foreground">
       {/* Header Banner */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-extrabold tracking-tight flex items-center gap-2">
+          <Typography type="h2" className="text-2xl font-extrabold tracking-tight flex items-center gap-2 font-display">
             <Users className="text-indigo-500" size={24} />
             {t('dashboard-admin:users.title')}
-          </h1>
-          <p className="text-zinc-500 dark:text-zinc-400 text-sm">
+          </Typography>
+          <Typography type="body-sm" className="text-muted mt-1 font-outfit">
             {t('dashboard-admin:users.subtitle')}
-          </p>
+          </Typography>
         </div>
         <button
           onClick={handleRefresh}
-          className="w-fit px-4 py-2.5 bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-950 rounded-xl text-xs font-bold flex items-center gap-2 hover:opacity-90 transition-opacity select-none cursor-pointer"
+          className="w-fit px-4 py-2.5 bg-foreground text-background rounded-xl text-xs font-bold flex items-center gap-2 hover:bg-foreground/90 transition-all select-none cursor-pointer"
         >
           <RotateCw size={14} className={isRefreshing ? 'animate-spin' : ''} />
           {t('dashboard-admin:users.syncRecords')}
@@ -162,16 +163,16 @@ export default function UsersAdminPage() {
       </div>
 
       {/* Filter and Search Bar */}
-      <div className="p-5 rounded-2xl bg-white/70 dark:bg-zinc-950/60 backdrop-blur-xl border border-zinc-200/50 dark:border-zinc-900 shadow-sm">
+      <div className="p-5 rounded-2xl bg-surface/70 border border-border shadow-surface">
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           <div className="md:col-span-2 relative">
-            <Search size={16} className="absolute left-3 top-3.5 text-zinc-400" />
+            <Search size={16} className="absolute left-3 top-3.5 text-muted" />
             <input
               type="text"
               placeholder={t('dashboard-admin:users.searchPlaceholder')}
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-zinc-200/60 dark:border-zinc-800 bg-white/50 dark:bg-zinc-900/50 text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
+              className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-border bg-surface/50 text-xs focus:outline-none focus:ring-2 focus:ring-focus/20"
             />
           </div>
           <div>
@@ -208,7 +209,7 @@ export default function UsersAdminPage() {
       </div>
 
       {/* User Directory Table */}
-      <div className="rounded-2xl border border-zinc-200/50 dark:border-zinc-900 bg-white/80 dark:bg-zinc-950/70 backdrop-blur-xl shadow-sm overflow-hidden">
+      <div className="rounded-2xl border border-border bg-surface/80 shadow-surface overflow-hidden">
         {isLoading ? (
           <SkeletonLoader rows={6} columns={6} />
         ) : users.length === 0 ? (
@@ -220,22 +221,22 @@ export default function UsersAdminPage() {
           <div className="overflow-x-auto">
             <table className="w-full border-collapse text-left">
               <thead>
-                <tr className="border-b border-zinc-200 dark:border-zinc-950 bg-zinc-50/50 dark:bg-zinc-900/30">
-                  <th className="font-extrabold uppercase text-[10px] tracking-wider py-4 px-6 text-zinc-400">{t('dashboard-admin:users.table.fullName')}</th>
-                  <th className="font-extrabold uppercase text-[10px] tracking-wider py-4 px-6 text-zinc-400">{t('dashboard-admin:users.table.email')}</th>
-                  <th className="font-extrabold uppercase text-[10px] tracking-wider py-4 px-6 text-zinc-400">{t('dashboard-admin:users.table.status')}</th>
-                  <th className="font-extrabold uppercase text-[10px] tracking-wider py-4 px-6 text-zinc-400 hidden sm:table-cell">{t('dashboard-admin:users.table.roles')}</th>
-                  <th className="font-extrabold uppercase text-[10px] tracking-wider py-4 px-6 text-center text-zinc-400 hidden md:table-cell">{t('dashboard-admin:users.table.session')}</th>
-                  <th className="font-extrabold uppercase text-[10px] tracking-wider py-4 px-6 text-right text-zinc-400">{t('dashboard-admin:users.table.actions')}</th>
+                <tr className="border-b border-separator bg-surface-secondary/45">
+                  <th className="font-extrabold uppercase text-[10px] tracking-wider py-4 px-6 text-muted">{t('dashboard-admin:users.table.fullName')}</th>
+                  <th className="font-extrabold uppercase text-[10px] tracking-wider py-4 px-6 text-muted">{t('dashboard-admin:users.table.email')}</th>
+                  <th className="font-extrabold uppercase text-[10px] tracking-wider py-4 px-6 text-muted">{t('dashboard-admin:users.table.status')}</th>
+                  <th className="font-extrabold uppercase text-[10px] tracking-wider py-4 px-6 text-muted hidden sm:table-cell">{t('dashboard-admin:users.table.roles')}</th>
+                  <th className="font-extrabold uppercase text-[10px] tracking-wider py-4 px-6 text-center text-muted hidden md:table-cell">{t('dashboard-admin:users.table.session')}</th>
+                  <th className="font-extrabold uppercase text-[10px] tracking-wider py-4 px-6 text-right text-muted">{t('dashboard-admin:users.table.actions')}</th>
                 </tr>
               </thead>
               <tbody>
                 {users.map((u) => (
-                  <tr key={u.id} className="border-b border-zinc-100 dark:border-zinc-900/60 last:border-none hover:bg-zinc-50/40 dark:hover:bg-zinc-900/20 transition-colors">
+                  <tr key={u.id} className="border-b border-separator last:border-none hover:bg-surface-secondary/40 transition-colors">
                     <td className="font-bold text-xs py-4 px-6">
                       {u.fullName}
                     </td>
-                    <td className="text-zinc-500 dark:text-zinc-400 font-medium text-xs py-4 px-6 font-mono">
+                    <td className="text-muted font-medium text-xs py-4 px-6 font-mono">
                       {u.email}
                     </td>
                     <td className="py-4 px-6">
@@ -246,23 +247,26 @@ export default function UsersAdminPage() {
                     <td className="py-4 px-6 hidden sm:table-cell">
                       <div className="flex flex-wrap gap-1.5">
                         {u.roles.map((r) => (
-                          <span key={r} className="px-2 py-0.5 rounded border border-zinc-200 dark:border-zinc-800 text-[10px] font-bold text-zinc-600 dark:text-zinc-400">
+                          <span key={r} className="px-2 py-0.5 rounded border border-border text-[10px] font-bold text-muted bg-surface/50">
                             {r}
                           </span>
                         ))}
                       </div>
                     </td>
-                    <td className="text-center font-mono font-bold text-xs py-4 px-6 text-zinc-600 dark:text-zinc-400 hidden md:table-cell">
+                    <td className="text-center font-mono font-bold text-xs py-4 px-6 text-muted hidden md:table-cell">
                       v{u.sessionVersion}
                     </td>
                     <td className="text-right py-4 px-6">
-                      <button
-                        onClick={() => handleEditClick(u)}
-                        className="font-bold text-xs text-indigo-500 hover:text-indigo-600 transition-colors flex items-center gap-1 ml-auto cursor-pointer"
-                      >
-                        <Edit2 size={12} />
-                        {t('dashboard-admin:users.table.adjust')}
-                      </button>
+                      <TableActionDropdown
+                        actions={[
+                          {
+                            id: 'edit',
+                            label: t('dashboard-admin:users.table.adjust'),
+                            icon: Edit2,
+                            onSelect: () => handleEditClick(u),
+                          }
+                        ]}
+                      />
                     </td>
                   </tr>
                 ))}
@@ -293,23 +297,23 @@ export default function UsersAdminPage() {
             <button
               onClick={() => setIsEditOpen(false)}
               disabled={isSaving}
-              className="px-4 py-2 border border-zinc-200 dark:border-zinc-800 rounded-xl font-bold text-xs hover:bg-zinc-50 dark:hover:bg-zinc-900 disabled:opacity-50 select-none cursor-pointer"
+              className="px-4 py-2 border border-border rounded-xl font-bold text-xs hover:bg-surface-secondary disabled:opacity-50 select-none cursor-pointer transition-colors"
             >
               {t('dashboard-admin:users.modal.cancel')}
             </button>
             <button
               onClick={handleSaveUser}
               disabled={isSaving}
-              className="px-4 py-2 bg-indigo-600 text-white hover:bg-indigo-700 font-bold rounded-xl text-xs hover:opacity-90 disabled:opacity-50 flex items-center gap-1.5 select-none cursor-pointer"
+              className="px-4 py-2 bg-accent text-accent-foreground hover:bg-accent/90 font-bold rounded-xl text-xs hover:opacity-90 disabled:opacity-50 flex items-center gap-1.5 select-none cursor-pointer transition-colors"
             >
-              {isSaving && <Spinner size="sm" color="current" />}
+              {isSaving && <Spinner size="sm" color="accent" />}
               {t('dashboard-admin:users.modal.apply')}
             </button>
           </>
         }
       >
-        <div className="p-4 rounded-xl bg-amber-50 dark:bg-amber-950/20 border border-amber-200/30 dark:border-amber-900/40 text-amber-800 dark:text-amber-300 flex gap-3 text-xs leading-relaxed select-none">
-          <AlertCircle size={18} className="shrink-0 text-amber-500 dark:text-amber-400 mt-0.5" />
+        <div className="p-4 rounded-xl bg-warning/10 border border-warning/20 text-warning flex gap-3 text-xs leading-relaxed select-none">
+          <AlertCircle size={18} className="shrink-0 text-warning mt-0.5" />
           <div>
             <span className="font-extrabold block mb-0.5">{t('dashboard-admin:users.modal.warningTitle')}</span>
             {t('dashboard-admin:users.modal.warningDesc')}
@@ -317,15 +321,15 @@ export default function UsersAdminPage() {
         </div>
 
         <div className="space-y-1.5">
-          <label className="text-[10px] font-extrabold uppercase tracking-wider text-zinc-400 dark:text-zinc-500">{t('dashboard-admin:users.modal.targetDetails')}</label>
-          <div className="p-3.5 rounded-xl border border-zinc-100 dark:border-zinc-900 bg-zinc-50/50 dark:bg-zinc-900/30 text-xs font-medium space-y-1">
+          <label className="text-[10px] font-extrabold uppercase tracking-wider text-muted">{t('dashboard-admin:users.modal.targetDetails')}</label>
+          <div className="p-3.5 rounded-xl border border-border bg-surface-secondary text-xs font-medium space-y-1">
             <div className="flex justify-between">
-              <span className="text-zinc-400">{t('dashboard-admin:users.modal.name')}</span>
-              <span className="font-bold text-zinc-800 dark:text-zinc-200">{selectedUser?.fullName}</span>
+              <span className="text-muted">{t('dashboard-admin:users.modal.name')}</span>
+              <span className="font-bold text-foreground">{selectedUser?.fullName}</span>
             </div>
             <div className="flex justify-between">
-              <span className="text-zinc-400">{t('dashboard-admin:users.modal.email')}</span>
-              <span className="font-mono font-bold text-zinc-800 dark:text-zinc-200">{selectedUser?.email}</span>
+              <span className="text-muted">{t('dashboard-admin:users.modal.email')}</span>
+              <span className="font-mono font-bold text-foreground">{selectedUser?.email}</span>
             </div>
           </div>
         </div>
@@ -344,28 +348,28 @@ export default function UsersAdminPage() {
         </div>
 
         <div className="space-y-2.5">
-          <label className="text-[10px] font-extrabold uppercase tracking-wider text-zinc-400 dark:text-zinc-500">{t('dashboard-admin:users.modal.rolesLabel')}</label>
+          <label className="text-[10px] font-extrabold uppercase tracking-wider text-muted">{t('dashboard-admin:users.modal.rolesLabel')}</label>
           <div className="space-y-2 max-h-[160px] overflow-y-auto pr-1">
             {roles.map((role) => {
               const isChecked = editRoles.includes(role.name);
               return (
-                <div key={role.id} className="p-1 rounded-xl hover:bg-zinc-50 dark:hover:bg-zinc-900 transition-colors">
+                <div key={role.id} className="p-1 rounded-xl hover:bg-surface-secondary transition-colors">
                   <Checkbox
                     id={`role-${role.id}`}
                     isSelected={isChecked}
                     onChange={() => handleRoleToggle(role.name)}
                     className="flex items-start gap-3 w-full cursor-pointer select-none"
                   >
-                    <Checkbox.Control className="mt-1 border-2 border-zinc-300 dark:border-zinc-800 data-[selected=true]:bg-indigo-500 data-[selected=true]:border-indigo-500 rounded size-4 before:rounded">
+                    <Checkbox.Control className="mt-1 border-2 border-border data-[selected=true]:bg-accent data-[selected=true]:border-accent rounded size-4 before:rounded">
                       <Checkbox.Indicator className="text-white size-3" />
                     </Checkbox.Control>
                     <Checkbox.Content className="flex flex-col text-left">
-                      <Label htmlFor={`role-${role.id}`} className="text-xs font-bold text-zinc-800 dark:text-zinc-200 cursor-pointer">
+                      <Label htmlFor={`role-${role.id}`} className="text-xs font-bold text-foreground cursor-pointer">
                         {role.displayName}
                       </Label>
-                      <Description className="text-[10px] text-zinc-450 dark:text-zinc-500 leading-normal">
+                      <Typography type="body-xs" className="text-muted leading-normal">
                         {role.description}
-                      </Description>
+                      </Typography>
                     </Checkbox.Content>
                   </Checkbox>
                 </div>

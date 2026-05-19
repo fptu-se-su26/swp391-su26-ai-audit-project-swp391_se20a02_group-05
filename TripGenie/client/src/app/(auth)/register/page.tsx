@@ -12,7 +12,7 @@ import { Button } from '../../../components/ui/button';
 import { Card } from '../../../components/ui/card';
 import { z } from 'zod';
 import Link from 'next/link';
-import { toast } from '@heroui/react';
+import { toast, Typography } from '@heroui/react';
 import Script from 'next/script';
 import { useTranslation } from 'react-i18next';
 
@@ -87,23 +87,23 @@ export default function RegisterPage() {
     switch (finalScore) {
       case 0:
         setStrengthLabel(t('auth:passwordStrength.tooWeak'));
-        setStrengthColor('bg-red-500');
+        setStrengthColor('bg-danger');
         break;
       case 1:
         setStrengthLabel(t('auth:passwordStrength.weak'));
-        setStrengthColor('bg-red-500');
+        setStrengthColor('bg-danger');
         break;
       case 2:
         setStrengthLabel(t('auth:passwordStrength.fair'));
-        setStrengthColor('bg-amber-500');
+        setStrengthColor('bg-warning');
         break;
       case 3:
         setStrengthLabel(t('auth:passwordStrength.strong'));
-        setStrengthColor('bg-indigo-500');
+        setStrengthColor('bg-accent');
         break;
       case 4:
         setStrengthLabel(t('auth:passwordStrength.excellent'));
-        setStrengthColor('bg-emerald-500');
+        setStrengthColor('bg-success');
         break;
       default:
         break;
@@ -225,12 +225,12 @@ export default function RegisterPage() {
   return (
     <Card className="shadow-2xl" glow={true}>
       <div className="text-center mb-6">
-        <h2 className="text-2xl font-bold tracking-tight text-zinc-900 dark:text-zinc-50 font-outfit">
+        <Typography type="h2" className="text-2xl font-bold tracking-tight text-foreground font-outfit">
           {t('auth:title.register')}
-        </h2>
-        <p className="text-zinc-500 dark:text-zinc-400 text-sm mt-1">
+        </Typography>
+        <Typography type="body-sm" className="text-muted mt-1">
           {t('auth:subtitle.register')}
-        </p>
+        </Typography>
       </div>
 
       <FormProvider {...methods}>
@@ -266,21 +266,21 @@ export default function RegisterPage() {
           {watchedPassword.length > 0 && (
             <div className="space-y-1.5 px-1 py-0.5 select-none">
               <div className="flex justify-between items-center text-xs">
-                <span className="text-zinc-500 dark:text-zinc-500 font-medium">
+                <Typography type="body-xs" className="text-muted font-medium">
                   {t('auth:passwordStrength.label')}
-                </span>
+                </Typography>
                 <span className={[
                   "font-bold transition-colors",
-                  strengthScore <= 1 ? "text-red-500" : "",
-                  strengthScore === 2 ? "text-amber-500" : "",
-                  strengthScore === 3 ? "text-indigo-500" : "",
-                  strengthScore === 4 ? "text-emerald-500" : "",
+                  strengthScore <= 1 ? "text-danger" : "",
+                  strengthScore === 2 ? "text-warning" : "",
+                  strengthScore === 3 ? "text-accent" : "",
+                  strengthScore === 4 ? "text-success" : "",
                 ].join(' ')}>
                   {strengthLabel}
                 </span>
               </div>
 
-              <div className="flex gap-1 h-1.5 w-full bg-zinc-100 dark:bg-zinc-900 rounded-full overflow-hidden">
+              <div className="flex gap-1 h-1.5 w-full bg-surface-secondary rounded-full overflow-hidden">
                 <div
                   className={[
                     "h-full rounded-full transition-all duration-300",
@@ -291,17 +291,17 @@ export default function RegisterPage() {
               </div>
 
               {/* Password checks guidance list */}
-              <div className="grid grid-cols-2 gap-x-3 gap-y-0.5 text-[10px] text-zinc-400 dark:text-zinc-600 mt-1">
-                <span className={watchedPassword.length >= 8 ? 'text-zinc-800 dark:text-zinc-300 font-medium' : ''}>
+              <div className="grid grid-cols-2 gap-x-3 gap-y-0.5 text-[10px] text-muted mt-1">
+                <span className={watchedPassword.length >= 8 ? 'text-foreground font-medium' : ''}>
                   {t('auth:passwordStrength.minChars')}
                 </span>
-                <span className={/[A-Z]/.test(watchedPassword) ? 'text-zinc-800 dark:text-zinc-300 font-medium' : ''}>
+                <span className={/[A-Z]/.test(watchedPassword) ? 'text-foreground font-medium' : ''}>
                   {t('auth:passwordStrength.uppercase')}
                 </span>
-                <span className={/[a-z]/.test(watchedPassword) ? 'text-zinc-800 dark:text-zinc-300 font-medium' : ''}>
+                <span className={/[a-z]/.test(watchedPassword) ? 'text-foreground font-medium' : ''}>
                   {t('auth:passwordStrength.lowercase')}
                 </span>
-                <span className={/[0-9]/.test(watchedPassword) ? 'text-zinc-800 dark:text-zinc-300 font-medium' : ''}>
+                <span className={/[0-9]/.test(watchedPassword) ? 'text-foreground font-medium' : ''}>
                   {t('auth:passwordStrength.numberSpecial')}
                 </span>
               </div>
@@ -339,10 +339,10 @@ export default function RegisterPage() {
       {/* Visual Divider separator */}
       <div className="relative my-6 select-none">
         <div className="absolute inset-0 flex items-center">
-          <div className="w-full border-t border-zinc-200 dark:border-zinc-800" />
+          <div className="w-full border-t border-separator" />
         </div>
         <div className="relative flex justify-center text-xs uppercase font-bold tracking-wider">
-          <span className="bg-white dark:bg-zinc-950 px-3 text-zinc-400 dark:text-zinc-600 text-[10px]">
+          <span className="bg-background px-3 text-muted text-[10px]">
             {t('auth:labels.orContinueWith')}
           </span>
         </div>
@@ -351,7 +351,7 @@ export default function RegisterPage() {
       {/* Google OAuth Premium Overlay Button */}
       <div className="relative w-[350px] h-11 mx-auto select-none">
         {/* Beautiful Custom Premium Button */}
-        <div className="absolute inset-0 flex items-center justify-center gap-3 w-full h-full bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl hover:bg-zinc-50 dark:hover:bg-zinc-850 active:scale-[0.98] transition-all duration-200 pointer-events-none shadow-sm">
+        <div className="absolute inset-0 flex items-center justify-center gap-3 w-full h-full bg-surface border border-border rounded-xl hover:bg-surface-secondary active:scale-[0.98] transition-all duration-200 pointer-events-none shadow-sm">
           <svg className="w-5 h-5" viewBox="0 0 24 24">
             <path
               fill="#EA4335"
@@ -370,7 +370,7 @@ export default function RegisterPage() {
               d="M12 23c3.24 0 5.97-1.07 7.96-2.92l-3.65-2.83c-1.2.8-2.73 1.28-4.31 1.28-3.22 0-6-2.41-6.96-5.63l-3.8 2.95C3.2 20.27 7.24 23 12 23z"
             />
           </svg>
-          <span className="text-sm font-semibold text-zinc-700 dark:text-zinc-200">
+          <span className="text-sm font-semibold text-foreground">
             {t('auth:actions.googleSso')}
           </span>
         </div>
@@ -383,11 +383,11 @@ export default function RegisterPage() {
       </div>
 
       {/* Call to Login */}
-      <div className="text-center text-xs text-zinc-500 dark:text-zinc-500 mt-6 select-none font-outfit">
+      <div className="text-center text-xs text-muted mt-6 select-none font-outfit">
         {t('auth:actions.haveAccount')}{' '}
         <Link
           href="/login"
-          className="font-semibold text-zinc-950 dark:text-zinc-50 hover:underline"
+          className="font-semibold text-foreground hover:underline"
         >
           {t('auth:actions.signInNow')}
         </Link>

@@ -6,7 +6,8 @@ import { AuditLogListItem } from '../../../../types/admin.types';
 import {
   Table,
   Button,
-  Card
+  Card,
+  Typography
 } from '@heroui/react';
 import { Search, RotateCw, ShieldCheck } from 'lucide-react';
 import { PaginationWrapper } from '../../../../components/ui/pagination-wrapper';
@@ -82,22 +83,22 @@ export default function AuditLogsPage() {
   };
 
   return (
-    <div className="space-y-6 font-outfit max-w-7xl mx-auto p-4 md:p-6 text-zinc-900 dark:text-zinc-550">
+    <div className="space-y-6 font-outfit max-w-7xl mx-auto p-4 md:p-6 text-foreground">
       {/* Title block */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-extrabold tracking-tight text-zinc-900 dark:text-zinc-550 flex items-center gap-2">
+          <Typography type="h2" className="text-2xl font-extrabold tracking-tight text-foreground flex items-center gap-2 font-display">
             <ShieldCheck className="text-emerald-500" size={24} />
             {t('dashboard-admin:auditLogs.title')}
-          </h1>
-          <p className="text-zinc-500 dark:text-zinc-400 text-sm">
+          </Typography>
+          <Typography type="body-sm" className="text-muted mt-1 font-outfit">
             {t('dashboard-admin:auditLogs.subtitle')}
-          </p>
+          </Typography>
         </div>
         <Button
           variant="secondary"
           onPress={handleRefresh}
-          className="w-fit px-4 py-2.5 bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-950 font-bold rounded-xl text-xs flex items-center gap-2 hover:opacity-90 transition-opacity select-none cursor-pointer"
+          className="w-fit px-4 py-2.5 bg-foreground text-background font-bold rounded-xl text-xs flex items-center gap-2 hover:bg-foreground/90 transition-all select-none cursor-pointer"
         >
           <RotateCw size={14} className={isRefreshing ? 'animate-spin' : ''} />
           {t('dashboard-admin:auditLogs.syncRecords')}
@@ -105,21 +106,21 @@ export default function AuditLogsPage() {
       </div>
 
       {/* Search Filter Banner */}
-      <Card className="p-4 bg-white/70 dark:bg-zinc-950/60 backdrop-blur-xl border border-zinc-200/50 dark:border-zinc-900 rounded-2xl shadow-sm">
+      <Card className="p-4 bg-surface/70 border border-border rounded-2xl shadow-surface">
         <div className="flex-1 relative">
-          <Search size={16} className="absolute left-3 top-3.5 text-zinc-400" />
+          <Search size={16} className="absolute left-3 top-3.5 text-muted" />
           <input
             type="text"
             placeholder={t('dashboard-admin:auditLogs.searchPlaceholder')}
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-zinc-200/60 dark:border-zinc-800 bg-white/50 dark:bg-zinc-900/50 text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
+            className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-border bg-surface/50 text-xs focus:outline-none focus:ring-2 focus:ring-focus/20"
           />
         </div>
       </Card>
 
       {/* Audit Log Table */}
-      <Card className="p-0 overflow-hidden border border-zinc-200/50 dark:border-zinc-900 bg-white/80 dark:bg-zinc-950/70 backdrop-blur-xl rounded-2xl shadow-sm">
+      <Card className="p-0 overflow-hidden border border-border bg-surface/80 rounded-2xl shadow-surface">
         {isLoading ? (
           <SkeletonLoader rows={6} columns={5} />
         ) : logs.length === 0 ? (
@@ -143,28 +144,28 @@ export default function AuditLogsPage() {
                     {logs.map((log) => {
                       const badge = getEventTypeStyle(log.eventType);
                       return (
-                        <Table.Row key={log.id} className="border-b border-zinc-100 dark:border-zinc-900/60 last:border-none hover:bg-zinc-50/40 dark:hover:bg-zinc-900/20">
-                          <Table.Cell className="text-zinc-500 font-mono text-[11px] py-4 whitespace-nowrap">
+                        <Table.Row key={log.id} className="border-b border-separator last:border-none hover:bg-surface-secondary/40">
+                          <Table.Cell className="text-muted font-mono text-[11px] py-4 whitespace-nowrap">
                             {new Date(log.createdAt).toLocaleString()}
                           </Table.Cell>
-                          <Table.Cell className="font-bold text-zinc-800 dark:text-zinc-200 text-xs py-4">
-                            {log.userEmail || <span className="text-zinc-400 dark:text-zinc-600 font-normal">{t('dashboard-admin:auditLogs.systemContext')}</span>}
+                          <Table.Cell className="font-bold text-foreground text-xs py-4">
+                            {log.userEmail || <span className="text-muted font-normal">{t('dashboard-admin:auditLogs.systemContext')}</span>}
                           </Table.Cell>
                           <Table.Cell className="py-4">
                             <span className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-extrabold tracking-wide uppercase ${
-                              badge.color === 'danger' ? 'bg-red-50 text-red-700 dark:bg-red-950/40 dark:text-red-300 border border-red-200/10' :
-                              badge.color === 'success' ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300 border border-emerald-200/10' :
-                              badge.color === 'warning' ? 'bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300 border border-amber-200/10' :
-                              'bg-indigo-50 text-indigo-700 dark:bg-indigo-950/40 dark:text-indigo-300 border border-indigo-200/10'
+                              badge.color === 'danger' ? 'bg-danger/10 text-danger border border-danger/20' :
+                              badge.color === 'success' ? 'bg-success/10 text-success border border-success/20' :
+                              badge.color === 'warning' ? 'bg-warning/10 text-warning border border-warning/20' :
+                              'bg-accent/10 text-accent border border-accent/20'
                             }`}>
                               {badge.label}
                             </span>
                           </Table.Cell>
-                          <Table.Cell className="text-zinc-600 dark:text-zinc-350 text-xs max-w-md py-4 leading-relaxed font-normal">
+                          <Table.Cell className="text-muted text-xs max-w-md py-4 leading-relaxed font-normal">
                             {log.description}
                           </Table.Cell>
                           <Table.Cell className="py-4 whitespace-nowrap hidden md:table-cell">
-                            <div className="flex flex-col text-[10px] text-zinc-450 dark:text-zinc-500 font-mono">
+                            <div className="flex flex-col text-[10px] text-muted font-mono">
                               <span>IP: {log.ipAddress || 'Internal'}</span>
                               <span className="max-w-[150px] truncate" title={log.userAgent || 'None'}>
                                 UA: {log.userAgent || 'None'}

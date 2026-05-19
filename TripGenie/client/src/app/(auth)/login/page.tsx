@@ -13,7 +13,7 @@ import { Card } from '../../../components/ui/card';
 import { z } from 'zod';
 import Link from 'next/link';
 import Script from 'next/script';
-import { toast } from '@heroui/react';
+import { toast, Spinner, Typography } from '@heroui/react';
 import { Suspense } from 'react';
 import { useTranslation } from 'react-i18next';
 
@@ -223,12 +223,12 @@ function LoginContent() {
       />
       <Card className="shadow-2xl" glow={true}>
         <div className="text-center mb-6">
-          <h2 className="text-2xl font-bold tracking-tight text-zinc-900 dark:text-zinc-50">
+          <Typography type="h2" className="text-2xl font-bold tracking-tight text-foreground">
             {t('auth:title.login')}
-          </h2>
-          <p className="text-zinc-500 dark:text-zinc-400 text-sm mt-1">
+          </Typography>
+          <Typography type="body-sm" className="text-muted mt-1">
             {t('auth:subtitle.login')}
-          </p>
+          </Typography>
         </div>
 
         <FormProvider {...methods}>
@@ -258,7 +258,7 @@ function LoginContent() {
               
               <Link
                 href="/forgot-password"
-                className="font-semibold text-zinc-950 dark:text-zinc-50 hover:underline shrink-0"
+                className="font-semibold text-foreground hover:underline shrink-0"
               >
                 {t('auth:actions.forgot')}
               </Link>
@@ -278,10 +278,10 @@ function LoginContent() {
         {/* Visual Divider separator */}
         <div className="relative my-6 select-none">
           <div className="absolute inset-0 flex items-center">
-            <div className="w-full border-t border-zinc-200 dark:border-zinc-800" />
+            <div className="w-full border-t border-separator" />
           </div>
           <div className="relative flex justify-center text-xs uppercase font-bold tracking-wider">
-            <span className="bg-white dark:bg-zinc-950 px-3 text-zinc-400 dark:text-zinc-600 text-[10px]">
+            <span className="bg-background px-3 text-muted text-[10px]">
               {t('auth:labels.orContinueWith')}
             </span>
           </div>
@@ -290,7 +290,7 @@ function LoginContent() {
         {/* Google OAuth Premium Overlay Button */}
         <div className="relative w-[350px] h-11 mx-auto select-none">
           {/* Beautiful Custom Premium Button */}
-          <div className="absolute inset-0 flex items-center justify-center gap-3 w-full h-full bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl hover:bg-zinc-50 dark:hover:bg-zinc-850 active:scale-[0.98] transition-all duration-200 pointer-events-none shadow-sm">
+          <div className="absolute inset-0 flex items-center justify-center gap-3 w-full h-full bg-surface border border-border rounded-xl hover:bg-surface-secondary active:scale-[0.98] transition-all duration-200 pointer-events-none shadow-sm">
             <svg className="w-5 h-5" viewBox="0 0 24 24">
               <path
                 fill="#EA4335"
@@ -309,7 +309,7 @@ function LoginContent() {
                 d="M12 23c3.24 0 5.97-1.07 7.96-2.92l-3.65-2.83c-1.2.8-2.73 1.28-4.31 1.28-3.22 0-6-2.41-6.96-5.63l-3.8 2.95C3.2 20.27 7.24 23 12 23z"
               />
             </svg>
-            <span className="text-sm font-semibold text-zinc-700 dark:text-zinc-200">
+            <span className="text-sm font-semibold text-foreground">
               {t('auth:actions.googleSso')}
             </span>
           </div>
@@ -322,11 +322,11 @@ function LoginContent() {
         </div>
 
         {/* Call to Register */}
-        <div className="text-center text-xs text-zinc-500 dark:text-zinc-500 mt-6 font-outfit">
+        <div className="text-center text-xs text-muted mt-6 font-outfit">
           {t('auth:actions.noAccount')}{' '}
           <Link
             href="/register"
-            className="font-semibold text-zinc-950 dark:text-zinc-50 hover:underline"
+            className="font-semibold text-foreground hover:underline"
           >
             {t('auth:actions.signUpNow')}
           </Link>
@@ -340,7 +340,7 @@ export default function LoginPage() {
   return (
     <Suspense fallback={
       <div className="flex items-center justify-center p-8 min-h-[400px]">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-zinc-950 dark:border-zinc-50" />
+        <Spinner size="lg" color="accent" />
       </div>
     }>
       <LoginContent />

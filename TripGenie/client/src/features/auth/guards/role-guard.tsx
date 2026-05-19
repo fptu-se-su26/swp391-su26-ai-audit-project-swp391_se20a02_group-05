@@ -7,6 +7,7 @@ import { Card } from '../../../components/ui/card';
 import { ShieldAlert } from 'lucide-react';
 import { Button } from '../../../components/ui/button';
 import { useRouter } from 'next/navigation';
+import { Spinner, Typography } from '@heroui/react';
 
 interface RoleGuardProps {
   allowedRoles: UserRole[];
@@ -26,7 +27,7 @@ export const RoleGuard: React.FC<RoleGuardProps> = ({
   if (!isInitialized) {
     return (
       <div className="flex flex-1 items-center justify-center min-h-[400px]">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-zinc-950 dark:border-zinc-50" />
+        <Spinner color="accent" size="md" />
       </div>
     );
   }
@@ -44,16 +45,16 @@ export const RoleGuard: React.FC<RoleGuardProps> = ({
     return (
       <div className="flex flex-1 items-center justify-center p-6 w-full max-w-lg mx-auto my-12">
         <Card className="text-center" glow={true}>
-          <div className="mx-auto w-12 h-12 bg-red-50 dark:bg-red-950/30 text-red-500 rounded-full flex items-center justify-center mb-4">
+          <div className="mx-auto w-12 h-12 bg-danger/10 text-danger border border-danger/20 rounded-full flex items-center justify-center mb-4">
             <ShieldAlert size={24} />
           </div>
-          <h2 className="text-zinc-900 dark:text-zinc-50 font-bold text-xl mb-2 tracking-tight">
+          <Typography type="h3" className="font-bold text-foreground tracking-tight mb-2">
             Restricted Content
-          </h2>
-          <p className="text-zinc-500 dark:text-zinc-400 text-sm leading-relaxed mb-6">
+          </Typography>
+          <Typography type="body-sm" className="text-muted leading-relaxed mb-6">
             Your current account role does not have permission to view this resource. 
             Please sign in with a different account if you believe this is an error.
-          </p>
+          </Typography>
           <div className="flex flex-col sm:flex-row gap-3 w-full justify-center">
             <Button
               variant="bordered"
