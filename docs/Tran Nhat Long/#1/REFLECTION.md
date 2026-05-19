@@ -12,7 +12,7 @@
 | Tên sinh viên / Nhóm | Nguyễn Hoàng Ngọc Ánh, Đoàn Thế Lực, Trương Văn Hiếu, Trần Nhất Long, Nguyễn La Hòa An |
 | MSSV / Danh sách MSSV | DE200147, DE200523, DE190105, DE200160, DE201043 |
 | Giảng viên hướng dẫn | QuangLTN3 |
-| Ngày hoàn thành reflection | 2026-05-15 |
+| Ngày hoàn thành reflection | 2026-05-19 |
 
 ---
 
@@ -56,9 +56,10 @@ Summary of the AI ​​usage process in the project.
 ❌ Explainability (why this choice?)
 
 ## Giá Trị Mang Lại
-⏱- 2-3 tuần research → 1 giờ gen document
-- 14 sections covered (LLM selection, cost, security, scalability, risks)
-- Actionable (20-step checklist, concrete schema, specific TTL values)- Production-ready blueprint chứ không phải lý thuyết
+⏱️ 2-3 tuần research → 1 giờ gen document
+📋 14 sections covered (LLM selection, cost, security, scalability, risks)
+✅ Actionable (20-step checklist, concrete schema, specific TTL values)
+🚀 Production-ready blueprint chứ không phải lý thuyết
 
 ---
 ```
@@ -80,14 +81,13 @@ Summary of the AI ​​usage process in the project.
 ### Công cụ được sử dụng nhiều nhất
 
 ```text
-Gemini
 Claude
 ```
 
 ### Lý do sử dụng công cụ đó
 
 ```text
-Understanding the correct context and producing the output that best suits the user's requirements.
+Tiết kiệm thời gian, Sinh code nhanh, Kiểm tra lỗi, Tối ưu thuật toán
 ```
 
 ---
@@ -95,17 +95,17 @@ Understanding the correct context and producing the output that best suits the u
 ## 5. AI đã hỗ trợ em/nhóm ở điểm nào?
 
 - [x] Hiểu yêu cầu đề bài
-- [ ] Phân tích bài toán
+- [x] Phân tích bài toán
 - [x] Tìm ý tưởng giải pháp
 - [ ] Thiết kế database
-- [ ] Thiết kế giao diện
-- [ ] Thiết kế kiến trúc hệ thống
-- [ ] Viết code mẫu
+- [x] Thiết kế giao diện
+- [x] Thiết kế kiến trúc hệ thống
+- [x] Viết code mẫu
 - [ ] Debug lỗi
-- [ ] Viết test case
+- [x] Viết test case
 - [ ] Review code
-- [ ] Tối ưu code
-- [ ] Kiểm tra bảo mật
+- [x] Tối ưu code
+- [x] Kiểm tra bảo mật
 - [x] Viết báo cáo
 - [ ] Chuẩn bị thuyết trình
 - [ ] Tìm hiểu công nghệ mới
@@ -149,16 +149,16 @@ AI only assists in searching for documents and information, saving time, and doe
 
 ## 7. Em/nhóm đã kiểm tra kết quả AI như thế nào?
 
-- [ ] Chạy thử chương trình
+- [x] Chạy thử chương trình
 - [x] Kiểm tra output
-- [ ] Viết test case
+- [x] Viết test case
 - [ ] So sánh với yêu cầu đề bài
 - [ ] Đối chiếu với tài liệu môn học
-- [ ] Review code
+- [x] Review code
 - [ ] Hỏi lại giảng viên
 - [ ] Tra cứu tài liệu chính thống
 - [ ] Thảo luận với thành viên nhóm
-- [ ] Kiểm tra bằng dữ liệu mẫu
+- [x] Kiểm tra bằng dữ liệu mẫu
 - [ ] So sánh trước và sau khi dùng AI
 
 ### Mô tả quá trình kiểm chứng
@@ -191,9 +191,7 @@ AI only assists in searching for documents and information, saving time, and doe
 
 ## 9. Phần đóng góp thật sự của sinh viên/nhóm
 
-```text
 Students manually researched the topic requirements to master business rules, along with creating their own documentation and academic evidence to provide context for AI to expand the scope of their research.
-```
 
 ---
 
@@ -201,23 +199,29 @@ Students manually researched the topic requirements to master business rules, al
 
 | Nội dung | Trước khi dùng AI | Sau khi dùng AI | Cải thiện đạt được |
 |---|---|---|---|
-| Understanding requirements | Partially understanding the project's requirements and lack of information | Improve the depth of research by ensuring the literature is accompanied by more accurate information. | Understand the project's business structure. |
+| Research | Slow | Fast | Understand the project's business structure. |
 
 ---
 
 ## 11. Bài học về môn học
 
-```text
+- Lập kế hoạch kiến trúc phần mềm tốt hơn
+- Tài liệu hóa dự án rất quan trọng
+- Kiểm thử sớm giúp giảm thiểu lỗi
+- Tầm quan trọng của làm việc nhóm
+
 Learn how to use GitHub effectively and how to use AI efficiently for project design.
-```
 
 ---
 
 ## 12. Bài học về sử dụng AI có trách nhiệm
 
-```text
+- Cần kiểm chứng nội dung AI tạo ra
+- Kiểm tra kỹ mã nguồn liên quan bảo mật
+- Tôn trọng tính trung thực trong học thuật
+- Tránh sao chép mù quáng kết quả từ AI
+
 Include maintaining human oversight to avoid bias, protecting data privacy, verifying AI-generated content to avoid inaccuracies, and being transparent when AI is used.
-```
 
 ---
 
@@ -240,9 +244,12 @@ Include maintaining human oversight to avoid bias, protecting data privacy, veri
 
 ## 14. Kế hoạch cải thiện lần sau
 
-```text
+- Nâng cao tiêu chuẩn viết code (Coding standards)
+- Viết nhiều unit test/integration test hơn
+- Đảm bảo tính nhất quán của UI/UX
+- Cải thiện quy trình làm việc với Git
+
 Provide context, reasonable and complete requirements for AI. Do not let AI generate code or documentation from scratch; manual testing and verification are mandatory afterward.
-```
 
 ---
 
@@ -254,7 +261,7 @@ Provide context, reasonable and complete requirements for AI. Do not let AI gene
 | Prompt có mục tiêu rõ ràng | 5 |   |
 | Kiểm chứng kết quả AI | 5 |   |
 | Tự chỉnh sửa/cải tiến | 4 |   |
-| Hiểu nội dung đã nộp | 4 |   |
+| Hiểu nội dung đã nộp | 5 |   |
 | Reflection có chiều sâu | 4 |   |
 | Sử dụng AI có trách nhiệm | 5 |   |
 
@@ -292,4 +299,4 @@ Management and design skills, project planning. Task allocation and improved use
 
 | Đại diện sinh viên/nhóm | Ngày xác nhận |
 |---|---|
-| Nguyễn Hoàng Ngọc Ánh | 15/5/2026 |
+| Nguyễn Hoàng Ngọc Ánh | 19/5/2026 |

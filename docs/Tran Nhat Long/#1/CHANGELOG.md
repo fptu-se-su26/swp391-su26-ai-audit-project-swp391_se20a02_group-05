@@ -37,9 +37,7 @@ Nguyên tắc ghi changelog:
 
 | Phiên bản/Giai đoạn | Thời gian | Nội dung chính | Trạng thái |
 |---|---|---|---|
-| Phase 01 - Planning & Requirement Analysis | 2026-05-14 | Integrating External APIs into AI Agents
-A Technical Research Report for an AI-Powered Travel App
- | In Progress |
+| Phase 01 - Planning & Requirement Analysis | 2026-05-14 ~ 2026-05-14 | Planning and Generation project requirements, analize SRS (Software Requirement Specification) | In Progress |
 | Phase 02 |  |  | Not Started |
 | Phase 03 |  |  | Not Started |
 | Phase 04 |  |  | Not Started |
@@ -50,34 +48,34 @@ A Technical Research Report for an AI-Powered Travel App
 
 # [Phase 01 - Planning & Requirement Analysis] 
 
-## Ngày thực hiện
+## Thông tin giai đoạn
 
-```text
-2026-05-14
-```
+- **Thời gian thực hiện:** 2026-05-14 ~ 2026-05-14
+- **Mô tả giai đoạn:** Planning and Generation project requirements, analize SRS (Software Requirement Specification)
+- **Trạng thái hiện tại:** In Progress
 
 ## Thay đổi chi tiết
 
 | STT | Nội dung thay đổi | Người thực hiện | File/Module liên quan | Minh chứng |
 |---:|---|---|---|---|
 | 1 | API docs research | Trần Nhất Long |   | https://docs.google.com/document/d/1NTzS0vvw8O6rIZAKrxMkTV2l-dVRa2EA/edit?usp=sharing&ouid=104864543920688382356&rtpof=true&sd=true |
+| 2 | Update feature AI Log | Trần Nhất Long |   | https://github.com/fptu-se-su26/swp391-su26-ai-audit-project-swp391_se20a02_group-05/pull/28 |
 
 ## AI có hỗ trợ không?
 
-- [x] Có
-- [ ] Không
+- [ ] Có
+- [x] Không
 
-## Commit/Screenshot minh chứng
+## Minh chứng liên quan
 
-```text
-https://docs.google.com/document/d/1NTzS0vvw8O6rIZAKrxMkTV2l-dVRa2EA/edit?usp=sharing&ouid=104864543920688382356&rtpof=true&sd=true
-```
+| Loại minh chứng | Nhãn | Nội dung |
+|---|---|---|
+| Commit/PR | Migrated | https://docs.google.com/document/d/1NTzS0vvw8O6rIZAKrxMkTV2l-dVRa2EA/edit?usp=sharing&ouid=104864543920688382356&rtpof=true&sd=true |
 
 ## Ghi chú
 
 ```text
-Integrating External APIs into AI Agents
-A Technical Research Report for an AI-Powered Travel App
+Integrating External APIs into AI Agents, a Technical Research Report for an AI-Powered Travel App. Update feature for AI Logger, a tool help students can easily write their markdown reports.
 
 ```
 
@@ -131,4 +129,4 @@ Sinh viên/nhóm cam kết rằng nội dung changelog phản ánh đúng các t
 
 | Đại diện sinh viên/nhóm | Ngày xác nhận |
 |---|---|
-| Nguyễn Hoàng Ngọc Ánh | 15/5/2026 |
+| Nguyễn Hoàng Ngọc Ánh | 19/5/2026 |

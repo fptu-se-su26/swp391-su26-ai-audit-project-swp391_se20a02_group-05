@@ -13,7 +13,7 @@
 | MSSV / Danh sách MSSV | DE200147, DE200523, DE190105, DE200160, DE201043 |
 | Giảng viên hướng dẫn | QuangLTN3 |
 | Ngày bắt đầu | 2026-05-13T07:28:07.404Z |
-| Ngày cập nhật gần nhất | 2026-05-15 |
+| Ngày cập nhật gần nhất | 2026-05-19 |
 
 ---
 
@@ -28,7 +28,7 @@ File này dùng để ghi lại các prompt quan trọng đã sử dụng trong 
 - [ ] ChatGPT
 - [ ] Gemini
 - [x] Claude
-- [ ] GitHub Copilot
+- [x] GitHub Copilot
 - [ ] Cursor
 - [ ] Antigravity
 - [ ] Microsoft Copilot
@@ -41,7 +41,8 @@ File này dùng để ghi lại các prompt quan trọng đã sử dụng trong 
 
 | STT | Ngày | Công cụ AI | Mục đích | Prompt tóm tắt | Kết quả chính | Có sử dụng vào bài không? | Minh chứng |
 |---:|---|---|---|---|---|---|---|
-| 1 | 2026-05-13 | Claude | Thiết kế một hệ thống AI Agent chuyên cho travel planning với khả năng:  Thu thập requirement từ user qua survey hoặc chat prompt Sinh travel itinerary hoàn chỉnh Generate structured plan dưới dạng Google Sheet Cho phép user chỉnh sửa thủ công AI tự reconcile thay đổi và regenerate plan mới Mở rộng thành ecosystem AI gồm: recommendation engine planner engine chatbot assistant validation system classification/tagging summarization  Mục tiêu thực tế:  Biến AI thành orchestration layer cho travel SaaS Tách AI layer khỏi business logic để scale dễ hơn Chuẩn hóa structured output để FE/BE xử lý deterministic thay vì parsing text tự do | * Context: Tôi muốn tạo một AI... | ... | Không |   |
+| 1 | 2026-05-13 | Claude | Thiết kế một hệ thống AI Agent chuyên cho travel planning với khả năng:  Thu thập requirement từ user qua survey hoặc chat prompt Sinh travel itinerary hoàn chỉnh Generate structured plan dưới dạng Google Sheet Cho phép user chỉnh sửa thủ công AI tự reconcile thay đổi và regenerate plan mới Mở rộng thành ecosystem AI gồm: recommendation engine planner engine chatbot assistant validation system classification/tagging summarization  Mục tiêu thực tế:  Biến AI thành orchestration layer cho travel SaaS Tách AI layer khỏi business logic để scale dễ hơn Chuẩn hóa structured output để FE/BE xử lý deterministic thay vì parsing text tự do | * Context: Tôi muốn tạo một AI... | Files created: AI_Custom_API_R... | Có |   |
+| 2 | 2026-05-19 | GitHub Copilot | Checking and update feature for tool. | Check ExportCenter.tsx in the ... | Files modified: tools/AI Log/s... | Có |   |
 
 ---
 
@@ -97,19 +98,87 @@ AI phải regenerate theo feedback loop
 #### 5.3. Kết quả AI trả về
 
 ```text
- https://docs.google.com/document/d/1NTzS0vvw8O6rIZAKrxMkTV2l-dVRa2EA/edit?usp=sharing&ouid=104864543920688382356&rtpof=true&sd=true
+Files created: AI_Custom_API_Research_v4.docx
 ```
 
 #### 5.4. Kết quả đã áp dụng vào bài
 
 ```text
- 
+Repository swp391-su26-ai-audit-project-swp391_se20a02_group-05
 ```
 
 #### 5.5. Phần sinh viên/nhóm đã chỉnh sửa hoặc cải tiến
 
 ```text
  
+```
+
+#### 5.6. Đánh giá chất lượng prompt
+
+- [x] Prompt rõ ràng
+- [x] Prompt có đủ bối cảnh
+- [ ] Prompt còn thiếu thông tin
+- [x] Prompt tạo ra kết quả tốt
+- [ ] Prompt tạo ra kết quả chưa phù hợp
+- [ ] Cần hỏi lại AI nhiều lần
+- [ ] Cần tự kiểm tra và chỉnh sửa nhiều
+
+#### 5.7. Minh chứng liên quan
+
+| Loại minh chứng | Nội dung |
+|---|---|
+| File/Link |   |
+
+#### 5.8. Ghi chú thêm
+
+```text
+ 
+```
+
+---
+
+### Prompt số 2
+
+| Nội dung | Thông tin |
+|---|---|
+| Ngày sử dụng | 2026-05-19 |
+| Công cụ AI | GitHub Copilot |
+| Mục đích | Checking and update feature for tool. |
+| Phần việc liên quan | Coding |
+| Mức độ sử dụng | Hỏi sinh code |
+
+#### 5.1. Prompt nguyên văn
+
+```text
+Check ExportCenter.tsx in the folder tools to see if the "Download All" button is present. If not, add it and enable its functionality to download all four files (REFLECTION, CHANGELOG, PROMPS, AI_AUDIT_LOG) simultaneously.
+```
+
+#### 5.2. Bối cảnh khi viết prompt
+
+```text
+Repository swp391-su26-ai-audit-project-swp391_se20a02_group-05/tools/AI Log
+```
+
+#### 5.3. Kết quả AI trả về
+
+```text
+Files modified: tools/AI Log/src/components/export/ExportCenter.tsx
+```
+
+#### 5.4. Kết quả đã áp dụng vào bài
+
+```text
+Existing per-file download helper (handleDownload) and markdown generators from @/lib/markdown/generators.
+```
+
+#### 5.5. Phần sinh viên/nhóm đã chỉnh sửa hoặc cải tiến
+
+```text
+- Added: handleDownloadAll() to invoke downloads for:
+AI_AUDIT_LOG.md, PROMPTS.md, CHANGELOG.md, REFLECTION.md
+- Added: a header button labeled "Download all files" that calls handleDownloadAll().
+- Preserved: existing individual file Download and Copy buttons.
+- Ensured: Blob creation + URL handling is safe (created element, clicked, cleaned up).
 ```
 
 #### 5.6. Đánh giá chất lượng prompt
@@ -170,13 +239,13 @@ AI phải regenerate theo feedback loop
 ### 6.3. Kết quả prompt này mang lại
 
 ```text
- 
+Files created: AI_Custom_API_Research_v4.docx
 ```
 
 ### 6.4. Sinh viên/nhóm đã kiểm tra kết quả như thế nào?
 
 ```text
- 
+Repository swp391-su26-ai-audit-project-swp391_se20a02_group-05
 ```
 
 ### 6.5. Sinh viên/nhóm đã cải tiến gì từ kết quả AI?
@@ -222,6 +291,7 @@ The biggest improvement came from treating prompts like workflows. Instead of as
 | Loại prompt | Số lượng | Ví dụ prompt tiêu biểu |
 |---|---:|---|
 | Prompt Report | 1 |  |
+| Prompt Coding | 1 |  |
 
 ---
 
@@ -239,4 +309,4 @@ The biggest improvement came from treating prompts like workflows. Instead of as
 
 | Đại diện sinh viên/nhóm | Ngày xác nhận |
 |---|---|
-| Nguyễn Hoàng Ngọc Ánh | 15/5/2026 |
+| Nguyễn Hoàng Ngọc Ánh | 19/5/2026 |

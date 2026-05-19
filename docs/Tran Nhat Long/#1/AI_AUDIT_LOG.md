@@ -22,7 +22,7 @@
 - [ ] ChatGPT
 - [x] Gemini
 - [x] Claude
-- [ ] GitHub Copilot
+- [x] GitHub Copilot
 - [ ] Cursor
 - [ ] Antigravity
 - [ ] Perplexity
@@ -36,7 +36,7 @@
 ### Mô tả mục tiêu sử dụng AI
 
 ```text
-Research and Requirement analysis, Generate documents.
+Research and Requirement analysis, Generate documents. Checking folders and files in repository automatically. Generate codes and auto testing
 ```
 
 ## 4. Nhật ký sử dụng AI chi tiết
@@ -73,7 +73,7 @@ Research and Requirement analysis, Generate documents.
    * Đề xuất hướng triển khai thực tế, tối ưu chi phí API, performance và scalability
    * Phân chia hướng implement AI features vào kiến trúc hệ thống hiện tại để đảm bảo khả năng mở rộng về sau.
 * Yêu cầu output: đảm bảo giải thích bằng từ ngữ và tạo file json để visualize json data thành dạng graph workflow cho dễ nhìn
-* Tài liệu đã nghiên cứu được đính kèm: https://docs.google.com/document/d/1SseVDexFxWcgXP0TLO0yejUFaDyMlnEY/edit?usp=sharing&ouid=104864543920688382356&rtpof=true&sd=true
+* Tài liệu đã nghiên cứu được đính kèm
 ```
 
 #### 4.2. Kết quả AI gợi ý
@@ -142,12 +142,65 @@ Fallback orchestration — Recovery paths for API outages
 
 ---
 
+### Lần sử dụng AI số 2
+
+| Nội dung | Thông tin |
+|---|---|
+| Ngày sử dụng | 2026-05-19 |
+| Công cụ AI | GitHub Copilot |
+| Mục đích sử dụng | Checking and update feature for tool. |
+| Phần việc liên quan | Requirement |
+| Mức độ sử dụng | Hỗ trợ một phần |
+
+#### 4.1. Prompt đã sử dụng
+
+```text
+Check ExportCenter.tsx in the folder tools to see if the "Download All" button is present. If not, add it and enable its functionality to download all four files (REFLECTION, CHANGELOG, PROMPS, AI_AUDIT_LOG) simultaneously.
+```
+
+#### 4.2. Kết quả AI gợi ý
+
+```text
+Files modified: tools/AI Log/src/components/export/ExportCenter.tsx
+```
+
+#### 4.3. Phần sinh viên/nhóm đã sử dụng từ AI
+
+```text
+Existing per-file download helper (handleDownload) and markdown generators from @/lib/markdown/generators.
+```
+
+#### 4.4. Phần sinh viên/nhóm tự chỉnh sửa hoặc cải tiến
+
+```text
+- Added: handleDownloadAll() to invoke downloads for:
+AI_AUDIT_LOG.md, PROMPTS.md, CHANGELOG.md, REFLECTION.md
+- Added: a header button labeled "Download all files" that calls handleDownloadAll().
+- Preserved: existing individual file Download and Copy buttons.
+- Ensured: Blob creation + URL handling is safe (created element, clicked, cleaned up).
+```
+
+#### 4.5. Minh chứng
+
+| Loại minh chứng | Nhãn | Nội dung |
+|---|---|---|
+| File/Commit |  |  |
+
+#### 4.6. Nhận xét cá nhân/nhóm
+
+```text
+ 
+```
+
+---
+
 ## 5. Bảng tổng hợp mức độ sử dụng AI
 
 | Hạng mục | Không dùng AI | AI hỗ trợ ít | AI hỗ trợ nhiều | AI sinh chính | Ghi chú |
 |---|:---:|:---:|:---:|:---:|---|
 | Generate documents |   |   |   | x |   |
 | Researching and validate information |   | x |   |   |   |
+| Checking, generate and testing codes |   | x |   |   |   |
 
 ---
 
@@ -181,7 +234,7 @@ Research how to integrate APIs into the system, compare criteria, and provide su
 
 | Thành viên | MSSV | Nhiệm vụ chính | Có sử dụng AI không? | Minh chứng đóng góp |
 |---|---|---|---|---|
-|  |  |  | Có / Không |  |
+| Đoàn Thế Lực | DE200523 | Review, comment and merge pull request | Không |   |
 
 ---
 
@@ -195,4 +248,4 @@ Research how to integrate APIs into the system, compare criteria, and provide su
 
 | Đại diện sinh viên/nhóm | Ngày xác nhận |
 |---|---|
-| Nguyễn Hoàng Ngọc Ánh | 15/5/2026 |
+| Nguyễn Hoàng Ngọc Ánh | 19/5/2026 |
