@@ -40,11 +40,18 @@ export default function ExportCenter({ projectId }: { projectId: string }) {
     element.click();
   };
 
+  const handleDownloadAll = () => {
+    handleDownload(markdowns.aiAudit, "AI_AUDIT_LOG.md");
+    handleDownload(markdowns.prompts, "PROMPTS.md");
+    handleDownload(markdowns.changelog, "CHANGELOG.md");
+    handleDownload(markdowns.reflection, "REFLECTION.md");
+  };
+
   return (
     <div className="min-h-screen bg-background flex flex-col">
       <Navbar />
       <main className="flex-1 container mx-auto px-6 py-8 max-w-5xl">
-        <div className="flex justify-between items-center mb-6">
+        <div className="flex justify-between items-center mb-6 gap-4 flex-wrap">
           <div className="flex items-center gap-4">
             <Button variant="ghost" isIconOnly onPress={() => window.location.href = `/project/${projectId}/workspace/step1`} aria-label="Back to project">
               <ChevronLeft className="w-5 h-5" />
@@ -53,6 +60,12 @@ export default function ExportCenter({ projectId }: { projectId: string }) {
               <h1 className="text-3xl font-bold tracking-tight">Export Center</h1>
               <p className="text-default-500">Preview and download your generated markdown audit logs.</p>
             </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <Button size="sm" onPress={handleDownloadAll}>
+              <Download className="w-4 h-4 mr-2 inline" />
+              Download all files
+            </Button>
           </div>
         </div>
 
