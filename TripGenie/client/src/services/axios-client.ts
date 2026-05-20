@@ -160,6 +160,11 @@ axiosClient.interceptors.response.use(
  * Properly parses C# ProblemDetails, extensions.code, and lowercases validation dictionaries.
  */
 export function normalizeError(error: unknown): ApiError {
+  // If the error is already a normalized ApiError, return it directly
+  if (error && typeof error === 'object' && 'code' in error && 'message' in error) {
+    return error as ApiError;
+  }
+
   if (axios.isAxiosError(error)) {
     const data = error.response?.data as Record<string, unknown> | undefined;
 
