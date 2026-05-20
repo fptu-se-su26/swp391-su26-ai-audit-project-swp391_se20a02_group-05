@@ -12,7 +12,7 @@ import { z } from 'zod';
 import Link from 'next/link';
 import { MailCheck, ArrowLeft } from 'lucide-react';
 import { normalizeError } from '../../../services/axios-client';
-import { toast } from '@heroui/react';
+import { toast, Typography } from '@heroui/react';
 import { useTranslation } from 'react-i18next';
 
 type ForgotPasswordFormValues = z.infer<typeof forgotPasswordSchema>;
@@ -59,17 +59,17 @@ export default function ForgotPasswordPage() {
     return (
       <Card glow={true}>
         <div className="text-center py-4 flex flex-col items-center">
-          <div className="w-12 h-12 rounded-full bg-emerald-50 dark:bg-emerald-950/30 text-emerald-500 flex items-center justify-center mb-4">
+          <div className="w-12 h-12 rounded-full bg-success/10 text-success flex items-center justify-center mb-4">
             <MailCheck size={24} />
           </div>
           
-          <h2 className="text-2xl font-bold tracking-tight text-zinc-900 dark:text-zinc-50 mb-2 font-outfit">
+          <Typography type="h2" className="text-2xl font-bold tracking-tight text-foreground mb-2 font-outfit">
             {t('auth:screens.checkEmail')}
-          </h2>
+          </Typography>
           
-          <p className="text-zinc-500 dark:text-zinc-400 text-sm leading-relaxed mb-6 font-outfit">
+          <Typography type="body-sm" className="text-muted leading-relaxed mb-6 font-outfit">
             {t('auth:toast.recoverySentDesc', { email: submittedEmail })}
-          </p>
+          </Typography>
 
           <Link href="/login" className="w-full">
             <Button variant="solid" className="w-full">
@@ -79,7 +79,7 @@ export default function ForgotPasswordPage() {
           
           <button
             onClick={() => setSuccessText(null)}
-            className="text-xs font-semibold text-zinc-400 hover:text-zinc-600 dark:text-zinc-600 dark:hover:text-zinc-300 transition-colors mt-5 hover:underline cursor-pointer"
+            className="text-xs font-semibold text-muted hover:text-foreground transition-colors mt-5 hover:underline cursor-pointer"
           >
             {t('auth:screens.didNotReceive')}
           </button>
@@ -92,19 +92,19 @@ export default function ForgotPasswordPage() {
     <Card glow={true}>
       <Link
         href="/login"
-        className="inline-flex items-center gap-1.5 text-xs font-semibold text-zinc-500 hover:text-zinc-950 dark:hover:text-zinc-50 transition-colors mb-6 group w-fit select-none"
+        className="inline-flex items-center gap-1.5 text-xs font-semibold text-muted hover:text-foreground transition-colors mb-6 group w-fit select-none"
       >
         <ArrowLeft size={14} className="transition-transform group-hover:-translate-x-0.5" />
         {t('auth:actions.backToLogin')}
       </Link>
 
       <div className="mb-6 font-outfit">
-        <h2 className="text-2xl font-bold tracking-tight text-zinc-900 dark:text-zinc-50">
+        <Typography type="h2" className="text-2xl font-bold tracking-tight text-foreground">
           {t('auth:title.forgot')}
-        </h2>
-        <p className="text-zinc-500 dark:text-zinc-400 text-sm mt-1">
+        </Typography>
+        <Typography type="body-sm" className="text-muted mt-1">
           {t('auth:subtitle.forgot')}
-        </p>
+        </Typography>
       </div>
 
       <FormProvider {...methods}>

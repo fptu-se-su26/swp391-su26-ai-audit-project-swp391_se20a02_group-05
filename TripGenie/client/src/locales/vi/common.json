@@ -66,5 +66,11 @@
     "systemAdmin": "System Admin",
     "sessionProtected": "Phiên được bảo vệ",
     "pages": "Trang"
+  },
+  "admin": {
+    "dashboard": "Quản trị",
+    "users": "Người dùng",
+    "rolesMatrix": "Ma trận phân quyền",
+    "auditTrail": "Nhật ký kiểm toán"
   }
 }

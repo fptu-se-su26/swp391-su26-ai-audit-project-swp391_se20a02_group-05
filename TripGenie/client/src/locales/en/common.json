@@ -66,5 +66,11 @@
     "systemAdmin": "System Admin",
     "sessionProtected": "Session Protected",
     "pages": "Pages"
+  },
+  "admin": {
+    "dashboard": "Admin",
+    "users": "Users",
+    "rolesMatrix": "Roles Matrix",
+    "auditTrail": "Audit Trail"
   }
 }

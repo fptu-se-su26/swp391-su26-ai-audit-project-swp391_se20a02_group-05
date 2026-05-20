@@ -4,11 +4,15 @@ import React, { useEffect } from 'react';
 import { useAuth } from '../features/auth/hooks/use-auth';
 import { Compass } from 'lucide-react';
 import { usePathname } from 'next/navigation';
-import { Toast, toast } from '@heroui/react';
+import { Toast, toast, Typography } from '@heroui/react';
 import i18n from '../lib/i18n';
+import { useThemeStore } from '../hooks/use-theme-store';
+
+import { AuthOrchestrator } from '../features/auth/components/auth-orchestrator';
 
 export function Providers({ children, locale }: { children: React.ReactNode; locale: string }) {
-  const { initializeSession, isInitialized } = useAuth();
+  const { initializeSession } = useAuth();
+  const initializeTheme = useThemeStore(state => state.initializeTheme);
   const pathname = usePathname();
 
   // Synchronize server-resolved locale to client i18n instance before hydration (Server only)
@@ -17,6 +21,11 @@ export function Providers({ children, locale }: { children: React.ReactNode; loc
       i18n.changeLanguage(locale);
     }
   }
+
+  // Initialize theme on client-side boot to align storage and cookies
+  useEffect(() => {
+    initializeTheme();
+  }, [initializeTheme]);
 
   // Handle client-side changes post-hydration cleanly to satisfy React Compiler constraints
   useEffect(() => {
@@ -37,34 +46,10 @@ export function Providers({ children, locale }: { children: React.ReactNode; loc
     }
   }, [pathname]);
 
-  const isDashboardRoute = pathname.startsWith('/dashboard');
- 
-  // Hydration safety gate: only block UI on protected dashboard routes to prevent flashing protected layout
-  if (isDashboardRoute && !isInitialized) {
-    return (
-      <div className="flex min-h-screen w-full items-center justify-center bg-zinc-50 dark:bg-zinc-950 transition-colors duration-300">
-        <div className="flex flex-col items-center gap-4 text-center select-none animate-pulse">
-          {/* Pulsing Brand Logo */}
-          <div className="w-14 h-14 rounded-2xl bg-zinc-950 dark:bg-white text-white dark:text-zinc-950 flex items-center justify-center shadow-xl border border-zinc-200/20">
-            <Compass size={32} className="text-white dark:text-zinc-950 animate-spin-slow" />
-          </div>
-          
-          <div className="space-y-1">
-            <h3 className="font-extrabold tracking-tight text-zinc-800 dark:text-zinc-100 text-base">
-              TripGenie AI
-            </h3>
-            <p className="text-zinc-400 dark:text-zinc-500 text-xs font-medium">
-              {locale === 'vi' ? 'Đang khởi tạo phiên làm việc bảo mật...' : 'Establishing secure session...'}
-            </p>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
   return (
     <>
       <Toast.Provider />
+      <AuthOrchestrator />
       {children}
     </>
   );

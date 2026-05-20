@@ -8,6 +8,7 @@ using System.IdentityModel.Tokens.Jwt; using System.Security.Claims; using Syste
             new(ClaimTypes.Name, user.FullName),
             new("isEmailVerified", (user.EmailVerifiedAt.HasValue || user.Status == UserStatus.ACTIVE).ToString().ToLowerInvariant()),
             new("status", user.Status.ToString()),
+            new("session_version", user.SessionVersion.ToString()),
             new(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString())
         };
 
@@ -52,7 +53,16 @@ using System.IdentityModel.Tokens.Jwt; using System.Security.Claims; using Syste
 
     public void RemoveTokenFromCookie(string tokenName)
     {
-        _httpContextAccessor.HttpContext?.Response.Cookies.Delete(tokenName);
+        var isDevelopment = string.Equals(Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT"), "Development", StringComparison.OrdinalIgnoreCase);
+        var cookieOptions = new CookieOptions
+        {
+            HttpOnly = true,
+            Secure = !isDevelopment,
+            SameSite = SameSiteMode.Lax,
+            Path = "/"
+        };
+
+        _httpContextAccessor.HttpContext?.Response.Cookies.Delete(tokenName, cookieOptions);
     }
 
     public ClaimsPrincipal? GetPrincipalFromExpiredToken(string token)

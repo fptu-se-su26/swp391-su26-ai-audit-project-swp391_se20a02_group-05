@@ -30,13 +30,26 @@ export default async function RootLayout({
   const cookieStore = await cookies();
   const cookieVal = cookieStore.get("i18next")?.value;
   const locale = (cookieVal === "en" || cookieVal === "vi") ? cookieVal : "vi";
+  
+  // Read and clean cookie theme to match server state
+  const themeVal = cookieStore.get("theme")?.value;
+  const theme = themeVal || "dark";
+  
+  // Determine layout direction (English and Vietnamese are Left-to-Right)
+  const dir = "ltr";
 
   return (
     <html
       lang={locale}
-      className={`${outfit.variable} ${inter.variable} h-full antialiased dark`}
+      dir={dir}
+      className={`${outfit.variable} ${inter.variable} h-full antialiased ${theme}`}
+      data-theme={theme}
+      suppressHydrationWarning
     >
-      <body className="min-h-full flex flex-col font-sans bg-zinc-50 dark:bg-zinc-950 transition-colors duration-300">
+      <body 
+        className="min-h-full flex flex-col font-sans bg-background text-foreground transition-colors duration-300"
+        suppressHydrationWarning
+      >
         <Providers locale={locale}>
           {children}
         </Providers>

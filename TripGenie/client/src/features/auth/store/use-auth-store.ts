@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { User, UserRole, ResourceActionPermission } from '../../../types/auth.types';
+import { User, UserRole, ResourceActionPermission, BootstrapState } from '../../../types/auth.types';
 import { AUTH_KEYS, AUTH_EVENTS } from '../../../lib/constants';
 
 interface AuthState {
@@ -7,6 +7,7 @@ interface AuthState {
   isAuthenticated: boolean;
   isLoading: boolean;
   isInitialized: boolean;
+  bootstrapState: BootstrapState;
   status: string | null;
   nextStep: string | null;
   pendingVerificationEmail: string | null;
@@ -14,6 +15,7 @@ interface AuthState {
   // Actions
   setLoading: (isLoading: boolean) => void;
   setInitialized: (isInitialized: boolean) => void;
+  setBootstrapState: (state: BootstrapState) => void;
   setPendingVerificationEmail: (email: string | null) => void;
   setAuthStatusAndNextStep: (status: string | null, nextStep: string | null) => void;
   login: (user: User) => void;
@@ -46,6 +48,7 @@ export const useAuthStore = create<AuthState>((set, get) => {
             isAuthenticated: false,
             isLoading: false,
             isInitialized: true,
+            bootstrapState: 'READY',
           });
           break;
           
@@ -56,6 +59,7 @@ export const useAuthStore = create<AuthState>((set, get) => {
             isAuthenticated: true,
             isLoading: false,
             isInitialized: true,
+            bootstrapState: 'READY',
           });
           break;
           
@@ -77,6 +81,7 @@ export const useAuthStore = create<AuthState>((set, get) => {
     isAuthenticated: false,
     isLoading: false,
     isInitialized: false,
+    bootstrapState: 'IDLE',
     status: null,
     nextStep: null,
     pendingVerificationEmail: null,
@@ -84,6 +89,8 @@ export const useAuthStore = create<AuthState>((set, get) => {
     setLoading: (isLoading) => set({ isLoading }),
     
     setInitialized: (isInitialized) => set({ isInitialized }),
+
+    setBootstrapState: (bootstrapState) => set({ bootstrapState }),
 
     setPendingVerificationEmail: (email) => set({ pendingVerificationEmail: email }),
 
@@ -95,6 +102,7 @@ export const useAuthStore = create<AuthState>((set, get) => {
         isAuthenticated: true,
         isLoading: false,
         isInitialized: true,
+        bootstrapState: 'READY',
         status: 'ACTIVE',
         nextStep: 'DASHBOARD',
       });
@@ -114,6 +122,7 @@ export const useAuthStore = create<AuthState>((set, get) => {
         isAuthenticated: false,
         isLoading: false,
         isInitialized: true,
+        bootstrapState: 'READY',
         status: null,
         nextStep: null,
         pendingVerificationEmail: null,

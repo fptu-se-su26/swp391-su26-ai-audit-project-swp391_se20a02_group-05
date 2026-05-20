@@ -6,11 +6,12 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "audit-theme": "node scripts/theme-audit.js"
   },
   "dependencies": {
-    "@heroui/react": "^3.0.4",
-    "@heroui/styles": "^3.0.4",
+    "@heroui/react": "^3.0.5",
+    "@heroui/styles": "^3.0.5",
     "@hookform/resolvers": "^5.2.2",
     "axios": "^1.16.1",
     "i18next": "^26.2.0",
@@ -33,6 +34,7 @@
     "babel-plugin-react-compiler": "1.0.0",
     "eslint": "^9",
     "eslint-config-next": "16.2.6",
+    "playwright": "^1.60.0",
     "tailwindcss": "^4",
     "typescript": "^5"
   },

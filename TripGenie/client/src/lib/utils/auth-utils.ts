@@ -40,3 +40,19 @@ export function normalizeRole(roles: string[] | string | undefined | null): User
   // Default Rank 3: Basic traveler
   return 'USER';
 }
+
+/**
+ * Validates that a path is strictly internal to prevent open redirect vulnerabilities.
+ * A valid internal path must start with a single '/' and not be followed by another '/' or '\'.
+ */
+export function isValidInternalPath(path: string | null | undefined): boolean {
+  if (!path) return false;
+  if (!path.startsWith('/')) return false;
+  
+  // Prevent protocol-relative redirects (e.g. //evil.com or /\evil.com)
+  if (path.startsWith('//') || path.startsWith('/\\') || path.startsWith('\\')) {
+    return false;
+  }
+  
+  return true;
+}

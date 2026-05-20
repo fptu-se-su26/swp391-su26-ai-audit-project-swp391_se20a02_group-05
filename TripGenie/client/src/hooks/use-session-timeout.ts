@@ -16,11 +16,19 @@ export const useSessionTimeout = () => {
   const [secondsRemaining, setSecondsRemaining] = useState(WARNING_THRESHOLD_SECONDS);
   
   const lastActivityTime = useRef<number>(0);
-  const countdownIntervalRef = useRef<NodeJS.Timeout | null>(null);
-  const inactivityCheckRef = useRef<NodeJS.Timeout | null>(null);
-  
+  const timerRef = useRef<NodeJS.Timeout | null>(null);
+  const isRefreshingRef = useRef<boolean>(false);
+  const showWarningRef = useRef<boolean>(false);
+
+  // Keep ref in sync to avoid dependency invalidation inside listener callbacks
+  useEffect(() => {
+    showWarningRef.current = showWarning;
+  }, [showWarning]);
+
   // Method to trigger silent refresh and extend session
   const extendSession = useCallback(async () => {
+    if (isRefreshingRef.current) return;
+    isRefreshingRef.current = true;
     try {
       await authApi.refreshToken();
       
@@ -45,6 +53,8 @@ export const useSessionTimeout = () => {
       queueMicrotask(() => {
         logout(true);
       });
+    } finally {
+      isRefreshingRef.current = false;
     }
   }, [logout, user]);
 
@@ -52,21 +62,17 @@ export const useSessionTimeout = () => {
   const resetInactivityTimer = useCallback(() => {
     lastActivityTime.current = Date.now();
     
-    // If the modal was showing but we didn't officially trigger extend yet,
-    // we can extend silently on action if still within valid token period!
-    if (showWarning && secondsRemaining > 10) {
+    // If the warning modal is currently showing, instantly hide it and extend
+    if (showWarningRef.current) {
+      setShowWarning(false);
+      setSecondsRemaining(WARNING_THRESHOLD_SECONDS);
       extendSession();
     }
-  }, [showWarning, secondsRemaining, extendSession]);
-
-  useEffect(() => {
-    // Initialize inactivity timer safely on mount
-    lastActivityTime.current = Date.now();
-  }, []);
+  }, [extendSession]);
 
   useEffect(() => {
     if (!isAuthenticated) {
-      queueMicrotask(() => {
+      requestAnimationFrame(() => {
         setShowWarning(false);
       });
       return;
@@ -75,68 +81,89 @@ export const useSessionTimeout = () => {
     // Set up standard user input listeners to track active presence
     const activities = ['mousemove', 'keydown', 'mousedown', 'touchstart', 'scroll'];
     
+    const throttledResetTimer = () => {
+      resetInactivityTimer();
+    };
+
     activities.forEach((activity) => {
-      window.addEventListener(activity, resetInactivityTimer);
+      window.addEventListener(activity, throttledResetTimer, { passive: true });
     });
 
-    // 1. Periodic check for inactivity limits
-    inactivityCheckRef.current = setInterval(() => {
-      const inactiveDuration = (Date.now() - lastActivityTime.current) / 1000;
-      
-      // If inactive past threshold, trigger warning modal
-      if (inactiveDuration >= INACTIVITY_LIMIT_SECONDS && !showWarning) {
-        setShowWarning(true);
-        setSecondsRemaining(WARNING_THRESHOLD_SECONDS);
+    // Unified dynamic high-precision check function
+    const checkSession = () => {
+      const currentTime = Date.now();
+      const activityTime = lastActivityTime.current === 0 ? currentTime : lastActivityTime.current;
+      if (lastActivityTime.current === 0) {
+        lastActivityTime.current = currentTime;
       }
-    }, 10000); // Check inactivity every 10 seconds
+      const elapsed = (currentTime - activityTime) / 1000;
+      const totalSessionTime = INACTIVITY_LIMIT_SECONDS + WARNING_THRESHOLD_SECONDS;
 
-    // Listen for SESSION_EXTEND events from other tabs to sync timers locally
-    const syncChannel = new BroadcastChannel(AUTH_KEYS.BROADCAST_CHANNEL);
-    syncChannel.onmessage = (event) => {
-      if (event.data.type === AUTH_EVENTS.SESSION_EXTEND) {
-        queueMicrotask(() => {
-          setShowWarning(false);
-          setSecondsRemaining(WARNING_THRESHOLD_SECONDS);
-          lastActivityTime.current = Date.now();
-        });
+      if (elapsed >= totalSessionTime) {
+        if (timerRef.current) {
+          clearInterval(timerRef.current);
+          timerRef.current = null;
+        }
+        logout(true);
+        return;
+      }
+
+      if (elapsed >= INACTIVITY_LIMIT_SECONDS) {
+        setShowWarning(true);
+        setSecondsRemaining(Math.ceil(totalSessionTime - elapsed));
+      } else {
+        setShowWarning(false);
       }
     };
+
+    // Immediate initial assessment on mount/auth-state change scheduled asynchronously
+    // to avoid synchronous setState calls inside the effect body
+    requestAnimationFrame(checkSession);
+
+    // 1-second dynamic precise assessment interval
+    timerRef.current = setInterval(checkSession, 1000);
+
+    // Synchronize instantly when tab focus returns
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        checkSession();
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    // Multi-tab synchronization BroadcastChannel listener
+    let syncChannel: BroadcastChannel | null = null;
+    if (typeof window !== 'undefined') {
+      syncChannel = new BroadcastChannel(AUTH_KEYS.BROADCAST_CHANNEL);
+      syncChannel.onmessage = (event) => {
+        if (event.data.type === AUTH_EVENTS.SESSION_EXTEND || event.data.type === AUTH_EVENTS.LOGIN) {
+          lastActivityTime.current = Date.now();
+          queueMicrotask(() => {
+            setShowWarning(false);
+            setSecondsRemaining(WARNING_THRESHOLD_SECONDS);
+          });
+        } else if (event.data.type === AUTH_EVENTS.LOGOUT) {
+          queueMicrotask(() => {
+            setShowWarning(false);
+          });
+        }
+      };
+    }
 
     return () => {
       activities.forEach((activity) => {
-        window.removeEventListener(activity, resetInactivityTimer);
+        window.removeEventListener(activity, throttledResetTimer);
       });
-      if (inactivityCheckRef.current) clearInterval(inactivityCheckRef.current);
-      syncChannel.close();
-    };
-  }, [isAuthenticated, showWarning, resetInactivityTimer]);
-
-  // 2. Warning Modal Active Countdown
-  useEffect(() => {
-    if (!showWarning) {
-      if (countdownIntervalRef.current) {
-        clearInterval(countdownIntervalRef.current);
+      if (timerRef.current) {
+        clearInterval(timerRef.current);
+        timerRef.current = null;
       }
-      return;
-    }
-
-    countdownIntervalRef.current = setInterval(() => {
-      setSecondsRemaining((prev) => {
-        if (prev <= 1) {
-          clearInterval(countdownIntervalRef.current!);
-          queueMicrotask(() => {
-            logout(true); // Terminate session and redirect on zero
-          });
-          return 0;
-        }
-        return prev - 1;
-      });
-    }, 1000); // Tick every 1 second
-
-    return () => {
-      if (countdownIntervalRef.current) clearInterval(countdownIntervalRef.current);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      if (syncChannel) {
+        syncChannel.close();
+      }
     };
-  }, [showWarning, logout]);
+  }, [isAuthenticated, resetInactivityTimer, logout]);
 
   return {
     showWarning,

@@ -27,4 +27,7 @@ public class Role
 
     public virtual ICollection<User> Users { get; set; } = new List<User>();
     public virtual ICollection<Permission> Permissions { get; set; } = new List<Permission>();
+
+    [ConcurrencyCheck]
+    public uint Version { get; set; } // Map PostgreSQL xmin system column
 }

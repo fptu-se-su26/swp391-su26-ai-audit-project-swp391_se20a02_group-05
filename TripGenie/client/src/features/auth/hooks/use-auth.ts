@@ -177,21 +177,34 @@ export const useAuth = () => {
 
   // Bootstraps local profile on app boot or token refresh, locking concurrent parallel calls
   const initializeUserSession = async () => {
-    if (store.isInitialized) {
+    // If already READY, return cached session
+    if (store.bootstrapState === 'READY') {
       return { authenticated: store.isAuthenticated, user: store.user };
     }
-    if (bootstrapPromise) {
-      return bootstrapPromise;
+    
+    // If already running (lock active), wait on the promise or return current state
+    if (store.bootstrapState === 'BOOTSTRAPPING' || store.bootstrapState === 'VALIDATING') {
+      if (bootstrapPromise) {
+        return bootstrapPromise;
+      }
+      return { authenticated: store.isAuthenticated, user: store.user };
     }
 
+    // Acquire lock and transition to bootstrapping
+    store.setBootstrapState('BOOTSTRAPPING');
+
     bootstrapPromise = (async () => {
+      store.setBootstrapState('VALIDATING');
       store.setLoading(true);
+      console.log('[Auth System] Session bootstrap validation started.');
       try {
         const response = await authApi.fetchMe();
         
         if (response.status === 'EMAIL_VERIFY_PENDING' || response.nextStep === 'VERIFY_EMAIL') {
           store.setPendingVerificationEmail(response.email);
           store.setAuthStatusAndNextStep(response.status, response.nextStep);
+          store.logout(false);
+          console.log('[Auth System] Session bootstrap complete. Status: EMAIL_VERIFY_PENDING');
           return { authenticated: false, user: null, isUnverified: true, nextStep: response.nextStep };
         }
 
@@ -207,12 +220,15 @@ export const useAuth = () => {
 
         store.login(user);
         store.setAuthStatusAndNextStep(response.status, response.nextStep);
+        console.log(`[Auth System] Session bootstrap complete. User authenticated. Role: ${user.role}`);
         return { authenticated: true, user };
-      } catch {
+      } catch (err) {
+        console.warn('[Auth System] Session bootstrap validation failed. Cleaning local session.', err);
         store.logout(false);
         return { authenticated: false, user: null };
       } finally {
         store.setInitialized(true);
+        store.setBootstrapState('READY');
         store.setLoading(false);
         bootstrapPromise = null;
       }
@@ -227,6 +243,7 @@ export const useAuth = () => {
     isAuthenticated: store.isAuthenticated,
     isLoading: store.isLoading,
     isInitialized: store.isInitialized,
+    bootstrapState: store.bootstrapState,
     authError,
     
     // Auth Actions

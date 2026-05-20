@@ -7,6 +7,7 @@ import { Card } from '../components/ui/card';
 import { useAuth } from '../features/auth/hooks/use-auth';
 import { AuthAvatar } from '../components/ui/auth-avatar';
 import { useTranslation } from 'react-i18next';
+import { Typography } from '@heroui/react';
 
 export default function Home() {
   const { isAuthenticated, user } = useAuth();
@@ -28,15 +29,15 @@ export default function Home() {
           <div className="w-9 h-9 rounded-xl bg-white text-zinc-950 flex items-center justify-center shadow-lg font-bold">
             <Compass size={20} />
           </div>
-          <span className="font-extrabold text-lg tracking-tight bg-clip-text text-transparent bg-linear-to-r from-white to-zinc-400">
+          <Typography type="body-sm" className="font-extrabold tracking-tight bg-clip-text text-transparent bg-linear-to-r from-white to-zinc-400">
             {t('common:branding.title')}
-          </span>
+          </Typography>
         </div>
 
         <div className="flex items-center gap-4">
           {isAuthenticated ? (
             <div className="flex items-center gap-4">
-              <Link href={`/dashboard/${user?.role?.toLowerCase() || 'user'}`} className="text-sm font-semibold text-zinc-400 hover:text-white transition-colors">
+              <Link href={`/${user?.role?.toLowerCase() || 'user'}`} className="text-sm font-semibold text-zinc-400 hover:text-white transition-colors">
                 {t('common:navigation.dashboard')}
               </Link>
               <AuthAvatar />
@@ -62,28 +63,30 @@ export default function Home() {
         {/* Dynamic Badge */}
         <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-white/5 border border-white/10 text-zinc-300 backdrop-blur-md select-none">
           <Sparkles size={12} className="text-indigo-400 fill-indigo-400" />
-          <span>{t('common:landing.liveBadge')}</span>
+          <Typography type="body-xs" className="text-zinc-300">
+            {t('common:landing.liveBadge')}
+          </Typography>
         </div>
 
         {/* Headline */}
-        <h1 className="text-4xl sm:text-6xl font-extrabold tracking-tight leading-[1.05] bg-linear-to-b from-white via-zinc-100 to-zinc-400 bg-clip-text text-transparent">
+        <Typography type="h1" className="text-4xl sm:text-6xl font-extrabold tracking-tight leading-[1.05] bg-linear-to-b from-white via-zinc-100 to-zinc-400 bg-clip-text text-transparent">
           {t('common:landing.headline')}
-        </h1>
+        </Typography>
 
         {/* Supporting description */}
-        <p className="max-w-2xl text-zinc-400 text-base sm:text-lg leading-relaxed font-light select-none">
+        <Typography type="body-sm" className="max-w-2xl text-zinc-400 leading-relaxed font-light select-none">
           {t('common:landing.description')}
-        </p>
+        </Typography>
 
         {/* Action Buttons */}
         <div className="flex flex-col sm:flex-row gap-4 pt-4 select-none w-full max-w-md justify-center">
-          <Link href={isAuthenticated ? `/dashboard/${user?.role?.toLowerCase() || 'user'}` : "/dashboard/user"} className="w-full sm:w-auto">
+          <Link href={isAuthenticated ? `/${user?.role?.toLowerCase() || 'user'}` : "/user"} className="w-full sm:w-auto">
             <button className="w-full sm:w-[200px] h-12 rounded-xl text-sm font-bold bg-white text-zinc-950 hover:bg-zinc-100 transition-all flex items-center justify-center gap-2 group shadow-[0_4px_20px_rgba(255,255,255,0.06)] border border-white/10 cursor-pointer">
               {t('common:landing.enterHub')}
               <ArrowRight size={16} className="transition-transform group-hover:translate-x-0.5" />
             </button>
           </Link>
-          <Link href={isAuthenticated ? `/dashboard/${user?.role?.toLowerCase() || 'user'}` : "/login"} className="w-full sm:w-auto">
+          <Link href={isAuthenticated ? `/${user?.role?.toLowerCase() || 'user'}` : "/login"} className="w-full sm:w-auto">
             <button className="w-full sm:w-[200px] h-12 rounded-xl text-sm font-bold bg-white/5 hover:bg-white/10 transition-all border border-white/10 text-white backdrop-blur-sm flex items-center justify-center gap-2 cursor-pointer">
               {isAuthenticated ? t('common:landing.goConsole') : t('common:landing.accessConsole')}
             </button>
@@ -99,37 +102,45 @@ export default function Home() {
             <div className="w-10 h-10 rounded-xl bg-white/5 text-zinc-300 flex items-center justify-center mb-4">
               <User size={20} />
             </div>
-            <h3 className="font-bold text-base mb-1.5 text-zinc-100">{t('common:landing.roles.userTitle')}</h3>
-            <p className="text-zinc-500 text-xs leading-relaxed">
+            <Typography type="h3" className="font-bold mb-1.5 text-zinc-100">
+              {t('common:landing.roles.userTitle')}
+            </Typography>
+            <Typography type="body-xs" className="text-zinc-500 leading-relaxed">
               {t('common:landing.roles.userDesc')}
-            </p>
+            </Typography>
           </Card>
 
           <Card className="bg-zinc-950/40 border-white/5 backdrop-blur-lg" glow={false}>
             <div className="w-10 h-10 rounded-xl bg-white/5 text-zinc-300 flex items-center justify-center mb-4">
               <Building2 size={20} />
             </div>
-            <h3 className="font-bold text-base mb-1.5 text-zinc-100">{t('common:landing.roles.businessTitle')}</h3>
-            <p className="text-zinc-500 text-xs leading-relaxed">
+            <Typography type="h3" className="font-bold mb-1.5 text-zinc-100">
+              {t('common:landing.roles.businessTitle')}
+            </Typography>
+            <Typography type="body-xs" className="text-zinc-500 leading-relaxed">
               {t('common:landing.roles.businessDesc')}
-            </p>
+            </Typography>
           </Card>
 
           <Card className="bg-zinc-950/40 border-white/5 backdrop-blur-lg" glow={false}>
             <div className="w-10 h-10 rounded-xl bg-white/5 text-zinc-300 flex items-center justify-center mb-4">
               <ShieldAlert size={20} />
             </div>
-            <h3 className="font-bold text-base mb-1.5 text-zinc-100">{t('common:landing.roles.adminTitle')}</h3>
-            <p className="text-zinc-500 text-xs leading-relaxed">
+            <Typography type="h3" className="font-bold mb-1.5 text-zinc-100">
+              {t('common:landing.roles.adminTitle')}
+            </Typography>
+            <Typography type="body-xs" className="text-zinc-500 leading-relaxed">
               {t('common:landing.roles.adminDesc')}
-            </p>
+            </Typography>
           </Card>
         </div>
       </section>
 
       {/* 5. Minimalist footer */}
       <footer className="relative z-10 w-full max-w-7xl mx-auto px-6 py-8 border-t border-white/5 text-center text-xs text-zinc-600 select-none">
-        <span>{t('common:landing.footerNote')}</span>
+        <Typography type="body-xs" className="text-zinc-600">
+          {t('common:landing.footerNote')}
+        </Typography>
       </footer>
     </div>
   );
