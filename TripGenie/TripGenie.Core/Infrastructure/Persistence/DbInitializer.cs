@@ -129,6 +129,87 @@ public static class DbInitializer
                 ) THEN
                     ALTER TABLE users ADD COLUMN session_version INTEGER NOT NULL DEFAULT 1;
                 END IF;
+
+                -- Safely provision failed_attempts column if missing
+                IF NOT EXISTS (
+                    SELECT 1 
+                    FROM information_schema.columns 
+                    WHERE table_name = 'users' AND column_name = 'failed_attempts'
+                ) THEN
+                    ALTER TABLE users ADD COLUMN failed_attempts INTEGER NOT NULL DEFAULT 0;
+                END IF;
+
+                -- Safely provision last_failed_at column if missing
+                IF NOT EXISTS (
+                    SELECT 1 
+                    FROM information_schema.columns 
+                    WHERE table_name = 'users' AND column_name = 'last_failed_at'
+                ) THEN
+                    ALTER TABLE users ADD COLUMN last_failed_at TIMESTAMP WITH TIME ZONE;
+                END IF;
+
+                -- Safely provision lock_until column if missing
+                IF NOT EXISTS (
+                    SELECT 1 
+                    FROM information_schema.columns 
+                    WHERE table_name = 'users' AND column_name = 'lock_until'
+                ) THEN
+                    ALTER TABLE users ADD COLUMN lock_until TIMESTAMP WITH TIME ZONE;
+                END IF;
+
+                -- Safely provision email_verified_at column if missing
+                IF NOT EXISTS (
+                    SELECT 1 
+                    FROM information_schema.columns 
+                    WHERE table_name = 'users' AND column_name = 'email_verified_at'
+                ) THEN
+                    ALTER TABLE users ADD COLUMN email_verified_at TIMESTAMP WITH TIME ZONE;
+                END IF;
+
+                -- Safely provision last_login_at column if missing
+                IF NOT EXISTS (
+                    SELECT 1 
+                    FROM information_schema.columns 
+                    WHERE table_name = 'users' AND column_name = 'last_login_at'
+                ) THEN
+                    ALTER TABLE users ADD COLUMN last_login_at TIMESTAMP WITH TIME ZONE;
+                END IF;
+
+                -- Safely provision last_login_ip column if missing
+                IF NOT EXISTS (
+                    SELECT 1 
+                    FROM information_schema.columns 
+                    WHERE table_name = 'users' AND column_name = 'last_login_ip'
+                ) THEN
+                    ALTER TABLE users ADD COLUMN last_login_ip INET;
+                END IF;
+
+                -- Safely provision avatar_url column if missing
+                IF NOT EXISTS (
+                    SELECT 1 
+                    FROM information_schema.columns 
+                    WHERE table_name = 'users' AND column_name = 'avatar_url'
+                ) THEN
+                    ALTER TABLE users ADD COLUMN avatar_url TEXT;
+                END IF;
+
+                -- Safely provision assigned_at column to role_permissions junction table if missing
+                IF NOT EXISTS (
+                    SELECT 1 
+                    FROM information_schema.columns 
+                    WHERE table_name = 'role_permissions' AND column_name = 'assigned_at'
+                ) THEN
+                    ALTER TABLE role_permissions ADD COLUMN assigned_at TIMESTAMP WITH TIME ZONE DEFAULT NOW();
+                END IF;
+
+                -- Safely provision assigned_at column to user_roles junction table if missing
+                IF NOT EXISTS (
+                    SELECT 1 
+                    FROM information_schema.columns 
+                    WHERE table_name = 'user_roles' AND column_name = 'assigned_at'
+                ) THEN
+                    ALTER TABLE user_roles ADD COLUMN assigned_at TIMESTAMP WITH TIME ZONE DEFAULT NOW();
+                END IF;
             END $$;
 
             -- Granular permissions using a hierarchical naming convention

@@ -90,6 +90,7 @@ export const FormInput: React.FC<FormInputProps> = ({
             {translatedMessage && (
               <FieldError className="block">
                 <Typography
+                  slot="errorMessage"
                   type="body-xs"
                   className="text-danger pl-1 font-medium animate-fade-in block"
                 >
