@@ -1,4 +1,4 @@
-﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore;
 using System;
 using System.Threading.Tasks;
 
@@ -194,7 +194,9 @@ public static class DbInitializer
                 END IF;
 
                 -- Safely provision assigned_at column to role_permissions junction table if missing
-                IF NOT EXISTS (
+                IF EXISTS (
+                    SELECT 1 FROM information_schema.tables WHERE table_name = 'role_permissions'
+                ) AND NOT EXISTS (
                     SELECT 1 
                     FROM information_schema.columns 
                     WHERE table_name = 'role_permissions' AND column_name = 'assigned_at'

@@ -1,4 +1,4 @@
-﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore;
 using CVerify.API.Infrastructure.Persistence;
 using CVerify.API.Application.Interfaces;
 using CVerify.API.Application.Services;
@@ -19,8 +19,29 @@ using CVerify.API.Infrastructure.Diagnostics;
 var builder = WebApplication.CreateBuilder(args);
 
 // 1. Load .env file (Development only or based on preference)
-var envPath = Path.Combine(Directory.GetCurrentDirectory(), ".env");
-if (File.Exists(envPath)) {
+string? envPath = null;
+var currentDir = new DirectoryInfo(AppContext.BaseDirectory);
+while (currentDir != null)
+{
+    var path = Path.Combine(currentDir.FullName, ".env");
+    if (File.Exists(path))
+    {
+        envPath = path;
+        break;
+    }
+    currentDir = currentDir.Parent;
+}
+
+if (envPath == null)
+{
+    var fallback = Path.Combine(Directory.GetCurrentDirectory(), ".env");
+    if (File.Exists(fallback))
+    {
+        envPath = fallback;
+    }
+}
+
+if (envPath != null) {
     foreach (var line in File.ReadAllLines(envPath)) {
         var parts = line.Split('=', 2, StringSplitOptions.RemoveEmptyEntries);
         if (parts.Length == 2 && !parts[0].StartsWith("#")) {
