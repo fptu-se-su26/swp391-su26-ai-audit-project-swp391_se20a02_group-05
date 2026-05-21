@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Net.Http;
 using System.Threading.Tasks;
@@ -44,7 +44,12 @@ public class IntegrationTestApplicationFactory : WebApplicationFactory<Program>
         Environment.SetEnvironmentVariable("DB_PASSWORD", dbBuilder.Password);
 
         // Parse dynamic Testcontainer Redis connection parameters and append allowAdmin=true
-        var redisParts = _containerFixture.RedisConnectionString.Split(':');
+        var redisConnStr = _containerFixture.RedisConnectionString;
+        if (redisConnStr.StartsWith("redis://", StringComparison.OrdinalIgnoreCase))
+        {
+            redisConnStr = redisConnStr.Substring("redis://".Length);
+        }
+        var redisParts = redisConnStr.Split(':');
         Environment.SetEnvironmentVariable("REDIS_HOST", redisParts[0]);
         Environment.SetEnvironmentVariable("REDIS_PORT", redisParts[1] + ",allowAdmin=true");
         Environment.SetEnvironmentVariable("REDIS_PASSWORD", "");
@@ -85,7 +90,7 @@ public class IntegrationTestApplicationFactory : WebApplicationFactory<Program>
             config.AddInMemoryCollection(new Dictionary<string, string?>
             {
                 { "ConnectionStrings:DefaultConnection", _containerFixture.DbConnectionString },
-                { "ConnectionStrings:Redis", _containerFixture.RedisConnectionString + ",allowAdmin=true" },
+                { "ConnectionStrings:Redis", (_containerFixture.RedisConnectionString.StartsWith("redis://", StringComparison.OrdinalIgnoreCase) ? _containerFixture.RedisConnectionString.Substring("redis://".Length) : _containerFixture.RedisConnectionString) + ",allowAdmin=true" },
                 { "EmailSettings:Provider", "Smtp" },
                 { "EmailSettings:SenderEmail", "test@cverify.ai" },
                 { "EmailSettings:SenderName", "CVerify Test Suite" },

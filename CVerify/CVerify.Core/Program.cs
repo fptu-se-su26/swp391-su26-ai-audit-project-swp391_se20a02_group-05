@@ -45,7 +45,11 @@ if (envPath != null) {
     foreach (var line in File.ReadAllLines(envPath)) {
         var parts = line.Split('=', 2, StringSplitOptions.RemoveEmptyEntries);
         if (parts.Length == 2 && !parts[0].StartsWith("#")) {
-            Environment.SetEnvironmentVariable(parts[0].Trim(), parts[1].Trim());
+            var key = parts[0].Trim();
+            var val = parts[1].Trim();
+            if (string.IsNullOrEmpty(Environment.GetEnvironmentVariable(key))) {
+                Environment.SetEnvironmentVariable(key, val);
+            }
         }
     }
     // Re-build configuration to populate dynamically injected variables
