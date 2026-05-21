@@ -1,9 +1,9 @@
----
+﻿---
 trigger: glob
 globs: **/*
 ---
 
-- The TripGenie AI project must strictly adhere to the approved technology stack.
+- The CVerify AI project must strictly adhere to the approved technology stack.
 - The Frontend (Client Layer) must be built using Next.js 16 (App Router) with Server Components, incorporating HeroUI v3 and Tailwind CSS v4 for UI design.
 - State management is handled globally by Zustand, and form validation must use React Hook Form combined with Zod.
 - The Backend (Server Layer) must use ASP.NET Core v10 to build RESTful APIs and Minimal APIs for streaming endpoints.

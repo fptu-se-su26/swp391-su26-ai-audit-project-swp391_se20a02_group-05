@@ -1,4 +1,4 @@
----
+﻿---
 trigger: glob
 globs: src/app/hooks/useStreamPlan.ts, src/Controllers/*Controller.cs, src/Services/AI/StreamHandler.cs
 ---

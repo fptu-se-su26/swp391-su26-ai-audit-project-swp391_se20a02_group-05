@@ -29,7 +29,7 @@ export const SidebarBrand: React.FC<SidebarBrandProps> = ({ collapsed }) => {
           type="body-sm"
           className="font-bold bg-clip-text text-transparent bg-linear-to-r from-foreground to-muted font-outfit truncate leading-none"
         >
-          {t('common:branding.title', { defaultValue: 'TripGenie' })}
+          {t('common:branding.title', { defaultValue: 'CVerify' })}
         </Typography>
       </div>
     </div>

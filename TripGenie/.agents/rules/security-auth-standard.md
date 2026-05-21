@@ -1,4 +1,4 @@
----
+﻿---
 trigger: glob
 globs: src/Controllers/AuthController.cs, src/models/users.cs, middleware.ts, src/app/(auth)/**/*
 ---

@@ -1,4 +1,4 @@
-const fs = require('fs');
+﻿const fs = require('fs');
 const path = require('path');
 
 const BLACKLIST_PATTERNS = [
@@ -52,7 +52,7 @@ function scanDir(dir) {
   }
 }
 
-console.log('Starting TripGenie Theme & Typography Semantic Token Audit...');
+console.log('Starting CVerify Theme & Typography Semantic Token Audit...');
 const srcDir = path.join(__dirname, '..', 'src');
 if (fs.existsSync(srcDir)) {
   scanDir(srcDir);

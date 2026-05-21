@@ -15,29 +15,29 @@
         "roles:view:list",
         "roles:create:role",
         "roles:update:role",
-        "booking:view:list",
+        "verification:view:list",
         "ai:audit:view"
       ]
     },
     "BUSINESS": {
-      "displayName": "Partner / Business Entity",
-      "description": "Standard business portal actions and booking management",
+      "displayName": "Recruiter / Talent Partner",
+      "description": "Standard talent portal actions, verified repository analysis, and recruiter search",
       "permissions": [
-        "booking:view:list",
-        "booking:update:status",
-        "trips:planner:view",
+        "verification:view:list",
+        "verification:update:status",
+        "evidence:graph:view",
         "ai:chat:use"
       ]
     },
     "USER": {
-      "displayName": "General User",
-      "description": "Standard user access for trip planning and AI chat",
+      "displayName": "Developer / Candidate",
+      "description": "Standard developer portal access to publish repository credentials, build evidence graphs, and utilize AI analysis",
       "permissions": [
-        "trips:planner:view",
-        "trips:planner:create",
-        "trips:planner:edit",
-        "trips:collaborator:join",
-        "trips:collaborator:comment",
+        "evidence:graph:view",
+        "evidence:graph:create",
+        "evidence:graph:edit",
+        "evidence:collaborator:join",
+        "evidence:collaborator:comment",
         "ai:chat:use"
       ]
     }
@@ -118,21 +118,21 @@
         "dependsOn": ["roles:view:list"]
       }
     ],
-    "booking": [
+    "verification": [
       {
-        "name": "booking:view:list",
-        "displayName": "List Bookings",
-        "description": "Allows reading booking summaries and order receipts",
+        "name": "verification:view:list",
+        "displayName": "List Verification Audits",
+        "description": "Allows reading verified repository audit summaries and evaluation logs",
         "system": false,
         "dangerous": false
       },
       {
-        "name": "booking:update:status",
-        "displayName": "Manage Order Status",
-        "description": "Allows modifying flight, hotel, or tour booking lifecycle status states",
+        "name": "verification:update:status",
+        "displayName": "Manage Verification Status",
+        "description": "Allows modifying candidate repository evaluation lifecycle status states",
         "system": false,
         "dangerous": false,
-        "dependsOn": ["booking:view:list"]
+        "dependsOn": ["verification:view:list"]
       }
     ],
     "ai": [
@@ -151,40 +151,40 @@
         "dangerous": false
       }
     ],
-    "trips": [
+    "evidence": [
       {
-        "name": "trips:planner:view",
-        "displayName": "View Itineraries",
-        "description": "Allows viewing assigned or public itineraries",
+        "name": "evidence:graph:view",
+        "displayName": "View Evidence Graphs",
+        "description": "Allows viewing assigned or public professional contribution graphs",
         "system": false,
         "dangerous": false
       },
       {
-        "name": "trips:planner:create",
-        "displayName": "Create Itineraries",
-        "description": "Allows creating new trip itineraries",
+        "name": "evidence:graph:create",
+        "displayName": "Create Evidence Graphs",
+        "description": "Allows generating new technical contribution graphs",
         "system": false,
         "dangerous": false
       },
       {
-        "name": "trips:planner:edit",
-        "displayName": "Modify Itineraries",
-        "description": "Allows editing own trip itineraries",
+        "name": "evidence:graph:edit",
+        "displayName": "Modify Evidence Graphs",
+        "description": "Allows editing own developer evidence graphs",
         "system": false,
         "dangerous": false,
-        "dependsOn": ["trips:planner:view"]
+        "dependsOn": ["evidence:graph:view"]
       },
       {
-        "name": "trips:collaborator:join",
-        "displayName": "Join Collaboration",
-        "description": "Allows joining shared dynamic planning boards",
+        "name": "evidence:collaborator:join",
+        "displayName": "Join Peer Evaluation",
+        "description": "Allows joining shared peer assessment and code collaboration boards",
         "system": false,
         "dangerous": false
       },
       {
-        "name": "trips:collaborator:comment",
-        "displayName": "Comment on Plan",
-        "description": "Allows commenting on shared trip items",
+        "name": "evidence:collaborator:comment",
+        "displayName": "Review & Commend",
+        "description": "Allows providing technical validation comments on candidate evidence graph blocks",
         "system": false,
         "dangerous": false
       }

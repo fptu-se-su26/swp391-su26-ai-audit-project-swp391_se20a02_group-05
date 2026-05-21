@@ -56,7 +56,7 @@
     "gatedComponent": "HỢP PHẦN BỊ KHÓA",
     "gatedComponentDesc": "Yêu cầu quyền `trips:create`. Hãy thêm quyền này hoặc nâng cấp vai trò để kiểm thử.",
     "creatorEnabled": "BẢNG ĐIỀU KHIỂN SÁNG TẠO ĐÃ MỞ",
-    "creatorEnabledDesc": "Bạn được ủy quyền ghi cấu hình hành trình tùy chỉnh vào kho lưu trữ trung tâm của TripGenie.",
+    "creatorEnabledDesc": "Bạn được ủy quyền ghi cấu hình hành trình tùy chỉnh vào kho lưu trữ trung tâm của CVerify.",
     "newItinerary": "Hành trình mới",
     "systemControls": "ĐIỀU KHIỂN HỆ THỐNG",
     "systemControlsDesc": "Yêu cầu quyền `admin:system:view`. Bị khóa đối với hành khách tiêu chuẩn.",

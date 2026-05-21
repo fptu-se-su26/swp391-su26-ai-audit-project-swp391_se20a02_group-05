@@ -1,4 +1,4 @@
----
+﻿---
 trigger: model_decision
 description: Apply this rule when writing code for the collaborative editing feature, updating itineraries due to weather changes, or updating the state logic of Activity Blocks.
 ---

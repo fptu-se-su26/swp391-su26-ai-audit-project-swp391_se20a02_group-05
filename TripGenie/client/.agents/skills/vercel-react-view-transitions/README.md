@@ -1,4 +1,4 @@
-# React View Transitions Skill
+﻿# React View Transitions Skill
 
 An agent skill for implementing smooth, native-feeling animations using React's View Transition API.
 

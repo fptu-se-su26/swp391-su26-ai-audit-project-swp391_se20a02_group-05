@@ -52,9 +52,9 @@ axiosClient.interceptors.request.use(
 
 // Single-flight refresh queue variables
 let isRefreshing = false;
-let failedQueue: Array<{ resolve: (value?: any) => void; reject: (err: any) => void }> = [];
+let failedQueue: Array<{ resolve: (value?: unknown) => void; reject: (err: unknown) => void }> = [];
 
-const processQueue = (error: any) => {
+const processQueue = (error: ApiError | null) => {
   failedQueue.forEach((prom) => {
     if (error) {
       prom.reject(error);

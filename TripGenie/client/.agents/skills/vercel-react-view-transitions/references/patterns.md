@@ -1,4 +1,4 @@
-# Patterns and Guidelines
+﻿# Patterns and Guidelines
 
 ## Searchable Grid with `useDeferredValue`
 

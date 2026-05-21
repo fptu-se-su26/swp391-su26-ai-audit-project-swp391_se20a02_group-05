@@ -19,7 +19,7 @@ export const ROUTES = {
 } as const;
 
 export const AUTH_KEYS = {
-  BROADCAST_CHANNEL: 'tripgenie_auth_channel',
+  BROADCAST_CHANNEL: 'cverify_auth_channel',
   CSRF_HEADER: 'X-CSRF-Token',
   CSRF_COOKIE: 'CSRF-TOKEN',
 } as const;

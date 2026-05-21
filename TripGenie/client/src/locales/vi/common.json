@@ -1,6 +1,6 @@
 {
   "branding": {
-    "title": "TripGenie AI",
+    "title": "CVerify AI",
     "tagline": "Người bạn đồng hành du lịch thế hệ mới",
     "description": "Lên kế hoạch, đặt dịch vụ và trải nghiệm hành trình tùy chỉnh được thiết kế trong vài giây bởi trí tuệ nhân tạo tiên tiến.",
     "journeyPrompt": "Hành trình của bạn bắt đầu bằng một câu lệnh."
@@ -40,12 +40,12 @@
   "misc": {
     "loadingSession": "Đang xác thực trạng thái phiên...",
     "hydratingProfile": "Đang tải thông tin cá nhân...",
-    "copyright": "© 2026 TripGenie AI Inc. Bảo lưu mọi quyền."
+    "copyright": "© 2026 CVerify AI Inc. Bảo lưu mọi quyền."
   },
   "landing": {
     "liveBadge": "Tính năng xác thực & phân quyền cấp doanh nghiệp đã sẵn sàng",
     "headline": "Bảo mật phân vai phi tập trung cho ứng dụng TravelTech hiện đại.",
-    "description": "TripGenie AI tích hợp quản lý trạng thái đồng bộ với Zustand, mã hóa JWT, chống tấn công CSRF, đồng bộ phiên bằng Broadcast và khóa cảnh báo không hoạt động.",
+    "description": "CVerify AI tích hợp quản lý trạng thái đồng bộ với Zustand, mã hóa JWT, chống tấn công CSRF, đồng bộ phiên bằng Broadcast và khóa cảnh báo không hoạt động.",
     "enterHub": "Vào Traveler Hub",
     "accessConsole": "Vào Bảng Điều Khiển",
     "goConsole": "Đến Bảng Điều Khiển",
@@ -57,7 +57,7 @@
       "adminTitle": "Quản trị hệ thống (ADMIN)",
       "adminDesc": "Bảng điều khiển quản trị toàn cầu cung cấp phân tích chẩn đoán sức khỏe máy chủ, quản lý tài khoản và cổng khóa API trực tiếp."
     },
-    "footerNote": "Tích hợp Cổng Xác thực TripGenie AI. Đã xác thực cho Next.js 16 + HeroUI v3 + Tailwind v4."
+    "footerNote": "Tích hợp Cổng Xác thực CVerify AI. Đã xác thực cho Next.js 16 + HeroUI v3 + Tailwind v4."
   },
   "dashboard": {
     "travelerHub": "Traveler Hub",

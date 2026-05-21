@@ -60,7 +60,7 @@ i18n
       'dashboard-user',
       'dashboard-business',
       'dashboard-admin',
-      'chat-planner',
+      'chat-verification',
       'bookings',
       'settings',
       'notifications',

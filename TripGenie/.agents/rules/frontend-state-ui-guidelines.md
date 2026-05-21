@@ -1,4 +1,4 @@
----
+﻿---
 trigger: glob
 globs: src/components/**/*.tsx, src/store/*.ts
 ---

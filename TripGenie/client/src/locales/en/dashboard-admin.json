@@ -1,5 +1,5 @@
 {
-  "title": "TripGenie Administration System",
+  "title": "CVerify Administration System",
   "welcome": "Welcome back, {{name}}!",
   "metrics": {
     "users": "Total Platform Users",
@@ -17,7 +17,7 @@
   },
   "logs": {
     "bypassSandbox": "Administrator activated sandboxed safety controls bypass...",
-    "initialized": "TripGenie system security successfully checked dynamic session...",
+    "initialized": "CVerify system security successfully checked dynamic session...",
     "authHydration": "Verifying secure hydration of traveler profile metadata..."
   },
   "actions": {

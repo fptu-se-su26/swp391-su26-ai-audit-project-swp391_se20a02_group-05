@@ -1,4 +1,4 @@
----
+﻿---
 trigger: model_decision
 description: Apply this rule when integrating Claude (Anthropic), Google Places, OpenWeather, or Amadeus APIs, or when establishing the caching infrastructure.
 ---

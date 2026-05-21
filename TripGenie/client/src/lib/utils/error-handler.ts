@@ -14,7 +14,7 @@ export function getLocalizedErrorMessage(
     return t('errors:UNKNOWN_ERROR');
   }
 
-  // Supported backend API error keys in TripGenie
+  // Supported backend API error keys in CVerify
   const supportedErrorCodes = [
     'UNKNOWN_ERROR',
     'NETWORK_ERROR',

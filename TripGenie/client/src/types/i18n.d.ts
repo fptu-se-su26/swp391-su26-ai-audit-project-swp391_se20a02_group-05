@@ -7,7 +7,7 @@ import sidebar from '../locales/vi/sidebar.json';
 import dashboardUser from '../locales/vi/dashboard-user.json';
 import dashboardBusiness from '../locales/vi/dashboard-business.json';
 import dashboardAdmin from '../locales/vi/dashboard-admin.json';
-import chatPlanner from '../locales/vi/chat-planner.json';
+import chatVerification from '../locales/vi/chat-verification.json';
 import bookings from '../locales/vi/bookings.json';
 import settings from '../locales/vi/settings.json';
 import notifications from '../locales/vi/notifications.json';
@@ -24,7 +24,7 @@ declare module 'i18next' {
       'dashboard-user': typeof dashboardUser;
       'dashboard-business': typeof dashboardBusiness;
       'dashboard-admin': typeof dashboardAdmin;
-      'chat-planner': typeof chatPlanner;
+      'chat-verification': typeof chatVerification;
       bookings: typeof bookings;
       settings: typeof settings;
       notifications: typeof notifications;

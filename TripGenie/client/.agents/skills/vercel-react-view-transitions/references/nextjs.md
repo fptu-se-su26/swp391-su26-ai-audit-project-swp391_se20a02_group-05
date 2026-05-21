@@ -1,4 +1,4 @@
-# View Transitions in Next.js
+﻿# View Transitions in Next.js
 
 ## Setup
 

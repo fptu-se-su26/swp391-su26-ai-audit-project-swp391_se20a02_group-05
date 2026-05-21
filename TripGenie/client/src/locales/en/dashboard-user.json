@@ -56,7 +56,7 @@
     "gatedComponent": "GATED COMPONENT",
     "gatedComponentDesc": "Requires `trips:create` permission. Add this permission or elevate role to test.",
     "creatorEnabled": "CREATOR PANEL ENABLED",
-    "creatorEnabledDesc": "You are authorized to write custom itinerary configurations to the central TripGenie repository.",
+    "creatorEnabledDesc": "You are authorized to write custom itinerary configurations to the central CVerify repository.",
     "newItinerary": "New Itinerary",
     "systemControls": "SYSTEM CONTROLS",
     "systemControlsDesc": "Requires `admin:system:view` permission. Locked for standard travelers.",

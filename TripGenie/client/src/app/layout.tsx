@@ -18,7 +18,7 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "TripGenie AI - Enterprise Travel Companion Platform",
+  title: "CVerify AI - Enterprise Travel Companion Platform",
   description: "Plan, secure, and experience customized itineraries designed by advanced travel intelligence.",
 };
 

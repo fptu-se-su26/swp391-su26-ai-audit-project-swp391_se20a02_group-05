@@ -22,7 +22,7 @@ export default function UnauthorizedPage() {
             <Compass size={18} />
           </div>
           <span className="font-bold text-lg tracking-tight text-zinc-900 dark:text-white">
-            TripGenie AI
+            CVerify AI
           </span>
         </div>
 

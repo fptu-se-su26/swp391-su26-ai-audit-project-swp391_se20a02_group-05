@@ -1,4 +1,4 @@
-# React View Transitions
+﻿# React View Transitions
 
 **Version 1.0.0**
 Vercel Engineering

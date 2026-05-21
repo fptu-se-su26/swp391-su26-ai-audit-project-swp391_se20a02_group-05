@@ -117,7 +117,7 @@ export default function AdminDashboardPage() {
           <div className="flex items-start gap-2.5">
             <span className="text-zinc-400 font-semibold">[15:48:10]</span>
             <span className="text-success font-bold">[SUCCESS]</span>
-            <span>{t('dashboard-admin:console.logs.successRotation', { email: 'admin@tripgenie.ai' })}</span>
+            <span>{t('dashboard-admin:console.logs.successRotation', { email: 'admin@cverify.ai' })}</span>
           </div>
           <div className="flex items-start gap-2.5">
             <span className="text-zinc-400 font-semibold">[15:44:22]</span>

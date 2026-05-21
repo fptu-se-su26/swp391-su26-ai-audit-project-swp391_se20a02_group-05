@@ -1,6 +1,6 @@
-# TripGenie Frontend Client Layer
+﻿# CVerify Frontend Client Layer
 
-Welcome to the **TripGenie AI Client Layer**. This is a state-of-the-art, premium frontend application built with React 19 and Next.js 16 (App Router). The UI features responsive glassmorphic interfaces, smooth animations, dynamic states, and robust edge-level security protections. It serves as the primary collaboration and itinerary planning interface for TripGenie travelers and business partners.
+Welcome to the **CVerify AI Client Layer**. This is a state-of-the-art, premium frontend application built with React 19 and Next.js 16 (App Router). The UI features responsive glassmorphic interfaces, smooth animations, dynamic states, and robust edge-level security protections. It serves as the primary collaboration and itinerary planning interface for CVerify travelers and business partners.
 
 ---
 
@@ -77,7 +77,7 @@ cp .env.example .env.local
 
 ## 🚀 Setup & Running Locally
 
-Ensure all project [Prerequisites](file:///d:/Coding%20Space/FPT/SWP391/swp391-su26-ai-audit-project-swp391_se20a02_group-05/TripGenie/README.md#prerequisites) are met before starting.
+Ensure all project [Prerequisites](file:///d:/Coding%20Space/FPT/SWP391/swp391-su26-ai-audit-project-swp391_se20a02_group-05/CVerify/README.md#prerequisites) are met before starting.
 
 ### 1. Installation
 Navigate into the client directory and install the required dependencies:
@@ -104,7 +104,7 @@ npm run start
 
 ## 📡 API Integration & HTTP Resiliency
 
-All network calls to the backend use a highly resilient, customized Axios wrapper located in [`src/lib/api/axios-client.ts`](file:///d:/Coding%20Space/FPT/SWP391/swp391-su26-ai-audit-project-swp391_se20a02_group-05/TripGenie/client/src/lib/api/axios-client.ts).
+All network calls to the backend use a highly resilient, customized Axios wrapper located in [`src/lib/api/axios-client.ts`](file:///d:/Coding%20Space/FPT/SWP391/swp391-su26-ai-audit-project-swp391_se20a02_group-05/CVerify/client/src/lib/api/axios-client.ts).
 
 ```mermaid
 sequenceDiagram
@@ -148,7 +148,7 @@ sequenceDiagram
 
 ## 🔒 Security Proxy & Edge-Gating Route Flow
 
-The client features a Next.js Edge Middleware proxy ([`src/proxy.ts`](file:///d:/Coding%20Space/FPT/SWP391/swp391-su26-ai-audit-project-swp391_se20a02_group-05/TripGenie/client/src/proxy.ts)) that executes cryptographically at the edge before any page assets are transmitted to the user.
+The client features a Next.js Edge Middleware proxy ([`src/proxy.ts`](file:///d:/Coding%20Space/FPT/SWP391/swp391-su26-ai-audit-project-swp391_se20a02_group-05/CVerify/client/src/proxy.ts)) that executes cryptographically at the edge before any page assets are transmitted to the user.
 
 ### Routing Gatekeeper Execution Lifecycle
 
@@ -159,7 +159,7 @@ The client features a Next.js Edge Middleware proxy ([`src/proxy.ts`](file:///d:
     *   `/dashboard/business/**/*` requires `BUSINESS` or `ADMIN` roles.
     *   `/dashboard/user/**/*` requires `USER`, `BUSINESS`, or `ADMIN` roles.
     *   *Note: Claims are normalized to handle both custom JWT payloads and standard .NET ClaimTypes (`http://schemas.microsoft.com/ws/2008/06/identity/claims/role`).*
-4.  **Multi-Tab Session Broadcast**: When a user logs in, logs out, or has their session extended, the change is broadcast via a `BroadcastChannel` in the Zustand store ([`src/store/use-auth-store.ts`](file:///d:/Coding%20Space/FPT/SWP391/swp391-su26-ai-audit-project-swp391_se20a02_group-05/TripGenie/client/src/store/use-auth-store.ts)). If a user signs out in one tab, **all other open browser tabs immediately terminate their sessions and redirect to `/login`**.
+4.  **Multi-Tab Session Broadcast**: When a user logs in, logs out, or has their session extended, the change is broadcast via a `BroadcastChannel` in the Zustand store ([`src/store/use-auth-store.ts`](file:///d:/Coding%20Space/FPT/SWP391/swp391-su26-ai-audit-project-swp391_se20a02_group-05/CVerify/client/src/store/use-auth-store.ts)). If a user signs out in one tab, **all other open browser tabs immediately terminate their sessions and redirect to `/login`**.
 
 ---
 
@@ -177,7 +177,7 @@ The client features a Next.js Edge Middleware proxy ([`src/proxy.ts`](file:///d:
 ### 1. Security Proxy Redirect Loop (Auth Page to Dashboard and back)
 *   **Symptom**: Logging in successfully redirects you to `/dashboard`, which immediately redirects you back to `/login`.
 *   **Root Cause**: The client-side `JWT_SECRET` in `.env.local` is missing, mismatched, or different from the backend's `JWT_KEY`. Because of this, Next.js Edge cannot cryptographically decrypt the token and flags the request as unauthorized, while the backend accepts it as valid.
-*   **Solution**: Ensure `client/.env.local` contains the exact same key as `TripGenie.Core/.env`'s `JWT_KEY`.
+*   **Solution**: Ensure `client/.env.local` contains the exact same key as `CVerify.Core/.env`'s `JWT_KEY`.
 
 ### 2. CORS Preflight Failures
 *   **Symptom**: Console shows `Access-Control-Allow-Origin` errors on API requests.

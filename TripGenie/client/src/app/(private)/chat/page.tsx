@@ -111,7 +111,7 @@ export default function AiChatPage() {
   const [input, setInput] = useState('');
   const [copiedMap, setCopiedMap] = useState<Record<string, boolean>>({});
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const { t } = useTranslation(['chat-planner', 'common']);
+  const { t } = useTranslation(['chat-verification', 'common']);
 
   // Initialize conversations list on mount and clean up streaming on unmount
   useEffect(() => {
@@ -165,7 +165,7 @@ export default function AiChatPage() {
             disabled={isStreaming}
           >
             <Plus size={16} />
-            {t('chat-planner:sidebar.newChat')}
+            {t('chat-verification:sidebar.newChat')}
           </Button>
         </div>
 
@@ -178,7 +178,7 @@ export default function AiChatPage() {
             </div>
           ) : conversations.length === 0 ? (
             <div className="p-6 text-center text-muted text-xs select-none">
-              {t('chat-planner:sidebar.empty')}
+              {t('chat-verification:sidebar.empty')}
             </div>
           ) : (
             conversations.map((c) => {
@@ -249,45 +249,45 @@ export default function AiChatPage() {
                   <Sparkles size={24} className="animate-pulse" />
                 </div>
                 <Typography type="h2" className="text-xl font-bold tracking-tight text-foreground font-outfit mt-2">
-                  {t('chat-planner:title')}
+                  {t('chat-verification:title')}
                 </Typography>
                 <Typography type="body-xs" className="text-muted max-w-sm leading-normal">
-                  {t('chat-planner:welcomeDesc')}
+                  {t('chat-verification:welcomeDesc')}
                 </Typography>
               </div>
 
               {/* Grid of suggest prompt cards */}
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4 w-full">
                 <Card 
-                  onClick={() => handleSuggestionClick(t('chat-planner:suggestions.kyotoPrompt'))}
+                  onClick={() => handleSuggestionClick(t('chat-verification:suggestions.kyotoPrompt'))}
                   className="p-4 cursor-pointer hover:scale-[1.02] border border-border/60 bg-surface-secondary/40 hover:bg-surface-secondary/80 transition-all duration-200 text-left space-y-1.5"
                   glow={false}
                 >
-                  <span className="text-[10px] font-extrabold tracking-wider text-accent uppercase">{t('chat-planner:suggestions.kyotoTitle')}</span>
+                  <span className="text-[10px] font-extrabold tracking-wider text-accent uppercase">{t('chat-verification:suggestions.kyotoTitle')}</span>
                   <p className="text-[11px] font-semibold text-foreground/90 leading-normal">
-                    &quot;{t('chat-planner:suggestions.kyotoDesc')}&quot;
+                    &quot;{t('chat-verification:suggestions.kyotoDesc')}&quot;
                   </p>
                 </Card>
                 
                 <Card 
-                  onClick={() => handleSuggestionClick(t('chat-planner:suggestions.yosemitePrompt'))}
+                  onClick={() => handleSuggestionClick(t('chat-verification:suggestions.yosemitePrompt'))}
                   className="p-4 cursor-pointer hover:scale-[1.02] border border-border/60 bg-surface-secondary/40 hover:bg-surface-secondary/80 transition-all duration-200 text-left space-y-1.5"
                   glow={false}
                 >
-                  <span className="text-[10px] font-extrabold tracking-wider text-success uppercase">{t('chat-planner:suggestions.yosemiteTitle')}</span>
+                  <span className="text-[10px] font-extrabold tracking-wider text-success uppercase">{t('chat-verification:suggestions.yosemiteTitle')}</span>
                   <p className="text-[11px] font-semibold text-foreground/90 leading-normal">
-                    &quot;{t('chat-planner:suggestions.yosemiteDesc')}&quot;
+                    &quot;{t('chat-verification:suggestions.yosemiteDesc')}&quot;
                   </p>
                 </Card>
 
                 <Card 
-                  onClick={() => handleSuggestionClick(t('chat-planner:suggestions.romePrompt'))}
+                  onClick={() => handleSuggestionClick(t('chat-verification:suggestions.romePrompt'))}
                   className="p-4 cursor-pointer hover:scale-[1.02] border border-border/60 bg-surface-secondary/40 hover:bg-surface-secondary/80 transition-all duration-200 text-left space-y-1.5"
                   glow={false}
                 >
-                  <span className="text-[10px] font-extrabold tracking-wider text-warning uppercase">{t('chat-planner:suggestions.romeTitle')}</span>
+                  <span className="text-[10px] font-extrabold tracking-wider text-warning uppercase">{t('chat-verification:suggestions.romeTitle')}</span>
                   <p className="text-[11px] font-semibold text-foreground/90 leading-normal">
-                    &quot;{t('chat-planner:suggestions.romeDesc')}&quot;
+                    &quot;{t('chat-verification:suggestions.romeDesc')}&quot;
                   </p>
                 </Card>
               </div>
@@ -304,7 +304,7 @@ export default function AiChatPage() {
                   ].join(' ')}
                 >
                   <div className="flex items-center gap-2 mb-1.5 select-none text-[10px] uppercase font-bold tracking-widest text-muted font-mono">
-                    <span>{isUser ? 'You' : 'TripGenie AI'}</span>
+                    <span>{isUser ? 'You' : 'CVerify AI'}</span>
                   </div>
 
                   <div 
@@ -324,7 +324,7 @@ export default function AiChatPage() {
                           <button
                             onClick={() => handleCopy(m.content, m.id)}
                             className="p-1 rounded bg-surface hover:bg-surface-secondary text-muted transition-colors cursor-pointer"
-                            title={t('chat-planner:actions.copy')}
+                            title={t('chat-verification:actions.copy')}
                           >
                             {copiedMap[m.id] ? <Check size={13} className="text-success" /> : <Copy size={13} />}
                           </button>
@@ -333,7 +333,7 @@ export default function AiChatPage() {
                         {m.streamingState === 'Pending' ? (
                           <div className="flex items-center gap-2.5 py-1 text-muted select-none">
                             <Spinner size="sm" color="accent" />
-                            <span className="text-xs font-semibold animate-pulse">{t('chat-planner:placeholders.streaming')}</span>
+                            <span className="text-xs font-semibold animate-pulse">{t('chat-verification:placeholders.streaming')}</span>
                           </div>
                         ) : (
                           <div 
@@ -359,7 +359,7 @@ export default function AiChatPage() {
               value={input}
               onChange={(e) => setInput(e.target.value)}
               disabled={isStreaming}
-              placeholder={t('chat-planner:placeholders.input')}
+              placeholder={t('chat-verification:placeholders.input')}
               className="flex-1 px-4 py-3 rounded-xl border border-border bg-surface-secondary/50 backdrop-blur-sm text-sm text-foreground focus:outline-hidden focus:ring-2 focus:ring-focus transition-all select-text pr-24"
             />
             

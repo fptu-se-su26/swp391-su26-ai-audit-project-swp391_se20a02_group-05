@@ -1,4 +1,4 @@
----
+﻿---
 trigger: model_decision
 description: Apply this rule when the AI initializes tool calls, writes logic for retrieving travel data, or designs response schemas for the itinerary planner system.
 ---

@@ -1,1 +1,0 @@
-# TripGenie.AI App Package

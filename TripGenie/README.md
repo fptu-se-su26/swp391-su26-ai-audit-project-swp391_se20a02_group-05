@@ -1,16 +1,16 @@
-# TripGenie AI - Full-Stack Travel Planner
+﻿# CVerify AI - Full-Stack Travel Planner
 
-Welcome to **TripGenie AI**, an enterprise-grade full-stack travel planning application. TripGenie leverages advanced large language models to construct optimized, collaborative travel itineraries. It features a responsive, beautifully animated React/Next.js frontend and a resilient, high-performance ASP.NET Core backend.
+Welcome to **CVerify AI**, an enterprise-grade full-stack travel planning application. CVerify leverages advanced large language models to construct optimized, collaborative travel itineraries. It features a responsive, beautifully animated React/Next.js frontend and a resilient, high-performance ASP.NET Core backend.
 
 This repository is structured as a monorepo containing:
-*   **Frontend (Client Layer)**: [`/client`](file:///d:/Coding%20Space/FPT/SWP391/swp391-su26-ai-audit-project-swp391_se20a02_group-05/TripGenie/client) — Built on Next.js 16 (App Router), React 19, HeroUI v3, Tailwind CSS v4, and Zustand.
-*   **Backend (Server Layer)**: [`/TripGenie.Core`](file:///d:/Coding%20Space/FPT/SWP391/swp391-su26-ai-audit-project-swp391_se20a02_group-05/TripGenie/TripGenie.Core) — Built on ASP.NET Core v10, PostgreSQL, Entity Framework Core, Redis, and Claude AI API.
+*   **Frontend (Client Layer)**: [`/client`](file:///d:/Coding%20Space/FPT/SWP391/swp391-su26-ai-audit-project-swp391_se20a02_group-05/CVerify/client) — Built on Next.js 16 (App Router), React 19, HeroUI v3, Tailwind CSS v4, and Zustand.
+*   **Backend (Server Layer)**: [`/CVerify.Core`](file:///d:/Coding%20Space/FPT/SWP391/swp391-su26-ai-audit-project-swp391_se20a02_group-05/CVerify/CVerify.Core) — Built on ASP.NET Core v10, PostgreSQL, Entity Framework Core, Redis, and Claude AI API.
 
 ---
 
 ## Architecture Blueprint
 
-TripGenie uses a decoupled architecture with strict separation of concerns, ensuring maximum scalability, security, and developer efficiency.
+CVerify uses a decoupled architecture with strict separation of concerns, ensuring maximum scalability, security, and developer efficiency.
 
 ```mermaid
 graph TD
@@ -74,7 +74,7 @@ Ensure you have the following environments and database servers installed locall
 #### Step 1: Clone the Repository
 ```bash
 git clone <your-repository-url>
-cd TripGenie
+cd CVerify
 ```
 
 #### Step 2: Set Up the Database and Redis
@@ -82,15 +82,15 @@ Ensure PostgreSQL and Redis servers are running locally on their default ports:
 *   **PostgreSQL**: Port `5432`
 *   **Redis**: Port `6379`
 
-Create an empty database named `tripgenie_db` in PostgreSQL:
+Create an empty database named `cverify_db` in PostgreSQL:
 ```sql
-CREATE DATABASE tripgenie_db;
+CREATE DATABASE cverify_db;
 ```
 
 #### Step 3: Configure and Run the Backend
 1.  Navigate into the backend project root:
     ```bash
-    cd TripGenie.Core
+    cd CVerify.Core
     ```
 2.  Create your local `.env` configuration file by duplicating the provided template:
     ```bash
@@ -141,7 +141,7 @@ Once up and running, the system components bind to the following default configu
 | **Redis Cache** | `localhost:6379` | Cache and Distributed State |
 
 #### API Base URL Mapping
-The frontend connects to the backend REST API by reading the `NEXT_PUBLIC_API_URL` environment variable inside [`client/.env.local`](file:///d:/Coding%20Space/FPT/SWP391/swp391-su26-ai-audit-project-swp391_se20a02_group-05/TripGenie/client/.env.local):
+The frontend connects to the backend REST API by reading the `NEXT_PUBLIC_API_URL` environment variable inside [`client/.env.local`](file:///d:/Coding%20Space/FPT/SWP391/swp391-su26-ai-audit-project-swp391_se20a02_group-05/CVerify/client/.env.local):
 ```env
 NEXT_PUBLIC_API_URL=http://localhost:5247/api
 ```
@@ -163,5 +163,5 @@ Verify that the full-stack setup is fully integrated and functioning by checking
 ## 📖 Sub-Project Documentations
 
 For detailed deep-dives into specialized layers, refer to:
-*   📚 **[Frontend Developer Guide](file:///d:/Coding%20Space/FPT/SWP391/swp391-su26-ai-audit-project-swp391_se20a02_group-05/TripGenie/client/README.md)**: Details on Next.js edge proxies, HeroUI styling variables, Zustand stores, and state hydration.
-*   📚 **[Backend Developer Guide](file:///d:/Coding%20Space/FPT/SWP391/swp391-su26-ai-audit-project-swp391_se20a02_group-05/TripGenie/TripGenie.Core/README.md)**: Details on Clean Architecture layers, outbox patterns, rate limiter rules, MailKit SMTP transport failovers, and EF Core enum mappings.
+*   📚 **[Frontend Developer Guide](file:///d:/Coding%20Space/FPT/SWP391/swp391-su26-ai-audit-project-swp391_se20a02_group-05/CVerify/client/README.md)**: Details on Next.js edge proxies, HeroUI styling variables, Zustand stores, and state hydration.
+*   📚 **[Backend Developer Guide](file:///d:/Coding%20Space/FPT/SWP391/swp391-su26-ai-audit-project-swp391_se20a02_group-05/CVerify/CVerify.Core/README.md)**: Details on Clean Architecture layers, outbox patterns, rate limiter rules, MailKit SMTP transport failovers, and EF Core enum mappings.

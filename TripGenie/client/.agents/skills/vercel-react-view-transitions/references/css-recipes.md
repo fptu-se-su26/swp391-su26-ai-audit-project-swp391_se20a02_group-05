@@ -1,4 +1,4 @@
-# CSS Animation Recipes
+﻿# CSS Animation Recipes
 
 Ready-to-use CSS for `<ViewTransition>` props. Copy into your global stylesheet.
 

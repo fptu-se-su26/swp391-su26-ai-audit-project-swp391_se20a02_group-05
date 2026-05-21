@@ -1,4 +1,4 @@
--- =========================================================
+﻿-- =========================================================
 -- 1. EXTENSIONS
 -- =========================================================
 -- Enable cryptographic functions for UUID generation and password hashing (e.g., bcrypt/blowfish)

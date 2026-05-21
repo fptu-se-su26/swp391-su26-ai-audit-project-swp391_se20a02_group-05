@@ -43,7 +43,7 @@ export const Header: React.FC = () => {
             <Compass size={16} />
           </div>
           <Typography type="body-sm" className="font-bold tracking-tight font-outfit text-foreground leading-none">
-            {t('common:branding.title', { defaultValue: 'TripGenie' })}
+            {t('common:branding.title', { defaultValue: 'CVerify' })}
           </Typography>
         </div>
       </div>

@@ -1,4 +1,4 @@
-import fs from 'fs';
+﻿import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 
@@ -33,7 +33,7 @@ function getFlatKeys(obj: unknown, prefix = ''): string[] {
 let hasErrors = false;
 
 function validate() {
-  console.log('--- Initializing TripGenie i18n Validation Protocol ---');
+  console.log('--- Initializing CVerify i18n Validation Protocol ---');
 
   if (!fs.existsSync(VI_DIR)) {
     console.error(`Error: Source locale directory "vi" not found at ${VI_DIR}`);
@@ -116,7 +116,7 @@ function validate() {
     }
   }
 
-  console.log('\n--- TripGenie i18n Validation Protocol Summary ---');
+  console.log('\n--- CVerify i18n Validation Protocol Summary ---');
   if (hasErrors) {
     console.error('Result: Validation FAILED with errors in strict locales.');
     process.exit(1);

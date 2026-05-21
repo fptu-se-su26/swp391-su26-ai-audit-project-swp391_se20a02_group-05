@@ -85,7 +85,7 @@ export default function SystemStatusPage() {
       // Attempt to retrieve fallback version data or general connection failure message
       setErrorMsg(
         error.message ||
-        'Unable to establish a socket connection to the TripGenie API server. Check your network or API endpoint status.'
+        'Unable to establish a socket connection to the CVerify API server. Check your network or API endpoint status.'
       );
 
       setTelemetry({
@@ -160,7 +160,7 @@ export default function SystemStatusPage() {
             </div>
             <div>
               <h1 className="text-xl font-bold tracking-tight text-white flex items-center gap-2">
-                TripGenie AI <span className="text-zinc-500 text-sm font-normal">/ status</span>
+                CVerify AI <span className="text-zinc-500 text-sm font-normal">/ status</span>
               </h1>
               <p className="text-xs text-zinc-400">
                 Public service availability, API latency, and diagnostic dashboard
@@ -550,7 +550,7 @@ export default function SystemStatusPage() {
       {/* Footer Branding */}
       <footer className="w-full max-w-5xl mx-auto px-4 py-8 border-t border-zinc-900/60 relative z-10 flex flex-col sm:flex-row justify-between items-center gap-4 text-[11px] text-zinc-500 font-medium">
         <div className="flex items-center gap-1.5">
-          <span>&copy; {new Date().getFullYear()} TripGenie AI Inc. All rights reserved.</span>
+          <span>&copy; {new Date().getFullYear()} CVerify AI Inc. All rights reserved.</span>
         </div>
         <div className="flex items-center gap-4">
           <a href="/login" className="hover:text-zinc-300 transition-colors">Access Console</a>

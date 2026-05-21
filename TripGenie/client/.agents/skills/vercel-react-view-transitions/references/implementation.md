@@ -1,4 +1,4 @@
-# Implementation Workflow
+﻿# Implementation Workflow
 
 Follow these steps in order when adding view transitions to an app. Each step builds on the previous one.
 

@@ -1,5 +1,5 @@
 {
-  "title": "Hệ Thống Quản Trị TripGenie",
+  "title": "Hệ Thống Quản Trị CVerify",
   "welcome": "Chào mừng quản trị viên, {{name}}!",
   "metrics": {
     "users": "Tổng số người dùng",
@@ -17,7 +17,7 @@
   },
   "logs": {
     "bypassSandbox": "Quản trị viên đã kích hoạt hộp cát kiểm soát quyền lực hệ thống...",
-    "initialized": "Hệ thống TripGenie đã sẵn sàng kiểm tra phiên...",
+    "initialized": "Hệ thống CVerify đã sẵn sàng kiểm tra phiên...",
     "authHydration": "Đang xác thực bảo mật traveler profile..."
   },
   "actions": {
