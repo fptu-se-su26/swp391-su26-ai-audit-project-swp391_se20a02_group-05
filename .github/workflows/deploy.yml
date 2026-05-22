@@ -3,7 +3,7 @@ name: Deploy Frontend Design to GitHub Pages
 on:
   push:
     branches:
-      - Frontend_Demo # Kích hoạt khi bạn push code lên branch này
+      - Frontend_Demo
 
 permissions:
   contents: write
@@ -12,6 +12,9 @@ permissions:
 
 jobs:
   deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout mã nguồn
@@ -23,8 +26,9 @@ jobs:
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          # ĐƯỜNG DẪN ĐÃ SỬA: Chỉ thẳng vào folder Frontend_design ở root
-          path: 'Frontend_design'
+          # Thư mục chứa file html của bạn, nếu đã lôi ra ngoài root thì để '.'
+          # Còn nếu vẫn để trong Frontend_design thì sửa lại thành 'Frontend_design' nhé
+          path: '.' 
 
       - name: Deploy to GitHub Pages
         id: deployment
