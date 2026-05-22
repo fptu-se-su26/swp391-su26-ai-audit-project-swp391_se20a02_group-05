@@ -1,0 +1,489 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Candidate Review - Veritas Technical</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;600;700&amp;family=Inter:wght@400;600&amp;family=JetBrains+Mono:wght@600&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+          darkMode: "class",
+          theme: {
+            extend: {
+              "colors": {
+                      "surface-variant": "#d3e4fe",
+                      "on-secondary-fixed-variant": "#38485a",
+                      "on-error": "#ffffff",
+                      "inverse-on-surface": "#eaf1ff",
+                      "surface-gray": "#f8fafc",
+                      "on-primary": "#ffffff",
+                      "surface-container-high": "#dce9ff",
+                      "on-tertiary": "#ffffff",
+                      "surface": "#f8f9ff",
+                      "on-tertiary-fixed": "#400013",
+                      "secondary-fixed": "#d2e4fb",
+                      "on-tertiary-fixed-variant": "#8e0b36",
+                      "outline-variant": "#bccbb9",
+                      "on-primary-fixed": "#002109",
+                      "tertiary-fixed-dim": "#ffb2bc",
+                      "surface-container": "#e5eeff",
+                      "error": "#ba1a1a",
+                      "primary-container": "#00b14f",
+                      "error-container": "#ffdad6",
+                      "primary": "#006e2e",
+                      "outline": "#6d7b6c",
+                      "on-surface": "#0b1c30",
+                      "background": "#f8f9ff",
+                      "declared-amber": "#f59e0b",
+                      "secondary": "#4f6073",
+                      "on-tertiary-container": "#680024",
+                      "inverse-primary": "#52e078",
+                      "tertiary-container": "#fd6584",
+                      "on-primary-container": "#003a15",
+                      "on-error-container": "#93000a",
+                      "surface-dim": "#cbdbf5",
+                      "on-background": "#0b1c30",
+                      "surface-container-lowest": "#ffffff",
+                      "primary-fixed-dim": "#52e078",
+                      "surface-tint": "#006e2e",
+                      "verified-blue": "#0ea5e9",
+                      "inverse-surface": "#213145",
+                      "secondary-container": "#d2e4fb",
+                      "on-secondary-container": "#556679",
+                      "tertiary-fixed": "#ffd9dd",
+                      "surface-container-highest": "#d3e4fe",
+                      "primary-fixed": "#71fe91",
+                      "error-red": "#ef4444",
+                      "on-secondary-fixed": "#0b1d2d",
+                      "on-surface-variant": "#3d4a3d",
+                      "on-secondary": "#ffffff",
+                      "surface-container-low": "#eff4ff",
+                      "tertiary": "#af294c",
+                      "surface-bright": "#f8f9ff",
+                      "secondary-fixed-dim": "#b7c8de",
+                      "on-primary-fixed-variant": "#005321"
+              },
+              "borderRadius": {
+                      "DEFAULT": "0.125rem",
+                      "lg": "0.25rem",
+                      "xl": "0.5rem",
+                      "full": "0.75rem"
+              },
+              "spacing": {
+                      "stack-md": "16px",
+                      "margin-desktop": "32px",
+                      "base": "4px",
+                      "stack-lg": "32px",
+                      "margin-mobile": "16px",
+                      "container-max": "1280px",
+                      "stack-sm": "8px",
+                      "gutter": "24px"
+              },
+              "fontFamily": {
+                      "headline-lg-mobile": [
+                              "Hanken Grotesk"
+                      ],
+                      "body-sm": [
+                              "Inter"
+                      ],
+                      "label-caps": [
+                              "JetBrains Mono"
+                      ],
+                      "body-md": [
+                              "Inter"
+                      ],
+                      "body-lg": [
+                              "Inter"
+                      ],
+                      "headline-md": [
+                              "Hanken Grotesk"
+                      ],
+                      "status-label": [
+                              "Inter"
+                      ],
+                      "headline-xl": [
+                              "Hanken Grotesk"
+                      ],
+                      "headline-lg": [
+                              "Hanken Grotesk"
+                      ]
+              },
+              "fontSize": {
+                      "headline-lg-mobile": [
+                              "28px",
+                              {
+                                      "lineHeight": "36px",
+                                      "fontWeight": "600"
+                              }
+                      ],
+                      "body-sm": [
+                              "14px",
+                              {
+                                      "lineHeight": "20px",
+                                      "fontWeight": "400"
+                              }
+                      ],
+                      "label-caps": [
+                              "12px",
+                              {
+                                      "lineHeight": "16px",
+                                      "letterSpacing": "0.05em",
+                                      "fontWeight": "600"
+                              }
+                      ],
+                      "body-md": [
+                              "16px",
+                              {
+                                      "lineHeight": "24px",
+                                      "fontWeight": "400"
+                              }
+                      ],
+                      "body-lg": [
+                              "18px",
+                              {
+                                      "lineHeight": "28px",
+                                      "fontWeight": "400"
+                              }
+                      ],
+                      "headline-md": [
+                              "24px",
+                              {
+                                      "lineHeight": "32px",
+                                      "fontWeight": "600"
+                              }
+                      ],
+                      "status-label": [
+                              "13px",
+                              {
+                                      "lineHeight": "18px",
+                                      "fontWeight": "600"
+                              }
+                      ],
+                      "headline-xl": [
+                              "40px",
+                              {
+                                      "lineHeight": "48px",
+                                      "letterSpacing": "-0.02em",
+                                      "fontWeight": "700"
+                              }
+                      ],
+                      "headline-lg": [
+                              "32px",
+                              {
+                                      "lineHeight": "40px",
+                                      "letterSpacing": "-0.01em",
+                                      "fontWeight": "600"
+                              }
+                      ]
+              }
+      },
+          },
+        }
+    </script>
+<style>
+        body {
+            background-color: theme('colors.background');
+            color: theme('colors.on-background');
+        }
+        .verified-bg {
+            background-color: rgba(14, 165, 233, 0.05);
+        }
+        .verified-border {
+            border: 1px solid rgba(14, 165, 233, 0.2);
+        }
+        .timeline-line::before {
+            content: '';
+            position: absolute;
+            top: 24px;
+            bottom: -24px;
+            left: 11px;
+            width: 2px;
+            background-color: theme('colors.surface-gray');
+            z-index: 0;
+        }
+        .timeline-item:last-child .timeline-line::before {
+            display: none;
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col font-body-md text-body-md">
+<!-- TopNavBar -->
+<nav class="bg-surface-container-lowest dark:bg-inverse-surface border-b border-outline-variant dark:border-on-secondary-fixed-variant shadow-sm w-full sticky top-0 z-50 flex justify-between items-center px-margin-desktop h-16 md:flex hidden">
+<div class="flex items-center gap-gutter">
+<span class="font-headline-md text-headline-md font-bold text-primary dark:text-primary-fixed">Veritas Technical</span>
+</div>
+<div class="flex items-center space-x-stack-md h-full">
+<div class="h-full flex items-center px-4 hover:bg-surface-container-low dark:hover:bg-on-secondary-fixed-variant transition-colors cursor-pointer text-on-surface-variant dark:text-surface-variant">
+<span class="font-body-md text-body-md">Bảng điều khiển</span>
+</div>
+<div class="h-full flex items-center px-4 hover:bg-surface-container-low dark:hover:bg-on-secondary-fixed-variant transition-colors cursor-pointer text-primary dark:text-primary-fixed font-bold border-b-2 border-primary opacity-80 scale-95 transition-all">
+<span class="font-body-md text-body-md">Tìm ứng viên</span>
+</div>
+<div class="h-full flex items-center px-4 hover:bg-surface-container-low dark:hover:bg-on-secondary-fixed-variant transition-colors cursor-pointer text-on-surface-variant dark:text-surface-variant">
+<span class="font-body-md text-body-md">Tin tuyển dụng</span>
+</div>
+</div>
+<div class="flex items-center gap-stack-md">
+<button class="text-on-surface-variant hover:text-primary transition-colors">
+<span class="material-symbols-outlined" data-icon="notifications">notifications</span>
+</button>
+<button class="text-on-surface-variant hover:text-primary transition-colors">
+<span class="material-symbols-outlined" data-icon="settings">settings</span>
+</button>
+<div class="w-8 h-8 rounded-full bg-surface-variant overflow-hidden border border-outline-variant">
+<img alt="Recruiter profile avatar" class="w-full h-full object-cover" data-alt="A professional headshot of a corporate recruiter wearing a dark blazer over a light blue shirt. The background is a slightly blurred modern office setting with glass walls and bright, natural light. The lighting is high-key and flattering, emphasizing a trustworthy and precise corporate aesthetic. The color palette focuses on crisp whites, soft grays, and professional blues." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDNz0QcvuxaEEkh66hCB47cmBTGoSqxqD5C_sZ4VQTUrKbXTYh25lGA4-P7f7bFVcLFFGb2K407-imzNWncVhf8RHRekcAKcsCeVc9_dN88mD4iecWmiEipIpaPN6eitB1klb48u9j8k02PccCDK92srrLldTPYASg4L6hWeGTBpv41W7H3k-bfFrGJP2U6mAs33elZ_P7kniQOVzOFcKjYV_gFcfNg_z33yTi6El-6r2adEzIdrMFT5RK9dbEXNIZLfVwTvnIzPWKH"/>
+</div>
+</div>
+</nav>
+<div class="flex flex-1 overflow-hidden">
+<!-- SideNavBar (Hidden on Mobile) -->
+<aside class="bg-surface dark:bg-inverse-surface border-r border-outline-variant dark:border-on-secondary-fixed-variant w-64 hidden md:flex flex-col h-full py-stack-lg px-4 space-y-stack-md sticky top-16" style="height: calc(100vh - 64px);">
+<div class="mb-stack-lg px-4 flex items-center gap-stack-md">
+<div class="w-10 h-10 rounded-lg bg-surface-container-high flex items-center justify-center">
+<span class="material-symbols-outlined text-primary" data-icon="corporate_fare">corporate_fare</span>
+</div>
+<div>
+<h2 class="font-body-md text-body-md font-bold text-on-surface">Recruiter Portal</h2>
+<p class="font-label-caps text-label-caps text-on-surface-variant">Verified Talent Source</p>
+</div>
+</div>
+<nav class="flex-1 space-y-2">
+<a class="flex items-center gap-stack-sm px-4 py-3 rounded-xl text-on-surface-variant dark:text-surface-variant hover:bg-surface-container-high dark:hover:bg-on-secondary-fixed-variant transition-all hover:text-primary" href="#">
+<span class="material-symbols-outlined" data-icon="dashboard">dashboard</span>
+<span class="font-label-caps text-label-caps">Bảng điều khiển</span>
+</a>
+<a class="flex items-center gap-stack-sm px-4 py-3 rounded-xl bg-primary-container dark:bg-primary text-on-primary-container dark:text-on-primary font-bold translate-x-1 transition-transform" href="#">
+<span class="material-symbols-outlined" data-icon="person_search" data-weight="fill" style="font-variation-settings: 'FILL' 1;">person_search</span>
+<span class="font-label-caps text-label-caps">Tìm ứng viên</span>
+</a>
+<a class="flex items-center gap-stack-sm px-4 py-3 rounded-xl text-on-surface-variant dark:text-surface-variant hover:bg-surface-container-high dark:hover:bg-on-secondary-fixed-variant transition-all hover:text-primary" href="#">
+<span class="material-symbols-outlined" data-icon="work">work</span>
+<span class="font-label-caps text-label-caps">Tin tuyển dụng</span>
+</a>
+<a class="flex items-center gap-stack-sm px-4 py-3 rounded-xl text-on-surface-variant dark:text-surface-variant hover:bg-surface-container-high dark:hover:bg-on-secondary-fixed-variant transition-all hover:text-primary" href="#">
+<span class="material-symbols-outlined" data-icon="mail">mail</span>
+<span class="font-label-caps text-label-caps">Tin nhắn</span>
+</a>
+<a class="flex items-center gap-stack-sm px-4 py-3 rounded-xl text-on-surface-variant dark:text-surface-variant hover:bg-surface-container-high dark:hover:bg-on-secondary-fixed-variant transition-all hover:text-primary" href="#">
+<span class="material-symbols-outlined" data-icon="analytics">analytics</span>
+<span class="font-label-caps text-label-caps">Phân tích</span>
+</a>
+</nav>
+<div class="mt-auto space-y-stack-md pt-stack-md border-t border-outline-variant">
+<button class="w-full bg-primary text-on-primary py-2 px-4 rounded font-body-sm text-body-sm font-semibold hover:bg-surface-tint transition-colors">
+                     Đăng tin mới
+                 </button>
+<nav class="space-y-2">
+<a class="flex items-center gap-stack-sm px-4 py-2 rounded-xl text-on-surface-variant hover:text-primary transition-all" href="#">
+<span class="material-symbols-outlined text-[20px]" data-icon="help">help</span>
+<span class="font-label-caps text-label-caps">Hỗ trợ</span>
+</a>
+<a class="flex items-center gap-stack-sm px-4 py-2 rounded-xl text-on-surface-variant hover:text-primary transition-all" href="#">
+<span class="material-symbols-outlined text-[20px]" data-icon="settings">settings</span>
+<span class="font-label-caps text-label-caps">Cài đặt</span>
+</a>
+</nav>
+</div>
+</aside>
+<!-- Main Content -->
+<main class="flex-1 overflow-y-auto bg-surface-gray p-margin-mobile md:p-margin-desktop">
+<div class="max-w-[1280px] mx-auto space-y-stack-lg">
+<!-- Candidate Header -->
+<div class="bg-surface-container-lowest rounded-lg border border-outline-variant p-gutter shadow-sm relative overflow-hidden flex flex-col md:flex-row justify-between items-start md:items-center gap-stack-md">
+<div class="absolute top-0 left-0 w-1 h-full bg-primary"></div>
+<div class="flex items-start gap-gutter">
+<div class="w-20 h-20 rounded-lg overflow-hidden border border-outline-variant shrink-0">
+<img alt="Candidate Avatar" class="w-full h-full object-cover" data-alt="A portrait of a male software engineer with short hair and glasses, wearing a neutral-colored textured sweater. The background is a clean, minimal white workspace with a hint of a monitor edge visible. The lighting is bright and even, highlighting a serious but approachable expression. The overall style is modern corporate, emphasizing clarity and professionalism." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAR3pXgKRnm1Hwd_bd60Rfr9LMGnRCNFoknbYfyT2JOK6rvjITBWQKfXOEellNSU1flSkoUzpNpvDF_M-nqqf0zUtYi7phjitc-rrW3qLA37PbFe7QW2t-MLEkNMeWH1eJggc_3QUNi3dYAP-VXbnCAxoC_vTPFLcfWVFkOF44aBeHCuu6vi5_YELL_qOFFhfqNjgri__TAZRNsGO7tZ8JiEK8ddEeuc--dr5_j78lS6KhsXbwi0P8uYMfIdCVkNiizmcbov2unCDWf"/>
+</div>
+<div>
+<div class="flex items-center gap-stack-sm mb-1">
+<h1 class="font-headline-lg text-headline-lg-mobile md:text-headline-lg font-bold text-on-surface">Marcus Chen</h1>
+<div class="bg-verified-blue/10 text-verified-blue font-label-caps text-label-caps px-2 py-0.5 rounded-full flex items-center gap-1 border border-verified-blue/20">
+<span class="material-symbols-outlined text-[14px]" data-icon="verified">verified</span>
+                                     ĐÃ XÁC THỰC ID
+                                 </div>
+</div>
+<p class="font-body-lg text-body-lg text-secondary mb-2">Kỹ sư Frontend Cao cấp</p>
+<div class="flex flex-wrap items-center gap-x-stack-md gap-y-stack-sm font-body-sm text-body-sm text-on-surface-variant">
+<span class="flex items-center gap-1"><span class="material-symbols-outlined text-[16px]" data-icon="location_on">location_on</span> San Francisco, CA (Remote OK)</span>
+<span class="flex items-center gap-1"><span class="material-symbols-outlined text-[16px]" data-icon="work_history">work_history</span> 8 YOE Đã xác thực</span>
+</div>
+</div>
+</div>
+<div class="flex items-center gap-stack-sm w-full md:w-auto mt-4 md:mt-0">
+<button class="flex-1 md:flex-none border border-secondary text-secondary font-body-sm text-body-sm font-semibold py-2 px-4 rounded hover:bg-surface-container-low transition-colors">
+                             Thêm vào danh sách
+                         </button>
+<button class="flex-1 md:flex-none border border-secondary text-secondary font-body-sm text-body-sm font-semibold py-2 px-4 rounded hover:bg-surface-container-low transition-colors">
+                             Gửi tin nhắn
+                         </button>
+<button class="flex-1 md:flex-none bg-primary text-on-primary font-body-sm text-body-sm font-semibold py-2 px-4 rounded hover:bg-surface-tint transition-colors">
+                             Lên lịch phỏng vấn
+                         </button>
+</div>
+</div>
+<!-- Match Analysis & Risk Assessment Bento Grid -->
+<div class="grid grid-cols-1 md:grid-cols-3 gap-gutter">
+<!-- Match for Job -->
+<div class="md:col-span-2 bg-surface-container-lowest rounded-lg border border-outline-variant p-gutter shadow-sm">
+<div class="flex justify-between items-center mb-stack-md border-b border-outline-variant pb-stack-sm">
+<h2 class="font-headline-md text-headline-md text-on-surface">Phân tích độ phù hợp: Lập trình viên React Cao cấp</h2>
+<div class="flex items-center gap-2">
+<span class="font-headline-md text-headline-md font-bold text-primary">92%</span>
+<span class="font-body-sm text-body-sm text-on-surface-variant">Điểm phù hợp</span>
+</div>
+</div>
+<div class="space-y-stack-md">
+<div>
+<h3 class="font-label-caps text-label-caps text-secondary mb-stack-sm">Kỹ năng yêu cầu so với thực tế</h3>
+<div class="grid grid-cols-1 sm:grid-cols-2 gap-stack-sm">
+<div class="flex items-center justify-between p-2 rounded bg-surface-container-low">
+<span class="font-body-md text-body-md font-semibold">React (5+ yrs)</span>
+<div class="flex items-center gap-2">
+<span class="font-body-sm text-body-sm text-primary">6.2 yrs verified</span>
+<span class="material-symbols-outlined text-primary text-[18px]" data-icon="check_circle">check_circle</span>
+</div>
+</div>
+<div class="flex items-center justify-between p-2 rounded bg-surface-container-low">
+<span class="font-body-md text-body-md font-semibold">TypeScript (3+ yrs)</span>
+<div class="flex items-center gap-2">
+<span class="font-body-sm text-body-sm text-primary">4.1 yrs verified</span>
+<span class="material-symbols-outlined text-primary text-[18px]" data-icon="check_circle">check_circle</span>
+</div>
+</div>
+<div class="flex items-center justify-between p-2 rounded bg-surface-container-low">
+<span class="font-body-md text-body-md font-semibold">GraphQL</span>
+<div class="flex items-center gap-2">
+<span class="font-body-sm text-body-sm text-primary">Đã xác thực</span>
+<span class="material-symbols-outlined text-primary text-[18px]" data-icon="check_circle">check_circle</span>
+</div>
+</div>
+<div class="flex items-center justify-between p-2 rounded bg-surface-container-lowest border border-outline-variant">
+<span class="font-body-md text-body-md">Node.js (Bonus)</span>
+<div class="flex items-center gap-2">
+<span class="font-body-sm text-body-sm text-declared-amber">Tự khai báo</span>
+<span class="material-symbols-outlined text-declared-amber text-[18px]" data-icon="info">info</span>
+</div>
+</div>
+</div>
+</div>
+<div>
+<h3 class="font-label-caps text-label-caps text-secondary mb-stack-sm">Lý do phù hợp</h3>
+<p class="font-body-sm text-body-sm text-on-surface-variant leading-relaxed">
+                                    Ứng viên vượt xa các yêu cầu cốt lõi về frontend với những đóng góp lâu dài đã được xác thực vào các kho mã nguồn React/TypeScript phức tạp. Việc thiếu xác thực Node.js backend là một khoảng trống nhỏ so với một yêu cầu 'ưu tiên'.
+                                </p>
+</div>
+</div>
+</div>
+<!-- Risk Assessment -->
+<div class="bg-surface-container-lowest rounded-lg border border-outline-variant p-gutter shadow-sm verified-bg verified-border flex flex-col justify-between">
+<div>
+<div class="flex items-center gap-stack-sm mb-stack-md">
+<span class="material-symbols-outlined text-verified-blue" data-icon="security">security</span>
+<h2 class="font-headline-md text-headline-md text-on-surface">Đánh giá rủi ro</h2>
+</div>
+<div class="space-y-stack-sm mb-stack-lg">
+<div class="flex justify-between items-center">
+<span class="font-body-sm text-body-sm text-on-surface-variant">Độ trung thực của Code</span>
+<span class="font-status-label text-status-label text-primary">Cao (98%)</span>
+</div>
+<div class="w-full bg-surface-container-high rounded-full h-1.5">
+<div class="bg-primary h-1.5 rounded-full" style="width: 98%"></div>
+</div>
+<div class="flex justify-between items-center mt-4">
+<span class="font-body-sm text-body-sm text-on-surface-variant">Xác suất bản sao hướng dẫn</span>
+<span class="font-status-label text-status-label text-primary">Thấp (2%)</span>
+</div>
+<div class="w-full bg-surface-container-high rounded-full h-1.5">
+<div class="bg-primary h-1.5 rounded-full" style="width: 2%"></div>
+</div>
+</div>
+</div>
+<div class="bg-surface-container-lowest p-stack-sm rounded border border-verified-blue/20">
+<p class="font-body-sm text-body-sm text-secondary text-center">
+                                Các commit chỉ ra việc giải quyết vấn đề phi tuyến tính, phức tạp, điển hình cho phát triển doanh nghiệp cấp cao.
+                            </p>
+</div>
+</div>
+</div>
+<!-- Verified Experience Deep Dive -->
+<div class="bg-surface-container-lowest rounded-lg border border-outline-variant p-gutter shadow-sm">
+<h2 class="font-headline-md text-headline-md text-on-surface mb-stack-lg pb-stack-sm border-b border-outline-variant">Kinh nghiệm đã xác thực &amp; Thông tin Repo</h2>
+<div class="relative pl-6">
+<!-- Experience Item 1 -->
+<div class="mb-stack-lg relative timeline-item">
+<div class="absolute -left-6 top-1 w-3 h-3 rounded-full bg-primary ring-4 ring-surface-container-lowest z-10 timeline-line"></div>
+<div class="flex flex-col sm:flex-row sm:items-start justify-between mb-stack-sm">
+<div>
+<h3 class="font-headline-md text-[20px] font-bold text-on-surface">Kỹ sư Frontend Cao cấp</h3>
+<p class="font-body-md text-body-md text-secondary">Acme Corp <span class="text-on-surface-variant text-sm mx-2">•</span> 2021 - Hiện tại</p>
+</div>
+<div class="bg-verified-blue/10 text-verified-blue font-label-caps text-label-caps px-2 py-1 rounded mt-2 sm:mt-0 self-start border border-verified-blue/20">
+                                    Đã xác thực Repo
+                                </div>
+</div>
+<p class="font-body-sm text-body-sm text-on-surface-variant mb-stack-md max-w-3xl">
+                                Dẫn dắt việc di chuyển một bảng điều khiển Angular cũ sang React/TypeScript. Thiết kế một thư viện thành phần tùy chỉnh được sử dụng bởi 4 nhóm chức năng chéo.
+                            </p>
+<!-- Repo Intel Mini-Bento -->
+<div class="grid grid-cols-2 md:grid-cols-4 gap-stack-sm bg-surface-gray p-stack-md rounded border border-outline-variant">
+<div>
+<div class="font-label-caps text-label-caps text-secondary mb-1">Số Commit Đã Phân Tích</div>
+<div class="font-body-lg text-body-lg font-bold text-on-surface">1,432</div>
+</div>
+<div>
+<div class="font-label-caps text-label-caps text-secondary mb-1">Ngôn Ngữ Chính</div>
+<div class="font-body-lg text-body-lg font-bold text-on-surface">TypeScript</div>
+</div>
+<div>
+<div class="font-label-caps text-label-caps text-secondary mb-1">Độ Phức Tạp Của Code</div>
+<div class="font-body-lg text-body-lg font-bold text-primary">Cao</div>
+</div>
+<div>
+<div class="font-label-caps text-label-caps text-secondary mb-1">Tỷ Lệ Tái Cấu Trúc</div>
+<div class="font-body-lg text-body-lg font-bold text-on-surface">24%</div>
+</div>
+</div>
+</div>
+<!-- Experience Item 2 -->
+<div class="relative timeline-item">
+<div class="absolute -left-6 top-1 w-3 h-3 rounded-full bg-surface-variant border border-outline-variant ring-4 ring-surface-container-lowest z-10 timeline-line"></div>
+<div class="flex flex-col sm:flex-row sm:items-start justify-between mb-stack-sm">
+<div>
+<h3 class="font-headline-md text-[20px] font-bold text-on-surface">Lập trình viên Frontend</h3>
+<p class="font-body-md text-body-md text-secondary">TechStart Inc <span class="text-on-surface-variant text-sm mx-2">•</span> 2018 - 2021</p>
+</div>
+<div class="bg-declared-amber/10 text-declared-amber font-label-caps text-label-caps px-2 py-1 rounded mt-2 sm:mt-0 self-start border border-declared-amber/20">
+                                    Tự khai báo
+                                </div>
+</div>
+<p class="font-body-sm text-body-sm text-on-surface-variant max-w-3xl">
+                                Bảo trì các trang tiếp thị hướng tới khách hàng bằng React và Next.js. Cải thiện điểm hiệu suất lighthouse lên 35% thông qua tối ưu hóa tài nguyên.
+                            </p>
+<p class="font-body-sm text-body-sm text-secondary italic mt-2 text-sm">
+                                * Quyền truy cập kho lưu trữ riêng tư không được cấp cho giai đoạn này. Dữ liệu dựa trên hồ sơ tải lên của ứng viên.
+                            </p>
+</div>
+</div>
+</div>
+</div>
+</main>
+</div>
+<!-- Footer -->
+<footer class="bg-surface-container-low dark:bg-inverse-surface border-t border-outline-variant dark:border-on-secondary-fixed-variant w-full py-stack-md px-margin-desktop flex flex-col md:flex-row justify-between items-center gap-stack-md">
+<div class="font-headline-sm text-headline-sm font-bold text-on-surface">
+            Veritas Technical
+        </div>
+<div class="font-body-sm text-body-sm text-on-surface-variant dark:text-surface-variant text-center md:text-left">
+            © 2024 Veritas Recruitment Platform. Đã xác thực toàn bộ thông tin.
+        </div>
+<div class="flex flex-wrap justify-center gap-stack-md font-body-sm text-body-sm">
+<a class="text-on-secondary-fixed-variant dark:text-surface-variant hover:text-primary dark:hover:text-primary-fixed transition-colors" href="#">Chính sách bảo mật</a>
+<a class="text-on-secondary-fixed-variant dark:text-surface-variant hover:text-primary dark:hover:text-primary-fixed transition-colors" href="#">Điều khoản dịch vụ</a>
+<a class="text-on-secondary-fixed-variant dark:text-surface-variant hover:text-primary dark:hover:text-primary-fixed transition-colors" href="#">Tiết lộ bảo mật</a>
+<a class="text-on-secondary-fixed-variant dark:text-surface-variant hover:text-primary dark:hover:text-primary-fixed transition-colors" href="#">Chủ quyền dữ liệu</a>
+</div>
+</footer>
+</body></html>

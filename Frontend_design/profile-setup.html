@@ -1,0 +1,282 @@
+<!DOCTYPE html><html class="light" lang="en"><head>
+<meta charset="utf-8">
+<meta content="width=device-width, initial-scale=1.0" name="viewport">
+<title>Profile Setup - Veritas</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<script id="tailwind-config">
+        tailwind.config = {
+          darkMode: "class",
+          theme: {
+            extend: {
+              "colors": {
+                      "verified-blue": "#0ea5e9",
+                      "surface-container": "#e5eeff",
+                      "secondary-fixed": "#d2e4fb",
+                      "on-error-container": "#93000a",
+                      "declared-amber": "#f59e0b",
+                      "on-secondary": "#ffffff",
+                      "on-surface": "#0b1c30",
+                      "on-error": "#ffffff",
+                      "secondary": "#4f6073",
+                      "inverse-on-surface": "#eaf1ff",
+                      "tertiary-fixed": "#ffd9dd",
+                      "on-surface-variant": "#3d4a3d",
+                      "secondary-container": "#d2e4fb",
+                      "outline-variant": "#bccbb9",
+                      "on-primary-fixed-variant": "#005321",
+                      "inverse-primary": "#52e078",
+                      "on-tertiary-container": "#680024",
+                      "on-secondary-fixed": "#0b1d2d",
+                      "primary-fixed-dim": "#52e078",
+                      "error-container": "#ffdad6",
+                      "error-red": "#ef4444",
+                      "background": "#f8f9ff",
+                      "primary-container": "#00b14f",
+                      "surface": "#f8f9ff",
+                      "surface-container-high": "#dce9ff",
+                      "outline": "#6d7b6c",
+                      "on-background": "#0b1c30",
+                      "on-tertiary-fixed": "#400013",
+                      "tertiary-fixed-dim": "#ffb2bc",
+                      "on-secondary-fixed-variant": "#38485a",
+                      "tertiary-container": "#fd6584",
+                      "surface-gray": "#f8fafc",
+                      "secondary-fixed-dim": "#b7c8de",
+                      "inverse-surface": "#213145",
+                      "on-tertiary-fixed-variant": "#8e0b36",
+                      "surface-container-low": "#eff4ff",
+                      "on-primary": "#ffffff",
+                      "primary-fixed": "#71fe91",
+                      "surface-bright": "#f8f9ff",
+                      "on-secondary-container": "#556679",
+                      "surface-tint": "#006e2e",
+                      "surface-container-highest": "#d3e4fe",
+                      "on-primary-container": "#003a15",
+                      "tertiary": "#af294c",
+                      "surface-dim": "#cbdbf5",
+                      "on-primary-fixed": "#002109",
+                      "surface-container-lowest": "#ffffff",
+                      "on-tertiary": "#ffffff",
+                      "primary": "#006e2e",
+                      "surface-variant": "#d3e4fe",
+                      "error": "#ba1a1a"
+              },
+              "borderRadius": {
+                      "DEFAULT": "0.125rem",
+                      "lg": "0.25rem",
+                      "xl": "0.5rem",
+                      "full": "0.75rem"
+              },
+              "spacing": {
+                      "gutter": "24px",
+                      "margin-desktop": "32px",
+                      "margin-mobile": "16px",
+                      "base": "4px",
+                      "container-max": "1280px",
+                      "stack-sm": "8px",
+                      "stack-md": "16px",
+                      "stack-lg": "32px"
+              },
+              "fontFamily": {
+                      "body-sm": [
+                              "Inter"
+                      ],
+                      "label-caps": [
+                              "JetBrains Mono"
+                      ],
+                      "body-md": [
+                              "Inter"
+                      ],
+                      "headline-xl": [
+                              "Hanken Grotesk"
+                      ],
+                      "headline-md": [
+                              "Hanken Grotesk"
+                      ],
+                      "headline-lg": [
+                              "Hanken Grotesk"
+                      ],
+                      "body-lg": [
+                              "Inter"
+                      ],
+                      "headline-lg-mobile": [
+                              "Hanken Grotesk"
+                      ],
+                      "status-label": [
+                              "Inter"
+                      ]
+              },
+              "fontSize": {
+                      "body-sm": [
+                              "14px",
+                              {
+                                      "lineHeight": "20px",
+                                      "fontWeight": "400"
+                              }
+                      ],
+                      "label-caps": [
+                              "12px",
+                              {
+                                      "lineHeight": "16px",
+                                      "letterSpacing": "0.05em",
+                                      "fontWeight": "600"
+                              }
+                      ],
+                      "body-md": [
+                              "16px",
+                              {
+                                      "lineHeight": "24px",
+                                      "fontWeight": "400"
+                              }
+                      ],
+                      "headline-xl": [
+                              "40px",
+                              {
+                                      "lineHeight": "48px",
+                                      "letterSpacing": "-0.02em",
+                                      "fontWeight": "700"
+                              }
+                      ],
+                      "headline-md": [
+                              "24px",
+                              {
+                                      "lineHeight": "32px",
+                                      "fontWeight": "600"
+                              }
+                      ],
+                      "headline-lg": [
+                              "32px",
+                              {
+                                      "lineHeight": "40px",
+                                      "letterSpacing": "-0.01em",
+                                      "fontWeight": "600"
+                              }
+                      ],
+                      "body-lg": [
+                              "18px",
+                              {
+                                      "lineHeight": "28px",
+                                      "fontWeight": "400"
+                              }
+                      ],
+                      "headline-lg-mobile": [
+                              "28px",
+                              {
+                                      "lineHeight": "36px",
+                                      "fontWeight": "600"
+                              }
+                      ],
+                      "status-label": [
+                              "13px",
+                              {
+                                      "lineHeight": "18px",
+                                      "fontWeight": "600"
+                              }
+                      ]
+              }
+      },
+          },
+        }
+    </script>
+<style type="text/tailwindcss">
+        @layer utilities {
+            .bg-grid-pattern {
+                background-size: 40px 40px;
+                background-image: linear-gradient(to right, rgba(203, 219, 245, 0.4) 1px, transparent 1px),
+                                  linear-gradient(to bottom, rgba(203, 219, 245, 0.4) 1px, transparent 1px);
+            }
+        }
+    </style>
+<style>
+        @import url('https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;600;700&family=Inter:wght@400;600&family=JetBrains+Mono:wght@600&display=swap');
+    </style>
+</head>
+<body class="bg-background min-h-screen flex items-center justify-center p-margin-mobile md:p-margin-desktop">
+<!-- Transactional Screen: Navigation Shell Suppressed as per mandate -->
+<main class="w-full max-w-[1024px] bg-surface rounded-xl border border-outline-variant shadow-[0_10px_15px_-3px_rgba(0,0,0,0.1)] flex flex-col md:flex-row overflow-hidden min-h-[600px]">
+<!-- Left Column: Content -->
+<div class="flex-1 p-8 md:p-12 lg:p-16 flex flex-col relative z-10 bg-surface">
+<!-- Minimal Brand Anchor -->
+<div class="mb-auto">
+<span class="font-headline-md text-headline-md font-bold text-primary tracking-tight"><a class="font-headline-md text-headline-md font-bold text-primary dark:text-primary-fixed tracking-tight cursor-text" href="https://app-companion-430619.appspot.com/projects/15126004754199492089?usegapi=1&amp;jsh=m%3B%2F_%2Fscs%2Fabc-static%2F_%2Fjs%2Fk%3Dgapi.lb.en.ch0Jz-JlMrQ.O%2Fd%3D1%2Frs%3DAHpOoo_YD4KoV8fTh_kLhktsiThAm3yJ5A%2Fm%3D__features__#" spellcheck="false" data-stitch-added-classes="cursor-text" style="--tw-border-spacing-y: 0; --tw-translate-x: 0; --tw-translate-y: 0; --tw-rotate: 0; --tw-skew-x: 0; --tw-skew-y: 0; --tw-scale-x: 1; --tw-scale-y: 1; --tw-pan-x: ; --tw-pan-y: ; --tw-pinch-zoom: ; --tw-scroll-snap-strictness: proximity; --tw-gradient-from-position: ; --tw-gradient-via-position: ; --tw-gradient-to-position: ; --tw-ordinal: ; --tw-slashed-zero: ; --tw-numeric-figure: ; --tw-numeric-spacing: ; --tw-numeric-fraction: ; --tw-ring-inset: ; --tw-ring-offset-width: 0px; --tw-ring-offset-color: #fff; --tw-ring-color: rgb(59 130 246 / 0.5); --tw-ring-offset-shadow: 0 0 #0000; --tw-ring-shadow: 0 0 #0000; --tw-shadow: 0 0 #0000; --tw-shadow-colored: 0 0 #0000; --tw-blur: ; --tw-brightness: ; --tw-contrast: ; --tw-grayscale: ; --tw-hue-rotate: ; --tw-invert: ; --tw-saturate: ; --tw-sepia: ; --tw-drop-shadow: ; --tw-backdrop-blur: ; --tw-backdrop-brightness: ; --tw-backdrop-contrast: ; --tw-backdrop-grayscale: ; --tw-backdrop-hue-rotate: ; --tw-backdrop-invert: ; --tw-backdrop-opacity: ; --tw-backdrop-saturate: ; --tw-backdrop-sepia: ; --tw-contain-size: ; --tw-contain-layout: ; --tw-contain-paint: ; --tw-contain-style: ; color: rgb(0, 110, 46); --tw-text-opacity: 1; outline: none !important; box-shadow: none !important;">CVerify</a></span>
+</div>
+<div class="mt-12 md:mt-0 my-auto">
+<!-- Step Indicator -->
+<div class="flex items-center gap-2 mb-6">
+<div class="flex gap-1 mr-2">
+<div class="h-1.5 w-6 bg-primary rounded-full"></div>
+<div class="h-1.5 w-2 bg-surface-dim rounded-full"></div>
+<div class="h-1.5 w-2 bg-surface-dim rounded-full"></div>
+<div class="h-1.5 w-2 bg-surface-dim rounded-full"></div>
+</div>
+<span class="font-label-caps text-label-caps text-secondary tracking-widest uppercase">Step 1 of 4</span>
+</div>
+<!-- Core Messaging -->
+<h1 class="font-headline-xl text-headline-xl text-on-surface mb-4">Let's build your verified technical profile</h1>
+<p class="font-body-lg text-body-lg text-secondary mb-10 max-w-md">Connect your GitHub, GitLab &amp; LinkedIn to verify your technical contributions automatically.</p>
+<!-- Primary Action -->
+<button class="bg-primary text-on-primary font-body-md text-body-md font-medium px-8 py-3 rounded flex items-center justify-center gap-2 hover:bg-surface-tint transition-colors duration-200 w-full sm:w-auto shadow-sm group">
+                    Continue
+                    <span class="material-symbols-outlined text-[20px] group-hover:translate-x-1 transition-transform duration-200">arrow_forward</span>
+</button>
+</div>
+<!-- Trust Marker -->
+<div class="mt-auto hidden md:flex items-center gap-2 pt-12">
+<span class="material-symbols-outlined text-[16px] text-verified-blue">verified_user</span>
+<p class="font-body-sm text-body-sm text-secondary-fixed-dim">Secure, automated verification via OAuth.</p>
+</div>
+</div>
+<!-- Right Column: Visual Illustration -->
+<div class="flex-1 bg-surface-container-low relative overflow-hidden hidden md:flex items-center justify-center border-l border-outline-variant bg-grid-pattern">
+<!-- Atmospheric Background Image -->
+<div class="absolute inset-0 bg-cover bg-center opacity-40 mix-blend-multiply" data-alt="A macro shot of sleek, modern server architecture bathed in cool, high-key white and soft blue lighting. The aesthetic is clean, technological, and precise, perfectly matching a modern corporate light mode style. The abstract representation of hardware implies solid infrastructure, data flow, and absolute structural integrity." style="background-image: url(&quot;https://lh3.googleusercontent.com/aida-public/AB6AXuDt3nRBhV_gtH84OYB9pcdJOl3NiDPyeq_uu4ltQNJbQejKS7umthKC8hc5QqLofn4-YCYFHMT2wCFv0SVX8xVUfyJUMZ_ULgms03GWBeyQiNUE8xxCHoGUTUgEz0M-1WPCoslgaMbhMB7QCMy0dIX4x3po8_LRnOaXAmr5pdcqZePA0H7NaSNKUzIpgKh9vI_QuQWY8m3WoosTKv0eCblJKTGzm9hgdblq4CtLvkIP6GkUPy15bxKHNO3kU5Ktn9WLpUeWT7HfbEud&quot;);">
+</div>
+<!-- Decorative Glow -->
+<div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-primary-fixed/20 rounded-full blur-[80px]"></div>
+<!-- Interactive 'Data Sources' Abstract UI -->
+<div class="relative z-10 w-full max-w-[320px] flex flex-col gap-6 p-8">
+<!-- Central Connector Line Behind Nodes -->
+<div class="absolute left-[3.25rem] top-12 bottom-12 w-0.5 bg-gradient-to-b from-transparent via-primary to-transparent opacity-50 z-0"></div>
+<!-- Node: GitHub -->
+<div class="bg-surface/80 backdrop-blur-md border border-outline-variant rounded-xl p-4 flex items-center gap-4 shadow-sm hover:shadow-md transition-shadow relative z-10 -ml-4">
+<div class="w-12 h-12 shrink-0 rounded-lg bg-surface-container flex items-center justify-center text-on-surface shadow-inner border border-surface-dim">
+<svg class="w-6 h-6" fill="currentColor" viewBox="0 0 24 24"><path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"></path></svg>
+</div>
+<div class="flex-1">
+<h3 class="font-body-md text-body-md font-semibold text-on-surface">GitHub</h3>
+<p class="font-body-sm text-body-sm text-secondary truncate">Repositories &amp; Commits</p>
+</div>
+<span class="material-symbols-outlined text-outline-variant text-[18px]">sync</span>
+</div>
+<!-- Node: LinkedIn -->
+<div class="bg-surface/90 backdrop-blur-xl border border-verified-blue/30 rounded-xl p-4 flex items-center gap-4 shadow-[0_4px_12px_rgba(14,165,233,0.1)] relative z-10 ml-4 transform hover:scale-[1.02] transition-transform">
+<div class="w-12 h-12 shrink-0 rounded-lg bg-surface-container flex items-center justify-center text-[#0a66c2] shadow-inner border border-surface-dim">
+<svg class="w-6 h-6" fill="currentColor" viewBox="0 0 24 24"><path d="M19 0h-14c-2.761 0-5 2.239-5 5v14c0 2.761 2.239 5 5 5h14c2.762 0 5-2.239 5-5v-14c0-2.761-2.238-5-5-5zm-11 19h-3v-11h3v11zm-1.5-12.268c-.966 0-1.75-.79-1.75-1.764s.784-1.764 1.75-1.764 1.75.79 1.75 1.764-.783 1.764-1.75 1.764zm13.5 12.268h-3v-5.604c0-3.368-4-3.113-4 0v5.604h-3v-11h3v1.765c1.396-2.586 7-2.777 7 2.476v6.759z"></path></svg>
+</div>
+<div class="flex-1">
+<h3 class="font-body-md text-body-md font-semibold text-on-surface">LinkedIn</h3>
+<p class="font-body-sm text-body-sm text-secondary truncate">Experience &amp; Education</p>
+</div>
+<span class="material-symbols-outlined text-outline-variant text-[18px]">sync</span>
+</div>
+<!-- Node: GitLab -->
+<div class="bg-surface/80 backdrop-blur-md border border-outline-variant rounded-xl p-4 flex items-center gap-4 shadow-sm hover:shadow-md transition-shadow relative z-10 -ml-2">
+<div class="w-12 h-12 shrink-0 rounded-lg bg-surface-container flex items-center justify-center text-[#fc6d26] shadow-inner border border-surface-dim">
+<svg class="w-6 h-6" fill="currentColor" viewBox="0 0 24 24"><path d="M23.955 13.587l-1.342-4.135-2.664-8.189c-.135-.423-.73-.423-.867 0l-2.667 8.189h-8.831l-2.665-8.189c-.136-.423-.731-.423-.867 0l-2.665 8.189-1.341 4.135c-.13.396.014.824.343 1.066l9.945 7.23 9.946-7.23c.329-.242.473-.67.342-1.066z"></path></svg>
+</div>
+<div class="flex-1">
+<h3 class="font-body-md text-body-md font-semibold text-on-surface">GitLab</h3>
+<p class="font-body-sm text-body-sm text-secondary truncate">Projects &amp; CI/CD</p>
+</div>
+<span class="material-symbols-outlined text-outline-variant text-[18px]">sync</span>
+</div>
+</div>
+<!-- Bottom Fade for pattern -->
+<div class="absolute bottom-0 left-0 right-0 h-32 bg-gradient-to-t from-surface-container-low to-transparent z-0"></div>
+</div>
+</main>
+
+
+</body></html>

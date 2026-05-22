@@ -1,0 +1,398 @@
+<!DOCTYPE html><html class="light" lang="en"><head>
+<meta charset="utf-8">
+<meta content="width=device-width, initial-scale=1.0" name="viewport">
+<title>Veritas - Data Connection Progress</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@600;700&amp;family=Inter:wght@400;600&amp;family=JetBrains+Mono:wght@600&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "verified-blue": "#0ea5e9",
+                    "surface-container": "#e5eeff",
+                    "secondary-fixed": "#d2e4fb",
+                    "on-error-container": "#93000a",
+                    "declared-amber": "#f59e0b",
+                    "on-secondary": "#ffffff",
+                    "on-surface": "#0b1c30",
+                    "on-error": "#ffffff",
+                    "secondary": "#4f6073",
+                    "inverse-on-surface": "#eaf1ff",
+                    "tertiary-fixed": "#ffd9dd",
+                    "on-surface-variant": "#3d4a3d",
+                    "secondary-container": "#d2e4fb",
+                    "outline-variant": "#bccbb9",
+                    "on-primary-fixed-variant": "#005321",
+                    "inverse-primary": "#52e078",
+                    "on-tertiary-container": "#680024",
+                    "on-secondary-fixed": "#0b1d2d",
+                    "primary-fixed-dim": "#52e078",
+                    "error-container": "#ffdad6",
+                    "error-red": "#ef4444",
+                    "background": "#f8f9ff",
+                    "primary-container": "#00b14f",
+                    "surface": "#f8f9ff",
+                    "surface-container-high": "#dce9ff",
+                    "outline": "#6d7b6c",
+                    "on-background": "#0b1c30",
+                    "on-tertiary-fixed": "#400013",
+                    "tertiary-fixed-dim": "#ffb2bc",
+                    "on-secondary-fixed-variant": "#38485a",
+                    "tertiary-container": "#fd6584",
+                    "surface-gray": "#f8fafc",
+                    "secondary-fixed-dim": "#b7c8de",
+                    "inverse-surface": "#213145",
+                    "on-tertiary-fixed-variant": "#8e0b36",
+                    "surface-container-low": "#eff4ff",
+                    "on-primary": "#ffffff",
+                    "primary-fixed": "#71fe91",
+                    "surface-bright": "#f8f9ff",
+                    "on-secondary-container": "#556679",
+                    "surface-tint": "#006e2e",
+                    "surface-container-highest": "#d3e4fe",
+                    "on-primary-container": "#003a15",
+                    "tertiary": "#af294c",
+                    "surface-dim": "#cbdbf5",
+                    "on-primary-fixed": "#002109",
+                    "surface-container-lowest": "#ffffff",
+                    "on-tertiary": "#ffffff",
+                    "primary": "#006e2e",
+                    "surface-variant": "#d3e4fe",
+                    "error": "#ba1a1a"
+            },
+            "borderRadius": {
+                    "DEFAULT": "0.125rem",
+                    "lg": "0.25rem",
+                    "xl": "0.5rem",
+                    "full": "0.75rem"
+            },
+            "spacing": {
+                    "gutter": "24px",
+                    "margin-desktop": "32px",
+                    "margin-mobile": "16px",
+                    "base": "4px",
+                    "container-max": "1280px",
+                    "stack-sm": "8px",
+                    "stack-md": "16px",
+                    "stack-lg": "32px"
+            },
+            "fontFamily": {
+                    "body-sm": [
+                            "Inter"
+                    ],
+                    "label-caps": [
+                            "JetBrains Mono"
+                    ],
+                    "body-md": [
+                            "Inter"
+                    ],
+                    "headline-xl": [
+                            "Hanken Grotesk"
+                    ],
+                    "headline-md": [
+                            "Hanken Grotesk"
+                    ],
+                    "headline-lg": [
+                            "Hanken Grotesk"
+                    ],
+                    "body-lg": [
+                            "Inter"
+                    ],
+                    "headline-lg-mobile": [
+                            "Hanken Grotesk"
+                    ],
+                    "status-label": [
+                            "Inter"
+                    ]
+            },
+            "fontSize": {
+                    "body-sm": [
+                            "14px",
+                            {
+                                    "lineHeight": "20px",
+                                    "fontWeight": "400"
+                            }
+                    ],
+                    "label-caps": [
+                            "12px",
+                            {
+                                    "lineHeight": "16px",
+                                    "letterSpacing": "0.05em",
+                                    "fontWeight": "600"
+                            }
+                    ],
+                    "body-md": [
+                            "16px",
+                            {
+                                    "lineHeight": "24px",
+                                    "fontWeight": "400"
+                            }
+                    ],
+                    "headline-xl": [
+                            "40px",
+                            {
+                                    "lineHeight": "48px",
+                                    "letterSpacing": "-0.02em",
+                                    "fontWeight": "700"
+                            }
+                    ],
+                    "headline-md": [
+                            "24px",
+                            {
+                                    "lineHeight": "32px",
+                                    "fontWeight": "600"
+                            }
+                    ],
+                    "headline-lg": [
+                            "32px",
+                            {
+                                    "lineHeight": "40px",
+                                    "letterSpacing": "-0.01em",
+                                    "fontWeight": "600"
+                            }
+                    ],
+                    "body-lg": [
+                            "18px",
+                            {
+                                    "lineHeight": "28px",
+                                    "fontWeight": "400"
+                            }
+                    ],
+                    "headline-lg-mobile": [
+                            "28px",
+                            {
+                                    "lineHeight": "36px",
+                                    "fontWeight": "600"
+                            }
+                    ],
+                    "status-label": [
+                            "13px",
+                            {
+                                    "lineHeight": "18px",
+                                    "fontWeight": "600"
+                            }
+                    ]
+            }
+    },
+        },
+      }
+    </script>
+<style>
+        .progress-bar-animated {
+            background-image: linear-gradient(45deg, rgba(255, 255, 255, 0.15) 25%, transparent 25%, transparent 50%, rgba(255, 255, 255, 0.15) 50%, rgba(255, 255, 255, 0.15) 75%, transparent 75%, transparent);
+            background-size: 1rem 1rem;
+            animation: progress-animation 1s linear infinite;
+        }
+
+        @keyframes progress-animation {
+            from { background-position: 1rem 0; }
+            to { background-position: 0 0; }
+        }
+
+        .pulse-soft {
+            animation: pulse-soft 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+        }
+
+        @keyframes pulse-soft {
+            0%, 100% { opacity: 1; }
+            50% { opacity: .7; }
+        }
+        
+        .shimmer {
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .shimmer::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            right: 0;
+            bottom: 0;
+            left: 0;
+            transform: translateX(-100%);
+            background-image: linear-gradient(
+                90deg,
+                rgba(255, 255, 255, 0) 0,
+                rgba(255, 255, 255, 0.2) 20%,
+                rgba(255, 255, 255, 0.5) 60%,
+                rgba(255, 255, 255, 0)
+            );
+            animation: shimmer 2s infinite;
+        }
+        
+        @keyframes shimmer {
+            100% { transform: translateX(100%); }
+        }
+    </style>
+</head>
+<body class="bg-surface text-on-surface font-body-md min-h-screen flex flex-col">
+<!-- Top Navigation (Transactional/Process - simplified) -->
+<header class="bg-surface border-b border-outline-variant w-full px-margin-mobile md:px-margin-desktop py-4 flex justify-between items-center z-10 sticky top-0">
+<div class="font-headline-md text-headline-md font-bold text-primary"><a class="font-headline-md text-headline-md font-bold text-primary dark:text-primary-fixed tracking-tight cursor-text" href="https://app-companion-430619.appspot.com/projects/15126004754199492089?usegapi=1&amp;jsh=m%3B%2F_%2Fscs%2Fabc-static%2F_%2Fjs%2Fk%3Dgapi.lb.en.ch0Jz-JlMrQ.O%2Fd%3D1%2Frs%3DAHpOoo_YD4KoV8fTh_kLhktsiThAm3yJ5A%2Fm%3D__features__#" spellcheck="false" data-stitch-added-classes="cursor-text" style="--tw-border-spacing-y: 0; --tw-translate-x: 0; --tw-translate-y: 0; --tw-rotate: 0; --tw-skew-x: 0; --tw-skew-y: 0; --tw-scale-x: 1; --tw-scale-y: 1; --tw-pan-x: ; --tw-pan-y: ; --tw-pinch-zoom: ; --tw-scroll-snap-strictness: proximity; --tw-gradient-from-position: ; --tw-gradient-via-position: ; --tw-gradient-to-position: ; --tw-ordinal: ; --tw-slashed-zero: ; --tw-numeric-figure: ; --tw-numeric-spacing: ; --tw-numeric-fraction: ; --tw-ring-inset: ; --tw-ring-offset-width: 0px; --tw-ring-offset-color: #fff; --tw-ring-color: rgb(59 130 246 / 0.5); --tw-ring-offset-shadow: 0 0 #0000; --tw-ring-shadow: 0 0 #0000; --tw-shadow: 0 0 #0000; --tw-shadow-colored: 0 0 #0000; --tw-blur: ; --tw-brightness: ; --tw-contrast: ; --tw-grayscale: ; --tw-hue-rotate: ; --tw-invert: ; --tw-saturate: ; --tw-sepia: ; --tw-drop-shadow: ; --tw-backdrop-blur: ; --tw-backdrop-brightness: ; --tw-backdrop-contrast: ; --tw-backdrop-grayscale: ; --tw-backdrop-hue-rotate: ; --tw-backdrop-invert: ; --tw-backdrop-opacity: ; --tw-backdrop-saturate: ; --tw-backdrop-sepia: ; --tw-contain-size: ; --tw-contain-layout: ; --tw-contain-paint: ; --tw-contain-style: ; color: rgb(0, 110, 46); --tw-text-opacity: 1; outline: none !important; box-shadow: none !important;">CVerify</a></div>
+<div class="font-status-label text-status-label text-secondary flex items-center gap-2">
+<span class="material-symbols-outlined text-[18px]">lock</span>
+            Secure Connection
+        </div>
+</header>
+<!-- Main Content Canvas -->
+<main class="flex-grow flex items-center justify-center p-margin-mobile md:p-margin-desktop">
+<div class="w-full max-w-3xl">
+<!-- Header Section -->
+<div class="text-center mb-stack-lg">
+<h1 class="font-headline-xl text-headline-xl text-on-surface mb-stack-sm hidden md:block">Establishing Connections</h1>
+<h1 class="font-headline-lg-mobile text-headline-lg-mobile text-on-surface mb-stack-sm md:hidden">Establishing Connections</h1>
+<p class="font-body-lg text-body-lg text-secondary max-w-xl mx-auto">
+                    We are currently analyzing your professional footprint to build your verified profile. This usually takes less than 2 minutes.
+                </p>
+<div class="mt-4 inline-flex items-center gap-2 bg-surface-container px-4 py-2 rounded-full border border-secondary-fixed">
+<span class="material-symbols-outlined text-primary text-[20px] pulse-soft">schedule</span>
+<span class="font-label-caps text-label-caps text-on-surface">EST. TIME REMAINING: ~45 SECONDS</span>
+</div>
+</div>
+<!-- Bento Grid Layout for Progress -->
+<div class="grid grid-cols-1 md:grid-cols-2 gap-gutter mb-stack-lg">
+<!-- GitHub Card -->
+<div class="bg-surface-container-lowest border border-outline-variant rounded-xl p-stack-md relative overflow-hidden shadow-[0_2px_4px_rgba(0,0,0,0.04)]">
+<div class="flex items-start justify-between mb-stack-md">
+<div class="flex items-center gap-3">
+<div class="w-10 h-10 rounded-full bg-on-surface flex items-center justify-center text-on-primary">
+<!-- GitHub Icon Placeholder (using terminal as proxy) -->
+<span class="material-symbols-outlined">terminal</span>
+</div>
+<div>
+<h3 class="font-headline-md text-headline-md text-on-surface">GitHub</h3>
+<p class="font-body-sm text-body-sm text-secondary">Analyzing repositories &amp; commits</p>
+</div>
+</div>
+<span class="font-label-caps text-label-caps text-primary bg-primary-container/20 px-2 py-1 rounded">99%</span>
+</div>
+<!-- Progress Bar -->
+<div class="w-full bg-surface-variant rounded-full h-2.5 mb-stack-md overflow-hidden">
+<div class="bg-primary h-2.5 rounded-full progress-bar-animated shimmer" style="width: 99%;"></div>
+</div>
+<!-- Sub-tasks -->
+<div class="space-y-3 font-body-sm text-body-sm">
+<div class="flex items-center justify-between text-secondary">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-[16px] text-primary">check_circle</span>
+<span class="">Authenticating access</span>
+</div>
+<span class="">Done</span>
+</div>
+<div class="flex items-center justify-between text-on-surface">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-[16px] animate-spin">sync</span>
+<span class="">Cloning repository metadata</span>
+</div>
+<span class="font-label-caps text-label-caps">IN PROGRESS</span>
+</div>
+<div class="flex items-center justify-between text-outline">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-[16px]">pending</span>
+<span class="">Evaluating commit history</span>
+</div>
+<span class="">Pending</span>
+</div>
+</div>
+</div>
+<!-- LinkedIn Card -->
+<div class="bg-surface-container-lowest border border-outline-variant rounded-xl p-stack-md relative overflow-hidden shadow-[0_2px_4px_rgba(0,0,0,0.04)]">
+<div class="flex items-start justify-between mb-stack-md">
+<div class="flex items-center gap-3">
+<div class="w-10 h-10 rounded-full bg-[#0077b5] flex items-center justify-center text-on-primary">
+<!-- LinkedIn Icon Placeholder (using work as proxy) -->
+<span class="material-symbols-outlined">work</span>
+</div>
+<div>
+<h3 class="font-headline-md text-headline-md text-on-surface">LinkedIn</h3>
+<p class="font-body-sm text-body-sm text-secondary">Extracting work history</p>
+</div>
+</div>
+<span class="font-label-caps text-label-caps text-primary bg-primary-container/20 px-2 py-1 rounded">99%</span>
+</div>
+<!-- Progress Bar -->
+<div class="w-full bg-surface-variant rounded-full h-2.5 mb-stack-md overflow-hidden">
+<div class="bg-primary h-2.5 rounded-full progress-bar-animated shimmer" style="width: 99%;"></div>
+</div>
+<!-- Sub-tasks -->
+<div class="space-y-3 font-body-sm text-body-sm">
+<div class="flex items-center justify-between text-secondary">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-[16px] text-primary">check_circle</span>
+<span class="">Profile data extraction</span>
+</div>
+<span class="">Done</span>
+</div>
+<div class="flex items-center justify-between text-secondary">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-[16px] text-primary">check_circle</span>
+<span class="">Experience timeline mapping</span>
+</div>
+<span class="">Done</span>
+</div>
+<div class="flex items-center justify-between text-on-surface">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-[16px] animate-spin">sync</span>
+<span class="">Cross-referencing skills</span>
+</div>
+<span class="font-label-caps text-label-caps">IN PROGRESS</span>
+</div>
+</div>
+</div>
+</div>
+<!-- Background Process Info Box -->
+<div class="bg-surface-container border border-secondary-fixed rounded-xl p-stack-md flex items-start gap-4">
+<div class="bg-surface-container-highest p-2 rounded-lg flex-shrink-0">
+<span class="material-symbols-outlined text-primary text-[24px]">verified_user</span>
+</div>
+<div>
+<h4 class="font-status-label text-status-label text-on-surface mb-1">Building The Source of Truth</h4>
+<p class="font-body-sm text-body-sm text-secondary">
+                        Veritas is currently executing parallel background jobs to ingest your data. We don't just copy information; we correlate your code commits with your claimed experience to generate a verified talent profile that stands out to recruiters. Feel free to minimize this window—we'll notify you when it's complete.
+                    </p>
+</div>
+</div>
+<!-- Cancel Action (Ghost Button) -->
+<div class="mt-stack-lg text-center">
+<button class="font-body-md text-body-md text-secondary hover:text-on-surface transition-colors">
+                    Cancel Process
+                </button>
+</div>
+</div>
+</main>
+<script>
+        // Simulate progress updates for demo purposes
+        document.addEventListener('DOMContentLoaded', () => {
+            const progressBars = document.querySelectorAll('.bg-primary.h-2\\.5');
+            const percentages = document.querySelectorAll('.text-primary.bg-primary-container\\/20');
+            
+            // Simple simulation logic (not realistic, just for visual effect)
+            setInterval(() => {
+                // Update GitHub
+                let ghWidth = parseFloat(progressBars[0].style.width);
+                if (ghWidth < 99) {
+                    ghWidth += Math.random() * 2;
+                    if(ghWidth > 99) ghWidth = 99;
+                    progressBars[0].style.width = `${ghWidth}%`;
+                    percentages[0].textContent = `${Math.floor(ghWidth)}%`;
+                }
+
+                // Update LinkedIn
+                let liWidth = parseFloat(progressBars[1].style.width);
+                if (liWidth < 99) {
+                    liWidth += Math.random() * 0.5;
+                    if(liWidth > 99) liWidth = 99;
+                    progressBars[1].style.width = `${liWidth}%`;
+                    percentages[1].textContent = `${Math.floor(liWidth)}%`;
+                }
+            }, 1000);
+        });
+    </script>
+
+
+</body></html>
