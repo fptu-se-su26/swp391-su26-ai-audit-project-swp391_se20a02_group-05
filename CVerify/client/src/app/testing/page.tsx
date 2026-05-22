@@ -50,13 +50,9 @@ export default function TestingPage() {
                                 engineering excellence through cryptographically-backed contribution analysis.
                             </p>
                         </Typography.Prose>
-                        <div className="flex gap-4">
-                            <div className="border border-zinc-200 px-3 py-1 rounded">✓ SOC2 TYPE II</div>
-                            <div className="border border-zinc-200 bg-white/50 px-3 py-1 rounded text-sm font-medium">🔒 END-TO-END ENCRYPTION</div>
-                        </div>
                     </div>
 
-                    <div className="flex flex-1 flex-col items-center justify-center pl-6 lg:ml-6">
+                    <div className="flex flex-1 flex-col items-center justify-center pl-6 lg:ml-6 mt-10">
                         <Card className="w-full max-w-[85%] lg:max-w-[80%]">
                             <Tabs className="w-full" variant="secondary" >
                                 <Tabs.ListContainer>
@@ -66,62 +62,74 @@ export default function TestingPage() {
                                             <Tabs.Indicator className="bottom-0!" />
                                         </Tabs.Tab>
                                         <Tabs.Tab id="analytics" className="flex items-center justify-center h-full pb-3">
-                                            <Typography.Heading level={5}>Enterprise</Typography.Heading>
+                                            <Typography.Heading level={5}>Bussiness</Typography.Heading>
                                             <Tabs.Indicator className="!bottom-0!" />
                                         </Tabs.Tab>
                                     </Tabs.List>
                                 </Tabs.ListContainer>
-                                <Tabs.Panel className="pt-4 flex justify-center" id="overview">
+                                <Tabs.Panel className="pt-4 flex justify-center w-full" id="overview">
                                     <Card variant="transparent" className="w-full max-w-[90%] flex flex-col items-center">
                                         <CardHeader className="flex flex-col items-center text-center">
                                             <Card.Title className="text-2xl pb-4">Proof over promises</Card.Title>
                                             <Card.Description className="text-md pb-12">
                                                 Evidence-backed profiles for modern engineering hiring.
                                             </Card.Description>
-                                            <CardContent className="w-full pb-6">
-                                                <Button variant="tertiary" size="lg" fullWidth><Google /> Continue with Google</Button>
-                                            </CardContent>
-                                            <Typography type="body-sm" color="muted" className="pb-6">OR</Typography>
-                                            <CardFooter className="w-full flex flex-col items-center gap-6">
-                                                <TextField
-                                                    fullWidth
-                                                    isInvalid={isInvalid}
-                                                    aria-label="Email Address"
-                                                >
-                                                    <Input
-                                                        id="email"
-                                                        type="email"
-                                                        placeholder="Enter your email"
-                                                        value={value}
-                                                        aria-label="Email Address"
-                                                        onChange={(e) => {
-                                                            setValue(e.target.value);
-                                                            setTouched(true);
-                                                        }}
-                                                        onBlur={() => setTouched(true)}
-                                                    />
-                                                    {isInvalid && (
-                                                        <div className="text-left w-full">
-                                                            <ErrorMessage className="text-danger text-sm">
-                                                                Please enter a valid email address.
-                                                            </ErrorMessage>
-                                                        </div>
-                                                    )}
-                                                </TextField>
-
-                                                <Button
-                                                    size="lg"
-                                                    fullWidth
-                                                    isDisabled={isInvalid}
-                                                >
-                                                    Continue with email
-                                                </Button>
-                                            </CardFooter>
                                         </CardHeader>
+                                        <CardContent className="w-full pb-3">
+                                            <Button variant="tertiary" size="lg" fullWidth className="h-12"><Google /> Continue with Google</Button>
+                                        </CardContent>
+                                        <Typography type="body-sm" color="muted" className="pb-3">OR</Typography>
+                                        <CardFooter className="w-full flex flex-col items-center gap-6">
+                                            <TextField
+                                                fullWidth
+                                                isInvalid={isInvalid}
+                                                aria-label="Email Address"
+                                            >
+                                                <Input
+                                                    className="h-12 rounded-full"
+                                                    id="email"
+                                                    type="email"
+                                                    placeholder="Enter your email"
+                                                    value={value}
+                                                    aria-label="Email Address"
+                                                    onChange={(e) => {
+                                                        setValue(e.target.value);
+                                                        setTouched(true);
+                                                    }}
+                                                    onBlur={() => setTouched(true)}
+                                                />
+                                                {isInvalid && (
+                                                    <div className="text-left w-full">
+                                                        <ErrorMessage className="text-danger text-sm">
+                                                            Please enter a valid email address.
+                                                        </ErrorMessage>
+                                                    </div>
+                                                )}
+                                            </TextField>
+
+                                            <Button
+                                                size="lg"
+                                                fullWidth
+                                                isDisabled={isInvalid}
+                                                className="h-12"
+                                            >
+                                                Continue with email
+                                            </Button>
+                                        </CardFooter>
                                     </Card>
                                 </Tabs.Panel>
-                                <Tabs.Panel className="pt-4" id="analytics">
-                                    <p>Track your metrics and analyze performance data.</p>
+                                <Tabs.Panel className="pt-4 flex justify-center w-full" id="analytics">
+                                    <Card variant="transparent" className="w-full max-w-[90%] flex flex-col items-center">
+                                        <CardHeader className="flex flex-col items-center text-center">
+                                            <Card.Title className="text-2xl pb-4">Hire beyond resumes</Card.Title>
+                                            <Card.Description className="text-md pb-12 w-full">
+                                                Verify engineering talent through real technical evidence.
+                                            </Card.Description>
+                                        </CardHeader>
+                                        <CardContent className="w-full pb-3">
+
+                                        </CardContent>
+                                    </Card>
                                 </Tabs.Panel>
                             </Tabs>
                         </Card>

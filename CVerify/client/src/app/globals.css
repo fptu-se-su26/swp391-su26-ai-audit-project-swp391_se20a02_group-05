@@ -15,8 +15,6 @@
   --radius-xl: 0.75rem;
   --radius-2xl: 1rem;
 
-  --accent: oklch(48.04% 0.0907 53.36);
-
   /* Centralized Layout Spacing Density Tokens */
   --table-row-padding-y: 0.625rem;
   --sidebar-item-gap: 0.375rem;
@@ -38,8 +36,9 @@
   --overlay: #ffffff;
   --overlay-foreground: #09090b;
   --border: oklch(0.922 0 0);
-  --accent-hover: #1d4ed8;
-  --accent-active: #1e40af;
+  --accent: oklch(48.04% 0.0907 53.36);
+  --accent-hover: oklch(43.752% 0.07884 54.599);
+  --accent-active: oklch(48.04% 0.0907 53.36);
   --accent-soft: #eff6ff;
 
   --field-background: #ffffff;
@@ -47,7 +46,7 @@
   --field-placeholder: #a1a1aa;
   --field-border: #d4d4d8;
 
-  --focus: #2563eb;
+  --focus: oklch(43.752% 0.07884 54.599);
 
   --success: #16a34a;
   --success-foreground: #ffffff;
