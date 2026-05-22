@@ -18,5 +18,5 @@ jobs:
       - name: Deploy sang branch gh-pages
         uses: JamesIves/github-pages-deploy-action@v4
         with:
-          folder: CVerify/Frontend_design # Đường dẫn chuẩn: Đi vào thư mục CVerify rồi mới đến Frontend_design
+          folder: CVerify/Frontend_design 
           branch: gh-pages
