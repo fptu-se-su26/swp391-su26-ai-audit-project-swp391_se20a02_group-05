@@ -1,0 +1,348 @@
+<!DOCTYPE html><html class="light" lang="en"><head>
+<meta charset="utf-8">
+<meta content="width=device-width, initial-scale=1.0" name="viewport">
+<title>Veritas - Verified Projects Review</title>
+<!-- Material Symbols -->
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<!-- Google Fonts -->
+<link href="https://fonts.googleapis.com" rel="preconnect">
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect">
+<link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;600;700&amp;family=Inter:wght@400;600&amp;family=JetBrains+Mono:wght@600&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<!-- Tailwind CSS -->
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<!-- Theme Configuration -->
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "verified-blue": "#0ea5e9",
+                    "surface-container": "#e5eeff",
+                    "secondary-fixed": "#d2e4fb",
+                    "on-error-container": "#93000a",
+                    "declared-amber": "#f59e0b",
+                    "on-secondary": "#ffffff",
+                    "on-surface": "#0b1c30",
+                    "on-error": "#ffffff",
+                    "secondary": "#4f6073",
+                    "inverse-on-surface": "#eaf1ff",
+                    "tertiary-fixed": "#ffd9dd",
+                    "on-surface-variant": "#3d4a3d",
+                    "secondary-container": "#d2e4fb",
+                    "outline-variant": "#bccbb9",
+                    "on-primary-fixed-variant": "#005321",
+                    "inverse-primary": "#52e078",
+                    "on-tertiary-container": "#680024",
+                    "on-secondary-fixed": "#0b1d2d",
+                    "primary-fixed-dim": "#52e078",
+                    "error-container": "#ffdad6",
+                    "error-red": "#ef4444",
+                    "background": "#f8f9ff",
+                    "primary-container": "#00b14f",
+                    "surface": "#f8f9ff",
+                    "surface-container-high": "#dce9ff",
+                    "outline": "#6d7b6c",
+                    "on-background": "#0b1c30",
+                    "on-tertiary-fixed": "#400013",
+                    "tertiary-fixed-dim": "#ffb2bc",
+                    "on-secondary-fixed-variant": "#38485a",
+                    "tertiary-container": "#fd6584",
+                    "surface-gray": "#f8fafc",
+                    "secondary-fixed-dim": "#b7c8de",
+                    "inverse-surface": "#213145",
+                    "on-tertiary-fixed-variant": "#8e0b36",
+                    "surface-container-low": "#eff4ff",
+                    "on-primary": "#ffffff",
+                    "primary-fixed": "#71fe91",
+                    "surface-bright": "#f8f9ff",
+                    "on-secondary-container": "#556679",
+                    "surface-tint": "#006e2e",
+                    "surface-container-highest": "#d3e4fe",
+                    "on-primary-container": "#003a15",
+                    "tertiary": "#af294c",
+                    "surface-dim": "#cbdbf5",
+                    "on-primary-fixed": "#002109",
+                    "surface-container-lowest": "#ffffff",
+                    "on-tertiary": "#ffffff",
+                    "primary": "#006e2e",
+                    "surface-variant": "#d3e4fe",
+                    "error": "#ba1a1a"
+            },
+            "borderRadius": {
+                    "DEFAULT": "0.125rem",
+                    "lg": "0.25rem",
+                    "xl": "0.5rem",
+                    "full": "0.75rem"
+            },
+            "spacing": {
+                    "gutter": "24px",
+                    "margin-desktop": "32px",
+                    "margin-mobile": "16px",
+                    "base": "4px",
+                    "container-max": "1280px",
+                    "stack-sm": "8px",
+                    "stack-md": "16px",
+                    "stack-lg": "32px"
+            },
+            "fontFamily": {
+                    "body-sm": ["Inter"],
+                    "label-caps": ["JetBrains Mono"],
+                    "body-md": ["Inter"],
+                    "headline-xl": ["Hanken Grotesk"],
+                    "headline-md": ["Hanken Grotesk"],
+                    "headline-lg": ["Hanken Grotesk"],
+                    "body-lg": ["Inter"],
+                    "headline-lg-mobile": ["Hanken Grotesk"],
+                    "status-label": ["Inter"]
+            },
+            "fontSize": {
+                    "body-sm": ["14px", {"lineHeight": "20px", "fontWeight": "400"}],
+                    "label-caps": ["12px", {"lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "600"}],
+                    "body-md": ["16px", {"lineHeight": "24px", "fontWeight": "400"}],
+                    "headline-xl": ["40px", {"lineHeight": "48px", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+                    "headline-md": ["24px", {"lineHeight": "32px", "fontWeight": "600"}],
+                    "headline-lg": ["32px", {"lineHeight": "40px", "letterSpacing": "-0.01em", "fontWeight": "600"}],
+                    "body-lg": ["18px", {"lineHeight": "28px", "fontWeight": "400"}],
+                    "headline-lg-mobile": ["28px", {"lineHeight": "36px", "fontWeight": "600"}],
+                    "status-label": ["13px", {"lineHeight": "18px", "fontWeight": "600"}]
+            }
+          }
+        }
+      }
+    </script>
+</head>
+<body class="bg-background text-on-background font-body-md text-body-md antialiased selection:bg-surface-variant selection:text-on-surface">
+<div class="flex h-screen overflow-hidden">
+<!-- SideNavBar (Desktop) -->
+<nav class="hidden md:flex flex-col h-full w-64 bg-surface-container-low dark:bg-on-background border-r border-outline-variant dark:border-outline p-4 space-y-stack-md shrink-0 flex-col h-full p-4 space-y-stack-md z-40">
+<div class="flex items-center gap-3 px-2 mb-stack-lg mt-2">
+<div class="w-10 h-10 rounded-lg bg-primary flex items-center justify-center text-on-primary font-bold font-headline-md">V</div>
+<div>
+<div class="font-headline-md text-headline-md font-bold text-primary dark:text-primary-fixed leading-none"><a class="font-headline-md text-headline-md font-bold text-primary dark:text-primary-fixed tracking-tight" href="index.html">CVerify</a></div>
+<div class="font-label-caps text-label-caps text-secondary mt-1">Verified Talent</div>
+</div>
+</div>
+<div class="flex-1 space-y-2">
+<a class="flex items-center gap-3 px-4 py-3 text-secondary dark:text-secondary-fixed-dim hover:bg-secondary-fixed/10 dark:hover:bg-secondary-fixed-dim/10 rounded-lg hover:translate-x-1 transition-transform duration-200" href="dashboard.html">
+<span class="material-symbols-outlined">dashboard</span>
+<span class="font-body-md text-body-md">Dashboard</span>
+</a>
+<!-- Active State -->
+<a class="flex items-center gap-3 px-4 py-3 bg-primary dark:bg-primary-container text-on-primary dark:text-on-primary-container rounded-lg font-bold hover:translate-x-1 transition-transform duration-200 shadow-sm" href="projectmanagement.html">
+<span class="material-symbols-outlined" style="font-variation-settings: &quot;FILL&quot; 1;">verified</span>
+<span class="font-body-md text-body-md">Verified Skills</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 text-secondary dark:text-secondary-fixed-dim hover:bg-secondary-fixed/10 dark:hover:bg-secondary-fixed-dim/10 rounded-lg hover:translate-x-1 transition-transform duration-200" href="#">
+<span class="material-symbols-outlined">description</span>
+<span class="font-body-md text-body-md">Applications</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 text-secondary dark:text-secondary-fixed-dim hover:bg-secondary-fixed/10 dark:hover:bg-secondary-fixed-dim/10 rounded-lg hover:translate-x-1 transition-transform duration-200" href="#">
+<span class="material-symbols-outlined">mail</span>
+<span class="font-body-md text-body-md">Messages</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 text-secondary dark:text-secondary-fixed-dim hover:bg-secondary-fixed/10 dark:hover:bg-secondary-fixed-dim/10 rounded-lg hover:translate-x-1 transition-transform duration-200" href="profile-management.html">
+<span class="material-symbols-outlined">settings</span>
+<span class="font-body-md text-body-md">Settings</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 text-error hover:bg-error-container/10 rounded-lg hover:translate-x-1 transition-transform duration-200 mt-auto" href="index.html">
+<span class="material-symbols-outlined">logout</span>
+<span class="font-body-md text-body-md">Sign Out</span>
+</a>
+</div>
+<div class="mt-auto pt-stack-md border-t border-outline-variant">
+<button onclick="window.location.href='profile-setup.html'" class="w-full py-3 bg-surface-container border border-outline-variant text-on-surface rounded-lg font-status-label text-status-label flex justify-center items-center gap-2 hover:bg-surface-variant transition-colors">
+<span class="material-symbols-outlined text-[18px]">add</span>
+                    Verify New Skill
+                </button>
+</div>
+</nav>
+<!-- Main Content Area -->
+<main class="flex-1 overflow-y-auto bg-surface-gray">
+<!-- Mobile Top Bar (Synthesized for mobile context) -->
+<div class="md:hidden flex items-center justify-between p-margin-mobile bg-surface-container-lowest border-b border-outline-variant sticky top-0 z-30">
+<div class="font-headline-md text-headline-md font-bold text-primary">Veritas</div>
+<button class="text-on-surface"><span class="material-symbols-outlined">menu</span></button>
+</div>
+<div class="max-w-container-max mx-auto px-margin-mobile md:px-margin-desktop py-stack-lg md:py-[48px]">
+<!-- Page Header -->
+<header class="mb-stack-lg">
+<div class="flex items-center gap-3 mb-2 text-secondary">
+<span class="material-symbols-outlined text-[20px]">verified</span>
+<span class="font-label-caps text-label-caps uppercase tracking-wider">Verified Footprint</span>
+</div>
+<h1 class="font-headline-xl text-headline-xl text-on-surface mb-3">Verified Projects</h1>
+<p class="font-body-lg text-body-lg text-secondary max-w-3xl">
+                        Review the repositories we extracted to build your technical profile. Adjust visibility, correct metadata, or remove irrelevant projects to refine your verifiable source of truth.
+                    </p>
+</header>
+<!-- Warning Section: Tutorial Clones -->
+<div class="bg-surface-container border border-declared-amber/40 rounded-lg p-6 mb-stack-lg flex flex-col sm:flex-row gap-4 items-start shadow-[0px_2px_4px_rgba(0,0,0,0.04)] relative overflow-hidden group">
+<div class="absolute top-0 left-0 w-1 h-full bg-declared-amber"></div>
+<div class="p-2 bg-declared-amber/10 rounded-full shrink-0 text-declared-amber">
+<span class="material-symbols-outlined" style="font-variation-settings: &quot;FILL&quot; 1;">warning</span>
+</div>
+<div>
+<h3 class="font-headline-md text-headline-md text-on-surface mb-2">Tutorial Clones Detected</h3>
+<p class="font-body-md text-body-md text-on-surface-variant mb-4">
+                            Our analysis flagged <strong class="text-on-surface font-semibold">3 repositories</strong> as high-probability tutorial clones based on structural similarity to known public courses. These have been automatically marked as <span class="italic">Private</span> and excluded from your public verified metrics to maintain profile integrity.
+                        </p>
+<button class="px-4 py-2 border border-secondary text-secondary rounded font-status-label text-status-label hover:bg-surface-variant hover:text-on-surface transition-colors">
+                            Review Excluded Projects
+                        </button>
+</div>
+</div>
+<!-- Projects List -->
+<div class="space-y-stack-md">
+<!-- Card 1 -->
+<article class="bg-surface-container-lowest border border-outline-variant rounded-lg shadow-[0px_2px_4px_rgba(0,0,0,0.04)] hover:shadow-[0px_10px_15px_-3px_rgba(0,0,0,0.08)] transition-shadow duration-300 relative group overflow-hidden flex flex-col xl:flex-row">
+<!-- Subtle Verified Overlay tint on hover -->
+<div class="absolute inset-0 bg-verified-blue/[0.01] opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity"></div>
+<!-- Content Area -->
+<div class="p-6 flex-1 flex flex-col">
+<div class="flex flex-wrap items-start justify-between gap-4 mb-4">
+<div>
+<h2 class="font-headline-lg-mobile md:font-headline-lg text-headline-lg-mobile md:text-headline-lg text-on-surface mb-1 flex items-center gap-3">
+                                        distributed-order-service
+                                        <span class="inline-flex items-center gap-1 px-3 py-1 bg-verified-blue/10 text-verified-blue rounded-full font-label-caps text-label-caps tracking-wide mt-1 xl:mt-0">
+<span class="material-symbols-outlined text-[14px]">check_circle</span> VERIFIED
+                                        </span>
+</h2>
+<div class="flex items-center gap-4 text-secondary font-body-sm text-body-sm">
+<span class="flex items-center gap-1"><span class="w-2.5 h-2.5 rounded-full bg-verified-blue"></span> Go</span>
+<span class="flex items-center gap-1"><span class="material-symbols-outlined text-[16px]">commit</span> 1,248 Commits</span>
+<span class="flex items-center gap-1"><span class="material-symbols-outlined text-[16px]">calendar_month</span> Last updated 2w ago</span>
+</div>
+</div>
+<div class="px-3 py-1.5 bg-surface-container rounded border border-outline-variant flex items-center gap-2">
+<span class="material-symbols-outlined text-[18px] text-primary">public</span>
+<span class="font-status-label text-status-label text-on-surface">Public Visibility</span>
+</div>
+</div>
+<p class="font-body-md text-body-md text-secondary mb-6 max-w-4xl">
+<span class="font-semibold text-on-surface">AI Summary:</span> High-throughput distributed order processing system built with Go and gRPC. Features event-driven architecture using Apache Kafka and implements saga patterns for distributed transactions across microservices.
+                            </p>
+<!-- Metrics Grid -->
+<div class="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-6 mt-auto bg-surface-gray p-4 rounded border border-outline-variant/50">
+<div>
+<div class="flex justify-between items-end mb-2">
+<span class="font-label-caps text-label-caps text-secondary">Contribution Depth</span>
+<span class="font-status-label text-status-label text-on-surface">88%</span>
+</div>
+<div class="h-1.5 w-full bg-surface-variant rounded-full overflow-hidden">
+<div class="h-full bg-primary w-[88%] rounded-full"></div>
+</div>
+<p class="font-body-sm text-body-sm text-secondary mt-2">Significant complex logic additions; low ratio of boilerplate commits.</p>
+</div>
+<div>
+<div class="flex justify-between items-end mb-2">
+<span class="font-label-caps text-label-caps text-secondary">Ownership Score</span>
+<span class="font-status-label text-status-label text-on-surface">94%</span>
+</div>
+<div class="h-1.5 w-full bg-surface-variant rounded-full overflow-hidden">
+<div class="h-full bg-primary w-[94%] rounded-full"></div>
+</div>
+<p class="font-body-sm text-body-sm text-secondary mt-2">Primary author of core architectural components and critical path functions.</p>
+</div>
+</div>
+</div>
+<!-- Actions Sidebar -->
+<div class="xl:w-[240px] border-t xl:border-t-0 xl:border-l border-outline-variant bg-surface-container-lowest p-6 flex flex-row xl:flex-col gap-3 justify-center xl:justify-start">
+<button class="flex-1 xl:flex-none flex items-center justify-center gap-2 px-4 py-2.5 bg-primary text-on-primary rounded font-status-label text-status-label hover:bg-on-primary-container transition-colors shadow-sm">
+<span class="material-symbols-outlined text-[18px]">edit</span> Edit Details
+                            </button>
+<button class="flex-1 xl:flex-none flex items-center justify-center gap-2 px-4 py-2.5 border border-secondary text-on-surface rounded font-status-label text-status-label hover:bg-surface-container transition-colors">
+<span class="material-symbols-outlined text-[18px]">visibility_off</span> Mark Private
+                            </button>
+<button class="flex-1 xl:flex-none flex items-center justify-center gap-2 px-4 py-2.5 text-error-red hover:bg-error-container/50 rounded font-status-label text-status-label transition-colors xl:mt-auto">
+<span class="material-symbols-outlined text-[18px]">delete</span> Remove
+                            </button>
+</div>
+</article>
+<!-- Card 2 (Private State Example) -->
+<article class="bg-surface-container-lowest border border-outline-variant rounded-lg shadow-[0px_2px_4px_rgba(0,0,0,0.04)] hover:shadow-[0px_10px_15px_-3px_rgba(0,0,0,0.08)] transition-shadow duration-300 relative group overflow-hidden flex flex-col xl:flex-row opacity-80">
+<!-- Content Area -->
+<div class="p-6 flex-1 flex flex-col">
+<div class="flex flex-wrap items-start justify-between gap-4 mb-4">
+<div>
+<h2 class="font-headline-lg-mobile md:font-headline-lg text-headline-lg-mobile md:text-headline-lg text-secondary mb-1 flex items-center gap-3">
+                                        react-component-library
+                                        <span class="inline-flex items-center gap-1 px-3 py-1 bg-surface-variant text-on-surface-variant rounded-full font-label-caps text-label-caps tracking-wide mt-1 xl:mt-0">
+<span class="material-symbols-outlined text-[14px]">lock</span> VERIFIED (PRIVATE)
+                                        </span>
+</h2>
+<div class="flex items-center gap-4 text-secondary font-body-sm text-body-sm">
+<span class="flex items-center gap-1"><span class="w-2.5 h-2.5 rounded-full bg-[#f1e05a]"></span> TypeScript</span>
+<span class="flex items-center gap-1"><span class="material-symbols-outlined text-[16px]">commit</span> 412 Commits</span>
+<span class="flex items-center gap-1"><span class="material-symbols-outlined text-[16px]">calendar_month</span> Last updated 4m ago</span>
+</div>
+</div>
+<div class="px-3 py-1.5 bg-surface-variant/50 rounded border border-outline-variant/50 flex items-center gap-2 text-secondary">
+<span class="material-symbols-outlined text-[18px]">visibility_off</span>
+<span class="font-status-label text-status-label">Private Visibility</span>
+</div>
+</div>
+<p class="font-body-md text-body-md text-secondary mb-6 max-w-4xl">
+<span class="font-semibold text-on-surface">AI Summary:</span> Custom accessible React component library built with Tailwind CSS and Storybook. Focuses on strict typing and robust unit testing patterns.
+                            </p>
+<!-- Metrics Grid -->
+<div class="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-6 mt-auto bg-surface-gray p-4 rounded border border-outline-variant/50">
+<div>
+<div class="flex justify-between items-end mb-2">
+<span class="font-label-caps text-label-caps text-secondary">Contribution Depth</span>
+<span class="font-status-label text-status-label text-secondary">45%</span>
+</div>
+<div class="h-1.5 w-full bg-surface-variant rounded-full overflow-hidden">
+<div class="h-full bg-secondary w-[45%] rounded-full opacity-50"></div>
+</div>
+</div>
+<div>
+<div class="flex justify-between items-end mb-2">
+<span class="font-label-caps text-label-caps text-secondary">Ownership Score</span>
+<span class="font-status-label text-status-label text-secondary">100%</span>
+</div>
+<div class="h-1.5 w-full bg-surface-variant rounded-full overflow-hidden">
+<div class="h-full bg-secondary w-[100%] rounded-full opacity-50"></div>
+</div>
+</div>
+</div>
+</div>
+<!-- Actions Sidebar -->
+<div class="xl:w-[240px] border-t xl:border-t-0 xl:border-l border-outline-variant bg-surface-container-lowest p-6 flex flex-row xl:flex-col gap-3 justify-center xl:justify-start">
+<button class="flex-1 xl:flex-none flex items-center justify-center gap-2 px-4 py-2.5 bg-surface-container border border-outline-variant text-on-surface rounded font-status-label text-status-label hover:bg-surface-variant transition-colors shadow-sm">
+<span class="material-symbols-outlined text-[18px]">visibility</span> Make Public
+                            </button>
+<button class="flex-1 xl:flex-none flex items-center justify-center gap-2 px-4 py-2.5 text-error-red hover:bg-error-container/50 rounded font-status-label text-status-label transition-colors xl:mt-auto">
+<span class="material-symbols-outlined text-[18px]">delete</span> Remove
+                            </button>
+</div>
+</article>
+</div>
+</div>
+<!-- Mobile Bottom Nav Spacer -->
+<div class="h-20 md:hidden"></div>
+</main>
+<!-- Synthesized Mobile Bottom Nav (to meet requirement 'use the BottomNavBar' when top nav text links are prohibited) -->
+<nav class="md:hidden fixed bottom-0 w-full bg-surface-container-lowest border-t border-outline-variant flex justify-around p-2 z-50 shadow-[0_-4px_10px_rgba(0,0,0,0.03)] pb-safe">
+<a class="flex flex-col items-center p-2 text-secondary hover:text-primary transition-colors" href="#">
+<span class="material-symbols-outlined text-[24px]">dashboard</span>
+<span class="font-label-caps text-[10px] mt-1">Dashboard</span>
+</a>
+<a class="flex flex-col items-center p-2 text-primary font-bold" href="#">
+<span class="material-symbols-outlined text-[24px]" style="font-variation-settings: &quot;FILL&quot; 1;">verified</span>
+<span class="font-label-caps text-[10px] mt-1">Skills</span>
+</a>
+<a class="flex flex-col items-center p-2 text-secondary hover:text-primary transition-colors" href="#">
+<span class="material-symbols-outlined text-[24px]">description</span>
+<span class="font-label-caps text-[10px] mt-1">Apps</span>
+</a>
+<a class="flex flex-col items-center p-2 text-secondary hover:text-primary transition-colors" href="#">
+<span class="material-symbols-outlined text-[24px]">settings</span>
+<span class="font-label-caps text-[10px] mt-1">Settings</span>
+</a>
+</nav>
+</div>
+
+
+</body></html>
