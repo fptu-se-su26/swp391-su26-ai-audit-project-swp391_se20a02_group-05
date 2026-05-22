@@ -129,7 +129,7 @@
 <!-- Header Navigation (Simplified for Login) -->
 <nav class="w-full h-16 px-margin-desktop flex justify-between items-center bg-surface-container-lowest border-b border-outline-variant z-50">
 <div class="flex items-center gap-2">
-<span class="font-headline-md text-headline-md font-bold text-primary">Veritas Technical</span>
+<a href="index.html" class="font-headline-md text-headline-md font-bold text-primary">Veritas Technical</a>
 <span class="font-label-caps text-label-caps px-2 py-1 bg-primary-container text-on-primary-container rounded uppercase">Recruiter</span>
 </div>
 <div class="hidden md:flex items-center gap-stack-md">
@@ -157,16 +157,16 @@
 </div>
 <!-- OAuth Methods -->
 <div class="space-y-3 mb-8">
-<button class="w-full flex items-center justify-center gap-3 py-3 px-4 border border-outline-variant rounded-xl font-body-md text-body-md text-on-surface-variant hover:bg-surface-container-low transition-all active:scale-[0.98]">
+<button onclick="window.location.href='search-candidates.html'" class="w-full flex items-center justify-center gap-3 py-3 px-4 border border-outline-variant rounded-xl font-body-md text-body-md text-on-surface-variant hover:bg-surface-container-low transition-all active:scale-[0.98]">
 <img alt="Google" class="w-5 h-5" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBbXlFjv6JSq9sjUPXNIgxoaqaRV_YCrwmAzmTZ70jMpkHwhWBzk6vLbLkycjZui9RQvjxu4raFfDC-4FA3_9dbPEd9Ami27nUlJXehX-bberqrp_W-6ItuZX0tVgXm-eqoZs4Jc7OSKFBgJjlzb69BIwuQ8nfkcWV-UyTTYk19tatgfSswlRwT6qet1nWEQOZGrnUonXSgliZyZrG5Zr-RqP4MwP84FIsEDCU139FIVarClq5dmic0blmIqckNj-IGymjSwyBf9-PL"/>
                             Tiếp tục với Google
                         </button>
 <div class="grid grid-cols-2 gap-3">
-<button class="flex items-center justify-center gap-2 py-3 px-4 border border-outline-variant rounded-xl font-body-sm text-body-sm text-on-surface-variant hover:bg-surface-container-low transition-all active:scale-[0.98]">
+<button onclick="window.location.href='search-candidates.html'" class="flex items-center justify-center gap-2 py-3 px-4 border border-outline-variant rounded-xl font-body-sm text-body-sm text-on-surface-variant hover:bg-surface-container-low transition-all active:scale-[0.98]">
 <span class="material-symbols-outlined text-xl" data-icon="terminal">terminal</span>
                                 GitHub
                             </button>
-<button class="flex items-center justify-center gap-2 py-3 px-4 border border-outline-variant rounded-xl font-body-sm text-body-sm text-on-surface-variant hover:bg-surface-container-low transition-all active:scale-[0.98]">
+<button onclick="window.location.href='search-candidates.html'" class="flex items-center justify-center gap-2 py-3 px-4 border border-outline-variant rounded-xl font-body-sm text-body-sm text-on-surface-variant hover:bg-surface-container-low transition-all active:scale-[0.98]">
 <span class="material-symbols-outlined text-xl text-[#0077b5]" data-icon="work" style="font-variation-settings: 'FILL' 1;">work</span>
                                 LinkedIn
                             </button>
@@ -179,7 +179,7 @@
 <div class="flex-grow h-[1px] bg-outline-variant"></div>
 </div>
 <!-- Email Login Form -->
-<form class="space-y-5" onsubmit="event.preventDefault();">
+<form class="space-y-5" action="search-candidates.html" onsubmit="event.preventDefault(); window.location.href=this.action;">
 <div>
 <label class="block font-label-caps text-label-caps text-on-surface-variant mb-2" for="email">EMAIL CÔNG VIỆC</label>
 <div class="relative">
@@ -212,7 +212,7 @@
 <div class="bg-surface-container-low p-6 text-center border-t border-outline-variant">
 <p class="font-body-sm text-body-sm text-on-surface-variant">
                         Chưa có tài khoản Nhà tuyển dụng? 
-                        <a class="text-primary font-bold hover:underline ml-1" href="#">Đăng ký tại đây</a>
+                        <a class="text-primary font-bold hover:underline ml-1" href="signup.html">Đăng ký tại đây</a>
 </p>
 </div>
 </div>

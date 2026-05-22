@@ -149,22 +149,22 @@
 </div>
 </div>
 <!-- CTA -->
-<button class="w-full bg-primary text-on-primary rounded-lg py-3 px-4 font-status-label text-status-label flex items-center justify-center space-x-2 hover:bg-primary-container hover:text-on-primary-container transition-colors mb-4 shadow-sm">
+<button onclick="window.location.href='candidate-post.html'" class="w-full bg-primary text-on-primary rounded-lg py-3 px-4 font-status-label text-status-label flex items-center justify-center space-x-2 hover:bg-primary-container hover:text-on-primary-container transition-colors mb-4 shadow-sm">
 <span class="material-symbols-outlined" style="font-size: 18px;">add</span>
 <span>Đăng tin Tuyển dụng mới</span>
 </button>
 <!-- Main Navigation -->
 <div class="flex-1 space-y-2">
-<a class="flex items-center space-x-3 px-3 py-2.5 rounded-xl text-on-surface-variant hover:text-primary hover:bg-surface-container-high transition-all font-label-caps text-label-caps" href="#">
+<a class="flex items-center space-x-3 px-3 py-2.5 rounded-xl text-on-surface-variant hover:text-primary hover:bg-surface-container-high transition-all font-label-caps text-label-caps" href="search-candidates.html">
 <span class="material-symbols-outlined">dashboard</span>
 <span>Bảng điều khiển</span>
 </a>
-<a class="flex items-center space-x-3 px-3 py-2.5 rounded-xl text-on-surface-variant hover:text-primary hover:bg-surface-container-high transition-all font-label-caps text-label-caps" href="#">
+<a class="flex items-center space-x-3 px-3 py-2.5 rounded-xl text-on-surface-variant hover:text-primary hover:bg-surface-container-high transition-all font-label-caps text-label-caps" href="search-candidates.html">
 <span class="material-symbols-outlined">person_search</span>
 <span>Tìm kiếm Ứng viên</span>
 </a>
 <!-- Active State: Job Postings -->
-<a class="flex items-center space-x-3 px-3 py-2.5 rounded-xl bg-primary-container text-on-primary-container font-bold translate-x-1 transition-transform font-label-caps text-label-caps" href="#">
+<a class="flex items-center space-x-3 px-3 py-2.5 rounded-xl bg-primary-container text-on-primary-container font-bold translate-x-1 transition-transform font-label-caps text-label-caps" href="candidate-post.html">
 <span class="material-symbols-outlined fill">work</span>
 <span>Tin Tuyển dụng</span>
 </a>
@@ -187,6 +187,10 @@
 <span class="material-symbols-outlined">settings</span>
 <span>Cài đặt</span>
 </a>
+<a class="flex items-center space-x-3 px-3 py-2 rounded-xl text-error hover:bg-error-container/10 transition-all font-label-caps text-label-caps" href="index.html">
+<span class="material-symbols-outlined">logout</span>
+<span>Đăng xuất</span>
+</a>
 </div>
 </nav>
 <!-- Main Content Area Wrapper -->
@@ -200,7 +204,7 @@
 <span class="material-symbols-outlined">menu</span>
 </button>
 </div>
-<h1 class="font-headline-md text-headline-md font-bold text-primary hidden md:block">Veritas Technical</h1>
+<h1 class="font-headline-md text-headline-md font-bold text-primary hidden md:block"><a href="index.html">Veritas Technical</a></h1>
 <div class="relative max-w-md w-full ml-4 hidden sm:block">
 <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant" style="font-size: 20px;">search</span>
 <input class="w-full pl-10 pr-4 py-2 bg-surface rounded-full border border-outline-variant focus:border-primary focus:ring-1 focus:ring-primary outline-none font-body-sm text-body-sm text-on-surface placeholder:text-on-surface-variant transition-colors" placeholder="Tìm kiếm hồ sơ, kỹ năng hoặc vai trò..." type="text"/>
@@ -227,7 +231,7 @@
 <!-- Page Header -->
 <div class="mb-stack-lg">
 <div class="flex items-center space-x-2 text-on-surface-variant mb-2">
-<a class="font-body-sm text-body-sm hover:text-primary transition-colors" href="#">Tin Tuyển dụng</a>
+<a class="font-body-sm text-body-sm hover:text-primary transition-colors" href="search-candidates.html">Tin Tuyển dụng</a>
 <span class="material-symbols-outlined" style="font-size: 16px;">chevron_right</span>
 <span class="font-body-sm text-body-sm text-on-surface">Tạo Mới</span>
 </div>
@@ -350,10 +354,10 @@
 </div>
 <!-- Footer Actions -->
 <div class="pt-6 flex items-center justify-end space-x-4">
-<button class="px-6 py-2.5 rounded-lg font-status-label text-status-label text-secondary hover:bg-surface-container-low transition-colors" type="button">
+<button onclick="window.location.href='search-candidates.html'" class="px-6 py-2.5 rounded-lg font-status-label text-status-label text-secondary hover:bg-surface-container-low transition-colors" type="button">
                             Hủy
                         </button>
-<button class="px-6 py-2.5 rounded-lg bg-primary text-on-primary font-status-label text-status-label hover:bg-on-primary-fixed-variant shadow-sm transition-all flex items-center space-x-2" type="button">
+<button onclick="window.location.href='search-candidates.html'" class="px-6 py-2.5 rounded-lg bg-primary text-on-primary font-status-label text-status-label hover:bg-on-primary-fixed-variant shadow-sm transition-all flex items-center space-x-2" type="button">
 <span class="material-symbols-outlined" style="font-size: 18px;">publish</span>
 <span>Đăng tin Tuyển dụng</span>
 </button>

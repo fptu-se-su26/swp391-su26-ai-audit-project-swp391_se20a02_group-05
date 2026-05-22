@@ -130,29 +130,29 @@
 <span class="material-symbols-outlined text-on-primary-container icon-fill" data-icon="shield_person">shield_person</span>
 </div>
 <div>
-<h1 class="font-headline-md text-[18px] font-bold text-primary dark:text-primary-fixed leading-tight">Cổng Tuyển dụng</h1>
+<h1 class="font-headline-md text-[18px] font-bold text-primary dark:text-primary-fixed leading-tight"><a href="index.html">Cổng Tuyển dụng</a></h1>
 <p class="font-body-sm text-[12px] text-on-surface-variant">Nguồn Tài năng Đã Xác thực</p>
 </div>
 </div>
 <!-- CTA -->
 <div class="px-4 mb-stack-md">
-<button class="w-full bg-primary text-on-primary font-body-sm text-body-sm font-semibold py-2 px-4 rounded-DEFAULT flex items-center justify-center gap-2 hover:bg-surface-tint transition-colors">
+<button onclick="window.location.href='candidate-post.html'" class="w-full bg-primary text-on-primary font-body-sm text-body-sm font-semibold py-2 px-4 rounded-DEFAULT flex items-center justify-center gap-2 hover:bg-surface-tint transition-colors">
 <span class="material-symbols-outlined text-[18px]" data-icon="add">add</span>
                 Đăng Tin Tuyển dụng
             </button>
 </div>
 <!-- Main Navigation -->
 <nav class="flex-1 flex flex-col gap-1">
-<a class="flex items-center gap-3 px-4 py-3 rounded-xl text-on-surface-variant dark:text-surface-variant hover:bg-surface-container-high dark:hover:bg-on-secondary-fixed-variant hover:text-primary transition-all font-label-caps text-label-caps" href="#">
+<a class="flex items-center gap-3 px-4 py-3 rounded-xl text-on-surface-variant dark:text-surface-variant hover:bg-surface-container-high dark:hover:bg-on-secondary-fixed-variant hover:text-primary transition-all font-label-caps text-label-caps" href="search-candidates.html">
 <span class="material-symbols-outlined" data-icon="dashboard">dashboard</span>
 <span>Bảng điều khiển</span>
 </a>
 <!-- Active State: Search Candidates -->
-<a class="flex items-center gap-3 px-4 py-3 rounded-xl bg-primary-container dark:bg-primary text-on-primary-container dark:text-on-primary font-bold font-label-caps text-label-caps translate-x-1 transition-transform" href="#">
+<a class="flex items-center gap-3 px-4 py-3 rounded-xl bg-primary-container dark:bg-primary text-on-primary-container dark:text-on-primary font-bold font-label-caps text-label-caps translate-x-1 transition-transform" href="search-candidates.html">
 <span class="material-symbols-outlined" data-icon="person_search">person_search</span>
 <span>Tìm kiếm Ứng viên</span>
 </a>
-<a class="flex items-center gap-3 px-4 py-3 rounded-xl text-on-surface-variant dark:text-surface-variant hover:bg-surface-container-high dark:hover:bg-on-secondary-fixed-variant hover:text-primary transition-all font-label-caps text-label-caps" href="#">
+<a class="flex items-center gap-3 px-4 py-3 rounded-xl text-on-surface-variant dark:text-surface-variant hover:bg-surface-container-high dark:hover:bg-on-secondary-fixed-variant hover:text-primary transition-all font-label-caps text-label-caps" href="candidate-post.html">
 <span class="material-symbols-outlined" data-icon="work">work</span>
 <span>Tin Tuyển dụng</span>
 </a>
@@ -175,6 +175,10 @@
 <span class="material-symbols-outlined" data-icon="settings">settings</span>
 <span>Cài đặt</span>
 </a>
+<a class="flex items-center gap-3 px-4 py-3 rounded-xl text-error hover:bg-error-container/10 transition-all font-label-caps text-label-caps" href="index.html">
+<span class="material-symbols-outlined" data-icon="logout">logout</span>
+<span>Đăng xuất</span>
+</a>
 </div>
 </aside>
 <!-- Main Content Wrapper -->
@@ -183,7 +187,7 @@
 <header class="bg-surface-container-lowest dark:bg-inverse-surface docked full-width top-0 z-50 border-b border-outline-variant dark:border-on-secondary-fixed-variant shadow-sm flex justify-between items-center w-full px-margin-desktop h-16 flex-shrink-0">
 <div class="flex items-center gap-4 flex-1">
 <div class="md:hidden">
-<span class="font-headline-md text-[20px] font-bold text-primary dark:text-primary-fixed">Veritas Technical</span>
+<span class="font-headline-md text-[20px] font-bold text-primary dark:text-primary-fixed"><a href="index.html">Veritas Technical</a></span>
 </div>
 <!-- Search Bar (on_left) -->
 <div class="hidden md:flex relative w-full max-w-md items-center">
@@ -368,7 +372,7 @@
 </div>
 <!-- Actions -->
 <div class="flex items-end shrink-0">
-<button class="px-4 py-2 bg-surface hover:bg-surface-container-low border border-outline-variant text-primary font-body-sm font-semibold rounded-DEFAULT transition-colors flex items-center gap-2">
+<button onclick="window.location.href='view-profile.html'" class="px-4 py-2 bg-surface hover:bg-surface-container-low border border-outline-variant text-primary font-body-sm font-semibold rounded-DEFAULT transition-colors flex items-center gap-2">
                                             Xem hồ sơ đầy đủ <span class="material-symbols-outlined text-[18px]" data-icon="arrow_forward">arrow_forward</span>
 </button>
 </div>
@@ -445,7 +449,7 @@
 </div>
 </div>
 <div class="flex items-end shrink-0">
-<button class="px-4 py-2 text-primary hover:bg-surface-container-low font-body-sm font-semibold rounded-DEFAULT transition-colors flex items-center gap-2 border border-transparent">
+<button onclick="window.location.href='view-profile.html'" class="px-4 py-2 text-primary hover:bg-surface-container-low font-body-sm font-semibold rounded-DEFAULT transition-colors flex items-center gap-2 border border-transparent">
                                             Xem hồ sơ
                                         </button>
 </div>

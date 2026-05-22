@@ -1,5 +1,4 @@
 <!DOCTYPE html>
-
 <html class="light" lang="en"><head>
 <meta charset="utf-8"/>
 <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
@@ -212,18 +211,18 @@
 <!-- TopNavBar -->
 <nav class="bg-surface-container-lowest dark:bg-inverse-surface border-b border-outline-variant dark:border-on-secondary-fixed-variant shadow-sm w-full sticky top-0 z-50 flex justify-between items-center px-margin-desktop h-16 md:flex hidden">
 <div class="flex items-center gap-gutter">
-<span class="font-headline-md text-headline-md font-bold text-primary dark:text-primary-fixed">Veritas Technical</span>
+<span class="font-headline-md text-headline-md font-bold text-primary dark:text-primary-fixed"><a href="index.html">Veritas Technical</a></span>
 </div>
 <div class="flex items-center space-x-stack-md h-full">
-<div class="h-full flex items-center px-4 hover:bg-surface-container-low dark:hover:bg-on-secondary-fixed-variant transition-colors cursor-pointer text-on-surface-variant dark:text-surface-variant">
+<a href="search-candidates.html" class="h-full flex items-center px-4 hover:bg-surface-container-low dark:hover:bg-on-secondary-fixed-variant transition-colors cursor-pointer text-on-surface-variant dark:text-surface-variant">
 <span class="font-body-md text-body-md">Bảng điều khiển</span>
-</div>
-<div class="h-full flex items-center px-4 hover:bg-surface-container-low dark:hover:bg-on-secondary-fixed-variant transition-colors cursor-pointer text-primary dark:text-primary-fixed font-bold border-b-2 border-primary opacity-80 scale-95 transition-all">
+</a>
+<a href="search-candidates.html" class="h-full flex items-center px-4 hover:bg-surface-container-low dark:hover:bg-on-secondary-fixed-variant transition-colors cursor-pointer text-primary dark:text-primary-fixed font-bold border-b-2 border-primary opacity-80 scale-95 transition-all">
 <span class="font-body-md text-body-md">Tìm ứng viên</span>
-</div>
-<div class="h-full flex items-center px-4 hover:bg-surface-container-low dark:hover:bg-on-secondary-fixed-variant transition-colors cursor-pointer text-on-surface-variant dark:text-surface-variant">
+</a>
+<a href="candidate-post.html" class="h-full flex items-center px-4 hover:bg-surface-container-low dark:hover:bg-on-secondary-fixed-variant transition-colors cursor-pointer text-on-surface-variant dark:text-surface-variant">
 <span class="font-body-md text-body-md">Tin tuyển dụng</span>
-</div>
+</a>
 </div>
 <div class="flex items-center gap-stack-md">
 <button class="text-on-surface-variant hover:text-primary transition-colors">
@@ -250,15 +249,15 @@
 </div>
 </div>
 <nav class="flex-1 space-y-2">
-<a class="flex items-center gap-stack-sm px-4 py-3 rounded-xl text-on-surface-variant dark:text-surface-variant hover:bg-surface-container-high dark:hover:bg-on-secondary-fixed-variant transition-all hover:text-primary" href="#">
+<a class="flex items-center gap-stack-sm px-4 py-3 rounded-xl text-on-surface-variant dark:text-surface-variant hover:bg-surface-container-high dark:hover:bg-on-secondary-fixed-variant transition-all hover:text-primary" href="search-candidates.html">
 <span class="material-symbols-outlined" data-icon="dashboard">dashboard</span>
 <span class="font-label-caps text-label-caps">Bảng điều khiển</span>
 </a>
-<a class="flex items-center gap-stack-sm px-4 py-3 rounded-xl bg-primary-container dark:bg-primary text-on-primary-container dark:text-on-primary font-bold translate-x-1 transition-transform" href="#">
+<a class="flex items-center gap-stack-sm px-4 py-3 rounded-xl bg-primary-container dark:bg-primary text-on-primary-container dark:text-on-primary font-bold translate-x-1 transition-transform" href="search-candidates.html">
 <span class="material-symbols-outlined" data-icon="person_search" data-weight="fill" style="font-variation-settings: 'FILL' 1;">person_search</span>
 <span class="font-label-caps text-label-caps">Tìm ứng viên</span>
 </a>
-<a class="flex items-center gap-stack-sm px-4 py-3 rounded-xl text-on-surface-variant dark:text-surface-variant hover:bg-surface-container-high dark:hover:bg-on-secondary-fixed-variant transition-all hover:text-primary" href="#">
+<a class="flex items-center gap-stack-sm px-4 py-3 rounded-xl text-on-surface-variant dark:text-surface-variant hover:bg-surface-container-high dark:hover:bg-on-secondary-fixed-variant transition-all hover:text-primary" href="candidate-post.html">
 <span class="material-symbols-outlined" data-icon="work">work</span>
 <span class="font-label-caps text-label-caps">Tin tuyển dụng</span>
 </a>
@@ -272,7 +271,7 @@
 </a>
 </nav>
 <div class="mt-auto space-y-stack-md pt-stack-md border-t border-outline-variant">
-<button class="w-full bg-primary text-on-primary py-2 px-4 rounded font-body-sm text-body-sm font-semibold hover:bg-surface-tint transition-colors">
+<button onclick="window.location.href='candidate-post.html'" class="w-full bg-primary text-on-primary py-2 px-4 rounded font-body-sm text-body-sm font-semibold hover:bg-surface-tint transition-colors">
                      Đăng tin mới
                  </button>
 <nav class="space-y-2">
@@ -283,6 +282,10 @@
 <a class="flex items-center gap-stack-sm px-4 py-2 rounded-xl text-on-surface-variant hover:text-primary transition-all" href="#">
 <span class="material-symbols-outlined text-[20px]" data-icon="settings">settings</span>
 <span class="font-label-caps text-label-caps">Cài đặt</span>
+</a>
+<a class="flex items-center gap-stack-sm px-4 py-2 rounded-xl text-error hover:bg-error-container/10 transition-all" href="index.html">
+<span class="material-symbols-outlined text-[20px]" data-icon="logout">logout</span>
+<span class="font-label-caps text-label-caps">Đăng xuất</span>
 </a>
 </nav>
 </div>
@@ -319,7 +322,7 @@
 <button class="flex-1 md:flex-none border border-secondary text-secondary font-body-sm text-body-sm font-semibold py-2 px-4 rounded hover:bg-surface-container-low transition-colors">
                              Gửi tin nhắn
                          </button>
-<button class="flex-1 md:flex-none bg-primary text-on-primary font-body-sm text-body-sm font-semibold py-2 px-4 rounded hover:bg-surface-tint transition-colors">
+<button onclick="alert('Lên lịch phỏng vấn thành công cho Marcus Chen!')" class="flex-1 md:flex-none bg-primary text-on-primary font-body-sm text-body-sm font-semibold py-2 px-4 rounded hover:bg-surface-tint transition-colors">
                              Lên lịch phỏng vấn
                          </button>
 </div>
