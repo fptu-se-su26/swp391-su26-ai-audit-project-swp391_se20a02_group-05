@@ -124,7 +124,7 @@ docs/CHANGELOG.md
 docs/REFLECTION.md
 ```
 
-Students must be able to explain, verify, and defend all submitted work.
+Students must be able to explain, verify, and defend all submitted work .
 
 
 
