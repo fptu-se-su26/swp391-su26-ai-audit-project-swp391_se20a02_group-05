@@ -1,12 +1,14 @@
-﻿using System;
+using System;
 using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
 
 namespace CVerify.API.Core.Entities;
 
 public class OutboxMessage
 {
     [Key]
-    public Guid Id { get; set; } = Guid.NewGuid();
+    [DatabaseGenerated(DatabaseGeneratedOption.None)]
+    public Guid Id { get; set; } = Guid.CreateVersion7();
 
     [Required]
     [MaxLength(100)]

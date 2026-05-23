@@ -23,6 +23,29 @@ public static class DbInitializer
             throw new InvalidOperationException("Database connectivity check failed. Please ensure PostgreSQL is running and the connection string is correct.");
         }
 
+        // 1b. Environment-guarded destructive reset (Development or specific environments only)
+        var resetDbEnv = Environment.GetEnvironmentVariable("RESET_DATABASE");
+        bool shouldReset = string.Equals(resetDbEnv, "true", StringComparison.OrdinalIgnoreCase);
+        if (shouldReset)
+        {
+            const string dropSql = @"
+                DROP TABLE IF EXISTS messages CASCADE;
+                DROP TABLE IF EXISTS conversations CASCADE;
+                DROP TABLE IF EXISTS audit_logs CASCADE;
+                DROP TABLE IF EXISTS outbox_messages CASCADE;
+                DROP TABLE IF EXISTS reset_password_tokens CASCADE;
+                DROP TABLE IF EXISTS verification_tokens CASCADE;
+                DROP TABLE IF EXISTS refresh_tokens CASCADE;
+                DROP TABLE IF EXISTS role_permissions CASCADE;
+                DROP TABLE IF EXISTS permissions CASCADE;
+                DROP TABLE IF EXISTS user_roles CASCADE;
+                DROP TABLE IF EXISTS users CASCADE;
+                DROP TABLE IF EXISTS roles CASCADE;
+                DROP TYPE IF EXISTS user_status CASCADE;
+            ";
+            await context.Database.ExecuteSqlRawAsync(dropSql);
+        }
+
         // 2. Execute idempotent PostgreSQL schema updates
         const string sql = @"
             -- Enable cryptographic functions for UUID generation and password hashing
@@ -55,7 +78,7 @@ public static class DbInitializer
 
             -- Stores user roles for the Role-Based Access Control (RBAC) system
             CREATE TABLE IF NOT EXISTS roles (
-                id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+                id UUID PRIMARY KEY,
                 name VARCHAR(50) NOT NULL UNIQUE,
                 display_name VARCHAR(100) NOT NULL,
                 description TEXT,
@@ -68,7 +91,7 @@ public static class DbInitializer
 
             -- Core table storing user credentials, profile data, and security logs
             CREATE TABLE IF NOT EXISTS users (
-                id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+                id UUID PRIMARY KEY,
                 email CITEXT NOT NULL UNIQUE,
                 password_hash TEXT NOT NULL,
                 full_name VARCHAR(255) NOT NULL,
@@ -216,7 +239,7 @@ public static class DbInitializer
 
             -- Granular permissions using a hierarchical naming convention
             CREATE TABLE IF NOT EXISTS permissions (
-                id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+                id UUID PRIMARY KEY,
                 name VARCHAR(150) NOT NULL UNIQUE,
                 display_name VARCHAR(150) NOT NULL,
                 description TEXT,
@@ -238,7 +261,7 @@ public static class DbInitializer
 
             -- Manages long-lived refresh tokens for maintaining user sessions securely
             CREATE TABLE IF NOT EXISTS refresh_tokens (
-                id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+                id UUID PRIMARY KEY,
                 user_id UUID NOT NULL,
                 token VARCHAR(255) NOT NULL,
                 expires_at TIMESTAMP WITH TIME ZONE NOT NULL,
@@ -247,7 +270,7 @@ public static class DbInitializer
                 replaced_by_token VARCHAR(255),
                 user_agent VARCHAR(500),
                 ip_address VARCHAR(45),
-                session_id UUID NOT NULL DEFAULT gen_random_uuid(),
+                session_id UUID NOT NULL,
                 remember_me BOOLEAN NOT NULL DEFAULT FALSE,
                 replaced_by_token_id UUID,
                 CONSTRAINT fk_refresh_tokens_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
@@ -285,7 +308,7 @@ public static class DbInitializer
                     FROM information_schema.columns 
                     WHERE table_name='refresh_tokens' AND column_name='session_id'
                 ) THEN
-                    ALTER TABLE refresh_tokens ADD COLUMN session_id UUID NOT NULL DEFAULT gen_random_uuid();
+                    ALTER TABLE refresh_tokens ADD COLUMN session_id UUID NOT NULL;
                 END IF;
             END $$;
 
@@ -320,7 +343,7 @@ public static class DbInitializer
 
             -- Manages one-time-use email verification tokens
             CREATE TABLE IF NOT EXISTS verification_tokens (
-                id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+                id UUID PRIMARY KEY,
                 user_id UUID NOT NULL,
                 token_hash VARCHAR(255) NOT NULL UNIQUE,
                 expires_at TIMESTAMP WITH TIME ZONE NOT NULL,
@@ -331,7 +354,7 @@ public static class DbInitializer
 
             -- Manages one-time-use password reset tokens
             CREATE TABLE IF NOT EXISTS reset_password_tokens (
-                id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+                id UUID PRIMARY KEY,
                 user_id UUID NOT NULL,
                 token_hash VARCHAR(255) NOT NULL UNIQUE,
                 expires_at TIMESTAMP WITH TIME ZONE NOT NULL,
@@ -342,7 +365,7 @@ public static class DbInitializer
 
             -- Outbox Pattern Table for reliable asynchronous email delivery
             CREATE TABLE IF NOT EXISTS outbox_messages (
-                id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+                id UUID PRIMARY KEY,
                 type VARCHAR(100) NOT NULL,
                 payload TEXT NOT NULL,
                 created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
@@ -352,7 +375,7 @@ public static class DbInitializer
 
             -- Security Audit Logs Table for tracking major events
             CREATE TABLE IF NOT EXISTS audit_logs (
-                id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+                id UUID PRIMARY KEY,
                 user_id UUID,
                 event_type VARCHAR(100) NOT NULL,
                 description TEXT NOT NULL,
@@ -364,7 +387,7 @@ public static class DbInitializer
 
             -- Manages chat conversation sessions with the AI Assistant
             CREATE TABLE IF NOT EXISTS conversations (
-                id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+                id UUID PRIMARY KEY,
                 user_id UUID NOT NULL,
                 title VARCHAR(255) NOT NULL DEFAULT 'New Conversation',
                 created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
@@ -374,7 +397,7 @@ public static class DbInitializer
 
             -- Stores individual messages in a conversation
             CREATE TABLE IF NOT EXISTS messages (
-                id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+                id UUID PRIMARY KEY,
                 conversation_id UUID NOT NULL,
                 role VARCHAR(50) NOT NULL,
                 content TEXT NOT NULL,
@@ -428,15 +451,17 @@ public static class DbInitializer
             END $$;
 
             -- Initial Data (Seeding)
-            INSERT INTO roles (name, display_name, description, is_system)
+            -- Handled dynamically via permissions-registry.json mapping inside CVerify.Core,
+            -- but bootstrap placeholders are kept for standard seed continuity.
+            INSERT INTO roles (id, name, display_name, description, is_system)
             VALUES 
-                ('SUPER_ADMIN', 'System Administrator', 'Root access to all modules', TRUE),
-                ('USER', 'General User', 'Basic application access', TRUE)
+                ('018fc35b-1c5c-7b8a-9a2d-3e4f5a6b7c8d'::uuid, 'SUPER_ADMIN', 'System Administrator', 'Root access to all modules', TRUE),
+                ('018fc35b-1c5d-7b8a-9a2d-3e4f5a6b7c8d'::uuid, 'USER', 'General User', 'Basic application access', TRUE)
             ON CONFLICT (name) DO NOTHING;
 
-            INSERT INTO permissions (name, display_name, description, module, is_system)
+            INSERT INTO permissions (id, name, display_name, description, module, is_system)
             VALUES 
-                ('*:*:*', 'Global Wildcard', 'Full access to every module and feature', 'system', TRUE)
+                ('018fc35b-1c5e-7b8a-9a2d-3e4f5a6b7c8d'::uuid, '*:*:*', 'Global Wildcard', 'Full access to every module and feature', 'system', TRUE)
             ON CONFLICT (name) DO NOTHING;
 
             INSERT INTO role_permissions (role_id, permission_id)
@@ -446,6 +471,7 @@ public static class DbInitializer
 
             -- Provision the master administrator account if it doesn't exist
             INSERT INTO users (
+                id,
                 email, 
                 password_hash, 
                 full_name, 
@@ -453,6 +479,7 @@ public static class DbInitializer
                 email_verified_at
             )
             SELECT 
+                '018fc35b-1c5f-7b8a-9a2d-3e4f5a6b7c8d'::uuid,
                 'admin@system.com',
                 crypt('SuperAdminPassword123', gen_salt('bf', 10)),
                 'System Administrator',

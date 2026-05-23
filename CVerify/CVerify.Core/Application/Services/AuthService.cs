@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Security.Claims;
@@ -117,7 +117,7 @@ public class AuthService : IAuthService
         var jwt = _tokenService.GenerateJwtToken(user, roles, permissions);
         var refreshTokenStr = _tokenService.GenerateRefreshToken();
 
-        var sessionId = Guid.NewGuid();
+        var sessionId = Guid.CreateVersion7();
         var rememberMe = request.RememberMe;
         await SaveRefreshTokenAsync(user.Id, refreshTokenStr, sessionId, rememberMe);
 
@@ -223,7 +223,7 @@ public class AuthService : IAuthService
             var jwt = _tokenService.GenerateJwtToken(user, roles, permissions);
             var refreshTokenStr = _tokenService.GenerateRefreshToken();
 
-            var sessionId = Guid.NewGuid();
+            var sessionId = Guid.CreateVersion7();
             var rememberMe = true; // default to true for Google OAuth / Remembered sessions
             await SaveRefreshTokenAsync(user.Id, refreshTokenStr, sessionId, rememberMe);
 
@@ -727,7 +727,7 @@ public class AuthService : IAuthService
             var jwt = _tokenService.GenerateJwtToken(user, roles, permissions);
             var refreshTokenStr = _tokenService.GenerateRefreshToken();
 
-            var sessionId = Guid.NewGuid();
+            var sessionId = Guid.CreateVersion7();
             var rememberMe = false; // default to false
             await SaveRefreshTokenAsync(user.Id, refreshTokenStr, sessionId, rememberMe);
 
@@ -1045,7 +1045,7 @@ public class AuthService : IAuthService
             var jwt = _tokenService.GenerateJwtToken(user, roles, permissions);
             var refreshTokenStr = _tokenService.GenerateRefreshToken();
 
-            var sessionId = Guid.NewGuid();
+            var sessionId = Guid.CreateVersion7();
             var rememberMe = false; // default to false
             await SaveRefreshTokenAsync(user.Id, refreshTokenStr, sessionId, rememberMe);
 
