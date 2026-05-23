@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using Microsoft.Extensions.Configuration;
 using CVerify.API.API.Extensions;
 
@@ -89,6 +89,9 @@ public static class EnvValidator
             ?? throw new InvalidOperationException("Environment variable 'AI_SERVICE_SHARED_SECRET' or setting 'Ai:SharedSecret' is missing.");
         config.Ai.ClientId = (configuration["Ai:ClientId"] ?? configuration["AI_SERVICE_CLIENT_ID"])?.ResolveEnvironmentVariables()?.Trim('"') ?? config.Ai.ClientId;
         config.Ai.ClaudeModel = (configuration["Ai:ClaudeModel"] ?? configuration["CLAUDE_MODEL"])?.ResolveEnvironmentVariables()?.Trim('"') ?? config.Ai.ClaudeModel;
+
+        // 7. Super Admin Settings
+        config.SuperAdmin.Email = (configuration["SuperAdmin:Email"] ?? configuration["SUPER_ADMIN_EMAIL"])?.ResolveEnvironmentVariables()?.Trim('"') ?? config.SuperAdmin.Email;
 
         return config;
     }

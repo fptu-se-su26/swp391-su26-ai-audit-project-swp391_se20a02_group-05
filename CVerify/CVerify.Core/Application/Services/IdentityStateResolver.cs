@@ -9,6 +9,7 @@ using CVerify.API.Application.Interfaces;
 using CVerify.API.Core.Enums;
 using CVerify.API.Core.Entities;
 using CVerify.API.Infrastructure.Persistence;
+using CVerify.API.Infrastructure.Configuration;
 
 namespace CVerify.API.Application.Services;
 
@@ -20,6 +21,7 @@ public class IdentityStateResolver : IIdentityStateResolver
 {
     private readonly ApplicationDbContext _context;
     private readonly ICacheService _cacheService;
+    private readonly EnvConfiguration _envConfig;
     private readonly ILogger<IdentityStateResolver> _logger;
 
     private const string CacheKeyPrefix = "auth:identity-state:";
@@ -28,10 +30,12 @@ public class IdentityStateResolver : IIdentityStateResolver
     public IdentityStateResolver(
         ApplicationDbContext context,
         ICacheService cacheService,
+        EnvConfiguration envConfig,
         ILogger<IdentityStateResolver> logger)
     {
         _context = context;
         _cacheService = cacheService;
+        _envConfig = envConfig;
         _logger = logger;
     }
 
@@ -70,6 +74,9 @@ public class IdentityStateResolver : IIdentityStateResolver
             .Include(u => u.AuthProviders)
             .FirstOrDefaultAsync(u => u.Email == normalizedEmail, cancellationToken);
 
+        var superAdminEmail = _envConfig.SuperAdmin.Email;
+        bool isSuperAdmin = string.Equals(normalizedEmail, superAdminEmail, StringComparison.OrdinalIgnoreCase);
+
         if (user == null)
         {
             return EmailAuthState.REQUIRES_ONBOARDING;
@@ -79,16 +86,19 @@ public class IdentityStateResolver : IIdentityStateResolver
             user.Status == UserStatus.BANNED ||
             user.DeletedAt != null)
         {
-            return EmailAuthState.ACCOUNT_RESTRICTED;
+            if (!isSuperAdmin)
+            {
+                return EmailAuthState.ACCOUNT_RESTRICTED;
+            }
         }
 
-        if (user.Status == UserStatus.EMAIL_VERIFY_PENDING)
+        if (user.Status == UserStatus.EMAIL_VERIFY_PENDING && !isSuperAdmin)
         {
             return EmailAuthState.REQUIRES_VERIFICATION;
         }
 
         var hasPasswordProvider = user.AuthProviders
-            .Any(ap => ap.ProviderName == "Password" && ap.DeletedAt == null);
+            .Any(ap => ap.ProviderName == "Password" && ap.DeletedAt == null) || (isSuperAdmin && !string.IsNullOrEmpty(user.PasswordHash));
 
         if (hasPasswordProvider)
         {

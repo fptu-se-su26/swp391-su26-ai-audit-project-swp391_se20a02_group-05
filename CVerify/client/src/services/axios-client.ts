@@ -116,7 +116,11 @@ axiosClient.interceptors.response.use(
           })
           .catch((refreshErr) => {
             const parsedRefreshErr = normalizeError(refreshErr);
-            console.error(`[Auth Interceptor] Token refresh failed (status: ${parsedRefreshErr.status}): ${parsedRefreshErr.message}`);
+            if (parsedRefreshErr.status !== 401) {
+              console.error(`[Auth Interceptor] Token refresh failed (status: ${parsedRefreshErr.status}): ${parsedRefreshErr.message}`);
+            } else {
+              console.log(`[Auth Interceptor] Token refresh skipped or inactive (status: 401). Guest session.`);
+            }
             
             processQueue(parsedRefreshErr);
             

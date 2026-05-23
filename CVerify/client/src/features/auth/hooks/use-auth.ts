@@ -231,8 +231,13 @@ export const useAuth = () => {
         store.setAuthStatusAndNextStep(response.status, response.nextStep);
         console.log(`[Auth System] Session bootstrap complete. User authenticated. Role: ${user.role}`);
         return { authenticated: true, user };
-      } catch (err) {
-        console.warn('[Auth System] Session bootstrap validation failed. Cleaning local session.', err);
+      } catch (err: any) {
+        const status = err?.response?.status || err?.status;
+        if (status === 401) {
+          console.log('[Auth System] Session bootstrap: No active session (unauthenticated guest).');
+        } else {
+          console.warn('[Auth System] Session bootstrap validation failed. Cleaning local session.', err);
+        }
         store.logout(false);
         return { authenticated: false, user: null };
       } finally {

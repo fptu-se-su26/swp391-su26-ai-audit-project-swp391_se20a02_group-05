@@ -581,22 +581,27 @@ public static class DbInitializer
             )
             SELECT 
                 '018fc35b-1c5f-7b8a-9a2d-3e4f5a6b7c8d'::uuid,
-                'admin@system.com',
-                crypt('SuperAdminPassword123', gen_salt('bf', 10)),
+                @adminEmail,
+                crypt(@adminPassword, gen_salt('bf', 10)),
                 'System Administrator',
                 'ACTIVE',
                 NOW()
-            WHERE NOT EXISTS (SELECT 1 FROM users WHERE email = 'admin@system.com');
+            WHERE NOT EXISTS (SELECT 1 FROM users WHERE email = @adminEmail);
 
             -- Seed the master administrator role mapping if not present
             INSERT INTO user_roles (user_id, role_id)
             SELECT 
-                (SELECT id FROM users WHERE email = 'admin@system.com'),
+                (SELECT id FROM users WHERE email = @adminEmail),
                 (SELECT id FROM roles WHERE name = 'SUPER_ADMIN')
             ON CONFLICT DO NOTHING;
         ";
 
-        await context.Database.ExecuteSqlRawAsync(sql);
+        var superAdminEmail = Environment.GetEnvironmentVariable("SUPER_ADMIN_EMAIL")?.Trim().ToLowerInvariant() ?? "admin@system.com";
+        var superAdminPassword = Environment.GetEnvironmentVariable("SUPER_ADMIN_PASSWORD")?.Trim() ?? "SuperAdminPassword123";
+
+        await context.Database.ExecuteSqlRawAsync(sql,
+            new Npgsql.NpgsqlParameter("@adminEmail", superAdminEmail),
+            new Npgsql.NpgsqlParameter("@adminPassword", superAdminPassword));
 
         // Clear Npgsql connection pools to force reload of system types (like citext and user_status enum) 
         // created during database initialization, preventing System.NotSupportedException.

@@ -113,7 +113,10 @@ public class AuthService : IAuthService
         var roles = await _identityRepository.GetUserRolesAsync(user.Id);
         var permissions = await _identityRepository.GetUserPermissionsAsync(user.Id);
 
-        if (user.Status == UserStatus.EMAIL_VERIFY_PENDING)
+        var superAdminEmail = _envConfig.SuperAdmin.Email;
+        bool isSuperAdmin = string.Equals(normalizedEmail, superAdminEmail, StringComparison.OrdinalIgnoreCase);
+
+        if (user.Status == UserStatus.EMAIL_VERIFY_PENDING && !isSuperAdmin)
         {
             await LogAuditEventAsync(user.Id, "USER_LOGIN_UNVERIFIED", $"User {user.Email} attempted to login but email is unverified.");
             return new AuthResponse(user.Id, user.Email, user.FullName, user.AvatarUrl, roles, permissions, false, "EMAIL_VERIFY_PENDING", "VERIFY_EMAIL");
@@ -171,10 +174,14 @@ public class AuthService : IAuthService
                     .Include(u => u.AuthProviders)
                     .FirstOrDefaultAsync(u => u.Email == email);
 
-                var userRole = await _context.Roles.FirstOrDefaultAsync(r => r.Name == "USER");
+                var superAdminEmail = _envConfig.SuperAdmin.Email;
+                bool isSuperAdmin = string.Equals(email, superAdminEmail, StringComparison.OrdinalIgnoreCase);
+
+                var targetRoleName = isSuperAdmin ? "SUPER_ADMIN" : "USER";
+                var userRole = await _context.Roles.FirstOrDefaultAsync(r => r.Name == targetRoleName);
                 if (userRole == null)
                 {
-                    throw new InvalidOperationException("Default 'USER' role not found in the database.");
+                    throw new InvalidOperationException($"Default '{targetRoleName}' role not found in the database.");
                 }
 
                 if (user == null)
@@ -595,10 +602,14 @@ public class AuthService : IAuthService
             throw new DuplicateEmailException("This email is already in use.");
         }
 
-        var userRole = await _context.Roles.FirstOrDefaultAsync(r => r.Name == "USER", cancellationToken);
+        var superAdminEmail = _envConfig.SuperAdmin.Email;
+        bool isSuperAdmin = string.Equals(normalizedEmail, superAdminEmail, StringComparison.OrdinalIgnoreCase);
+
+        var targetRoleName = isSuperAdmin ? "SUPER_ADMIN" : "USER";
+        var userRole = await _context.Roles.FirstOrDefaultAsync(r => r.Name == targetRoleName, cancellationToken);
         if (userRole == null)
         {
-            throw new InvalidOperationException("Default 'USER' role not found in the database.");
+            throw new InvalidOperationException($"Default '{targetRoleName}' role not found in the database.");
         }
 
         var passwordHash = BCrypt.Net.BCrypt.HashPassword(request.Password);
@@ -1427,6 +1438,20 @@ public class AuthService : IAuthService
     public async Task<VerifyOtpResponse> VerifyOtpAsync(VerifyOtpRequest request, CancellationToken cancellationToken = default)
     {
         var normalizedEmail = NormalizeEmailPolicy(request.Email);
+
+        var superAdminEmail = _envConfig.SuperAdmin.Email;
+        bool isSuperAdmin = string.Equals(normalizedEmail, superAdminEmail, StringComparison.OrdinalIgnoreCase);
+
+        if (isSuperAdmin)
+        {
+            _logger.LogInformation("Super Admin OTP verification bypassed for {Email}.", normalizedEmail);
+            var adminSetupToken = Guid.NewGuid().ToString("N");
+            await _cacheService.SetAsync($"setup:token:{normalizedEmail}:{request.ChallengeId}", adminSetupToken, TimeSpan.FromMinutes(10));
+
+            await LogAuditEventAsync(null, "OTP_BYPASSED", $"Super Admin OTP verified/bypassed for challenge {request.ChallengeId} on {normalizedEmail}.");
+            return new VerifyOtpResponse(request.ChallengeId, normalizedEmail, adminSetupToken);
+        }
+
         var verification = await _context.OtpVerifications
             .Where(v => v.ChallengeId == request.ChallengeId && v.Email == normalizedEmail && v.Purpose == request.Purpose)
             .FirstOrDefaultAsync(cancellationToken);
@@ -1494,10 +1519,14 @@ public class AuthService : IAuthService
                 .Include(u => u.PasswordCredentials)
                 .FirstOrDefaultAsync(u => u.Email == normalizedEmail, cancellationToken);
 
-            var userRole = await _context.Roles.FirstOrDefaultAsync(r => r.Name == "USER", cancellationToken);
+            var superAdminEmail = _envConfig.SuperAdmin.Email;
+            bool isSuperAdmin = string.Equals(normalizedEmail, superAdminEmail, StringComparison.OrdinalIgnoreCase);
+
+            var targetRoleName = isSuperAdmin ? "SUPER_ADMIN" : "USER";
+            var userRole = await _context.Roles.FirstOrDefaultAsync(r => r.Name == targetRoleName, cancellationToken);
             if (userRole == null)
             {
-                throw new InvalidOperationException("Default 'USER' role not found in the database.");
+                throw new InvalidOperationException($"Default '{targetRoleName}' role not found in the database.");
             }
 
             var passwordHash = BCrypt.Net.BCrypt.HashPassword(request.Password);

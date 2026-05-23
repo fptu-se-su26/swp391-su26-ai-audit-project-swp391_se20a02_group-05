@@ -1,4 +1,4 @@
-﻿namespace CVerify.API.Infrastructure.Configuration;
+namespace CVerify.API.Infrastructure.Configuration;
 
 public class EnvConfiguration
 {
@@ -8,6 +8,7 @@ public class EnvConfiguration
     public AuthSettings Auth { get; set; } = new();
     public AuthRateLimitSettings RateLimit { get; set; } = new();
     public AiSettings Ai { get; set; } = new();
+    public SuperAdminSettings SuperAdmin { get; set; } = new();
 }
 
 public class DatabaseSettings
@@ -66,4 +67,9 @@ public class AiSettings
     public string SharedSecret { get; set; } = null!;
     public string ClientId { get; set; } = "cverify-core";
     public string ClaudeModel { get; set; } = "claude-sonnet-4-6";
+}
+
+public class SuperAdminSettings
+{
+    public string Email { get; set; } = "admin@system.com";
 }
