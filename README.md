@@ -8,7 +8,7 @@
 | Class | SE20A02 |
 | Semester | SU26 |
 | Group | 05 |
-| Topic | TripGenie AI – Smart Travel Planner for Central Vietnam |
+| Topic | CVerify |
 | Repository |  |
 
 ---
