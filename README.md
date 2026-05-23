@@ -9,7 +9,6 @@
 | Semester | SU26 |
 | Group | 05 |
 | Topic | CVerify - Real commits real career
- |
 | Repository |  |
 
 ---
