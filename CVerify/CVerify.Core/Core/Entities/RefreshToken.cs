@@ -1,4 +1,4 @@
-﻿using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
 namespace CVerify.API.Core.Entities;
@@ -6,7 +6,8 @@ namespace CVerify.API.Core.Entities;
 public class RefreshToken
 {
     [Key]
-    public Guid Id { get; set; } = Guid.NewGuid();
+    [DatabaseGenerated(DatabaseGeneratedOption.None)]
+    public Guid Id { get; set; } = Guid.CreateVersion7();
 
     public Guid UserId { get; set; }
     [ForeignKey(nameof(UserId))]
@@ -25,7 +26,7 @@ public class RefreshToken
     [MaxLength(255)]
     public string? ReplacedByToken { get; set; }
 
-    public Guid SessionId { get; set; } = Guid.NewGuid();
+    public Guid SessionId { get; set; } = Guid.CreateVersion7();
 
     public bool RememberMe { get; set; }
 

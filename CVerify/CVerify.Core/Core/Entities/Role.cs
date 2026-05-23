@@ -1,4 +1,4 @@
-﻿using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
 namespace CVerify.API.Core.Entities;
@@ -6,7 +6,8 @@ namespace CVerify.API.Core.Entities;
 public class Role
 {
     [Key]
-    public Guid Id { get; set; } = Guid.NewGuid();
+    [DatabaseGenerated(DatabaseGeneratedOption.None)]
+    public Guid Id { get; set; } = Guid.CreateVersion7();
 
     [Required]
     [MaxLength(50)]

@@ -1,7 +1,29 @@
-﻿-- =========================================================
+-- =========================================================
+-- CVERIFY DATABASE INITIALIZATION SCRIPT (UUID v7 Standards)
+-- =========================================================
+
+-- WARNING: DESTRUCTIVE CLEANUP (Development / Guarded Manual Reset)
+-- To execute a completely clean reset, uncomment the following block:
+/*
+DROP TABLE IF EXISTS messages CASCADE;
+DROP TABLE IF EXISTS conversations CASCADE;
+DROP TABLE IF EXISTS audit_logs CASCADE;
+DROP TABLE IF EXISTS outbox_messages CASCADE;
+DROP TABLE IF EXISTS reset_password_tokens CASCADE;
+DROP TABLE IF EXISTS verification_tokens CASCADE;
+DROP TABLE IF EXISTS refresh_tokens CASCADE;
+DROP TABLE IF EXISTS role_permissions CASCADE;
+DROP TABLE IF EXISTS permissions CASCADE;
+DROP TABLE IF EXISTS user_roles CASCADE;
+DROP TABLE IF EXISTS users CASCADE;
+DROP TABLE IF EXISTS roles CASCADE;
+DROP TYPE IF EXISTS user_status CASCADE;
+*/
+
+-- =========================================================
 -- 1. EXTENSIONS
 -- =========================================================
--- Enable cryptographic functions for UUID generation and password hashing (e.g., bcrypt/blowfish)
+-- Enable cryptographic functions for password hashing (e.g., bcrypt/blowfish)
 CREATE EXTENSION IF NOT EXISTS "pgcrypto";
 -- Enable case-insensitive text data type, ideal for unique email addresses
 CREATE EXTENSION IF NOT EXISTS "citext";
@@ -22,20 +44,25 @@ $$ LANGUAGE plpgsql;
 -- 3. ENUMS & TYPES
 -- =========================================================
 -- Defines the lifecycle states of a user account
-CREATE TYPE user_status AS ENUM (
-    'EMAIL_VERIFY_PENDING', -- Account created but email not yet confirmed
-    'ACTIVE',               -- Fully functional account
-    'SUSPENDED',            -- Temporarily disabled (e.g., by admin)
-    'BANNED',               -- Permanently restricted
-    'DELETED'               -- Soft-deleted account
-);
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'user_status') THEN
+        CREATE TYPE user_status AS ENUM (
+            'EMAIL_VERIFY_PENDING', -- Account created but email not yet confirmed
+            'ACTIVE',               -- Fully functional account
+            'SUSPENDED',            -- Temporarily disabled (e.g., by admin)
+            'BANNED',               -- Permanently restricted
+            'DELETED'               -- Soft-deleted account
+        );
+    END IF;
+END $$;
 
 -- =========================================================
 -- 4. ROLES TABLE
 -- =========================================================
 -- Stores user roles for the Role-Based Access Control (RBAC) system
 CREATE TABLE roles (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    id UUID PRIMARY KEY,
     name VARCHAR(50) NOT NULL UNIQUE,          -- Internal identifier (e.g., 'SUPER_ADMIN')
     display_name VARCHAR(100) NOT NULL,        -- User-friendly name
     description TEXT,
@@ -53,8 +80,7 @@ CREATE TABLE roles (
 -- =========================================================
 -- Core table storing user credentials, profile data, and security logs
 CREATE TABLE users (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    role_id UUID NOT NULL,
+    id UUID PRIMARY KEY,
     
     -- Identity & Credentials
     email CITEXT NOT NULL UNIQUE,              -- Case-insensitive unique email
@@ -72,23 +98,34 @@ CREATE TABLE users (
     failed_attempts INT DEFAULT 0,             -- Counter for consecutive failed logins
     last_failed_at TIMESTAMP WITH TIME ZONE,   -- Timestamp of the last failed attempt
     lock_until TIMESTAMP WITH TIME ZONE,       -- Account lockout expiration time
+    session_version INTEGER NOT NULL DEFAULT 1,
 
     -- Audit trails
     created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
-    deleted_at TIMESTAMP WITH TIME ZONE,
-
-    -- Restrict deletion of roles that are currently assigned to users
-    CONSTRAINT fk_users_role FOREIGN KEY (role_id) 
-        REFERENCES roles(id) ON DELETE RESTRICT
+    deleted_at TIMESTAMP WITH TIME ZONE
 );
 
 -- =========================================================
--- 6. PERMISSIONS TABLE
+-- 6. USER_ROLES JUNCTION TABLE
+-- =========================================================
+-- Maps users to roles (Many-to-Many relationship)
+CREATE TABLE user_roles (
+    user_id UUID NOT NULL,
+    role_id UUID NOT NULL,
+    assigned_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+
+    PRIMARY KEY (user_id, role_id),
+    CONSTRAINT fk_user_roles_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    CONSTRAINT fk_user_roles_role FOREIGN KEY (role_id) REFERENCES roles(id) ON DELETE CASCADE
+);
+
+-- =========================================================
+-- 7. PERMISSIONS TABLE
 -- =========================================================
 -- Granular permissions using a hierarchical naming convention
 CREATE TABLE permissions (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    id UUID PRIMARY KEY,
     -- Naming convention: module:feature:action (e.g., "auth:user:create")
     name VARCHAR(150) NOT NULL UNIQUE,
     display_name VARCHAR(150) NOT NULL,
@@ -102,7 +139,7 @@ CREATE TABLE permissions (
 );
 
 -- =========================================================
--- 7. JUNCTION TABLES & TOKENS
+-- 8. ROLE_PERMISSIONS JUNCTION TABLE
 -- =========================================================
 -- Maps permissions to roles (Many-to-Many relationship)
 CREATE TABLE role_permissions (
@@ -111,16 +148,16 @@ CREATE TABLE role_permissions (
     assigned_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
 
     PRIMARY KEY (role_id, permission_id),
-    -- Cascades delete: if a role or permission is removed, the mapping is removed
-    CONSTRAINT fk_role_permissions_role FOREIGN KEY (role_id) 
-        REFERENCES roles(id) ON DELETE CASCADE,
-    CONSTRAINT fk_role_permissions_permission FOREIGN KEY (permission_id) 
-        REFERENCES permissions(id) ON DELETE CASCADE
+    CONSTRAINT fk_role_permissions_role FOREIGN KEY (role_id) REFERENCES roles(id) ON DELETE CASCADE,
+    CONSTRAINT fk_role_permissions_permission FOREIGN KEY (permission_id) REFERENCES permissions(id) ON DELETE CASCADE
 );
 
+-- =========================================================
+-- 9. REFRESH_TOKENS TABLE
+-- =========================================================
 -- Manages long-lived refresh tokens for maintaining user sessions securely
 CREATE TABLE refresh_tokens (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    id UUID PRIMARY KEY,
     user_id UUID NOT NULL,
     token VARCHAR(255) NOT NULL,
     expires_at TIMESTAMP WITH TIME ZONE NOT NULL,
@@ -129,44 +166,49 @@ CREATE TABLE refresh_tokens (
     replaced_by_token VARCHAR(255),            -- Tracks token rotation chains for security
     user_agent VARCHAR(500),
     ip_address VARCHAR(45),
+    session_id UUID NOT NULL,
+    remember_me BOOLEAN NOT NULL DEFAULT FALSE,
+    replaced_by_token_id UUID,
 
-    CONSTRAINT fk_refresh_tokens_user FOREIGN KEY (user_id) 
-        REFERENCES users(id) ON DELETE CASCADE
+    CONSTRAINT fk_refresh_tokens_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );
 
--- Optimize queries for token validation and user session retrieval
-CREATE INDEX idx_refresh_tokens_token ON refresh_tokens(token);
-CREATE INDEX idx_refresh_tokens_user ON refresh_tokens(user_id);
-
+-- =========================================================
+-- 10. VERIFICATION TOKENS TABLE
+-- =========================================================
 -- Manages one-time-use email verification tokens
 CREATE TABLE verification_tokens (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    id UUID PRIMARY KEY,
     user_id UUID NOT NULL,
     token_hash VARCHAR(255) NOT NULL UNIQUE,
     expires_at TIMESTAMP WITH TIME ZONE NOT NULL,
     created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
     consumed_at TIMESTAMP WITH TIME ZONE,
 
-    CONSTRAINT fk_verification_tokens_user FOREIGN KEY (user_id) 
-        REFERENCES users(id) ON DELETE CASCADE
+    CONSTRAINT fk_verification_tokens_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );
 
+-- =========================================================
+-- 11. RESET PASSWORD TOKENS TABLE
+-- =========================================================
 -- Manages one-time-use password reset tokens
 CREATE TABLE reset_password_tokens (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    id UUID PRIMARY KEY,
     user_id UUID NOT NULL,
     token_hash VARCHAR(255) NOT NULL UNIQUE,
     expires_at TIMESTAMP WITH TIME ZONE NOT NULL,
     created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
     consumed_at TIMESTAMP WITH TIME ZONE,
 
-    CONSTRAINT fk_reset_password_tokens_user FOREIGN KEY (user_id) 
-        REFERENCES users(id) ON DELETE CASCADE
+    CONSTRAINT fk_reset_password_tokens_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );
 
+-- =========================================================
+-- 12. OUTBOX MESSAGES TABLE
+-- =========================================================
 -- Outbox Pattern Table for reliable asynchronous email delivery
 CREATE TABLE outbox_messages (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    id UUID PRIMARY KEY,
     type VARCHAR(100) NOT NULL,
     payload TEXT NOT NULL,
     created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
@@ -174,9 +216,12 @@ CREATE TABLE outbox_messages (
     error TEXT
 );
 
+-- =========================================================
+-- 13. AUDIT LOGS TABLE
+-- =========================================================
 -- Security Audit Logs Table for tracking major events
 CREATE TABLE audit_logs (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    id UUID PRIMARY KEY,
     user_id UUID,
     event_type VARCHAR(100) NOT NULL,
     description TEXT NOT NULL,
@@ -184,18 +229,65 @@ CREATE TABLE audit_logs (
     user_agent VARCHAR(500),
     created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
 
-    CONSTRAINT fk_audit_logs_user FOREIGN KEY (user_id) 
-        REFERENCES users(id) ON DELETE SET NULL
+    CONSTRAINT fk_audit_logs_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL
 );
 
+-- =========================================================
+-- 14. CONVERSATIONS TABLE
+-- =========================================================
+-- Manages chat conversation sessions with the AI Assistant
+CREATE TABLE conversations (
+    id UUID PRIMARY KEY,
+    user_id UUID NOT NULL,
+    title VARCHAR(255) NOT NULL DEFAULT 'New Conversation',
+    created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
 
--- Optimized Partial Indexes (exclude consumed/processed entries to keep index small)
+    CONSTRAINT fk_conversations_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+
+-- =========================================================
+-- 15. MESSAGES TABLE
+-- =========================================================
+-- Stores individual messages in a conversation
+CREATE TABLE messages (
+    id UUID PRIMARY KEY,
+    conversation_id UUID NOT NULL,
+    role VARCHAR(50) NOT NULL,
+    content TEXT NOT NULL,
+    streaming_state VARCHAR(50) NOT NULL DEFAULT 'Pending',
+    created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+
+    CONSTRAINT fk_messages_conversation FOREIGN KEY (conversation_id) REFERENCES conversations(id) ON DELETE CASCADE
+);
+
+-- =========================================================
+-- 16. INDEXES & OPTIMIZATIONS
+-- =========================================================
+-- General Indexes
+CREATE INDEX idx_refresh_tokens_token ON refresh_tokens(token);
+CREATE INDEX idx_refresh_tokens_user ON refresh_tokens(user_id);
+CREATE INDEX idx_refresh_tokens_session_id ON refresh_tokens(session_id);
+CREATE INDEX idx_refresh_tokens_expires_at ON refresh_tokens(expires_at);
+
+-- Partial Indexes
 CREATE INDEX idx_verification_tokens_active ON verification_tokens(token_hash) WHERE consumed_at IS NULL;
 CREATE INDEX idx_reset_password_tokens_active ON reset_password_tokens(token_hash) WHERE consumed_at IS NULL;
 CREATE INDEX idx_outbox_messages_pending ON outbox_messages(created_at) WHERE processed_at IS NULL;
+CREATE INDEX idx_users_active ON users(status) WHERE deleted_at IS NULL;
+
+-- Hierarchy and Pattern Matching Indexes
+CREATE INDEX idx_permissions_hierarchy ON permissions (name varchar_pattern_ops);
+CREATE INDEX idx_conversations_user_id ON conversations(user_id);
+CREATE INDEX idx_messages_conversation_id_created_at ON messages(conversation_id, created_at);
+
+-- Explicit Foreign Key Indexes (Optimizing Cascades and Joins)
+CREATE INDEX idx_verification_tokens_user_id ON verification_tokens(user_id);
+CREATE INDEX idx_reset_password_tokens_user_id ON reset_password_tokens(user_id);
+CREATE INDEX idx_audit_logs_user_id ON audit_logs(user_id);
 
 -- =========================================================
--- 8. TRIGGERS REGISTRATION
+-- 17. TRIGGERS REGISTRATION
 -- =========================================================
 -- Attach the auto-update timestamp function to relevant tables
 CREATE TRIGGER tr_roles_timestamp BEFORE UPDATE ON roles 
@@ -207,30 +299,35 @@ CREATE TRIGGER tr_users_timestamp BEFORE UPDATE ON users
 CREATE TRIGGER tr_permissions_timestamp BEFORE UPDATE ON permissions 
     FOR EACH ROW EXECUTE PROCEDURE fn_update_timestamp();
 
+CREATE TRIGGER tr_conversations_timestamp BEFORE UPDATE ON conversations 
+    FOR EACH ROW EXECUTE PROCEDURE fn_update_timestamp();
+
 -- =========================================================
--- 9. INITIAL DATA (SEEDING)
+-- 18. INITIAL DATA (SEEDING VIA STATIC SEQUENTIAL UUID v7s)
 -- =========================================================
 
 -- Bootstrap essential system roles
-INSERT INTO roles (name, display_name, description, is_system)
+INSERT INTO roles (id, name, display_name, description, is_system)
 VALUES 
-    ('SUPER_ADMIN', 'System Administrator', 'Root access to all modules', TRUE),
-    ('USER', 'General User', 'Basic application access', TRUE);
+    ('018fc35b-1c5c-7b8a-9a2d-3e4f5a6b7c8d'::uuid, 'SUPER_ADMIN', 'System Administrator', 'Root access to all modules', TRUE),
+    ('018fc35b-1c5d-7b8a-9a2d-3e4f5a6b7c8d'::uuid, 'USER', 'General User', 'Basic application access', TRUE)
+ON CONFLICT (name) DO NOTHING;
 
 -- Bootstrap root wildcard permission
-INSERT INTO permissions (name, display_name, description, module, is_system)
+INSERT INTO permissions (id, name, display_name, description, module, is_system)
 VALUES 
-    ('*:*:*', 'Global Wildcard', 'Full access to every module and feature', 'system', TRUE);
+    ('018fc35b-1c5e-7b8a-9a2d-3e4f5a6b7c8d'::uuid, '*:*:*', 'Global Wildcard', 'Full access to every module and feature', 'system', TRUE)
+ON CONFLICT (name) DO NOTHING;
 
 -- Bind wildcard permission to the Super Admin role
 INSERT INTO role_permissions (role_id, permission_id)
 SELECT r.id, p.id FROM roles r, permissions p 
-WHERE r.name = 'SUPER_ADMIN' AND p.name = '*:*:*';
+WHERE r.name = 'SUPER_ADMIN' AND p.name = '*:*:*'
+ON CONFLICT DO NOTHING;
 
 -- Provision the master administrator account
--- Uses Blowfish ('bf') algorithm with a cost factor of 10 for secure hashing
 INSERT INTO users (
-    role_id, 
+    id,
     email, 
     password_hash, 
     full_name, 
@@ -238,19 +335,19 @@ INSERT INTO users (
     email_verified_at
 )
 VALUES (
-    (SELECT id FROM roles WHERE name = 'SUPER_ADMIN'),
+    '018fc35b-1c5f-7b8a-9a2d-3e4f5a6b7c8d'::uuid,
     'admin@system.com',
     crypt('SuperAdminPassword123', gen_salt('bf', 10)),
     'System Administrator',
     'ACTIVE',
     NOW()
-);
+)
+ON CONFLICT (email) DO NOTHING;
 
--- =========================================================
--- 10. OPTIMIZED INDEXES
--- =========================================================
--- Partial index to speed up queries fetching only active, non-deleted users
-CREATE INDEX idx_users_active ON users(status) WHERE deleted_at IS NULL;
-
--- Operator class 'varchar_pattern_ops' optimizes LIKE queries (e.g., 'auth:%')
-CREATE INDEX idx_permissions_hierarchy ON permissions (name varchar_pattern_ops);
+-- Bind user to role in user_roles
+INSERT INTO user_roles (user_id, role_id)
+VALUES (
+    '018fc35b-1c5f-7b8a-9a2d-3e4f5a6b7c8d'::uuid,
+    '018fc35b-1c5c-7b8a-9a2d-3e4f5a6b7c8d'::uuid
+)
+ON CONFLICT DO NOTHING;
