@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Linq;
 using System.Text.Json;
 using System.Threading;
@@ -130,6 +130,30 @@ public class EmailOutboxBackgroundProcessor : BackgroundService
                             }
                             break;
 
+                        case "EmailOtpVerification":
+                            var otpPayload = JsonSerializer.Deserialize<OtpVerificationPayload>(message.Payload);
+                            if (otpPayload != null)
+                            {
+                                await emailService.SendOtpEmailAsync(
+                                    otpPayload.Email,
+                                    "Candidate User",
+                                    otpPayload.Otp,
+                                    stoppingToken).ConfigureAwait(false);
+                            }
+                            break;
+
+                        case "CompanyEmailVerification":
+                            var companyPayload = JsonSerializer.Deserialize<CompanyVerificationPayload>(message.Payload);
+                            if (companyPayload != null)
+                            {
+                                await emailService.SendCompanyVerificationEmailAsync(
+                                    companyPayload.Email,
+                                    companyPayload.CompanyName,
+                                    companyPayload.Link,
+                                    stoppingToken).ConfigureAwait(false);
+                            }
+                            break;
+
                         default:
                             _logger.LogWarning("Unknown outbox message type: '{Type}'. Skipping message.", message.Type);
                             break;
@@ -175,5 +199,20 @@ public class EmailOutboxBackgroundProcessor : BackgroundService
         public string Email { get; set; } = null!;
         public string FullName { get; set; } = null!;
         public string CorrelationId { get; set; } = null!;
+    }
+
+    private class OtpVerificationPayload
+    {
+        public string Email { get; set; } = null!;
+        public string Otp { get; set; } = null!;
+        public string ChallengeId { get; set; } = null!;
+        public string Purpose { get; set; } = null!;
+    }
+
+    private class CompanyVerificationPayload
+    {
+        public string Email { get; set; } = null!;
+        public string CompanyName { get; set; } = null!;
+        public string Link { get; set; } = null!;
     }
 }

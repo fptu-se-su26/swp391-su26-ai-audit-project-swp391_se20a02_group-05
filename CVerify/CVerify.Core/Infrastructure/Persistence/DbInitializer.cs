@@ -39,6 +39,12 @@ public static class DbInitializer
                 DROP TABLE IF EXISTS role_permissions CASCADE;
                 DROP TABLE IF EXISTS permissions CASCADE;
                 DROP TABLE IF EXISTS user_roles CASCADE;
+                DROP TABLE IF EXISTS verification_links CASCADE;
+                DROP TABLE IF EXISTS otp_verifications CASCADE;
+                DROP TABLE IF EXISTS organization_members CASCADE;
+                DROP TABLE IF EXISTS organizations CASCADE;
+                DROP TABLE IF EXISTS password_credentials CASCADE;
+                DROP TABLE IF EXISTS auth_providers CASCADE;
                 DROP TABLE IF EXISTS users CASCADE;
                 DROP TABLE IF EXISTS roles CASCADE;
                 DROP TYPE IF EXISTS user_status CASCADE;
@@ -92,8 +98,8 @@ public static class DbInitializer
             -- Core table storing user credentials, profile data, and security logs
             CREATE TABLE IF NOT EXISTS users (
                 id UUID PRIMARY KEY,
-                email CITEXT NOT NULL UNIQUE,
-                password_hash TEXT NOT NULL,
+                email CITEXT NOT NULL,
+                password_hash TEXT,
                 full_name VARCHAR(255) NOT NULL,
                 avatar_url TEXT,
                 status user_status NOT NULL DEFAULT 'EMAIL_VERIFY_PENDING',
@@ -108,6 +114,101 @@ public static class DbInitializer
                 updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
                 deleted_at TIMESTAMP WITH TIME ZONE
             );
+            CREATE UNIQUE INDEX IF NOT EXISTS idx_users_email_active ON users(email) WHERE deleted_at IS NULL;
+
+            -- Stores authentication provider linkage information
+            CREATE TABLE IF NOT EXISTS auth_providers (
+                id UUID PRIMARY KEY,
+                user_id UUID NOT NULL,
+                provider_name VARCHAR(50) NOT NULL,
+                provider_key VARCHAR(255) NOT NULL,
+                created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+                deleted_at TIMESTAMP WITH TIME ZONE,
+                CONSTRAINT fk_auth_providers_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+            );
+            CREATE UNIQUE INDEX IF NOT EXISTS idx_auth_providers_key_active ON auth_providers(provider_name, provider_key) WHERE deleted_at IS NULL;
+            CREATE UNIQUE INDEX IF NOT EXISTS idx_auth_providers_user_type_active ON auth_providers(user_id, provider_name) WHERE deleted_at IS NULL;
+
+            -- Stores active/inactive historical password credentials to prevent reuse
+            CREATE TABLE IF NOT EXISTS password_credentials (
+                id UUID PRIMARY KEY,
+                user_id UUID NOT NULL,
+                password_hash TEXT NOT NULL,
+                is_active BOOLEAN NOT NULL DEFAULT TRUE,
+                revoked_at TIMESTAMP WITH TIME ZONE,
+                revoked_reason VARCHAR(255),
+                password_changed_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+                created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+                updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+                deleted_at TIMESTAMP WITH TIME ZONE,
+                CONSTRAINT fk_password_credentials_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+            );
+
+            -- Stores verified organization workspaces
+            CREATE TABLE IF NOT EXISTS organizations (
+                id UUID PRIMARY KEY,
+                name VARCHAR(255) NOT NULL,
+                tax_code VARCHAR(50) NOT NULL,
+                email VARCHAR(255) NOT NULL,
+                username VARCHAR(100) NOT NULL,
+                is_verified BOOLEAN NOT NULL DEFAULT FALSE,
+                created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+                updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+                deleted_at TIMESTAMP WITH TIME ZONE
+            );
+            CREATE UNIQUE INDEX IF NOT EXISTS idx_organizations_username_active ON organizations(username) WHERE deleted_at IS NULL;
+            CREATE UNIQUE INDEX IF NOT EXISTS idx_organizations_tax_code_active ON organizations(tax_code) WHERE deleted_at IS NULL;
+
+            -- Stores organization workspace membership records
+            CREATE TABLE IF NOT EXISTS organization_members (
+                id UUID PRIMARY KEY,
+                organization_id UUID NOT NULL,
+                user_id UUID NOT NULL,
+                role VARCHAR(50) NOT NULL,
+                joined_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+                CONSTRAINT fk_organization_members_organization FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE,
+                CONSTRAINT fk_organization_members_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+            );
+
+            -- Stores challenge-based OTP verifications
+            CREATE TABLE IF NOT EXISTS otp_verifications (
+                id UUID PRIMARY KEY,
+                challenge_id UUID NOT NULL,
+                email VARCHAR(255) NOT NULL,
+                otp_hash VARCHAR(255) NOT NULL,
+                purpose VARCHAR(100) NOT NULL,
+                expires_at TIMESTAMP WITH TIME ZONE NOT NULL,
+                created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+                consumed_at TIMESTAMP WITH TIME ZONE,
+                attempts INTEGER DEFAULT 0,
+                last_attempt_at TIMESTAMP WITH TIME ZONE,
+                resend_count INTEGER DEFAULT 0,
+                last_sent_at TIMESTAMP WITH TIME ZONE,
+                last_resent_at TIMESTAMP WITH TIME ZONE
+            );
+            CREATE INDEX IF NOT EXISTS idx_otp_verifications_challenge_id ON otp_verifications(challenge_id);
+            CREATE INDEX IF NOT EXISTS idx_otp_verifications_email ON otp_verifications(email);
+
+            -- Stores telemetry-tracked verification links for company email ownership
+            CREATE TABLE IF NOT EXISTS verification_links (
+                id UUID PRIMARY KEY,
+                email VARCHAR(255) NOT NULL,
+                tax_code VARCHAR(50),
+                company_name VARCHAR(255),
+                token_hash VARCHAR(255) NOT NULL,
+                purpose VARCHAR(100) NOT NULL,
+                user_id UUID,
+                organization_id UUID,
+                expires_at TIMESTAMP WITH TIME ZONE NOT NULL,
+                created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+                consumed_at TIMESTAMP WITH TIME ZONE,
+                consumed_by_ip VARCHAR(45),
+                consumed_by_user_agent VARCHAR(500),
+                deleted_at TIMESTAMP WITH TIME ZONE,
+                CONSTRAINT fk_verification_links_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL,
+                CONSTRAINT fk_verification_links_organization FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE SET NULL
+            );
+            CREATE INDEX IF NOT EXISTS idx_verification_links_active ON verification_links(token_hash) WHERE deleted_at IS NULL AND consumed_at IS NULL;
 
             -- Maps users to roles (Many-to-Many relationship)
             CREATE TABLE IF NOT EXISTS user_roles (
@@ -497,6 +598,10 @@ public static class DbInitializer
 
         await context.Database.ExecuteSqlRawAsync(sql);
 
+        // Clear Npgsql connection pools to force reload of system types (like citext and user_status enum) 
+        // created during database initialization, preventing System.NotSupportedException.
+        Npgsql.NpgsqlConnection.ClearAllPools();
+
         // 3. Dynamic seed from permissions-registry.json
         var registryPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "resources", "permissions-registry.json");
         if (!File.Exists(registryPath))
@@ -525,12 +630,13 @@ public static class DbInitializer
                             var description = permElement.GetProperty("description").GetString();
                             
                             var sqlSeedPermission = @"
-                                INSERT INTO permissions (name, display_name, description, module, is_system)
-                                VALUES (@name, @displayName, @description, @module, TRUE)
+                                INSERT INTO permissions (id, name, display_name, description, module, is_system)
+                                VALUES (@id, @name, @displayName, @description, @module, TRUE)
                                 ON CONFLICT (name) DO UPDATE 
                                 SET display_name = EXCLUDED.display_name, description = EXCLUDED.description, module = EXCLUDED.module;";
                                 
                             await context.Database.ExecuteSqlRawAsync(sqlSeedPermission, 
+                                new Npgsql.NpgsqlParameter("@id", Guid.CreateVersion7()),
                                 new Npgsql.NpgsqlParameter("@name", name),
                                 new Npgsql.NpgsqlParameter("@displayName", displayName),
                                 new Npgsql.NpgsqlParameter("@description", description ?? (object)DBNull.Value),
@@ -549,12 +655,13 @@ public static class DbInitializer
                         var roleDescription = roleProperty.Value.GetProperty("description").GetString();
                         
                         var sqlSeedRole = @"
-                            INSERT INTO roles (name, display_name, description, is_system, is_active)
-                            VALUES (@name, @displayName, @description, TRUE, TRUE)
+                            INSERT INTO roles (id, name, display_name, description, is_system, is_active)
+                            VALUES (@id, @name, @displayName, @description, TRUE, TRUE)
                             ON CONFLICT (name) DO UPDATE 
                             SET display_name = EXCLUDED.display_name, description = EXCLUDED.description;";
                             
                         await context.Database.ExecuteSqlRawAsync(sqlSeedRole,
+                            new Npgsql.NpgsqlParameter("@id", Guid.CreateVersion7()),
                             new Npgsql.NpgsqlParameter("@name", roleName),
                             new Npgsql.NpgsqlParameter("@displayName", roleDisplayName),
                             new Npgsql.NpgsqlParameter("@description", roleDescription ?? (object)DBNull.Value));

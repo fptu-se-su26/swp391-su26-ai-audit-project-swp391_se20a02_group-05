@@ -62,3 +62,43 @@ export interface AuthSuccessResponse {
   statusCode?: string;
   uiAction?: string;
 }
+
+export interface SendOtpResponseData {
+  challengeId: string;
+  email: string;
+  cooldownSeconds: number;
+}
+
+export interface VerifyOtpResponseData {
+  challengeId: string;
+  email: string;
+  verificationToken: string;
+}
+
+export interface VerifyCompanyLinkResponseData {
+  companyName: string;
+  taxCode: string;
+  companyEmail: string;
+  verificationToken: string;
+}
+
+export interface SessionInfoData {
+  sessionId: string;
+  deviceName?: string;
+  userAgent?: string;
+  ipAddress?: string;
+  createdAt: string;
+  lastUsedAt: string;
+  isCurrent: boolean;
+}
+
+export type EmailAuthState =
+  | 'REQUIRES_ONBOARDING'
+  | 'REQUIRES_AUTHENTICATION'
+  | 'REQUIRES_VERIFICATION'
+  | 'ACCOUNT_RESTRICTED';
+
+export interface ResolveEmailAuthStateResponseData {
+  authState: EmailAuthState;
+}
+

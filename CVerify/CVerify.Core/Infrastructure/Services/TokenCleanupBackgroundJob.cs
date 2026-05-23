@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -69,6 +69,7 @@ public class TokenCleanupBackgroundJob : BackgroundService
 
             var batch = await context.VerificationTokens
                 .Where(t => t.ConsumedAt != null || t.ExpiresAt < now)
+                .OrderBy(t => t.Id)
                 .Take(100)
                 .ToListAsync(stoppingToken)
                 .ConfigureAwait(false);
@@ -90,6 +91,7 @@ public class TokenCleanupBackgroundJob : BackgroundService
 
             var batch = await context.ResetPasswordTokens
                 .Where(t => t.ConsumedAt != null || t.ExpiresAt < now)
+                .OrderBy(t => t.Id)
                 .Take(100)
                 .ToListAsync(stoppingToken)
                 .ConfigureAwait(false);
@@ -112,6 +114,7 @@ public class TokenCleanupBackgroundJob : BackgroundService
 
             var batch = await context.RefreshTokens
                 .Where(t => t.ExpiresAt < sessionRetentionLimit || t.RevokedAt < sessionRetentionLimit)
+                .OrderBy(t => t.Id)
                 .Take(100)
                 .ToListAsync(stoppingToken)
                 .ConfigureAwait(false);
@@ -133,6 +136,7 @@ public class TokenCleanupBackgroundJob : BackgroundService
 
             var batch = await context.OutboxMessages
                 .Where(m => m.ProcessedAt != null && m.ProcessedAt < gdprLimit)
+                .OrderBy(m => m.Id)
                 .Take(100)
                 .ToListAsync(stoppingToken)
                 .ConfigureAwait(false);
@@ -155,6 +159,7 @@ public class TokenCleanupBackgroundJob : BackgroundService
 
             var batch = await context.AuditLogs
                 .Where(l => l.CreatedAt < auditRetentionLimit)
+                .OrderBy(l => l.Id)
                 .Take(100)
                 .ToListAsync(stoppingToken)
                 .ConfigureAwait(false);

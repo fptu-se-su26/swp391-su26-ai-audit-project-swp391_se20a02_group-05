@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Security.Cryptography;
 using System.Text;
@@ -84,9 +84,9 @@ public class EmailService : IEmailService
         var message = new EmailMessage(
             ToEmail: toEmail,
             ToName: fullName,
-            Subject: "Verify Your Email Address - CVerify AI",
+            Subject: "Verify Your Email Address - CVerify",
             HtmlContent: htmlBody,
-            PlainTextContent: $"Hi {fullName}, please confirm your CVerify AI account by visiting this link: {verificationLink}",
+            PlainTextContent: $"Hi {fullName}, please confirm your CVerify account by visiting this link: {verificationLink}",
             CorrelationId: correlationId,
             Category: EmailCategory.Security,
             IdempotencyKey: idempotencyKey
@@ -149,7 +149,7 @@ public class EmailService : IEmailService
         var message = new EmailMessage(
             ToEmail: toEmail,
             ToName: fullName,
-            Subject: "Reset Your Password - CVerify AI",
+            Subject: "Reset Your Password - CVerify",
             HtmlContent: htmlBody,
             PlainTextContent: $"Hi {fullName}, please reset your password by visiting this link: {resetLink}",
             CorrelationId: correlationId,
@@ -190,12 +190,111 @@ public class EmailService : IEmailService
         var message = new EmailMessage(
             ToEmail: toEmail,
             ToName: fullName,
-            Subject: "Welcome to CVerify AI! ✈️",
+            Subject: "Welcome to CVerify",
             HtmlContent: htmlBody,
-            PlainTextContent: $"Welcome to CVerify AI, {fullName}! Your account is verified and ready for travel planning.",
+            PlainTextContent: $"Welcome to CVerify, {fullName}! Your identity account is fully active and ready to link with workspaces.",
             CorrelationId: correlationId,
             Category: EmailCategory.Notification
         );
+
+        await _emailSender.SendEmailAsync(message, cancellationToken).ConfigureAwait(false);
+    }
+
+    /// <inheritdoc />
+    public async Task SendOtpEmailAsync(
+        string toEmail,
+        string fullName,
+        string otpCode,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(toEmail);
+        ArgumentException.ThrowIfNullOrWhiteSpace(fullName);
+        ArgumentException.ThrowIfNullOrWhiteSpace(otpCode);
+
+        var correlationId = Guid.NewGuid().ToString("N");
+
+        var model = new Dictionary<string, object>
+        {
+            { "full_name", fullName },
+            { "otp_code", otpCode }
+        };
+
+        var htmlBody = await _templateService.RenderTemplateAsync("OtpVerificationEmail.html", model, cancellationToken).ConfigureAwait(false);
+
+        var message = new EmailMessage(
+            ToEmail: toEmail,
+            ToName: fullName,
+            Subject: "Your Verification Code - CVerify",
+            HtmlContent: htmlBody,
+            PlainTextContent: $"Hi {fullName}, your CVerify verification code is: {otpCode}",
+            CorrelationId: correlationId,
+            Category: EmailCategory.Security
+        );
+
+        await _emailSender.SendEmailAsync(message, cancellationToken).ConfigureAwait(false);
+    }
+
+    /// <inheritdoc />
+    public async Task SendCompanyVerificationEmailAsync(
+        string toEmail,
+        string companyName,
+        string verificationLink,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(toEmail);
+        ArgumentException.ThrowIfNullOrWhiteSpace(companyName);
+        ArgumentException.ThrowIfNullOrWhiteSpace(verificationLink);
+
+        var correlationId = Guid.NewGuid().ToString("N");
+        
+        // Security Idempotency check for link
+        var tokenHash = ComputeSha256(verificationLink);
+        var idempotencyKey = $"email:idempotency:{toEmail}:{tokenHash}";
+
+        var duplicateExists = false;
+        try
+        {
+            duplicateExists = await _cacheService.ExistsAsync(idempotencyKey).ConfigureAwait(false);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "[CorrelationID: {CorrelationId}] Redis cache unavailable. Bypassing idempotency Exists check for {ToEmail}.", correlationId, toEmail);
+        }
+
+        if (duplicateExists)
+        {
+            _logger.LogWarning("[CorrelationID: {CorrelationId}] Duplicate company verification email dispatch blocked for {ToEmail}.", correlationId, toEmail);
+            return;
+        }
+
+        var model = new Dictionary<string, object>
+        {
+            { "full_name", "Workspace Administrator" },
+            { "company_name", companyName },
+            { "verification_link", verificationLink }
+        };
+
+        var htmlBody = await _templateService.RenderTemplateAsync("CompanyVerificationEmail.html", model, cancellationToken).ConfigureAwait(false);
+
+        var message = new EmailMessage(
+            ToEmail: toEmail,
+            ToName: "Workspace Administrator",
+            Subject: "Confirm Company Domain Registration - CVerify",
+            HtmlContent: htmlBody,
+            PlainTextContent: $"Confirm domain registration for {companyName} on CVerify by visiting this link: {verificationLink}",
+            CorrelationId: correlationId,
+            Category: EmailCategory.Security,
+            IdempotencyKey: idempotencyKey
+        );
+
+        try
+        {
+            await _cacheService.SetAsync(idempotencyKey, "dispatched", TimeSpan.FromMinutes(5)).ConfigureAwait(false);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "[CorrelationID: {CorrelationId}] Redis cache unavailable. Bypassing idempotency Set lock for {ToEmail}.", correlationId, toEmail);
+        }
 
         await _emailSender.SendEmailAsync(message, cancellationToken).ConfigureAwait(false);
     }

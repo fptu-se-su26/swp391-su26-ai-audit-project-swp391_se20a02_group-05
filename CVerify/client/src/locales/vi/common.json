@@ -42,6 +42,15 @@
     "hydratingProfile": "Đang tải thông tin cá nhân...",
     "copyright": "© 2026 CVerify AI Inc. Bảo lưu mọi quyền."
   },
+  "sessionVerification": {
+    "initializing": "Đang khởi tạo phiên bảo mật...",
+    "establishing": "Đang thiết lập kênh xác thực...",
+    "verifying": "Đang xác minh token danh tính...",
+    "verified": "Phiên đã xác thực — đang chuyển hướng...",
+    "preparing": "Đang chuẩn bị xác thực...",
+    "securityBadge": "Phiên được mã hóa",
+    "protocol": "PROTOCOL V1.0.0"
+  },
   "landing": {
     "liveBadge": "Tính năng xác thực & phân quyền cấp doanh nghiệp đã sẵn sàng",
     "headline": "Bảo mật phân vai phi tập trung cho ứng dụng TravelTech hiện đại.",

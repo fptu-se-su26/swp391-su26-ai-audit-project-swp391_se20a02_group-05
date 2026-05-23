@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Net;
 using System.Net.Http;
 using System.Net.Http.Json;
@@ -168,5 +168,145 @@ public class RegistrationFlowTests : BaseIntegrationTest
         var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
         var user = await db.Users.FirstOrDefaultAsync(u => u.Email == "normalize@cverify.ai");
         user.Should().NotBeNull();
+    }
+
+    [Fact]
+    public async Task CreatePassword_WithoutFullName_ShouldResolveNameFromEmail()
+    {
+        await SeedDefaultRolesAsync();
+
+        var challengeId = Guid.CreateVersion7();
+        var plainOtp = "123456";
+        var key = "super_secret_key_super_secret_key_super_secret_key_32_characters";
+        var hmac = new System.Security.Cryptography.HMACSHA256(System.Text.Encoding.UTF8.GetBytes(key));
+        var hashBytes = hmac.ComputeHash(System.Text.Encoding.UTF8.GetBytes(plainOtp));
+        var otpHash = Convert.ToHexString(hashBytes).ToLowerInvariant();
+
+        using (var scope = Factory.Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+            db.OtpVerifications.Add(new OtpVerification
+            {
+                ChallengeId = challengeId,
+                Email = "luc.fr.test+123@cverify.ai",
+                OtpHash = otpHash,
+                Purpose = "Authentication",
+                ExpiresAt = DateTimeOffset.UtcNow.AddMinutes(5)
+            });
+            await db.SaveChangesAsync();
+        }
+
+        var verifyOtpRequest = new VerifyOtpRequest(
+            ChallengeId: challengeId,
+            Email: "luc.fr.test+123@cverify.ai",
+            Code: "123456",
+            Purpose: "Authentication"
+        );
+
+        var verifyResponse = await Client.PostAsJsonAsync("/api/auth/verify-otp", verifyOtpRequest);
+        verifyResponse.StatusCode.Should().Be(HttpStatusCode.OK);
+
+        var verifyData = await verifyResponse.Content.ReadFromJsonAsync<VerifyOtpResponse>();
+        verifyData.Should().NotBeNull();
+        var verificationToken = verifyData!.VerificationToken;
+
+        var createPasswordRequest = new CreatePasswordRequest
+        {
+            ChallengeId = challengeId,
+            Email = "luc.fr.test+123@cverify.ai",
+            VerificationToken = verificationToken,
+            Password = "SecurePassword123!",
+            ConfirmPassword = "SecurePassword123!",
+            FullName = null
+        };
+
+        var createResponse = await Client.PostAsJsonAsync("/api/auth/create-password", createPasswordRequest);
+        createResponse.StatusCode.Should().Be(HttpStatusCode.OK);
+
+        using (var scope = Factory.Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+            var user = await db.Users.FirstOrDefaultAsync(u => u.Email == "luc.fr.test+123@cverify.ai");
+            user.Should().NotBeNull();
+            user!.FullName.Should().Be("Luc Fr Test");
+        }
+    }
+
+    [Fact]
+    public async Task CreatePassword_WhenUserAlreadyExists_ShouldSetPasswordHash()
+    {
+        await SeedDefaultRolesAsync();
+
+        var challengeId = Guid.CreateVersion7();
+        var plainOtp = "123456";
+        var key = "super_secret_key_super_secret_key_super_secret_key_32_characters";
+        var hmac = new System.Security.Cryptography.HMACSHA256(System.Text.Encoding.UTF8.GetBytes(key));
+        var hashBytes = hmac.ComputeHash(System.Text.Encoding.UTF8.GetBytes(plainOtp));
+        var otpHash = Convert.ToHexString(hashBytes).ToLowerInvariant();
+
+        using (var scope = Factory.Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+            
+            // Seed existing user with NULL password hash
+            var userRole = await db.Roles.FirstAsync(r => r.Name == "USER");
+            db.Users.Add(new User
+            {
+                Email = "existing@cverify.ai",
+                FullName = "Existing User",
+                PasswordHash = null,
+                Status = UserStatus.EMAIL_VERIFY_PENDING,
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow,
+                Roles = new List<Role> { userRole }
+            });
+
+            db.OtpVerifications.Add(new OtpVerification
+            {
+                ChallengeId = challengeId,
+                Email = "existing@cverify.ai",
+                OtpHash = otpHash,
+                Purpose = "Authentication",
+                ExpiresAt = DateTimeOffset.UtcNow.AddMinutes(5)
+            });
+            await db.SaveChangesAsync();
+        }
+
+        var verifyOtpRequest = new VerifyOtpRequest(
+            ChallengeId: challengeId,
+            Email: "existing@cverify.ai",
+            Code: "123456",
+            Purpose: "Authentication"
+        );
+
+        var verifyResponse = await Client.PostAsJsonAsync("/api/auth/verify-otp", verifyOtpRequest);
+        verifyResponse.StatusCode.Should().Be(HttpStatusCode.OK);
+
+        var verifyData = await verifyResponse.Content.ReadFromJsonAsync<VerifyOtpResponse>();
+        verifyData.Should().NotBeNull();
+        var verificationToken = verifyData!.VerificationToken;
+
+        var createPasswordRequest = new CreatePasswordRequest
+        {
+            ChallengeId = challengeId,
+            Email = "existing@cverify.ai",
+            VerificationToken = verificationToken,
+            Password = "NewSecurePassword123!",
+            ConfirmPassword = "NewSecurePassword123!",
+            FullName = "Updated Existing User"
+        };
+
+        var createResponse = await Client.PostAsJsonAsync("/api/auth/create-password", createPasswordRequest);
+        createResponse.StatusCode.Should().Be(HttpStatusCode.OK);
+
+        using (var scope = Factory.Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+            var user = await db.Users.FirstOrDefaultAsync(u => u.Email == "existing@cverify.ai");
+            user.Should().NotBeNull();
+            user!.PasswordHash.Should().NotBeNullOrEmpty();
+            user.FullName.Should().Be("Updated Existing User");
+            BCrypt.Net.BCrypt.Verify("NewSecurePassword123!", user.PasswordHash).Should().BeTrue();
+        }
     }
 }

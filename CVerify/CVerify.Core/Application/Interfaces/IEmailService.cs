@@ -1,4 +1,4 @@
-﻿using System.Threading;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace CVerify.API.Application.Interfaces;
@@ -43,5 +43,31 @@ public interface IEmailService
     Task SendWelcomeEmailAsync(
         string toEmail,
         string fullName,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Delivers an OTP code to verify identity during signup/login flows.
+    /// </summary>
+    /// <param name="toEmail">The target email address.</param>
+    /// <param name="fullName">The recipient's full name.</param>
+    /// <param name="otpCode">The 6-digit verification code.</param>
+    /// <param name="cancellationToken">Cancellation token trace.</param>
+    Task SendOtpEmailAsync(
+        string toEmail,
+        string fullName,
+        string otpCode,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Delivers a company verification link to validate organizational domain registry.
+    /// </summary>
+    /// <param name="toEmail">The target email address.</param>
+    /// <param name="companyName">The name of the company/organization.</param>
+    /// <param name="verificationLink">The fully qualified verification URL.</param>
+    /// <param name="cancellationToken">Cancellation token trace.</param>
+    Task SendCompanyVerificationEmailAsync(
+        string toEmail,
+        string companyName,
+        string verificationLink,
         CancellationToken cancellationToken = default);
 }

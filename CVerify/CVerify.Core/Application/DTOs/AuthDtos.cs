@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 
@@ -105,5 +105,125 @@ public record RegisterResponse(
     string StatusCode,
     string UiAction,
     string Message
+);
+
+public record SendOtpRequest(
+    [Required][EmailAddress][MaxLength(255)] string Email,
+    [Required][MaxLength(50)] string Purpose
+);
+
+public record SendOtpResponse(
+    Guid ChallengeId,
+    string Email,
+    int CooldownSeconds
+);
+
+public record VerifyOtpRequest(
+    [Required] Guid ChallengeId,
+    [Required][EmailAddress][MaxLength(255)] string Email,
+    [Required][MaxLength(10)] string Code,
+    [Required][MaxLength(50)] string Purpose
+);
+
+public record VerifyOtpResponse(
+    Guid ChallengeId,
+    string Email,
+    string VerificationToken
+);
+
+public class CreatePasswordRequest
+{
+    [Required]
+    public Guid ChallengeId { get; init; }
+
+    [Required]
+    [EmailAddress]
+    [MaxLength(255)]
+    public string Email { get; init; } = null!;
+
+    [Required]
+    public string VerificationToken { get; init; } = null!;
+
+    [Required]
+    [MinLength(8, ErrorMessage = "Password must be at least 8 characters long.")]
+    [RegularExpression(@"^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&#^()_\-+=\[\]{}|\\:;""'<>,.?/~`])[A-Za-z\d@$!%*?&#^()_\-+=\[\]{}|\\:;""'<>,.?/~`]{8,}$", 
+        ErrorMessage = "Password must contain at least one uppercase letter, one lowercase letter, one digit, and one special character.")]
+    public string Password { get; init; } = null!;
+
+    [Required]
+    [Compare(nameof(Password), ErrorMessage = "Passwords do not match.")]
+    public string ConfirmPassword { get; init; } = null!;
+
+    [MaxLength(255)]
+    public string? FullName { get; init; }
+
+    public CreatePasswordRequest() { }
+}
+
+public record RegisterCompanyRequest(
+    [Required][MaxLength(255)] string CompanyName,
+    [Required][MaxLength(50)] string TaxCode,
+    [Required][EmailAddress][MaxLength(255)] string CompanyEmail
+);
+
+public record VerifyCompanyLinkRequest(
+    [Required] string Token
+);
+
+public record VerifyCompanyLinkResponse(
+    string CompanyName,
+    string TaxCode,
+    string CompanyEmail,
+    string VerificationToken
+);
+
+public class SetupWorkspaceRequest
+{
+    [Required]
+    public string VerificationToken { get; init; } = null!;
+
+    [Required]
+    [EmailAddress]
+    [MaxLength(255)]
+    public string CompanyEmail { get; init; } = null!;
+
+    [Required]
+    [RegularExpression(@"^[a-z0-9_]{3,30}$", ErrorMessage = "Workspace username must be lowercase, alphanumeric/underscore, and 3-30 characters.")]
+    public string OrganizationUsername { get; init; } = null!;
+
+    [Required]
+    [MinLength(8, ErrorMessage = "Password must be at least 8 characters long.")]
+    [RegularExpression(@"^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&#^()_\-+=\[\]{}|\\:;""'<>,.?/~`])[A-Za-z\d@$!%*?&#^()_\-+=\[\]{}|\\:;""'<>,.?/~`]{8,}$", 
+        ErrorMessage = "Password must contain at least one uppercase letter, one lowercase letter, one digit, and one special character.")]
+    public string Password { get; init; } = null!;
+
+    [Required]
+    [Compare(nameof(Password), ErrorMessage = "Passwords do not match.")]
+    public string ConfirmPassword { get; init; } = null!;
+
+    public SetupWorkspaceRequest() { }
+}
+
+public record OrganizationLoginRequest(
+    [Required][MaxLength(100)] string OrganizationUsername,
+    [Required] string Password
+);
+
+public record SessionInfo(
+    Guid SessionId,
+    string? DeviceName,
+    string? UserAgent,
+    string? IpAddress,
+    DateTimeOffset CreatedAt,
+    DateTimeOffset LastUsedAt,
+    bool IsCurrent
+);
+
+public record ResolveEmailAuthStateRequest(
+    [Required][EmailAddress][MaxLength(255)] string Email
+);
+
+public record ResolveEmailAuthStateResponse(
+    CVerify.API.Core.Enums.EmailAuthState AuthState
 );
 

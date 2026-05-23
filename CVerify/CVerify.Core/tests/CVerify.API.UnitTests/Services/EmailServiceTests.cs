@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
@@ -181,5 +181,79 @@ public class EmailServiceTests
         capturedMessage.IdempotencyKey.Should().BeNull();
         _cacheMock.Verify(c => c.ExistsAsync(It.IsAny<string>()), Times.Never);
         _cacheMock.Verify(c => c.SetAsync(It.IsAny<string>(), It.IsAny<object>(), It.IsAny<TimeSpan?>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task SendOtpEmailAsync_ShouldCompileTemplateAndSendMimePayload()
+    {
+        // Arrange
+        var toEmail = "candidate@example.com";
+        var fullName = "Candidate User";
+        var otpCode = "582910";
+        var renderedHtml = "<h1>Your OTP is 582910</h1>";
+
+        _templateMock.Setup(t => t.RenderTemplateAsync(
+                "OtpVerificationEmail.html", 
+                It.IsAny<Dictionary<string, object>>(), 
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(renderedHtml);
+
+        EmailMessage? capturedMessage = null;
+        _senderMock.Setup(s => s.SendEmailAsync(It.IsAny<EmailMessage>(), It.IsAny<CancellationToken>()))
+            .Callback<EmailMessage, CancellationToken>((msg, ct) => capturedMessage = msg)
+            .Returns(Task.CompletedTask);
+
+        // Act
+        await _service.SendOtpEmailAsync(toEmail, fullName, otpCode).ConfigureAwait(false);
+
+        // Assert
+        _senderMock.Verify(s => s.SendEmailAsync(It.IsAny<EmailMessage>(), It.IsAny<CancellationToken>()), Times.Once);
+        
+        capturedMessage.Should().NotBeNull();
+        capturedMessage!.ToEmail.Should().Be(toEmail);
+        capturedMessage.ToName.Should().Be(fullName);
+        capturedMessage.HtmlContent.Should().Be(renderedHtml);
+        capturedMessage.Category.Should().Be(EmailCategory.Security);
+        capturedMessage.CorrelationId.Should().NotBeNullOrWhiteSpace();
+        capturedMessage.IdempotencyKey.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task SendCompanyVerificationEmailAsync_ShouldCompileTemplateAndSendMimePayload()
+    {
+        // Arrange
+        var toEmail = "admin@company.com";
+        var companyName = "DevCorp";
+        var link = "https://cverify.ai/company/verify?token=xyz";
+        var renderedHtml = "<h1>Verify Company</h1>";
+
+        _cacheMock.Setup(c => c.ExistsAsync(It.IsAny<string>())).ReturnsAsync(false);
+
+        _templateMock.Setup(t => t.RenderTemplateAsync(
+                "CompanyVerificationEmail.html", 
+                It.IsAny<Dictionary<string, object>>(), 
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(renderedHtml);
+
+        EmailMessage? capturedMessage = null;
+        _senderMock.Setup(s => s.SendEmailAsync(It.IsAny<EmailMessage>(), It.IsAny<CancellationToken>()))
+            .Callback<EmailMessage, CancellationToken>((msg, ct) => capturedMessage = msg)
+            .Returns(Task.CompletedTask);
+
+        // Act
+        await _service.SendCompanyVerificationEmailAsync(toEmail, companyName, link).ConfigureAwait(false);
+
+        // Assert
+        _senderMock.Verify(s => s.SendEmailAsync(It.IsAny<EmailMessage>(), It.IsAny<CancellationToken>()), Times.Once);
+        
+        capturedMessage.Should().NotBeNull();
+        capturedMessage!.ToEmail.Should().Be(toEmail);
+        capturedMessage.ToName.Should().Be("Workspace Administrator");
+        capturedMessage.HtmlContent.Should().Be(renderedHtml);
+        capturedMessage.Category.Should().Be(EmailCategory.Security);
+        capturedMessage.CorrelationId.Should().NotBeNullOrWhiteSpace();
+        capturedMessage.IdempotencyKey.Should().NotBeNullOrWhiteSpace();
+
+        _cacheMock.Verify(c => c.SetAsync(capturedMessage.IdempotencyKey, "dispatched", TimeSpan.FromMinutes(5)), Times.Once);
     }
 }

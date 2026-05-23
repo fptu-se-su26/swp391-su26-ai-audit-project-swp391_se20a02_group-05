@@ -84,7 +84,7 @@ CREATE TABLE users (
     
     -- Identity & Credentials
     email CITEXT NOT NULL UNIQUE,              -- Case-insensitive unique email
-    password_hash TEXT NOT NULL,               -- Hashed password (never store plain text)
+    password_hash TEXT,                        -- Hashed password (nullable to support OAuth/SSO)
     full_name VARCHAR(255) NOT NULL,
     avatar_url TEXT,
     status user_status NOT NULL DEFAULT 'EMAIL_VERIFY_PENDING',

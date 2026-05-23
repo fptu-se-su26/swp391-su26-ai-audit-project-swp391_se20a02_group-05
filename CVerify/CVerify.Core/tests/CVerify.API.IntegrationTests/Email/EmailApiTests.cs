@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Linq;
 using System.Net;
 using System.Net.Http;
@@ -49,7 +49,7 @@ public class EmailApiTests : BaseIntegrationTest
         sent.ToEmail.Should().Be(request.email);
         sent.ToName.Should().Be(request.fullName);
         sent.CorrelationId.Should().NotBeNullOrWhiteSpace();
-        sent.HtmlContent.Should().Contain("Verify Email Address")
+        sent.HtmlContent.Should().Contain("Confirm Email Address")
             .And.Contain(request.verificationLink);
     }
 
@@ -103,7 +103,7 @@ public class EmailApiTests : BaseIntegrationTest
         var sent = EmailSender.SentMessages.First();
         
         sent.ToEmail.Should().Be(request.email);
-        sent.HtmlContent.Should().Contain("Reset My Password")
+        sent.HtmlContent.Should().Contain("Reset Password")
             .And.Contain(request.resetLink);
     }
 }

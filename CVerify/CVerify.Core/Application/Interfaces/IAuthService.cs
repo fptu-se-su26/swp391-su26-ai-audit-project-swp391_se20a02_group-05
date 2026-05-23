@@ -1,4 +1,6 @@
-﻿using System.Threading;
+using System;
+using System.Collections.Generic;
+using System.Threading;
 using System.Threading.Tasks;
 using CVerify.API.Application.DTOs;
 
@@ -19,6 +21,21 @@ public interface IAuthService
     Task<bool> ForgotPasswordAsync(ForgotPasswordRequest request, CancellationToken cancellationToken = default);
     Task<AuthResponse?> ResetPasswordAsync(ResetPasswordRequest request, CancellationToken cancellationToken = default);
     Task<bool> DeleteMeAsync();
+
+    // Challenge-based OTP contracts
+    Task<SendOtpResponse> SendOtpAsync(SendOtpRequest request, string userAgent, string ipAddress, CancellationToken cancellationToken = default);
+    Task<VerifyOtpResponse> VerifyOtpAsync(VerifyOtpRequest request, CancellationToken cancellationToken = default);
+    Task<AuthResponse> CreatePasswordAsync(CreatePasswordRequest request, CancellationToken cancellationToken = default);
+
+    // Company verification & workspace contracts
+    Task<bool> RegisterCompanyAsync(RegisterCompanyRequest request, string userAgent, string ipAddress, CancellationToken cancellationToken = default);
+    Task<VerifyCompanyLinkResponse> VerifyCompanyLinkAsync(VerifyCompanyLinkRequest request, string userAgent, string ipAddress, CancellationToken cancellationToken = default);
+    Task<AuthResponse> SetupWorkspaceAsync(SetupWorkspaceRequest request, string userAgent, string ipAddress, CancellationToken cancellationToken = default);
+    Task<AuthResponse?> CompanyLoginAsync(OrganizationLoginRequest request, string userAgent, string ipAddress);
+
+    // Active session and revocation contracts
+    Task<IEnumerable<SessionInfo>> GetActiveSessionsAsync();
+    Task<bool> RevokeSessionAsync(Guid sessionId);
 }
 
 

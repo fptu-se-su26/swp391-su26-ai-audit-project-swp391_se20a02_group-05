@@ -1,4 +1,5 @@
-﻿using System;
+using System;
+using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Authorization;
@@ -16,10 +17,12 @@ namespace CVerify.API.API.Controllers;
 public class AuthController : ControllerBase
 {
     private readonly IAuthService _authService;
+    private readonly IIdentityStateResolver _identityStateResolver;
 
-    public AuthController(IAuthService authService)
+    public AuthController(IAuthService authService, IIdentityStateResolver identityStateResolver)
     {
         _authService = authService;
+        _identityStateResolver = identityStateResolver;
     }
 
     [HttpPost("login")]
@@ -191,5 +194,172 @@ public class AuthController : ControllerBase
             return Ok(new { message = "Account successfully deleted." });
         }
         return BadRequest(new { message = "Account deletion failed." });
+    }
+
+    [HttpPost("send-otp")]
+    [AllowAnonymous]
+    [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(SendOtpResponse))]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<IActionResult> SendOtp([FromBody] SendOtpRequest request, CancellationToken cancellationToken)
+    {
+        var userAgent = Request.Headers["User-Agent"].ToString();
+        var ipAddress = HttpContext.Connection.RemoteIpAddress?.ToString() ?? "127.0.0.1";
+
+        try
+        {
+            var result = await _authService.SendOtpAsync(request, userAgent, ipAddress, cancellationToken);
+            return Ok(result);
+        }
+        catch (AuthException ex)
+        {
+            return BadRequest(new { code = ex.Code, message = ex.Message });
+        }
+    }
+
+    [HttpPost("resolve-email-auth-state")]
+    [AllowAnonymous]
+    [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(ResolveEmailAuthStateResponse))]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<IActionResult> ResolveEmailAuthState(
+        [FromBody] ResolveEmailAuthStateRequest request,
+        CancellationToken cancellationToken)
+    {
+        var state = await _identityStateResolver.ResolveAsync(request.Email, cancellationToken);
+        return Ok(new ResolveEmailAuthStateResponse(state));
+    }
+
+    [HttpPost("verify-otp")]
+    [AllowAnonymous]
+    [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(VerifyOtpResponse))]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<IActionResult> VerifyOtp([FromBody] VerifyOtpRequest request, CancellationToken cancellationToken)
+    {
+        try
+        {
+            var result = await _authService.VerifyOtpAsync(request, cancellationToken);
+            return Ok(result);
+        }
+        catch (AuthException ex)
+        {
+            return BadRequest(new { code = ex.Code, message = ex.Message });
+        }
+    }
+
+    [HttpPost("create-password")]
+    [AllowAnonymous]
+    [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(AuthResponse))]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<IActionResult> CreatePassword([FromBody] CreatePasswordRequest request, CancellationToken cancellationToken)
+    {
+        try
+        {
+            var result = await _authService.CreatePasswordAsync(request, cancellationToken);
+            return Ok(result);
+        }
+        catch (AuthException ex)
+        {
+            return BadRequest(new { code = ex.Code, message = ex.Message });
+        }
+    }
+
+    [HttpPost("register-company")]
+    [AllowAnonymous]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<IActionResult> RegisterCompany([FromBody] RegisterCompanyRequest request, CancellationToken cancellationToken)
+    {
+        var userAgent = Request.Headers["User-Agent"].ToString();
+        var ipAddress = HttpContext.Connection.RemoteIpAddress?.ToString() ?? "127.0.0.1";
+
+        try
+        {
+            var result = await _authService.RegisterCompanyAsync(request, userAgent, ipAddress, cancellationToken);
+            return Ok(new { success = result });
+        }
+        catch (AuthException ex)
+        {
+            return BadRequest(new { code = ex.Code, message = ex.Message });
+        }
+    }
+
+    [HttpPost("verify-company-link")]
+    [AllowAnonymous]
+    [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(VerifyCompanyLinkResponse))]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<IActionResult> VerifyCompanyLink([FromBody] VerifyCompanyLinkRequest request, CancellationToken cancellationToken)
+    {
+        var userAgent = Request.Headers["User-Agent"].ToString();
+        var ipAddress = HttpContext.Connection.RemoteIpAddress?.ToString() ?? "127.0.0.1";
+
+        try
+        {
+            var result = await _authService.VerifyCompanyLinkAsync(request, userAgent, ipAddress, cancellationToken);
+            return Ok(result);
+        }
+        catch (AuthException ex)
+        {
+            return BadRequest(new { code = ex.Code, message = ex.Message });
+        }
+    }
+
+    [HttpPost("setup-workspace")]
+    [AllowAnonymous]
+    [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(AuthResponse))]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<IActionResult> SetupWorkspace([FromBody] SetupWorkspaceRequest request, CancellationToken cancellationToken)
+    {
+        var userAgent = Request.Headers["User-Agent"].ToString();
+        var ipAddress = HttpContext.Connection.RemoteIpAddress?.ToString() ?? "127.0.0.1";
+
+        try
+        {
+            var result = await _authService.SetupWorkspaceAsync(request, userAgent, ipAddress, cancellationToken);
+            return Ok(result);
+        }
+        catch (AuthException ex)
+        {
+            return BadRequest(new { code = ex.Code, message = ex.Message });
+        }
+    }
+
+    [HttpPost("company-login")]
+    [AllowAnonymous]
+    [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(AuthResponse))]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    public async Task<IActionResult> CompanyLogin([FromBody] OrganizationLoginRequest request)
+    {
+        var userAgent = Request.Headers["User-Agent"].ToString();
+        var ipAddress = HttpContext.Connection.RemoteIpAddress?.ToString() ?? "127.0.0.1";
+
+        var response = await _authService.CompanyLoginAsync(request, userAgent, ipAddress);
+        if (response == null)
+        {
+            return Unauthorized(new { code = AuthErrorCodes.InvalidCredentials, message = "Invalid workspace username or password" });
+        }
+
+        return Ok(response);
+    }
+
+    [HttpGet("sessions")]
+    [Authorize]
+    [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(IEnumerable<SessionInfo>))]
+    public async Task<IActionResult> GetActiveSessions()
+    {
+        var sessions = await _authService.GetActiveSessionsAsync();
+        return Ok(sessions);
+    }
+
+    [HttpDelete("sessions/{sessionId:guid}")]
+    [Authorize]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<IActionResult> RevokeSession([FromRoute] Guid sessionId)
+    {
+        var result = await _authService.RevokeSessionAsync(sessionId);
+        if (result)
+        {
+            return Ok(new { message = "Session revoked successfully" });
+        }
+        return BadRequest(new { message = "Failed to revoke session" });
     }
 }

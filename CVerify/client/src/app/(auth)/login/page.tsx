@@ -1,21 +1,18 @@
 "use client";
 
 import React, { useState, useEffect } from 'react';
-import { useForm, FormProvider } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { loginSchema } from '../../../features/auth/validators/auth.validator';
 import { useAuth } from '../../../features/auth/hooks/use-auth';
-import { FormInput } from '../../../components/forms/form-input';
-import { FormCheckbox } from '../../../components/forms/form-checkbox';
-import { Button } from '../../../components/ui/button';
-import { Card } from '../../../components/ui/card';
-import { z } from 'zod';
-import Link from 'next/link';
+import { Google } from '@thesvg/react';
+import {
+  Card, Tabs, Typography, Button, TextField,
+  InputGroup, Input, ErrorMessage, Form, Label,
+  FieldError, Checkbox, toast, Spinner, CardHeader,
+  CardFooter, CardContent, Link
+} from "@heroui/react";
+import { Eye, EyeOff } from 'lucide-react';
 import Script from 'next/script';
-import { toast, Spinner, Typography } from '@heroui/react';
 import { Suspense } from 'react';
-import { useTranslation } from 'react-i18next';
 
 interface GoogleIdentityResponse {
   credential?: string;
@@ -34,148 +31,67 @@ interface CustomWindow extends Window {
   __googleIdentityInitialized?: boolean;
 }
 
-type LoginFormValues = z.infer<typeof loginSchema>;
-
 function LoginContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { login, loginWithGoogle, isLoading } = useAuth();
-  const { t } = useTranslation(['auth', 'common']);
-  
-  // States for advanced security feedback
-  const [cooldownSeconds, setCooldownSeconds] = useState<number>(0);
-  
+  const { loginWithGoogle, login, sendOtp, resolveEmailAuthState, companyLogin, isLoading } = useAuth();
+
   // Callback URL for redirects
   const callbackUrl = searchParams.get('callbackUrl') || '/';
-  const isSessionExpired = searchParams.get('session_expired') === 'true';
-  const registered = searchParams.get('registered') === 'true';
-  const resetSuccess = searchParams.get('reset_success') === 'true';
 
-  const methods = useForm<LoginFormValues>({
-    resolver: zodResolver(loginSchema),
-    defaultValues: {
-      email: '',
-      password: '',
-      rememberMe: false,
-    },
-    mode: 'onChange',
-  });
+  // Engineer state
+  const [email, setEmail] = useState("");
+  const [emailTouched, setEmailTouched] = useState(false);
+  const [isEmailLoading, setIsEmailLoading] = useState(false);
 
-  const { handleSubmit, formState: { isValid } } = methods;
+  // Engineer identity flow phase: email input → password login (if credentials exist)
+  type EmailFlowPhase = 'EMAIL_INPUT' | 'PASSWORD_LOGIN';
+  const [emailFlowPhase, setEmailFlowPhase] = useState<EmailFlowPhase>('EMAIL_INPUT');
+  const [engineerPassword, setEngineerPassword] = useState("");
+  const [isEngineerPasswordVisible, setIsEngineerPasswordVisible] = useState(false);
+  const [isPasswordLoginLoading, setIsPasswordLoginLoading] = useState(false);
 
-  // Trigger toasts on mount for query states
-  useEffect(() => {
-    if (isSessionExpired) {
-      toast.warning(t('auth:toast.sessionExpiredTitle'), {
-        description: t('auth:toast.sessionExpiredDesc'),
-      });
-    }
-    if (registered) {
-      toast.success(t('auth:toast.registerSuccessTitle'), {
-        description: t('auth:toast.registerSuccessDesc'),
-      });
-    }
-    if (resetSuccess) {
-      toast.success(t('auth:toast.passwordResetSuccessTitle'), {
-        description: t('auth:toast.passwordResetSuccessDesc'),
-      });
-    }
-  }, [isSessionExpired, registered, resetSuccess, t]);
-
-  // Rate Limiting Cooldown ticking timer
-  useEffect(() => {
-    if (cooldownSeconds <= 0) return;
-    
-    const interval = setInterval(() => {
-      setCooldownSeconds((prev) => prev - 1);
-    }, 1000);
-
-    return () => clearInterval(interval);
-  }, [cooldownSeconds]);
-
-  const onSubmit = async (data: LoginFormValues) => {
-    if (cooldownSeconds > 0) return;
-
-    const result = await login(data);
-    
-    if (result.success) {
-      if (result.isUnverified || result.nextStep === 'VERIFY_EMAIL') {
-        toast.warning(t('auth:toast.verificationPendingTitle'), {
-          description: t('auth:toast.verificationPendingDesc'),
-        });
-        router.push('/verify-email');
-        return;
-      }
-
-      if (result.user) {
-        toast.success(t('auth:toast.loginSuccessTitle'), {
-          description: t('auth:toast.loginSuccessDesc'),
-        });
-        router.push(callbackUrl);
-      }
-    } else if (result.error) {
-      const err = result.error;
-      
-      // Trigger Rate limiting lock
-      if (err.code === 'RATE_LIMIT_EXCEEDED' && err.cooldownSeconds) {
-        setCooldownSeconds(err.cooldownSeconds);
-        toast.danger(t('auth:toast.rateLimitTitle'), {
-          description: t('auth:toast.rateLimitDesc', { seconds: err.cooldownSeconds }),
-        });
-      } else {
-        let toastDesc = err.message;
-        if (err.remainingAttempts !== undefined) {
-          if (err.remainingAttempts > 0) {
-            toastDesc = t('auth:toast.authAlertRemainingAttempts', { attempts: err.remainingAttempts });
-          } else {
-            toastDesc = t('auth:toast.authAlertAccountLocked');
-          }
-        }
-        toast.danger(t('auth:toast.authAlertTitle'), {
-          description: toastDesc,
-        });
-      }
-
-      // Propagate server-side validation errors to React Hook Form fields
-      if (err.errors) {
-        Object.entries(err.errors).forEach(([field, messages]) => {
-          methods.setError(field as keyof LoginFormValues, {
-            type: 'server',
-            message: (messages as string[])[0],
-          });
-        });
-      }
-    }
+  const validateEmail = (val: string) => {
+    return val.match(/^[^\s@]+@[^\s@]+\.[^\s@]+$/);
   };
+  const isEmailInvalid = emailTouched && email.length > 0 && !validateEmail(email);
 
+  // Business state
+  const [selectedTab, setSelectedTab] = useState("overview");
+  const [businessUsername, setBusinessUsername] = useState("");
+  const [businessPassword, setBusinessPassword] = useState("");
+  const [isVisible, setIsVisible] = useState(false);
+  const [isBusinessLoading, setIsBusinessLoading] = useState(false);
+
+  // Google SSO logic
   const handleGoogleCredentialResponse = async (response: GoogleIdentityResponse) => {
     try {
       if (!response.credential) return;
       const result = await loginWithGoogle(response.credential);
-      
+
       if (result.success) {
         if (result.isUnverified || result.nextStep === 'VERIFY_EMAIL') {
-          toast.warning(t('auth:toast.verificationPendingTitle'), {
-            description: t('auth:toast.verificationPendingDesc'),
+          toast.warning("Verification Pending", {
+            description: "Please check your email to complete verification."
           });
           router.push('/verify-email');
           return;
         }
 
         if (result.user) {
-          toast.success(t('auth:toast.googleLoginSuccessTitle'), {
-            description: t('auth:toast.googleLoginSuccessDesc'),
+          toast.success("Welcome to CVerify!", {
+            description: "Successfully logged in via Google SSO."
           });
           router.push(callbackUrl);
         }
       } else if (result.error) {
-        toast.danger(t('auth:toast.googleLoginFailedTitle'), {
-          description: result.error.message,
+        toast.danger("Google Login Failed", {
+          description: result.error.message
         });
       }
     } catch {
-      toast.danger(t('auth:toast.googleLoginFailedTitle'), {
-        description: t('auth:toast.googleLoginFailedDesc'),
+      toast.danger("Google SSO Failed", {
+        description: "An unexpected error occurred during Google authentication."
       });
     }
   };
@@ -183,7 +99,6 @@ function LoginContent() {
   const initializeGoogleSignIn = () => {
     const customWindow = typeof window !== 'undefined' ? (window as unknown as CustomWindow) : null;
     if (customWindow?.google?.accounts?.id) {
-      // Set the dynamic listener to point to the current callback context
       customWindow.__googleIdentityListener = handleGoogleCredentialResponse;
 
       if (!customWindow.__googleIdentityInitialized) {
@@ -200,19 +115,131 @@ function LoginContent() {
 
       const container = document.getElementById('google-signin-button');
       if (container) {
+        container.innerHTML = '';
         customWindow.google.accounts.id.renderButton(
           container,
-          { theme: 'outline', size: 'large', width: 350, text: 'continue_with' }
+          { theme: 'outline', size: 'large', width: 390, text: 'continue_with' }
         );
       }
     }
   };
 
-  // Sync Google script initialization
   useEffect(() => {
     initializeGoogleSignIn();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isLoading]);
+  }, [isLoading, selectedTab]);
+
+  const handleContinueWithEmail = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!email || !validateEmail(email)) return;
+
+    setIsEmailLoading(true);
+
+    // Phase 1: Resolve identity state from backend
+    const stateResult = await resolveEmailAuthState(email);
+    setIsEmailLoading(false);
+
+    if (!stateResult.success || !stateResult.data) {
+      toast.danger("Failed to resolve identity", {
+        description: stateResult.error?.message || "An error occurred."
+      });
+      return;
+    }
+
+    const { authState } = stateResult.data;
+
+    switch (authState) {
+      case 'REQUIRES_AUTHENTICATION':
+        // User has password credentials — show inline password form
+        setEmailFlowPhase('PASSWORD_LOGIN');
+        break;
+
+      case 'REQUIRES_ONBOARDING': {
+        // New user or Google-only — trigger OTP onboarding
+        setIsEmailLoading(true);
+        const otpResult = await sendOtp(email, 'Authentication');
+        setIsEmailLoading(false);
+        if (otpResult.success && otpResult.data) {
+          toast.success("OTP Code Sent", {
+            description: `Please check your email: ${email} for the 6-digit verification code.`
+          });
+          router.push(
+            `/continue-with-email?email=${encodeURIComponent(email)}&challengeId=${otpResult.data.challengeId}`
+          );
+        } else {
+          toast.danger("Failed to send OTP", {
+            description: otpResult.error?.message || "An error occurred."
+          });
+        }
+        break;
+      }
+
+      case 'REQUIRES_VERIFICATION':
+        toast.warning("Verification Pending", {
+          description: "Please check your email to complete verification."
+        });
+        router.push('/verify-email');
+        break;
+
+      case 'ACCOUNT_RESTRICTED':
+        toast.danger("Account Restricted", {
+          description: "This account has been restricted. Please contact support."
+        });
+        break;
+    }
+  };
+
+  const handlePasswordLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!email || !engineerPassword) return;
+
+    setIsPasswordLoginLoading(true);
+    const result = await login({ email, password: engineerPassword, rememberMe: false });
+    setIsPasswordLoginLoading(false);
+
+    if (result.success) {
+      if (result.isUnverified || result.nextStep === 'VERIFY_EMAIL') {
+        toast.warning("Verification Pending", {
+          description: "Please check your email to complete verification."
+        });
+        router.push('/verify-email');
+        return;
+      }
+      toast.success("Welcome back!", { description: "Successfully logged in." });
+      router.push(callbackUrl);
+    } else {
+      toast.danger("Login Failed", {
+        description: result.error?.message || "Invalid email or password."
+      });
+    }
+  };
+
+  const handleBusinessSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    if (!businessUsername || !businessPassword) return;
+
+    setIsBusinessLoading(true);
+    const result = await companyLogin({
+      organizationUsername: businessUsername,
+      password: businessPassword
+    });
+    setIsBusinessLoading(false);
+
+    if (result.success) {
+      toast.success("Workspace authenticated", {
+        description: `Logged in to organization: ${businessUsername}`
+      });
+      router.push(callbackUrl);
+    } else {
+      toast.danger("Authentication Failed", {
+        description: result.error?.message || "Invalid workspace username or password."
+      });
+    }
+  };
+
+  const handleBusinessReset = () => {
+    setBusinessUsername("");
+    setBusinessPassword("");
+  };
 
   return (
     <>
@@ -221,116 +248,277 @@ function LoginContent() {
         strategy="lazyOnload"
         onLoad={initializeGoogleSignIn}
       />
-      <Card className="shadow-2xl" glow={true}>
-        <div className="text-center mb-6">
-          <Typography type="h2" className="text-2xl font-bold tracking-tight text-foreground">
-            {t('auth:title.login')}
-          </Typography>
-          <Typography type="body-sm" className="text-muted mt-1">
-            {t('auth:subtitle.login')}
-          </Typography>
-        </div>
+      <Card className="w-full">
+        <Tabs
+          className="w-full"
+          variant="secondary"
+          selectedKey={selectedTab}
+          onSelectionChange={(key) => setSelectedTab(key as string)}
+        >
+          <Tabs.ListContainer>
+            <Tabs.List aria-label="Options" className="flex items-center gap-4 h-10">
+              <Tabs.Tab id="overview" className="flex items-center justify-center h-full pb-3">
+                <Typography.Heading level={5}>Engineer</Typography.Heading>
+                <Tabs.Indicator className="bottom-0!" />
+              </Tabs.Tab>
+              <Tabs.Tab id="bussiness" className="flex items-center justify-center h-full pb-3">
+                <Typography.Heading level={5}>Business</Typography.Heading>
+                <Tabs.Indicator className="!bottom-0!" />
+              </Tabs.Tab>
+            </Tabs.List>
+          </Tabs.ListContainer>
 
-        <FormProvider {...methods}>
-          <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-            <FormInput
-              name="email"
-              type="email"
-              label={t('auth:labels.email')}
-              placeholder={t('auth:placeholders.email')}
-              disabled={isLoading || cooldownSeconds > 0}
-              autoComplete="email"
-            />
+          <Tabs.Panel className="pt-6 flex justify-center w-full" id="overview">
+            {selectedTab === "overview" && (
+              <Card variant="transparent" className="w-full max-w-[90%] flex flex-col items-center">
+                <CardHeader className="flex flex-col items-center text-center w-full">
+                  <Card.Title className="text-2xl pb-4">Proof over promises</Card.Title>
+                  <Card.Description className="text-md pb-12">
+                    Evidence-backed profiles for modern engineering hiring.
+                  </Card.Description>
+                </CardHeader>
 
-            <FormInput
-              name="password"
-              type="password"
-              label={t('auth:labels.password')}
-              placeholder={t('auth:placeholders.password')}
-              disabled={isLoading || cooldownSeconds > 0}
-              autoComplete="current-password"
-            />
+                <div className="w-full pb-3 relative overflow-hidden rounded-2xl group">
+                  {/* Invisible Google Sign In Button container overlay */}
+                  <div
+                    id="google-signin-button"
+                    className="absolute inset-0 opacity-[0.01] z-10 cursor-pointer overflow-hidden flex justify-center items-center [&_iframe]:w-full [&_iframe]:h-full [&_iframe]:scale-[2.5] [&_iframe]:origin-center"
+                    style={{ minHeight: '48px' }}
+                  />
+                  <Button 
+                    variant="tertiary" 
+                    size="lg" 
+                    fullWidth 
+                    className="h-12 rounded-2xl transition-all duration-200 group-hover:opacity-90 group-active:scale-[0.98]"
+                  >
+                    <Google /> Continue with Google
+                  </Button>
+                </div>
 
-            <div className="flex items-center justify-between text-xs pt-1 select-none">
-              <FormCheckbox name="rememberMe" disabled={isLoading || cooldownSeconds > 0}>
-                {t('auth:labels.rememberMe')}
-              </FormCheckbox>
-              
-              <Link
-                href="/forgot-password"
-                className="font-semibold text-foreground hover:underline shrink-0"
-              >
-                {t('auth:actions.forgot')}
-              </Link>
-            </div>
+                <Typography type="body-sm" color="muted" className="pb-3">OR</Typography>
 
-            <Button
-              type="submit"
-              className="w-full mt-2"
-              isLoading={isLoading}
-              disabled={!isValid || cooldownSeconds > 0 || isLoading}
-            >
-              {isLoading ? t('auth:actions.signingIn') : t('auth:actions.login')}
-            </Button>
-          </form>
-        </FormProvider>
+                {emailFlowPhase === 'EMAIL_INPUT' ? (
+                  <Form onSubmit={handleContinueWithEmail} className="w-full flex flex-col items-center gap-6 p-0">
+                    <TextField
+                      fullWidth
+                      isInvalid={isEmailInvalid}
+                      aria-label="Email Address"
+                    >
+                      <Input
+                        className="h-12"
+                        id="email"
+                        type="email"
+                        placeholder="Enter your email"
+                        value={email}
+                        aria-label="Email Address"
+                        onChange={(e) => {
+                          setEmail(e.target.value);
+                          setEmailTouched(true);
+                        }}
+                        onBlur={() => setEmailTouched(true)}
+                      />
+                      {isEmailInvalid && (
+                        <div className="text-left w-full mt-1">
+                          <ErrorMessage className="text-danger text-sm">
+                            Please enter a valid email address.
+                          </ErrorMessage>
+                        </div>
+                      )}
+                    </TextField>
 
-        {/* Visual Divider separator */}
-        <div className="relative my-6 select-none">
-          <div className="absolute inset-0 flex items-center">
-            <div className="w-full border-t border-separator" />
-          </div>
-          <div className="relative flex justify-center text-xs uppercase font-bold tracking-wider">
-            <span className="bg-background px-3 text-muted text-[10px]">
-              {t('auth:labels.orContinueWith')}
-            </span>
-          </div>
-        </div>
+                    <Button
+                      type="submit"
+                      size="lg"
+                      fullWidth
+                      isDisabled={isEmailInvalid || !email || isEmailLoading}
+                      isPending={isEmailLoading}
+                      className="h-12 rounded-2xl"
+                    >
+                      {isEmailLoading && <Spinner color="current" size="sm" />}
+                      Continue with email
+                    </Button>
+                  </Form>
+                ) : (
+                  <Form onSubmit={handlePasswordLogin} className="w-full flex flex-col items-center gap-6 p-0">
+                    <TextField fullWidth aria-label="Email Address">
+                      <Input
+                        className="h-12 bg-zinc-50 dark:bg-zinc-900 opacity-70"
+                        id="email-locked"
+                        type="email"
+                        value={email}
+                        readOnly
+                      />
+                    </TextField>
 
-        {/* Google OAuth Premium Overlay Button */}
-        <div className="relative w-[350px] h-11 mx-auto select-none">
-          {/* Beautiful Custom Premium Button */}
-          <div className="absolute inset-0 flex items-center justify-center gap-3 w-full h-full bg-surface border border-border rounded-xl hover:bg-surface-secondary active:scale-[0.98] transition-all duration-200 pointer-events-none shadow-sm">
-            <svg className="w-5 h-5" viewBox="0 0 24 24">
-              <path
-                fill="#EA4335"
-                d="M12 5.04c1.64 0 3.12.56 4.28 1.67l3.2-3.2C17.52 1.58 14.94 1 12 1 7.24 1 3.2 3.73 1.24 7.72l3.8 2.95C6 7.45 8.78 5.04 12 5.04z"
-              />
-              <path
-                fill="#4285F4"
-                d="M23.48 12.25c0-.82-.07-1.6-.2-2.35H12v4.45h6.44c-.28 1.47-1.1 2.71-2.35 3.55l3.65 2.83c2.13-1.97 3.74-4.87 3.74-8.48z"
-              />
-              <path
-                fill="#FBBC05"
-                d="M5.04 14.77C4.8 14.05 4.67 13.28 4.67 12.5s.13-1.55.37-2.27l-3.8-2.95C.44 8.73 0 10.56 0 12.5s.44 3.77 1.24 5.23l3.8-2.96z"
-              />
-              <path
-                fill="#34A853"
-                d="M12 23c3.24 0 5.97-1.07 7.96-2.92l-3.65-2.83c-1.2.8-2.73 1.28-4.31 1.28-3.22 0-6-2.41-6.96-5.63l-3.8 2.95C3.2 20.27 7.24 23 12 23z"
-              />
-            </svg>
-            <span className="text-sm font-semibold text-foreground">
-              {t('auth:actions.googleSso')}
-            </span>
-          </div>
+                    <TextField isRequired name="password" type="password" fullWidth>
+                      <Label>Password</Label>
+                      <InputGroup>
+                        <InputGroup.Input
+                          className="h-12"
+                          type={isEngineerPasswordVisible ? "text" : "password"}
+                          placeholder="Enter your password"
+                          value={engineerPassword}
+                          onChange={(e: any) => setEngineerPassword(e.target.value)}
+                          autoFocus
+                        />
+                        <InputGroup.Suffix>
+                          <Button
+                            isIconOnly
+                            aria-label={isEngineerPasswordVisible ? "Hide password" : "Show password"}
+                            size="sm"
+                            variant="ghost"
+                            onPress={() => setIsEngineerPasswordVisible(!isEngineerPasswordVisible)}
+                          >
+                            {isEngineerPasswordVisible ? <Eye className="size-4" /> : <EyeOff className="size-4" />}
+                          </Button>
+                        </InputGroup.Suffix>
+                      </InputGroup>
+                      <FieldError />
+                    </TextField>
 
-          {/* Google invisible GIS iframe trigger wrapper */}
-          <div 
-            id="google-signin-button" 
-            className="absolute inset-0 opacity-0 cursor-pointer [&_iframe]:cursor-pointer [&_iframe]:w-full [&_iframe]:h-full"
-          />
-        </div>
+                    <Button
+                      type="submit"
+                      size="lg"
+                      fullWidth
+                      isDisabled={!engineerPassword || isPasswordLoginLoading}
+                      isPending={isPasswordLoginLoading}
+                      className="h-12 rounded-2xl"
+                    >
+                      {isPasswordLoginLoading && <Spinner color="current" size="sm" />}
+                      Sign In
+                    </Button>
 
-        {/* Call to Register */}
-        <div className="text-center text-xs text-muted mt-6 font-outfit">
-          {t('auth:actions.noAccount')}{' '}
-          <Link
-            href="/register"
-            className="font-semibold text-foreground hover:underline"
-          >
-            {t('auth:actions.signUpNow')}
-          </Link>
-        </div>
+                    <div className="flex items-center justify-between w-full">
+                      <button
+                        type="button"
+                        onClick={() => { setEmailFlowPhase('EMAIL_INPUT'); setEngineerPassword(''); }}
+                        className="text-sm text-muted hover:underline cursor-pointer bg-transparent border-0 p-0"
+                      >
+                        ← Use different email
+                      </button>
+                      <Link
+                        href={`/forgot-password?email=${encodeURIComponent(email)}`}
+                        className="text-sm text-muted hover:underline cursor-pointer"
+                      >
+                        Forgot password?
+                      </Link>
+                    </div>
+                  </Form>
+                )}
+              </Card>
+            )}
+          </Tabs.Panel>
+
+          <Tabs.Panel className="pt-4 flex justify-center w-full" id="bussiness">
+            {selectedTab === "bussiness" && (
+              <Card variant="transparent" className="w-full max-w-[90%] flex flex-col items-center">
+                <CardHeader className="flex flex-col items-center text-center w-full">
+                  <Card.Title className="text-2xl pb-4">Hire beyond resumes</Card.Title>
+                  <Card.Description className="text-md pb-12 w-full">
+                    Verify engineering talent through real technical evidence.
+                  </Card.Description>
+                </CardHeader>
+
+                <CardContent className="w-full pb-3 p-0">
+                  <Form className="flex flex-col gap-6" onSubmit={handleBusinessSubmit} onReset={handleBusinessReset}>
+                    <TextField
+                      isRequired
+                      name="username"
+                      type="text"
+                    >
+                      <Label>Username</Label>
+                      <Input
+                        placeholder="Enter your username"
+                        className="h-12"
+                        value={businessUsername}
+                        onChange={(e) => setBusinessUsername(e.target.value)}
+                      />
+                      <FieldError />
+                    </TextField>
+
+                    <TextField
+                      isRequired
+                      name="password"
+                      type="password"
+                    >
+                      <Label>Password</Label>
+                      <InputGroup>
+                        <InputGroup.Input
+                          className="h-12"
+                          type={isVisible ? "text" : "password"}
+                          placeholder="Enter your password"
+                          value={businessPassword}
+                          onChange={(e: any) => setBusinessPassword(e.target.value)}
+                        />
+                        <InputGroup.Suffix>
+                          <Button
+                            isIconOnly
+                            aria-label={isVisible ? "Hide password" : "Show password"}
+                            size="sm"
+                            variant="ghost"
+                            onPress={() => setIsVisible(!isVisible)}
+                          >
+                            {isVisible ? <Eye className="size-4" /> : <EyeOff className="size-4" />}
+                          </Button>
+                        </InputGroup.Suffix>
+                      </InputGroup>
+                      <FieldError />
+                    </TextField>
+
+                    <div className="flex items-center justify-between">
+                      <Checkbox id="remember-me">
+                        <Checkbox.Control>
+                          <Checkbox.Indicator />
+                        </Checkbox.Control>
+                        <Checkbox.Content>
+                          <Label htmlFor="remember-me" className="text-muted cursor-pointer">Remember me</Label>
+                        </Checkbox.Content>
+                      </Checkbox>
+
+                      <Link href="/forgot-password" className="text-sm text-muted hover:underline cursor-pointer">
+                        Forgot password?
+                      </Link>
+                    </div>
+
+                    <div className="flex gap-2">
+                      <Button
+                        type="submit"
+                        fullWidth
+                        className="h-12 rounded-2xl"
+                        isDisabled={!businessUsername || !businessPassword}
+                      >
+                        Sign In
+                      </Button>
+                      <Button
+                        type="reset"
+                        variant="secondary"
+                        fullWidth
+                        className="h-12 rounded-2xl"
+                      >
+                        Reset
+                      </Button>
+                    </div>
+                  </Form>
+                </CardContent>
+
+                <Typography type="body-sm" color="muted" className="pb-3 pt-3">OR</Typography>
+
+                <Typography
+                  type="body-sm"
+                  color="muted"
+                >
+                  New to CVerify?{" "}
+                  <Link
+                    href="/company-verification"
+                    className="cursor-pointer font-semibold text-zinc-900 dark:text-zinc-100 hover:underline"
+                  >
+                    Register your company<Link.Icon className="pt-1" />
+                  </Link>
+                </Typography>
+              </Card>
+            )}
+          </Tabs.Panel>
+        </Tabs>
       </Card>
     </>
   );
@@ -340,7 +528,7 @@ export default function LoginPage() {
   return (
     <Suspense fallback={
       <div className="flex items-center justify-center p-8 min-h-[400px]">
-        <Spinner size="lg" color="accent" />
+        <div className="w-8 h-8 border-2 border-t-zinc-900 border-zinc-200 dark:border-t-zinc-100 rounded-full animate-spin" />
       </div>
     }>
       <LoginContent />

@@ -67,6 +67,12 @@ public class ApplicationDbContext : DbContext
     public DbSet<AuditLog> AuditLogs => Set<AuditLog>();
     public DbSet<Conversation> Conversations => Set<Conversation>();
     public DbSet<Message> Messages => Set<Message>();
+    public DbSet<AuthProvider> AuthProviders => Set<AuthProvider>();
+    public DbSet<PasswordCredential> PasswordCredentials => Set<PasswordCredential>();
+    public DbSet<Organization> Organizations => Set<Organization>();
+    public DbSet<OrganizationMember> OrganizationMembers => Set<OrganizationMember>();
+    public DbSet<OtpVerification> OtpVerifications => Set<OtpVerification>();
+    public DbSet<VerificationLink> VerificationLinks => Set<VerificationLink>();
 
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
@@ -84,6 +90,12 @@ public class ApplicationDbContext : DbContext
         modelBuilder.Entity<AuditLog>().Property(al => al.Id).ValueGeneratedNever();
         modelBuilder.Entity<Conversation>().Property(c => c.Id).ValueGeneratedNever();
         modelBuilder.Entity<Message>().Property(m => m.Id).ValueGeneratedNever();
+        modelBuilder.Entity<AuthProvider>().Property(ap => ap.Id).ValueGeneratedNever();
+        modelBuilder.Entity<PasswordCredential>().Property(pc => pc.Id).ValueGeneratedNever();
+        modelBuilder.Entity<Organization>().Property(o => o.Id).ValueGeneratedNever();
+        modelBuilder.Entity<OrganizationMember>().Property(om => om.Id).ValueGeneratedNever();
+        modelBuilder.Entity<OtpVerification>().Property(ov => ov.Id).ValueGeneratedNever();
+        modelBuilder.Entity<VerificationLink>().Property(vl => vl.Id).ValueGeneratedNever();
 
         // Enable PostgreSQL Extensions
         modelBuilder.HasPostgresExtension("citext");
@@ -176,7 +188,7 @@ public class ApplicationDbContext : DbContext
             .IsConcurrencyToken();
 
         // Indexes
-        modelBuilder.Entity<User>().HasIndex(u => u.Email).IsUnique();
+        modelBuilder.Entity<User>().HasIndex(u => u.Email).IsUnique().HasFilter("deleted_at IS NULL");
         modelBuilder.Entity<Role>().HasIndex(r => r.Name).IsUnique();
         modelBuilder.Entity<Permission>().HasIndex(p => p.Name).IsUnique();
 
@@ -265,6 +277,82 @@ public class ApplicationDbContext : DbContext
                 .WithMany(c => c.Messages)
                 .HasForeignKey(m => m.ConversationId)
                 .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        // AuthProvider configurations
+        modelBuilder.Entity<AuthProvider>(entity =>
+        {
+            entity.ToTable("auth_providers");
+            entity.HasQueryFilter(ap => ap.DeletedAt == null);
+            entity.HasIndex(ap => new { ap.ProviderName, ap.ProviderKey })
+                  .IsUnique()
+                  .HasFilter("deleted_at IS NULL")
+                  .HasDatabaseName("idx_auth_providers_key_active");
+            entity.HasIndex(ap => new { ap.UserId, ap.ProviderName })
+                  .IsUnique()
+                  .HasFilter("deleted_at IS NULL")
+                  .HasDatabaseName("idx_auth_providers_user_type_active");
+        });
+
+        // PasswordCredential configurations
+        modelBuilder.Entity<PasswordCredential>(entity =>
+        {
+            entity.ToTable("password_credentials");
+            entity.HasQueryFilter(pc => pc.DeletedAt == null);
+            entity.HasOne(pc => pc.User)
+                  .WithMany(u => u.PasswordCredentials)
+                  .HasForeignKey(pc => pc.UserId)
+                  .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        // Organization configurations
+        modelBuilder.Entity<Organization>(entity =>
+        {
+            entity.ToTable("organizations");
+            entity.HasQueryFilter(o => o.DeletedAt == null);
+            entity.HasIndex(o => o.Username)
+                  .IsUnique()
+                  .HasFilter("deleted_at IS NULL")
+                  .HasDatabaseName("idx_organizations_username_active");
+            entity.HasIndex(o => o.TaxCode)
+                  .IsUnique()
+                  .HasFilter("deleted_at IS NULL")
+                  .HasDatabaseName("idx_organizations_tax_code_active");
+        });
+
+        // OrganizationMember configurations
+        modelBuilder.Entity<OrganizationMember>(entity =>
+        {
+            entity.ToTable("organization_members");
+            entity.HasQueryFilter(om => om.Organization.DeletedAt == null);
+            entity.HasOne(om => om.Organization)
+                  .WithMany(o => o.Members)
+                  .HasForeignKey(om => om.OrganizationId)
+                  .OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(om => om.User)
+                  .WithMany()
+                  .HasForeignKey(om => om.UserId)
+                  .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        // OtpVerification configurations
+        modelBuilder.Entity<OtpVerification>(entity =>
+        {
+            entity.ToTable("otp_verifications");
+            entity.HasIndex(ov => ov.ChallengeId)
+                  .HasDatabaseName("idx_otp_verifications_challenge_id");
+            entity.HasIndex(ov => ov.Email)
+                  .HasDatabaseName("idx_otp_verifications_email");
+        });
+
+        // VerificationLink configurations
+        modelBuilder.Entity<VerificationLink>(entity =>
+        {
+            entity.ToTable("verification_links");
+            entity.HasQueryFilter(vl => vl.DeletedAt == null);
+            entity.HasIndex(vl => vl.TokenHash)
+                  .HasFilter("deleted_at IS NULL AND consumed_at IS NULL")
+                  .HasDatabaseName("idx_verification_links_active");
         });
     }
 }

@@ -17,8 +17,7 @@ public class User
     [Column(TypeName = "citext")]
     public string Email { get; set; } = null!;
 
-    [Required]
-    public string PasswordHash { get; set; } = null!;
+    public string? PasswordHash { get; set; }
 
     [Required]
     [MaxLength(255)]
@@ -53,6 +52,10 @@ public class User
     public int SessionVersion { get; set; } = 1;
 
     public virtual ICollection<RefreshToken> RefreshTokens { get; set; } = new List<RefreshToken>();
+
+    public virtual ICollection<AuthProvider> AuthProviders { get; set; } = new List<AuthProvider>();
+
+    public virtual ICollection<PasswordCredential> PasswordCredentials { get; set; } = new List<PasswordCredential>();
 
     /// <summary>
     /// Transition the user to a new status using a formal domain state machine.

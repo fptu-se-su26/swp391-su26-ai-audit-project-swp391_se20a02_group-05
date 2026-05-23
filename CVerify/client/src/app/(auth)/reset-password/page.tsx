@@ -1,164 +1,166 @@
 "use client";
 
 import React, { useState, useEffect } from 'react';
-import { useForm, FormProvider } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
 import { useSearchParams, useRouter } from 'next/navigation';
-import { resetPasswordSchema } from '../../../features/auth/validators/auth.validator';
-import { FormInput } from '../../../components/forms/form-input';
-import { Button } from '../../../components/ui/button';
-import { Card } from '../../../components/ui/card';
-import { z } from 'zod';
-import Link from 'next/link';
-import { CheckCircle2, KeyRound } from 'lucide-react';
-import { toast, Typography, Spinner } from '@heroui/react';
 import { useAuth } from '../../../features/auth/hooks/use-auth';
+import {
+    Card, Typography, Button, TextField,
+    InputGroup, Input, Form, Label, toast, Spinner
+} from "@heroui/react";
+import { KeyRound, ShieldCheck, Eye, EyeOff } from 'lucide-react';
 import { Suspense } from 'react';
-import { useTranslation } from 'react-i18next';
-
-type ResetPasswordFormValues = z.infer<typeof resetPasswordSchema>;
 
 function ResetPasswordContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const token = searchParams.get('token');
   const { resetPassword } = useAuth();
-  const { t } = useTranslation(['auth', 'common']);
 
+  const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [isVisible, setIsVisible] = useState(false);
+  const [isConfirmVisible, setIsConfirmVisible] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const [successText, setSuccessText] = useState<string | null>(null);
-
-  const methods = useForm<ResetPasswordFormValues>({
-    resolver: zodResolver(resetPasswordSchema),
-    defaultValues: {
-      password: '',
-      confirmPassword: '',
-    },
-    mode: 'onChange',
-  });
-
-  const { handleSubmit, formState: { isValid } } = methods;
+  const [isSuccess, setIsSuccess] = useState(false);
 
   useEffect(() => {
-    // Validate existence of recovery token
     if (!token) {
-      toast.danger(t('auth:toast.tokenMissingTitle'), {
-        description: t('auth:toast.tokenMissingDesc'),
+      toast.danger("Invalid Link", {
+        description: "Password reset token is missing. Please check your recovery email."
       });
     }
-  }, [token, t]);
+  }, [token]);
 
-  const onSubmit = async (data: ResetPasswordFormValues) => {
-    if (!token) return;
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!token || !password || password.length < 8) return;
+    if (password !== confirmPassword) {
+      toast.danger("Mismatch", { description: "Passwords do not match." });
+      return;
+    }
 
     setIsLoading(true);
-    setSuccessText(null);
-
     const result = await resetPassword({
       token,
-      password: data.password,
-      confirmPassword: data.confirmPassword,
+      password,
+      confirmPassword,
     });
+    setIsLoading(false);
 
     if (result.success) {
-      setSuccessText(t('auth:screens.resetSuccessDesc'));
-      toast.success(t('auth:toast.passwordUpdatedSuccessTitle'), {
-        description: t('auth:toast.passwordUpdatedSuccessDesc'),
+      setIsSuccess(true);
+      toast.success("Password Updated", {
+        description: "Your credential has been rotated. Redirecting to workspace..."
       });
-      methods.reset();
-      
-      // Auto-navigate to dashboard after 2 seconds
       setTimeout(() => {
-        router.push('/user');
+        router.push('/');
       }, 2000);
     } else {
-      const error = result.error;
-      toast.danger(t('auth:toast.passwordResetFailedTitle'), {
-        description: error?.message || t('auth:toast.passwordResetFailedDesc'),
+      toast.danger("Reset Failed", {
+        description: result.error?.message || "Failed to update your password."
       });
-      if (error?.errors) {
-        Object.entries(error.errors).forEach(([field, messages]) => {
-          methods.setError(field as keyof ResetPasswordFormValues, {
-            type: 'server',
-            message: (messages as string[])[0],
-          });
-        });
-      }
     }
-    setIsLoading(false);
   };
 
-  // Render success screen
-  if (successText) {
-    return (
-      <Card glow={true}>
-        <div className="text-center py-4 flex flex-col items-center">
-          <div className="w-12 h-12 rounded-full bg-success/10 text-success flex items-center justify-center mb-4">
-            <CheckCircle2 size={24} />
-          </div>
-          
-          <Typography type="h2" className="text-2xl font-bold tracking-tight text-foreground mb-2 font-outfit">
-            {t('auth:screens.resetSuccessTitle')}
-          </Typography>
-          
-          <Typography type="body-sm" className="text-muted leading-relaxed mb-6 font-outfit">
-            {t('auth:screens.resetSuccessDesc')}
-          </Typography>
-
-          <Link href="/user" className="w-full">
-            <Button variant="solid" className="w-full">
-              {t('auth:actions.goToDashboard')}
-            </Button>
-          </Link>
-        </div>
-      </Card>
-    );
-  }
-
   return (
-    <Card glow={true}>
-      <div className="text-center mb-6">
-        <div className="mx-auto w-10 h-10 rounded-xl bg-surface-secondary text-foreground flex items-center justify-center mb-3">
-          <KeyRound size={20} />
+    <Card className="w-full bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 p-8 shadow-xl rounded-2xl">
+      {!isSuccess ? (
+        <div className="w-full flex flex-col items-center">
+          <div className="w-12 h-12 bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center rounded-xl mb-6">
+            <KeyRound className="size-6 text-zinc-900 dark:text-zinc-100" />
+          </div>
+
+          <div className="text-center w-full mb-8 font-outfit">
+            <Typography.Heading level={3} className="text-2xl font-bold pb-2 text-zinc-900 dark:text-zinc-100">
+              Reset Password
+            </Typography.Heading>
+            <Typography className="text-sm text-zinc-500 dark:text-zinc-400">
+              Establish a new password for your verified CVerify profile.
+            </Typography>
+          </div>
+
+          <Form className="w-full flex flex-col gap-5" onSubmit={handleSubmit}>
+            <TextField isRequired name="password" type="password">
+              <Label className="text-sm font-medium text-zinc-700 dark:text-zinc-300 pb-1">New Password</Label>
+              <InputGroup>
+                <InputGroup.Input
+                  className="h-12"
+                  type={isVisible ? "text" : "password"}
+                  placeholder="Enter new password (min 8 chars)"
+                  value={password}
+                  onChange={(e: any) => setPassword(e.target.value)}
+                  disabled={isLoading || !token}
+                />
+                <InputGroup.Suffix>
+                  <Button
+                    isIconOnly
+                    variant="ghost"
+                    size="sm"
+                    className="text-zinc-400 hover:bg-transparent"
+                    onPress={() => setIsVisible(!isVisible)}
+                    isDisabled={isLoading || !token}
+                  >
+                    {isVisible ? <Eye className="size-4" /> : <EyeOff className="size-4" />}
+                  </Button>
+                </InputGroup.Suffix>
+              </InputGroup>
+            </TextField>
+
+            <TextField isRequired name="confirmPassword" type="password">
+              <Label className="text-sm font-medium text-zinc-700 dark:text-zinc-300 pb-1">Confirm Password</Label>
+              <InputGroup>
+                <InputGroup.Input
+                  className="h-12"
+                  type={isConfirmVisible ? "text" : "password"}
+                  placeholder="Repeat your new password"
+                  value={confirmPassword}
+                  onChange={(e: any) => setConfirmPassword(e.target.value)}
+                  disabled={isLoading || !token}
+                />
+                <InputGroup.Suffix>
+                  <Button
+                    isIconOnly
+                    variant="ghost"
+                    size="sm"
+                    className="text-zinc-400 hover:bg-transparent"
+                    onPress={() => setIsConfirmVisible(!isConfirmVisible)}
+                    isDisabled={isLoading || !token}
+                  >
+                    {isConfirmVisible ? <Eye className="size-4" /> : <EyeOff className="size-4" />}
+                  </Button>
+                </InputGroup.Suffix>
+              </InputGroup>
+            </TextField>
+
+            <Button
+              type="submit"
+              fullWidth
+              isPending={isLoading}
+              isDisabled={!password || password.length < 8 || password !== confirmPassword || isLoading || !token}
+              className="h-12 rounded-xl bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 font-semibold mt-2 flex items-center justify-center gap-2"
+            >
+              {isLoading && <Spinner color="current" size="sm" />}
+              Update password
+            </Button>
+          </Form>
         </div>
-        <Typography type="h2" className="text-2xl font-bold tracking-tight text-foreground font-outfit">
-          {t('auth:title.reset')}
-        </Typography>
-        <Typography type="body-sm" className="text-muted mt-1 font-outfit">
-          {t('auth:subtitle.reset')}
-        </Typography>
-      </div>
+      ) : (
+        <div className="w-full flex flex-col items-center py-6 text-center">
+          <div className="w-16 h-16 bg-emerald-50 dark:bg-emerald-950 flex items-center justify-center rounded-2xl mb-6">
+            <ShieldCheck className="size-8 text-emerald-600 dark:text-emerald-400" />
+          </div>
 
-      <FormProvider {...methods}>
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-          <FormInput
-            name="password"
-            type="password"
-            label={t('auth:labels.password')}
-            placeholder="••••••••"
-            disabled={isLoading || !token}
-            autoComplete="new-password"
-          />
+          <Typography.Heading level={3} className="text-2xl font-bold pb-2 text-zinc-900 dark:text-zinc-100">
+            Password Updated
+          </Typography.Heading>
+          
+          <Typography className="text-sm text-zinc-500 dark:text-zinc-400 mb-8 max-w-sm">
+            Your password credential has been rotated successfully. You are being navigated to your CVerify workspace...
+          </Typography>
 
-          <FormInput
-            name="confirmPassword"
-            type="password"
-            label={t('auth:labels.confirmPassword')}
-            placeholder="••••••••"
-            disabled={isLoading || !token}
-            autoComplete="new-password"
-          />
-
-          <Button
-            type="submit"
-            className="w-full mt-2"
-            isLoading={isLoading}
-            disabled={!isValid || isLoading || !token}
-          >
-            {isLoading ? t('auth:actions.updatingPassword') : t('auth:actions.updatePassword')}
-          </Button>
-        </form>
-      </FormProvider>
+          <div className="w-8 h-8 border-2 border-t-zinc-900 border-zinc-200 dark:border-t-zinc-100 rounded-full animate-spin" />
+        </div>
+      )}
     </Card>
   );
 }
@@ -167,7 +169,7 @@ export default function ResetPasswordPage() {
   return (
     <Suspense fallback={
       <div className="flex items-center justify-center p-8 min-h-[400px]">
-        <Spinner size="md" color="accent" />
+        <div className="w-8 h-8 border-2 border-t-zinc-900 border-zinc-200 dark:border-t-zinc-100 rounded-full animate-spin" />
       </div>
     }>
       <ResetPasswordContent />

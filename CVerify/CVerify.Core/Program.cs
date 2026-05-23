@@ -111,7 +111,12 @@ builder.Services.AddOpenApi(options =>
         return Task.CompletedTask;
     });
 });
-builder.Services.AddControllers();
+builder.Services.AddControllers()
+    .AddJsonOptions(options =>
+    {
+        options.JsonSerializerOptions.Converters.Add(
+            new System.Text.Json.Serialization.JsonStringEnumConverter());
+    });
 builder.Services.AddSignalR();
 builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
 builder.Services.AddProblemDetails();
@@ -189,7 +194,9 @@ builder.Services.AddRateLimiter(options =>
 // Configure EF Core with PostgreSQL (MapEnum inside UseNpgsql handles both EF Core + ADO.NET layers)
 builder.Services.AddDbContext<ApplicationDbContext>((sp, options) =>
 {
-    options.UseNpgsql(envConfig.Database.ConnectionString, o => o.MapEnum<UserStatus>("user_status"))
+    options.UseNpgsql(envConfig.Database.ConnectionString, o => o
+                .MapEnum<UserStatus>("user_status")
+                .UseQuerySplittingBehavior(QuerySplittingBehavior.SplitQuery))
            .UseSnakeCaseNamingConvention();
 
     options.AddInterceptors(sp.GetRequiredService<SlowQueryInterceptor>());
@@ -222,6 +229,7 @@ builder.Services.AddScoped<ITokenService, TokenService>();
 builder.Services.AddScoped<IAccountService, AccountService>();
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IPermissionService, PermissionService>();
+builder.Services.AddScoped<IIdentityStateResolver, IdentityStateResolver>();
 
 // Register AI Service
 builder.Services.AddScoped<IHmacSignatureService, HmacSignatureService>();

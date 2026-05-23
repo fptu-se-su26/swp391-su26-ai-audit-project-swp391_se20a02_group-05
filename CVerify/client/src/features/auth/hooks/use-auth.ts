@@ -1,7 +1,16 @@
 "use client";
 
 import { useAuthStore } from '../store/use-auth-store';
-import { authApi, LoginPayload, RegisterPayload, ResetPasswordPayload } from '../services/auth.service';
+import {
+  authApi,
+  LoginPayload,
+  RegisterPayload,
+  ResetPasswordPayload,
+  CreatePasswordPayload,
+  RegisterCompanyPayload,
+  SetupWorkspacePayload,
+  CompanyLoginPayload
+} from '../services/auth.service';
 import { User, UserRole, ResourceActionPermission } from '../../../types/auth.types';
 import { useState } from 'react';
 import { normalizeError } from '../../../services/axios-client';
@@ -237,6 +246,182 @@ export const useAuth = () => {
     return bootstrapPromise;
   };
 
+    // Send OTP
+    const sendOtp = async (email: string, purpose: string) => {
+      store.setLoading(true);
+      setAuthError(null);
+      try {
+        const response = await authApi.sendOtp(email, purpose);
+        store.setLoading(false);
+        return { success: true, data: response };
+      } catch (err: unknown) {
+        const parsedError = normalizeError(err);
+        setAuthError(parsedError.message);
+        store.setLoading(false);
+        return { success: false, error: parsedError };
+      }
+    };
+
+    // Resolve identity state for email (lightweight, no loading indicator)
+    const resolveEmailAuthState = async (email: string) => {
+      setAuthError(null);
+      try {
+        const response = await authApi.resolveEmailAuthState(email);
+        return { success: true as const, data: response };
+      } catch (err: unknown) {
+        const parsedError = normalizeError(err);
+        setAuthError(parsedError.message);
+        return { success: false as const, error: parsedError };
+      }
+    };
+
+    // Verify OTP
+    const verifyOtp = async (challengeId: string, email: string, code: string, purpose: string) => {
+      store.setLoading(true);
+      setAuthError(null);
+      try {
+        const response = await authApi.verifyOtp(challengeId, email, code, purpose);
+        store.setLoading(false);
+        return { success: true, data: response };
+      } catch (err: unknown) {
+        const parsedError = normalizeError(err);
+        setAuthError(parsedError.message);
+        store.setLoading(false);
+        return { success: false, error: parsedError };
+      }
+    };
+
+    // Create Password
+    const createPassword = async (payload: CreatePasswordPayload) => {
+      store.setLoading(true);
+      setAuthError(null);
+      try {
+        const response = await authApi.createPassword(payload);
+        const user: User = {
+          id: response.id,
+          email: response.email,
+          fullName: response.fullName,
+          avatarUrl: response.avatarUrl,
+          role: normalizeRole(response.roles),
+          permissions: response.permissions,
+          isEmailVerified: response.isEmailVerified,
+        };
+        store.login(user);
+        store.setAuthStatusAndNextStep(response.status, response.nextStep);
+        return { success: true, user, nextStep: response.nextStep };
+      } catch (err: unknown) {
+        const parsedError = normalizeError(err);
+        setAuthError(parsedError.message);
+        store.setLoading(false);
+        return { success: false, error: parsedError };
+      }
+    };
+
+    // Register Company
+    const registerCompany = async (payload: RegisterCompanyPayload) => {
+      store.setLoading(true);
+      setAuthError(null);
+      try {
+        const response = await authApi.registerCompany(payload);
+        store.setLoading(false);
+        return { success: true, data: response };
+      } catch (err: unknown) {
+        const parsedError = normalizeError(err);
+        setAuthError(parsedError.message);
+        store.setLoading(false);
+        return { success: false, error: parsedError };
+      }
+    };
+
+    // Verify Company Link
+    const verifyCompanyLink = async (token: string) => {
+      store.setLoading(true);
+      setAuthError(null);
+      try {
+        const response = await authApi.verifyCompanyLink(token);
+        store.setLoading(false);
+        return { success: true, data: response };
+      } catch (err: unknown) {
+        const parsedError = normalizeError(err);
+        setAuthError(parsedError.message);
+        store.setLoading(false);
+        return { success: false, error: parsedError };
+      }
+    };
+
+    // Setup Workspace
+    const setupWorkspace = async (payload: SetupWorkspacePayload) => {
+      store.setLoading(true);
+      setAuthError(null);
+      try {
+        const response = await authApi.setupWorkspace(payload);
+        const user: User = {
+          id: response.id,
+          email: response.email,
+          fullName: response.fullName,
+          avatarUrl: response.avatarUrl,
+          role: normalizeRole(response.roles),
+          permissions: response.permissions,
+          isEmailVerified: response.isEmailVerified,
+        };
+        store.login(user);
+        store.setAuthStatusAndNextStep(response.status, response.nextStep);
+        return { success: true, user, nextStep: response.nextStep };
+      } catch (err: unknown) {
+        const parsedError = normalizeError(err);
+        setAuthError(parsedError.message);
+        store.setLoading(false);
+        return { success: false, error: parsedError };
+      }
+    };
+
+    // Company Login
+    const companyLogin = async (payload: CompanyLoginPayload) => {
+      store.setLoading(true);
+      setAuthError(null);
+      try {
+        const response = await authApi.companyLogin(payload);
+        const user: User = {
+          id: response.id,
+          email: response.email,
+          fullName: response.fullName,
+          avatarUrl: response.avatarUrl,
+          role: normalizeRole(response.roles),
+          permissions: response.permissions,
+          isEmailVerified: response.isEmailVerified,
+        };
+        store.login(user);
+        store.setAuthStatusAndNextStep(response.status, response.nextStep);
+        return { success: true, user, nextStep: response.nextStep };
+      } catch (err: unknown) {
+        const parsedError = normalizeError(err);
+        setAuthError(parsedError.message);
+        store.setLoading(false);
+        return { success: false, error: parsedError };
+      }
+    };
+
+    // Fetch Sessions
+    const fetchSessions = async () => {
+      try {
+        return await authApi.fetchSessions();
+      } catch (err: unknown) {
+        console.error('Failed to fetch sessions:', err);
+        return [];
+      }
+    };
+
+    // Revoke Session
+    const revokeSession = async (sessionId: string) => {
+      try {
+        await authApi.revokeSession(sessionId);
+        return true;
+      } catch (err: unknown) {
+        console.error('Failed to revoke session:', err);
+        return false;
+      }
+    };
+
   return {
     // Zustand States
     user: store.user,
@@ -255,6 +440,18 @@ export const useAuth = () => {
     resetPassword: resetPasswordUser,
     initializeSession: initializeUserSession,
     updateProfile: store.updateUser,
+
+    // New actions
+    sendOtp,
+    resolveEmailAuthState,
+    verifyOtp,
+    createPassword,
+    registerCompany,
+    verifyCompanyLink,
+    setupWorkspace,
+    companyLogin,
+    fetchSessions,
+    revokeSession,
 
     // Guards Facades
     hasRole: (role: UserRole) => store.hasRole(role),

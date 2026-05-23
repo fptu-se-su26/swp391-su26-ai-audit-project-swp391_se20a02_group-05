@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 
 namespace CVerify.API.Application.Exceptions;
 
@@ -30,4 +30,5 @@ public static class AuthErrorCodes
     public const string CooldownActive = "AUTH_COOLDOWN_ACTIVE";
     public const string Unauthorized = "AUTH_UNAUTHORIZED";
     public const string UntrustedRedirect = "AUTH_UNTRUSTED_REDIRECT";
+    public const string SuspiciousActivity = "AUTH_SUSPICIOUS_ACTIVITY";
 }

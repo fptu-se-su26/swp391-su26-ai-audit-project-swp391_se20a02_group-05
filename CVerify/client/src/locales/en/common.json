@@ -42,6 +42,15 @@
     "hydratingProfile": "Hydrating traveler profile...",
     "copyright": "© 2026 CVerify AI Inc. All rights reserved."
   },
+  "sessionVerification": {
+    "initializing": "Initializing secure session...",
+    "establishing": "Establishing authentication channel...",
+    "verifying": "Verifying identity token...",
+    "verified": "Session verified — redirecting...",
+    "preparing": "Preparing authentication...",
+    "securityBadge": "Encrypted Session",
+    "protocol": "PROTOCOL V1.0.0"
+  },
   "landing": {
     "liveBadge": "Production-grade AuthN & AuthZ Module Live",
     "headline": "Decoupled Role-Based Security for modern TravelTech.",

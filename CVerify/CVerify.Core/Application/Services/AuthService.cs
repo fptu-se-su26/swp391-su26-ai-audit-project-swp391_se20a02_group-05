@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Net.Http;
 using System.Security.Claims;
 using System.Security.Cryptography;
 using System.Text;
@@ -36,6 +37,8 @@ public class AuthService : IAuthService
     private readonly ILogger<AuthService> _logger;
     private readonly AuthMetrics _metrics;
     private readonly TimeProvider _timeProvider;
+    private readonly IHttpClientFactory _httpClientFactory;
+    private readonly IIdentityStateResolver _identityStateResolver;
 
     public AuthService(
         ApplicationDbContext context,
@@ -47,7 +50,9 @@ public class AuthService : IAuthService
         EnvConfiguration envConfig,
         ILogger<AuthService> logger,
         AuthMetrics metrics,
-        TimeProvider timeProvider)
+        TimeProvider timeProvider,
+        IHttpClientFactory httpClientFactory,
+        IIdentityStateResolver identityStateResolver)
     {
         _context = context;
         _tokenService = tokenService;
@@ -59,6 +64,8 @@ public class AuthService : IAuthService
         _logger = logger;
         _metrics = metrics;
         _timeProvider = timeProvider;
+        _httpClientFactory = httpClientFactory;
+        _identityStateResolver = identityStateResolver;
     }
 
     /// <summary>
@@ -136,12 +143,10 @@ public class AuthService : IAuthService
     /// </summary>
     public async Task<AuthResponse?> LoginWithGoogleAsync(GoogleLoginRequest request)
     {
+        var correlationId = Guid.NewGuid().ToString("N");
         try
         {
             // Hardened Clock Tolerance settings (5 minutes safety buffer) to handle potential clock skews.
-            // In a production environment, server instances must run a localized Network Time Protocol (NTP)
-            // daemon (such as chronyd or ntpd) to synchronize internal system clocks with standard global NTP servers
-            // (e.g. pool.ntp.org), guaranteeing clock skew is minimized under 1 second.
             var settings = new GoogleJsonWebSignature.ValidationSettings
             {
                 Audience = new[] { _envConfig.Auth.GoogleClientId },
@@ -156,85 +161,130 @@ public class AuthService : IAuthService
                 throw new UnauthorizedAccessException("Google authentication failed.");
             }
 
-            var email = payload.Email.Trim().Normalize(NormalizationForm.FormC).ToLowerInvariant();
-            var user = await _context.Users
-                .Include(u => u.Roles)
-                .FirstOrDefaultAsync(u => u.Email == email);
+            var email = NormalizeEmailPolicy(payload.Email);
 
-            if (user == null)
+            using var transaction = await _context.Database.BeginTransactionAsync();
+            try
             {
+                var user = await _context.Users
+                    .Include(u => u.Roles)
+                    .Include(u => u.AuthProviders)
+                    .FirstOrDefaultAsync(u => u.Email == email);
+
                 var userRole = await _context.Roles.FirstOrDefaultAsync(r => r.Name == "USER");
                 if (userRole == null)
                 {
                     throw new InvalidOperationException("Default 'USER' role not found in the database.");
                 }
 
-                user = new User
+                if (user == null)
                 {
-                    Email = email,
-                    FullName = payload.Name ?? "Google User",
-                    AvatarUrl = payload.Picture,
-                    PasswordHash = BCrypt.Net.BCrypt.HashPassword(Guid.NewGuid().ToString("N")),
-                    Status = UserStatus.ACTIVE,
-                    EmailVerifiedAt = _timeProvider.GetUtcNow().UtcDateTime,
-                    CreatedAt = _timeProvider.GetUtcNow().UtcDateTime,
-                    UpdatedAt = _timeProvider.GetUtcNow().UtcDateTime,
-                    Roles = new List<Role> { userRole }
-                };
+                    // Create account instantly
+                    user = new User
+                    {
+                        Email = email,
+                        FullName = payload.Name ?? "Google User",
+                        AvatarUrl = payload.Picture,
+                        Status = UserStatus.ACTIVE,
+                        EmailVerifiedAt = _timeProvider.GetUtcNow().UtcDateTime,
+                        CreatedAt = _timeProvider.GetUtcNow().UtcDateTime,
+                        UpdatedAt = _timeProvider.GetUtcNow().UtcDateTime,
+                        Roles = new List<Role> { userRole }
+                    };
 
-                _context.Users.Add(user);
-                await _context.SaveChangesAsync();
+                    _context.Users.Add(user);
+                    await _context.SaveChangesAsync();
 
-                await LogAuditEventAsync(user.Id, "USER_GOOGLE_REGISTER", $"New user {user.Email} registered via Google OAuth.");
+                    // Create Google Provider row
+                    var googleProvider = new AuthProvider
+                    {
+                        UserId = user.Id,
+                        ProviderName = "Google",
+                        ProviderKey = payload.Subject,
+                        CreatedAt = _timeProvider.GetUtcNow()
+                    };
+                    _context.AuthProviders.Add(googleProvider);
+                    await _context.SaveChangesAsync();
+
+                    await LogAuditEventAsync(user.Id, "PROVIDER_LINKED", $"Linked Google provider to user {user.Email}.");
+                    await LogAuditEventAsync(user.Id, "USER_GOOGLE_REGISTER", $"New user {user.Email} registered via Google OAuth.");
+                }
+                else
+                {
+                    if (_accountService.IsAccountDisabled(user))
+                    {
+                        _metrics.RecordLoginFailed();
+                        await LogAuditEventAsync(user.Id, "USER_LOGIN_FAILED_DISABLED", $"Disabled user account Google login attempt for {user.Email}.");
+                        throw new UnauthorizedAccessException("Account is disabled.");
+                    }
+
+                    if (!string.IsNullOrEmpty(payload.Picture) && user.AvatarUrl != payload.Picture)
+                    {
+                        user.AvatarUrl = payload.Picture;
+                    }
+                    if (!string.IsNullOrEmpty(payload.Name) && user.FullName != payload.Name && user.FullName == "Google User")
+                    {
+                        user.FullName = payload.Name;
+                    }
+
+                    if (user.Status == UserStatus.EMAIL_VERIFY_PENDING)
+                    {
+                        user.TransitionTo(UserStatus.ACTIVE);
+                        user.EmailVerifiedAt = _timeProvider.GetUtcNow().UtcDateTime;
+                    }
+
+                    user.UpdatedAt = _timeProvider.GetUtcNow().UtcDateTime;
+                    await _context.SaveChangesAsync();
+
+                    // Dynamically map AuthProvider link if not present
+                    var googleProvider = user.AuthProviders.FirstOrDefault(ap => ap.ProviderName == "Google");
+                    if (googleProvider == null)
+                    {
+                        googleProvider = new AuthProvider
+                        {
+                            UserId = user.Id,
+                            ProviderName = "Google",
+                            ProviderKey = payload.Subject,
+                            CreatedAt = _timeProvider.GetUtcNow()
+                        };
+                        _context.AuthProviders.Add(googleProvider);
+                        await _context.SaveChangesAsync();
+                        await LogAuditEventAsync(user.Id, "PROVIDER_LINKED", $"Dynamically mapped Google provider link for existing user {user.Email}.");
+                    }
+                }
+
+                await transaction.CommitAsync();
+
+                // Invalidate identity state cache when provider topology changes
+                await _identityStateResolver.InvalidateCacheAsync(email);
+
+                var roles = await _identityRepository.GetUserRolesAsync(user.Id);
+                var permissions = await _identityRepository.GetUserPermissionsAsync(user.Id);
+
+                await CacheUserAuthDataAsync(user.Id, roles, permissions);
+
+                var jwt = _tokenService.GenerateJwtToken(user, roles, permissions);
+                var refreshTokenStr = _tokenService.GenerateRefreshToken();
+
+                var sessionId = Guid.CreateVersion7();
+                var rememberMe = true; 
+                await SaveRefreshTokenAsync(user.Id, refreshTokenStr, sessionId, rememberMe);
+
+                var refreshExpiry = DateTime.UtcNow.AddDays(7);
+                _tokenService.SetTokenInsideCookie("access_token", jwt, DateTime.UtcNow.AddMinutes(15));
+                _tokenService.SetTokenInsideCookie("refresh_token", refreshTokenStr, refreshExpiry);
+
+                _metrics.RecordLoginSuccess();
+                await LogAuditEventAsync(user.Id, "USER_GOOGLE_LOGIN_SUCCESS", $"User {user.Email} logged in successfully via Google OAuth.");
+
+                return new AuthResponse(user.Id, user.Email, user.FullName, user.AvatarUrl, roles, permissions, true, "ACTIVE", "DASHBOARD");
             }
-            else
+            catch (Exception ex)
             {
-                if (_accountService.IsAccountDisabled(user))
-                {
-                    _metrics.RecordLoginFailed();
-                    await LogAuditEventAsync(user.Id, "USER_LOGIN_FAILED_DISABLED", $"Disabled user account Google login attempt for {user.Email}.");
-                    throw new UnauthorizedAccessException("Account is disabled.");
-                }
-
-                if (!string.IsNullOrEmpty(payload.Picture) && user.AvatarUrl != payload.Picture)
-                {
-                    user.AvatarUrl = payload.Picture;
-                }
-                if (!string.IsNullOrEmpty(payload.Name) && user.FullName != payload.Name && user.FullName == "Google User")
-                {
-                    user.FullName = payload.Name;
-                }
-
-                if (user.Status == UserStatus.EMAIL_VERIFY_PENDING)
-                {
-                    user.TransitionTo(UserStatus.ACTIVE);
-                    user.EmailVerifiedAt = _timeProvider.GetUtcNow().UtcDateTime;
-                }
-
-                user.UpdatedAt = _timeProvider.GetUtcNow().UtcDateTime;
-                await _context.SaveChangesAsync();
+                await transaction.RollbackAsync();
+                _logger.LogError(ex, "[CorrelationID: {CorrelationId}] Google login transaction failed.", correlationId);
+                throw;
             }
-
-            var roles = await _identityRepository.GetUserRolesAsync(user.Id);
-            var permissions = await _identityRepository.GetUserPermissionsAsync(user.Id);
-
-            await CacheUserAuthDataAsync(user.Id, roles, permissions);
-
-            var jwt = _tokenService.GenerateJwtToken(user, roles, permissions);
-            var refreshTokenStr = _tokenService.GenerateRefreshToken();
-
-            var sessionId = Guid.CreateVersion7();
-            var rememberMe = true; // default to true for Google OAuth / Remembered sessions
-            await SaveRefreshTokenAsync(user.Id, refreshTokenStr, sessionId, rememberMe);
-
-            var refreshExpiry = DateTime.UtcNow.AddDays(7);
-            _tokenService.SetTokenInsideCookie("access_token", jwt, DateTime.UtcNow.AddMinutes(15));
-            _tokenService.SetTokenInsideCookie("refresh_token", refreshTokenStr, refreshExpiry);
-
-            _metrics.RecordLoginSuccess();
-            await LogAuditEventAsync(user.Id, "USER_GOOGLE_LOGIN_SUCCESS", $"User {user.Email} logged in successfully via Google OAuth.");
-
-            return new AuthResponse(user.Id, user.Email, user.FullName, user.AvatarUrl, roles, permissions, true, "ACTIVE", "DASHBOARD");
         }
         catch (InvalidJwtException ex)
         {
@@ -1182,6 +1232,766 @@ public class AuthService : IAuthService
 
         _context.AuditLogs.Add(auditLog);
         await _context.SaveChangesAsync();
+    }
+
+    // --- NORMALIZATION & SECURITY HELPERS ---
+
+    private string GetDefaultFullNameFromEmail(string email)
+    {
+        if (string.IsNullOrWhiteSpace(email))
+            return "Candidate User";
+
+        try
+        {
+            var parts = email.Split('@');
+            var localPart = parts[0];
+
+            var plusIndex = localPart.IndexOf('+');
+            if (plusIndex >= 0)
+            {
+                localPart = localPart.Substring(0, plusIndex);
+            }
+
+            if (string.IsNullOrWhiteSpace(localPart))
+                return "Candidate User";
+
+            var separators = new[] { '.', '_', '-' };
+            var words = localPart.Split(separators, StringSplitOptions.RemoveEmptyEntries);
+            if (words.Length == 0)
+                return "Candidate User";
+
+            var titleCasedWords = new List<string>();
+            foreach (var word in words)
+            {
+                if (word.Length > 0)
+                {
+                    titleCasedWords.Add(char.ToUpper(word[0]) + word.Substring(1).ToLowerInvariant());
+                }
+            }
+
+            return string.Join(" ", titleCasedWords);
+        }
+        catch
+        {
+            return "Candidate User";
+        }
+    }
+
+    private string NormalizeEmailPolicy(string email)
+    {
+        if (string.IsNullOrWhiteSpace(email)) return string.Empty;
+        var trimmed = email.Trim().Normalize(NormalizationForm.FormC).ToLowerInvariant();
+        var parts = trimmed.Split('@');
+        if (parts.Length != 2) return trimmed;
+        var local = parts[0];
+        var domain = parts[1];
+        if (domain == "gmail.com")
+        {
+            var plusIndex = local.IndexOf('+');
+            if (plusIndex >= 0)
+            {
+                local = local.Substring(0, plusIndex);
+            }
+        }
+        return $"{local}@{domain}";
+    }
+
+    private bool IsDisposableEmail(string email)
+    {
+        var normalized = NormalizeEmailPolicy(email);
+        var parts = normalized.Split('@');
+        if (parts.Length != 2) return true;
+        var domain = parts[1];
+        var blacklist = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+        {
+            "temp-mail.org", "temp-mail.com", "guerrillamail.com", "yopmail.com", "10minutemail.com",
+            "tempmail.com", "guerrillamail.org", "guerrillamailblock.com", "guerrillamail.net"
+        };
+        return blacklist.Contains(domain);
+    }
+
+    private string GenerateHmacSha256OtpHash(string plainOtp)
+    {
+        using var hmac = new HMACSHA256(Encoding.UTF8.GetBytes(_envConfig.Jwt.Key));
+        var hashBytes = hmac.ComputeHash(Encoding.UTF8.GetBytes(plainOtp));
+        return Convert.ToHexString(hashBytes).ToLowerInvariant();
+    }
+
+    private bool ConstantTimeEquals(string a, string b)
+    {
+        if (a == null || b == null) return false;
+        var aBytes = Encoding.UTF8.GetBytes(a);
+        var bBytes = Encoding.UTF8.GetBytes(b);
+        return CryptographicOperations.FixedTimeEquals(aBytes, bBytes);
+    }
+
+    private string NormalizeCompanyNameForMatching(string name)
+    {
+        if (string.IsNullOrWhiteSpace(name)) return string.Empty;
+        var normalized = name.Normalize(NormalizationForm.FormD).ToLowerInvariant();
+        var sb = new StringBuilder();
+        foreach (var c in normalized)
+        {
+            var uc = System.Globalization.CharUnicodeInfo.GetUnicodeCategory(c);
+            if (uc != System.Globalization.UnicodeCategory.NonSpacingMark)
+            {
+                sb.Append(c);
+            }
+        }
+        var textWithoutAccents = sb.ToString();
+
+        var patterns = new[] 
+        { 
+            "cong ty co phan", "cong ty tnhh", "tnhh", "co phan", "dntn", "cp", "cong ty", "doanh nghiep" 
+        };
+
+        foreach (var pattern in patterns)
+        {
+            textWithoutAccents = textWithoutAccents.Replace(pattern, "");
+        }
+
+        var cleanSb = new StringBuilder();
+        foreach (var c in textWithoutAccents)
+        {
+            if (char.IsLetterOrDigit(c))
+            {
+                cleanSb.Append(c);
+            }
+        }
+
+        return cleanSb.ToString().Trim();
+    }
+
+    // --- OTP IMPLEMENTATIONS ---
+
+    public async Task<SendOtpResponse> SendOtpAsync(SendOtpRequest request, string userAgent, string ipAddress, CancellationToken cancellationToken = default)
+    {
+        var normalizedEmail = NormalizeEmailPolicy(request.Email);
+        if (IsDisposableEmail(normalizedEmail))
+        {
+            throw new AuthException(AuthErrorCodes.InvalidCredentials, "Disposable email addresses are not permitted.");
+        }
+
+        var cooldownKey = $"cooldown:otp:{normalizedEmail}:{request.Purpose}";
+        var isCooldown = await _cacheService.GetAsync<string>(cooldownKey);
+        if (isCooldown != null)
+        {
+            throw new AuthException(AuthErrorCodes.CooldownActive, "Please wait before requesting another OTP.");
+        }
+
+        var plainOtp = RandomNumberGenerator.GetInt32(100000, 1000000).ToString();
+        var otpHash = GenerateHmacSha256OtpHash(plainOtp);
+
+        var challengeId = Guid.CreateVersion7();
+        var expiresAt = _timeProvider.GetUtcNow().AddMinutes(5);
+
+        var verification = new OtpVerification
+        {
+            ChallengeId = challengeId,
+            Email = normalizedEmail,
+            OtpHash = otpHash,
+            Purpose = request.Purpose,
+            ExpiresAt = expiresAt,
+            CreatedAt = _timeProvider.GetUtcNow(),
+            LastSentAt = _timeProvider.GetUtcNow()
+        };
+
+        _context.OtpVerifications.Add(verification);
+        await _context.SaveChangesAsync(cancellationToken);
+
+        // Outbox Pattern Integration
+        var payloadObj = new
+        {
+            Email = normalizedEmail,
+            Otp = plainOtp,
+            ChallengeId = challengeId,
+            Purpose = request.Purpose
+        };
+
+        var outboxMessage = new OutboxMessage
+        {
+            Type = "EmailOtpVerification",
+            Payload = System.Text.Json.JsonSerializer.Serialize(payloadObj),
+            CreatedAt = _timeProvider.GetUtcNow()
+        };
+
+        _context.OutboxMessages.Add(outboxMessage);
+        await _context.SaveChangesAsync(cancellationToken);
+
+        await _cacheService.SetAsync(cooldownKey, "active", TimeSpan.FromSeconds(60));
+        await LogAuditEventAsync(null, "OTP_SENT", $"OTP challenge {challengeId} sent to {normalizedEmail} for {request.Purpose}.");
+
+        return new SendOtpResponse(challengeId, normalizedEmail, 60);
+    }
+
+    public async Task<VerifyOtpResponse> VerifyOtpAsync(VerifyOtpRequest request, CancellationToken cancellationToken = default)
+    {
+        var normalizedEmail = NormalizeEmailPolicy(request.Email);
+        var verification = await _context.OtpVerifications
+            .Where(v => v.ChallengeId == request.ChallengeId && v.Email == normalizedEmail && v.Purpose == request.Purpose)
+            .FirstOrDefaultAsync(cancellationToken);
+
+        if (verification == null)
+        {
+            await LogAuditEventAsync(null, "OTP_FAILED", $"OTP verification failed: unknown challenge {request.ChallengeId} for {normalizedEmail}.");
+            throw new AuthException(AuthErrorCodes.InvalidToken, "The OTP challenge is invalid or does not match.");
+        }
+
+        if (verification.ConsumedAt != null)
+        {
+            throw new AuthException(AuthErrorCodes.TokenAlreadyConsumed, "This OTP has already been verified.");
+        }
+
+        if (verification.ExpiresAt <= _timeProvider.GetUtcNow())
+        {
+            throw new AuthException(AuthErrorCodes.ExpiredToken, "This OTP has expired.");
+        }
+
+        if (verification.Attempts >= 5)
+        {
+            await LogAuditEventAsync(null, "SuspiciousActivity", $"Abuse block triggered for challenge {request.ChallengeId} (too many attempts).");
+            throw new AuthException(AuthErrorCodes.SuspiciousActivity, "Too many failed attempts. This OTP has been blocked.");
+        }
+
+        var inputHash = GenerateHmacSha256OtpHash(request.Code);
+        bool matches = ConstantTimeEquals(verification.OtpHash, inputHash);
+
+        verification.Attempts += 1;
+        verification.LastAttemptAt = _timeProvider.GetUtcNow();
+
+        if (!matches)
+        {
+            await _context.SaveChangesAsync(cancellationToken);
+            await LogAuditEventAsync(null, "OTP_FAILED", $"OTP verification failed for challenge {request.ChallengeId} on {normalizedEmail}.");
+            throw new AuthException(AuthErrorCodes.InvalidCredentials, "The OTP entered is incorrect.");
+        }
+
+        verification.ConsumedAt = _timeProvider.GetUtcNow();
+        await _context.SaveChangesAsync(cancellationToken);
+
+        var tempSetupToken = Guid.NewGuid().ToString("N");
+        await _cacheService.SetAsync($"setup:token:{normalizedEmail}:{request.ChallengeId}", tempSetupToken, TimeSpan.FromMinutes(10));
+
+        await LogAuditEventAsync(null, "OTP_VERIFIED", $"OTP verified successfully for challenge {request.ChallengeId} on {normalizedEmail}.");
+        return new VerifyOtpResponse(request.ChallengeId, normalizedEmail, tempSetupToken);
+    }
+
+    public async Task<AuthResponse> CreatePasswordAsync(CreatePasswordRequest request, CancellationToken cancellationToken = default)
+    {
+        var normalizedEmail = NormalizeEmailPolicy(request.Email);
+        var cachedToken = await _cacheService.GetAsync<string>($"setup:token:{normalizedEmail}:{request.ChallengeId}");
+
+        if (cachedToken == null || !ConstantTimeEquals(cachedToken, request.VerificationToken))
+        {
+            throw new AuthException(AuthErrorCodes.InvalidToken, "The setup token has expired or is invalid.");
+        }
+
+        using var transaction = await _context.Database.BeginTransactionAsync(cancellationToken);
+        try
+        {
+            var user = await _context.Users
+                .Include(u => u.AuthProviders)
+                .Include(u => u.PasswordCredentials)
+                .FirstOrDefaultAsync(u => u.Email == normalizedEmail, cancellationToken);
+
+            var userRole = await _context.Roles.FirstOrDefaultAsync(r => r.Name == "USER", cancellationToken);
+            if (userRole == null)
+            {
+                throw new InvalidOperationException("Default 'USER' role not found in the database.");
+            }
+
+            var passwordHash = BCrypt.Net.BCrypt.HashPassword(request.Password);
+
+            if (user == null)
+            {
+                user = new User
+                {
+                    Email = normalizedEmail,
+                    FullName = !string.IsNullOrWhiteSpace(request.FullName)
+                        ? request.FullName
+                        : GetDefaultFullNameFromEmail(normalizedEmail),
+                    PasswordHash = passwordHash,
+                    Status = UserStatus.ACTIVE,
+                    EmailVerifiedAt = _timeProvider.GetUtcNow().UtcDateTime,
+                    CreatedAt = _timeProvider.GetUtcNow().UtcDateTime,
+                    UpdatedAt = _timeProvider.GetUtcNow().UtcDateTime,
+                    Roles = new List<Role> { userRole }
+                };
+                _context.Users.Add(user);
+                await _context.SaveChangesAsync(cancellationToken);
+            }
+            else
+            {
+                user.PasswordHash = passwordHash;
+                if (!string.IsNullOrWhiteSpace(request.FullName))
+                {
+                    user.FullName = request.FullName;
+                }
+                user.EmailVerifiedAt = _timeProvider.GetUtcNow().UtcDateTime;
+                user.TransitionTo(UserStatus.ACTIVE);
+                user.UpdatedAt = _timeProvider.GetUtcNow().UtcDateTime;
+                await _context.SaveChangesAsync(cancellationToken);
+            }
+
+            // Provider mapping
+            var provider = user.AuthProviders.FirstOrDefault(ap => ap.ProviderName == "Password");
+            if (provider == null)
+            {
+                provider = new AuthProvider
+                {
+                    UserId = user.Id,
+                    ProviderName = "Password",
+                    ProviderKey = normalizedEmail,
+                    CreatedAt = _timeProvider.GetUtcNow()
+                };
+                _context.AuthProviders.Add(provider);
+                await _context.SaveChangesAsync(cancellationToken);
+            }
+
+            // Password Credentials history management
+            var activeCredentials = user.PasswordCredentials.Where(pc => pc.IsActive && pc.DeletedAt == null).ToList();
+            foreach (var cred in activeCredentials)
+            {
+                cred.IsActive = false;
+                cred.RevokedAt = _timeProvider.GetUtcNow();
+                cred.RevokedReason = "Password updated/rotated";
+                cred.UpdatedAt = _timeProvider.GetUtcNow().UtcDateTime;
+            }
+
+            var newCred = new PasswordCredential
+            {
+                UserId = user.Id,
+                PasswordHash = passwordHash,
+                IsActive = true,
+                PasswordChangedAt = _timeProvider.GetUtcNow(),
+                CreatedAt = _timeProvider.GetUtcNow(),
+                UpdatedAt = _timeProvider.GetUtcNow()
+            };
+            _context.PasswordCredentials.Add(newCred);
+            await _context.SaveChangesAsync(cancellationToken);
+
+            await transaction.CommitAsync(cancellationToken);
+
+            // Invalidate identity state cache — user now has a Password provider
+            await _identityStateResolver.InvalidateCacheAsync(normalizedEmail);
+
+            await _cacheService.RemoveAsync($"setup:token:{normalizedEmail}:{request.ChallengeId}");
+
+            var roles = await _identityRepository.GetUserRolesAsync(user.Id);
+            var permissions = await _identityRepository.GetUserPermissionsAsync(user.Id);
+
+            await CacheUserAuthDataAsync(user.Id, roles, permissions);
+
+            var jwt = _tokenService.GenerateJwtToken(user, roles, permissions);
+            var refreshTokenStr = _tokenService.GenerateRefreshToken();
+
+            var sessionId = Guid.CreateVersion7();
+            await SaveRefreshTokenAsync(user.Id, refreshTokenStr, sessionId, false);
+
+            _tokenService.SetTokenInsideCookie("access_token", jwt, DateTime.UtcNow.AddMinutes(15));
+            _tokenService.SetTokenInsideCookie("refresh_token", refreshTokenStr, DateTime.UtcNow.AddHours(24));
+
+            await LogAuditEventAsync(user.Id, "PASSWORD_CREDENTIAL_CREATED", $"Password credential established successfully for user {user.Email}.");
+
+            return new AuthResponse(user.Id, user.Email, user.FullName, user.AvatarUrl, roles, permissions, true, "ACTIVE", "DASHBOARD");
+        }
+        catch (Exception ex)
+        {
+            await transaction.RollbackAsync(cancellationToken);
+            _logger.LogError(ex, "CreatePasswordAsync transactional flow failed.");
+            throw;
+        }
+    }
+
+    // --- COMPANY TRUST ONBOARDING ---
+
+    public async Task<bool> RegisterCompanyAsync(RegisterCompanyRequest request, string userAgent, string ipAddress, CancellationToken cancellationToken = default)
+    {
+        var normalizedEmail = NormalizeEmailPolicy(request.CompanyEmail);
+        if (IsDisposableEmail(normalizedEmail))
+        {
+            throw new AuthException(AuthErrorCodes.InvalidCredentials, "Disposable email addresses are not permitted.");
+        }
+
+        var client = _httpClientFactory.CreateClient();
+        var response = await client.GetAsync($"https://api.vietqr.io/v2/business/{request.TaxCode}", cancellationToken);
+
+        if (!response.IsSuccessStatusCode)
+        {
+            throw new AuthException(AuthErrorCodes.InvalidCredentials, "The business tax registry lookup failed.");
+        }
+
+        var json = await response.Content.ReadAsStringAsync(cancellationToken);
+        using var doc = System.Text.Json.JsonDocument.Parse(json);
+        if (!doc.RootElement.TryGetProperty("data", out var dataElement) || dataElement.ValueKind == System.Text.Json.JsonValueKind.Null)
+        {
+            throw new AuthException(AuthErrorCodes.InvalidCredentials, "No business record found matching this tax code.");
+        }
+
+        var officialName = dataElement.GetProperty("name").GetString() ?? string.Empty;
+
+        var normalizedOfficial = NormalizeCompanyNameForMatching(officialName);
+        var normalizedUser = NormalizeCompanyNameForMatching(request.CompanyName);
+
+        if (normalizedOfficial != normalizedUser)
+        {
+            throw new AuthException(AuthErrorCodes.InvalidCredentials, "Company name does not exactly match the official tax registry business name.");
+        }
+
+        var plainToken = Guid.NewGuid().ToString("N") + Guid.NewGuid().ToString("N");
+        using var sha = SHA256.Create();
+        var tokenHash = Convert.ToHexString(sha.ComputeHash(Encoding.UTF8.GetBytes(plainToken))).ToLowerInvariant();
+
+        var link = new VerificationLink
+        {
+            Email = normalizedEmail,
+            TaxCode = request.TaxCode,
+            CompanyName = officialName,
+            TokenHash = tokenHash,
+            Purpose = "CompanyVerification",
+            ExpiresAt = _timeProvider.GetUtcNow().AddHours(24),
+            CreatedAt = _timeProvider.GetUtcNow()
+        };
+
+        _context.VerificationLinks.Add(link);
+        await _context.SaveChangesAsync(cancellationToken);
+
+        var verifyLinkFormat = _envConfig.Auth.VerifyEmailUrlFormat.Replace("/verify-email", "/company-onboarding/verify").Replace("{token}", plainToken);
+        var payloadObj = new
+        {
+            Email = normalizedEmail,
+            CompanyName = officialName,
+            Link = verifyLinkFormat
+        };
+
+        var outboxMessage = new OutboxMessage
+        {
+            Type = "CompanyEmailVerification",
+            Payload = System.Text.Json.JsonSerializer.Serialize(payloadObj),
+            CreatedAt = _timeProvider.GetUtcNow()
+        };
+
+        _context.OutboxMessages.Add(outboxMessage);
+        await _context.SaveChangesAsync(cancellationToken);
+
+        await LogAuditEventAsync(null, "COMPANY_VERIFIED", $"Company verification link sent for tax code {request.TaxCode} to {normalizedEmail}.");
+        return true;
+    }
+
+    public async Task<VerifyCompanyLinkResponse> VerifyCompanyLinkAsync(VerifyCompanyLinkRequest request, string userAgent, string ipAddress, CancellationToken cancellationToken = default)
+    {
+        using var sha = SHA256.Create();
+        var tokenHash = Convert.ToHexString(sha.ComputeHash(Encoding.UTF8.GetBytes(request.Token))).ToLowerInvariant();
+
+        var link = await _context.VerificationLinks
+            .Where(vl => vl.TokenHash == tokenHash && vl.Purpose == "CompanyVerification" && vl.DeletedAt == null)
+            .FirstOrDefaultAsync(cancellationToken);
+
+        if (link == null)
+        {
+            throw new AuthException(AuthErrorCodes.InvalidToken, "The verification link is invalid.");
+        }
+
+        if (link.ConsumedAt != null)
+        {
+            throw new AuthException(AuthErrorCodes.TokenAlreadyConsumed, "This verification link has already been used.");
+        }
+
+        if (link.ExpiresAt <= _timeProvider.GetUtcNow())
+        {
+            throw new AuthException(AuthErrorCodes.ExpiredToken, "This verification link has expired.");
+        }
+
+        link.ConsumedAt = _timeProvider.GetUtcNow();
+        link.ConsumedByIp = ipAddress;
+        link.ConsumedByUserAgent = userAgent;
+        await _context.SaveChangesAsync(cancellationToken);
+
+        var workspaceToken = Guid.NewGuid().ToString("N");
+        await _cacheService.SetAsync($"workspace:token:{link.Email}", workspaceToken, TimeSpan.FromMinutes(15));
+
+        return new VerifyCompanyLinkResponse(link.CompanyName ?? string.Empty, link.TaxCode ?? string.Empty, link.Email, workspaceToken);
+    }
+
+    public async Task<AuthResponse> SetupWorkspaceAsync(SetupWorkspaceRequest request, string userAgent, string ipAddress, CancellationToken cancellationToken = default)
+    {
+        var normalizedEmail = NormalizeEmailPolicy(request.CompanyEmail);
+        var cachedToken = await _cacheService.GetAsync<string>($"workspace:token:{normalizedEmail}");
+
+        if (cachedToken == null || !ConstantTimeEquals(cachedToken, request.VerificationToken))
+        {
+            throw new AuthException(AuthErrorCodes.InvalidToken, "The workspace setup session has expired or is invalid.");
+        }
+
+        // Reservation blocklist
+        var reservedUsernames = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+        {
+            "admin", "support", "api", "auth", "login", "billing", "security", "careers", "jobs", "cverify", "system", "root", "portal"
+        };
+        var normalizedUsername = request.OrganizationUsername.Trim().ToLowerInvariant();
+        if (reservedUsernames.Contains(normalizedUsername))
+        {
+            throw new AuthException(AuthErrorCodes.InvalidCredentials, $"The workspace username '{request.OrganizationUsername}' is reserved.");
+        }
+
+        using var transaction = await _context.Database.BeginTransactionAsync(cancellationToken);
+        try
+        {
+            var existingOrg = await _context.Organizations
+                .FirstOrDefaultAsync(o => o.Username == normalizedUsername && o.DeletedAt == null, cancellationToken);
+            if (existingOrg != null)
+            {
+                throw new AuthException(AuthErrorCodes.InvalidCredentials, "This organization workspace username is already taken.");
+            }
+
+            var link = await _context.VerificationLinks
+                .Where(vl => vl.Email == normalizedEmail && vl.Purpose == "CompanyVerification" && vl.DeletedAt == null)
+                .OrderByDescending(vl => vl.CreatedAt)
+                .FirstOrDefaultAsync(cancellationToken);
+
+            if (link == null)
+            {
+                throw new AuthException(AuthErrorCodes.InvalidToken, "Company ownership details not found.");
+            }
+
+            var org = new Organization
+            {
+                Name = link.CompanyName ?? "Default Organization",
+                TaxCode = link.TaxCode ?? string.Empty,
+                Email = normalizedEmail,
+                Username = normalizedUsername,
+                IsVerified = true,
+                CreatedAt = _timeProvider.GetUtcNow(),
+                UpdatedAt = _timeProvider.GetUtcNow()
+            };
+            _context.Organizations.Add(org);
+            await _context.SaveChangesAsync(cancellationToken);
+
+            var user = await _context.Users
+                .FirstOrDefaultAsync(u => u.Email == normalizedEmail && u.DeletedAt == null, cancellationToken);
+
+            var ownerRole = await _context.Roles.FirstOrDefaultAsync(r => r.Name == "USER", cancellationToken);
+            if (ownerRole == null)
+            {
+                throw new InvalidOperationException("Default owner role not found in database.");
+            }
+
+            var passwordHash = BCrypt.Net.BCrypt.HashPassword(request.Password);
+
+            if (user == null)
+            {
+                user = new User
+                {
+                    Email = normalizedEmail,
+                    FullName = $"{org.Name} Owner",
+                    Status = UserStatus.ACTIVE,
+                    EmailVerifiedAt = _timeProvider.GetUtcNow().UtcDateTime,
+                    CreatedAt = _timeProvider.GetUtcNow().UtcDateTime,
+                    UpdatedAt = _timeProvider.GetUtcNow().UtcDateTime,
+                    Roles = new List<Role> { ownerRole }
+                };
+                _context.Users.Add(user);
+                await _context.SaveChangesAsync(cancellationToken);
+            }
+
+            // Create Password linkage
+            var provider = await _context.AuthProviders
+                .FirstOrDefaultAsync(ap => ap.UserId == user.Id && ap.ProviderName == "Password" && ap.DeletedAt == null, cancellationToken);
+            if (provider == null)
+            {
+                provider = new AuthProvider
+                {
+                    UserId = user.Id,
+                    ProviderName = "Password",
+                    ProviderKey = normalizedEmail,
+                    CreatedAt = _timeProvider.GetUtcNow()
+                };
+                _context.AuthProviders.Add(provider);
+                await _context.SaveChangesAsync(cancellationToken);
+            }
+
+            // Add active PasswordCredential
+            var newCred = new PasswordCredential
+            {
+                UserId = user.Id,
+                PasswordHash = passwordHash,
+                IsActive = true,
+                PasswordChangedAt = _timeProvider.GetUtcNow(),
+                CreatedAt = _timeProvider.GetUtcNow(),
+                UpdatedAt = _timeProvider.GetUtcNow()
+            };
+            _context.PasswordCredentials.Add(newCred);
+            await _context.SaveChangesAsync(cancellationToken);
+
+            // Member mapping
+            var member = new OrganizationMember
+            {
+                OrganizationId = org.Id,
+                UserId = user.Id,
+                Role = "Owner",
+                JoinedAt = _timeProvider.GetUtcNow()
+            };
+            _context.OrganizationMembers.Add(member);
+            await _context.SaveChangesAsync(cancellationToken);
+
+            // Map Verification Link ownership for audits
+            link.UserId = user.Id;
+            link.OrganizationId = org.Id;
+            await _context.SaveChangesAsync(cancellationToken);
+
+            await transaction.CommitAsync(cancellationToken);
+
+            await _cacheService.RemoveAsync($"workspace:token:{normalizedEmail}");
+
+            var roles = await _identityRepository.GetUserRolesAsync(user.Id);
+            var permissions = await _identityRepository.GetUserPermissionsAsync(user.Id);
+
+            await CacheUserAuthDataAsync(user.Id, roles, permissions);
+
+            var jwt = _tokenService.GenerateJwtToken(user, roles, permissions);
+            var refreshTokenStr = _tokenService.GenerateRefreshToken();
+
+            var sessionId = Guid.CreateVersion7();
+            await SaveRefreshTokenAsync(user.Id, refreshTokenStr, sessionId, false);
+
+            _tokenService.SetTokenInsideCookie("access_token", jwt, DateTime.UtcNow.AddMinutes(15));
+            _tokenService.SetTokenInsideCookie("refresh_token", refreshTokenStr, DateTime.UtcNow.AddHours(24));
+
+            await LogAuditEventAsync(user.Id, "ORGANIZATION_CREATED", $"Workspace organization '{normalizedUsername}' registered successfully.");
+            return new AuthResponse(user.Id, user.Email, user.FullName, user.AvatarUrl, roles, permissions, true, "ACTIVE", "DASHBOARD");
+        }
+        catch (Exception ex)
+        {
+            await transaction.RollbackAsync(cancellationToken);
+            _logger.LogError(ex, "Workspace setup flow failed.");
+            throw;
+        }
+    }
+
+    public async Task<AuthResponse?> CompanyLoginAsync(OrganizationLoginRequest request, string userAgent, string ipAddress)
+    {
+        var normalizedUsername = request.OrganizationUsername.Trim().ToLowerInvariant();
+        var org = await _context.Organizations
+            .Where(o => o.Username == normalizedUsername && o.DeletedAt == null)
+            .FirstOrDefaultAsync();
+
+        if (org == null)
+        {
+            return null;
+        }
+
+        var ownerMember = await _context.OrganizationMembers
+            .Where(om => om.OrganizationId == org.Id && om.Role == "Owner")
+            .FirstOrDefaultAsync();
+
+        if (ownerMember == null)
+        {
+            return null;
+        }
+
+        var user = await _context.Users
+            .Include(u => u.PasswordCredentials)
+            .Where(u => u.Id == ownerMember.UserId && u.DeletedAt == null)
+            .FirstOrDefaultAsync();
+
+        if (user == null)
+        {
+            return null;
+        }
+
+        if (_accountService.IsAccountDisabled(user))
+        {
+            throw new UnauthorizedAccessException("Account is disabled.");
+        }
+
+        if (_accountService.IsAccountLocked(user))
+        {
+            throw new UnauthorizedAccessException($"Account is locked.");
+        }
+
+        var activeCred = user.PasswordCredentials.FirstOrDefault(pc => pc.IsActive && pc.DeletedAt == null);
+        if (activeCred == null || !BCrypt.Net.BCrypt.Verify(request.Password, activeCred.PasswordHash))
+        {
+            await _accountService.HandleFailedLoginAsync(user);
+            await LogAuditEventAsync(user.Id, "USER_LOGIN_FAILED_CREDENTIALS", $"Invalid workspace password login attempt for org {normalizedUsername}.");
+            return null;
+        }
+
+        await _accountService.ResetFailedAttemptsAsync(user);
+
+        var roles = await _identityRepository.GetUserRolesAsync(user.Id);
+        var permissions = await _identityRepository.GetUserPermissionsAsync(user.Id);
+
+        await CacheUserAuthDataAsync(user.Id, roles, permissions);
+
+        var jwt = _tokenService.GenerateJwtToken(user, roles, permissions);
+        var refreshTokenStr = _tokenService.GenerateRefreshToken();
+
+        var sessionId = Guid.CreateVersion7();
+        await SaveRefreshTokenAsync(user.Id, refreshTokenStr, sessionId, false);
+
+        _tokenService.SetTokenInsideCookie("access_token", jwt, DateTime.UtcNow.AddMinutes(15));
+        _tokenService.SetTokenInsideCookie("refresh_token", refreshTokenStr, DateTime.UtcNow.AddHours(24));
+
+        await LogAuditEventAsync(user.Id, "USER_LOGIN_SUCCESS", $"Logged in successfully via workspace organization {normalizedUsername}.");
+        return new AuthResponse(user.Id, user.Email, user.FullName, user.AvatarUrl, roles, permissions, true, "ACTIVE", "DASHBOARD");
+    }
+
+    // --- ACTIVE SESSIONS & REVOCATIONS ---
+
+    public async Task<IEnumerable<SessionInfo>> GetActiveSessionsAsync()
+    {
+        var userIdClaim = _httpContextAccessor.HttpContext?.User.FindFirst(ClaimTypes.NameIdentifier);
+        if (userIdClaim == null) return Enumerable.Empty<SessionInfo>();
+
+        var userId = Guid.Parse(userIdClaim.Value);
+        var currentRefreshToken = _httpContextAccessor.HttpContext?.Request.Cookies["refresh_token"];
+
+        var activeTokens = await _context.RefreshTokens
+            .Where(t => t.UserId == userId && t.RevokedAt == null && t.ExpiresAt > _timeProvider.GetUtcNow())
+            .ToListAsync();
+
+        var sessions = activeTokens
+            .GroupBy(t => t.SessionId)
+            .Select(g =>
+            {
+                var latestToken = g.OrderByDescending(t => t.CreatedAt).First();
+                bool isCurrent = g.Any(t => t.Token == currentRefreshToken);
+
+                return new SessionInfo(
+                    latestToken.SessionId,
+                    latestToken.UserAgent != null ? (latestToken.UserAgent.Contains("Windows") ? "Windows Desktop" : "Mobile Client") : "Web Application",
+                    latestToken.UserAgent,
+                    latestToken.IpAddress,
+                    g.Min(t => t.CreatedAt),
+                    latestToken.CreatedAt,
+                    isCurrent
+                );
+            });
+
+        return sessions;
+    }
+
+    public async Task<bool> RevokeSessionAsync(Guid sessionId)
+    {
+        var userIdClaim = _httpContextAccessor.HttpContext?.User.FindFirst(ClaimTypes.NameIdentifier);
+        if (userIdClaim == null) return false;
+
+        var userId = Guid.Parse(userIdClaim.Value);
+        var activeTokens = await _context.RefreshTokens
+            .Where(t => t.UserId == userId && t.SessionId == sessionId && t.RevokedAt == null)
+            .ToListAsync();
+
+        if (!activeTokens.Any()) return false;
+
+        foreach (var token in activeTokens)
+        {
+            token.RevokedAt = _timeProvider.GetUtcNow();
+        }
+
+        await _context.SaveChangesAsync();
+        await LogAuditEventAsync(userId, "SESSION_REVOKED", $"Session {sessionId} successfully revoked by owner.");
+        return true;
     }
 }
 

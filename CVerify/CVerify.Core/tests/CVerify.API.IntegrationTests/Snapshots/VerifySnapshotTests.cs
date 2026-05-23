@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using Microsoft.Extensions.DependencyInjection;
@@ -73,6 +73,83 @@ public class VerifySnapshotTests : IClassFixture<SharedTestcontainerFixture>
 
         // Act
         var html = await _templateService.RenderTemplateAsync("WelcomeEmail.html", model).ConfigureAwait(false);
+
+        // Assert
+        await Verifier.Verify(html, "html").ConfigureAwait(false);
+    }
+
+    [Fact]
+    public async Task OtpVerificationEmailTemplate_SnapshotTest()
+    {
+        // Arrange
+        var model = new Dictionary<string, object>
+        {
+            { "full_name", "Luc OTP Tester" },
+            { "otp_code", "948201" }
+        };
+
+        // Act
+        var html = await _templateService.RenderTemplateAsync("OtpVerificationEmail.html", model).ConfigureAwait(false);
+
+        // Assert
+        await Verifier.Verify(html, "html").ConfigureAwait(false);
+    }
+
+    [Fact]
+    public async Task SecurityAlertEmailTemplate_SnapshotTest()
+    {
+        // Arrange
+        var model = new Dictionary<string, object>
+        {
+            { "full_name", "Luc Security Alert" },
+            { "alert_title", "Suspicious Identity Account Access" },
+            { "alert_message", "A new login attempt was detected from a location and device that is not recognized. Please verify if this activity was authorized by you." },
+            { "activity_type", "Account Login / Verification" },
+            { "activity_time", "2026-05-23T21:42:00Z" },
+            { "ip_address", "192.168.1.155" },
+            { "user_agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/120.0.0.0" },
+            { "action_link", "https://cverify.ai/lock-account?token=security_alert_123_abc" }
+        };
+
+        // Act
+        var html = await _templateService.RenderTemplateAsync("SecurityAlertEmail.html", model).ConfigureAwait(false);
+
+        // Assert
+        await Verifier.Verify(html, "html").ConfigureAwait(false);
+    }
+
+    [Fact]
+    public async Task CompanyVerificationEmailTemplate_SnapshotTest()
+    {
+        // Arrange
+        var model = new Dictionary<string, object>
+        {
+            { "full_name", "Luc Company Recruiter" },
+            { "company_name", "DevTech Systems" },
+            { "verification_link", "https://cverify.ai/company/verify?token=company_verify_123_abc" }
+        };
+
+        // Act
+        var html = await _templateService.RenderTemplateAsync("CompanyVerificationEmail.html", model).ConfigureAwait(false);
+
+        // Assert
+        await Verifier.Verify(html, "html").ConfigureAwait(false);
+    }
+
+    [Fact]
+    public async Task WorkspaceOnboardingEmailTemplate_SnapshotTest()
+    {
+        // Arrange
+        var model = new Dictionary<string, object>
+        {
+            { "full_name", "Luc Recruiter Admin" },
+            { "company_name", "DevTech Systems" },
+            { "workspace_id", "devtech-systems-workspace" },
+            { "workspace_url", "https://devtech.cverify.ai" }
+        };
+
+        // Act
+        var html = await _templateService.RenderTemplateAsync("WorkspaceOnboardingEmail.html", model).ConfigureAwait(false);
 
         // Assert
         await Verifier.Verify(html, "html").ConfigureAwait(false);

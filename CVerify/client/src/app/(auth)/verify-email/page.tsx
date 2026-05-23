@@ -3,8 +3,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { authApi } from '../../../features/auth/services/auth.service';
-import { Card } from '../../../components/ui/card';
-import { Button } from '../../../components/ui/button';
 import { useAuth } from '../../../features/auth/hooks/use-auth';
 import { useAuthStore } from '../../../features/auth/store/use-auth-store';
 import Link from 'next/link';
@@ -18,17 +16,10 @@ import {
   ChevronLeft,
   RefreshCw
 } from 'lucide-react';
-import { normalizeError } from '../../../services/axios-client';
-import { toast, Typography, Spinner } from '@heroui/react';
-import { useForm } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
-import { z } from 'zod';
-import { useTranslation } from 'react-i18next';
+import {
+    Card, Typography, Button, TextField, Input, toast, Spinner, Form, Label
+} from "@heroui/react";
 import { Suspense } from 'react';
-
-type ResendFormValues = {
-  email: string;
-};
 
 type VerifyState = 'pending' | 'verifying' | 'success' | 'failed' | 'expired';
 
@@ -38,45 +29,27 @@ function VerifyEmailContent() {
   const token = searchParams.get('token');
   const emailFromUrl = searchParams.get('email');
   const effectRan = useRef(false);
-  const { user, verifyEmail } = useAuth();
-  const { pendingVerificationEmail } = useAuthStore();
-  const { t } = useTranslation(['auth', 'common']);
-
-  const resendSchema = z.object({
-    email: z.string().email(t('auth:validation.emailInvalid')).max(255),
-  });
+  const { verifyEmail } = useAuth();
+  const { pendingVerificationEmail, user } = useAuthStore();
 
   const targetEmail = pendingVerificationEmail || emailFromUrl || '';
 
-  // Determine initial state based on presence of a verification token
   const [state, setState] = useState<VerifyState>(token ? 'verifying' : 'pending');
-  const [message, setMessage] = useState(token ? t('auth:screens.verifyPending') : t('auth:subtitle.verify'));
-  const [errorText, setErrorText] = useState<string | null>(null);
+  const [errorMessage, setErrorMessage] = useState("");
+  const [emailInput, setEmailInput] = useState(targetEmail || user?.email || '');
   const [showManualForm, setShowManualForm] = useState(!targetEmail);
   const [resendLoading, setResendLoading] = useState(false);
 
-  const { register, handleSubmit, setValue, formState: { errors, isValid } } = useForm<ResendFormValues>({
-    resolver: zodResolver(resendSchema),
-    defaultValues: {
-      email: targetEmail || user?.email || '',
-    },
-    mode: 'onChange',
-  });
-
-  // Keep email input in sync if user or store state hydrates late
   useEffect(() => {
     const activeEmail = targetEmail || user?.email || '';
     if (activeEmail) {
-      setValue('email', activeEmail);
+      setEmailInput(activeEmail);
       if (showManualForm && pendingVerificationEmail) {
-        queueMicrotask(() => {
-          setShowManualForm(false);
-        });
+        setShowManualForm(false);
       }
     }
-  }, [user, targetEmail, setValue, showManualForm, pendingVerificationEmail]);
+  }, [user, targetEmail, showManualForm, pendingVerificationEmail]);
 
-  // Execute verification immediately if token is present
   useEffect(() => {
     if (!token) return;
     if (effectRan.current) return;
@@ -85,10 +58,8 @@ function VerifyEmailContent() {
       const result = await verifyEmail(token);
       if (result.success) {
         setState('success');
-        setMessage(t('auth:screens.verifySuccess'));
-
-        toast.success(t('auth:toast.verifiedSuccessTitle'), {
-          description: t('auth:toast.verifiedSuccessDesc'),
+        toast.success("Email Verified", {
+          description: "Your CVerify email verification is complete."
         });
 
         setTimeout(() => {
@@ -98,37 +69,32 @@ function VerifyEmailContent() {
         const error = result.error;
         if (error?.code === 'AUTH_EXPIRED_TOKEN') {
           setState('expired');
-          setMessage(t('auth:screens.verifyExpired'));
         } else {
           setState('failed');
-          setMessage(t('auth:screens.verifyFailed'));
         }
-        setErrorText(error?.message || t('auth:screens.verifyFailed'));
-
-        toast.danger(t('auth:toast.verifiedFailedTitle'), {
-          description: error?.message || t('auth:toast.verifiedFailedDesc'),
-        });
+        setErrorMessage(error?.message || "Verification failed. The token is invalid.");
+        toast.danger("Verification Failed");
       }
     };
 
     verify();
     effectRan.current = true;
-  }, [token, verifyEmail, router, t]);
+  }, [token, verifyEmail, router]);
 
-  // Handler for resending the verification email
-  const onResend = async (data: ResendFormValues) => {
+  const onResend = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!emailInput) return;
+
     setResendLoading(true);
     try {
-      await authApi.resendVerification(data.email);
-      toast.success(t('auth:toast.linkSentTitle'), {
-        description: t('auth:toast.linkSentDesc', { email: data.email }),
+      await authApi.resendVerification(emailInput);
+      toast.success("Verification Link Sent", {
+        description: `Please check ${emailInput} for your new verification link.`
       });
-      // Return state to pending since a new link was sent
       setState('pending');
-    } catch (err: unknown) {
-      const parsedError = normalizeError(err);
-      toast.danger(t('auth:toast.linkSentFailedTitle'), {
-        description: parsedError.message || t('auth:toast.linkSentFailedDesc'),
+    } catch (err: any) {
+      toast.danger("Resend Failed", {
+        description: err.response?.data?.message || "Could not resend the link."
       });
     } finally {
       setResendLoading(false);
@@ -136,232 +102,187 @@ function VerifyEmailContent() {
   };
 
   return (
-    <Card glow={true} className="transition-all duration-300">
-      {/* 1. VERIFYING STATE */}
+    <Card className="w-full bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 p-8 shadow-xl rounded-2xl">
       {state === 'verifying' && (
-        <div className="text-center py-6 flex flex-col items-center select-none">
-          <div className="relative mb-6">
-            <div className="w-16 h-16 rounded-full bg-background text-accent flex items-center justify-center border border-accent/20 shadow-[0_0_20px_rgba(var(--color-accent),0.15)] animate-pulse">
-              <Shield size={32} className="animate-spin-slow" />
-            </div>
-            <div className="absolute inset-0 rounded-full border-t-2 border-accent animate-spin" />
-          </div>
-
-          <Typography type="h2" className="text-2xl font-extrabold tracking-tight text-foreground mb-3 font-outfit">
-            {t('auth:screens.verifyingTitle')}
-          </Typography>
-          <Typography type="body-sm" className="text-muted leading-relaxed mb-8 max-w-sm">
-            {message}
+        <div className="w-full flex flex-col items-center py-8 text-center select-none">
+          <RefreshCw className="size-10 text-zinc-400 dark:text-zinc-600 animate-spin mb-6" />
+          <Typography.Heading level={3} className="text-xl font-bold pb-2 text-zinc-900 dark:text-zinc-100">
+            Verifying email...
+          </Typography.Heading>
+          <Typography className="text-sm text-zinc-500 dark:text-zinc-400">
+            Completing cryptographic email address validation.
           </Typography>
         </div>
       )}
 
-      {/* 2. SUCCESS STATE */}
       {state === 'success' && (
-        <div className="text-center py-6 flex flex-col items-center select-none">
-          <div className="w-16 h-16 rounded-full bg-success/10 text-success flex items-center justify-center mb-6 shadow-[0_0_25px_rgba(var(--color-success),0.3)] border border-success/20 animate-scale-up">
-            <ShieldCheck size={36} className="text-success" />
+        <div className="w-full flex flex-col items-center text-center">
+          <div className="w-16 h-16 bg-emerald-50 dark:bg-emerald-950 flex items-center justify-center rounded-2xl mb-6">
+            <ShieldCheck className="size-8 text-emerald-600 dark:text-emerald-400" />
           </div>
 
-          <Typography type="h2" className="text-2xl font-extrabold tracking-tight text-foreground mb-3 font-outfit">
-            {t('auth:toast.verifiedSuccessTitle')}
+          <Typography.Heading level={3} className="text-2xl font-bold pb-2 text-zinc-900 dark:text-zinc-100">
+            Verification Successful
+          </Typography.Heading>
+          
+          <Typography className="text-sm text-zinc-500 dark:text-zinc-400 mb-8 max-w-sm">
+            Email ownership proven successfully. You are being redirected to your dashboard...
           </Typography>
 
-          <Typography type="body-sm" className="text-muted leading-relaxed mb-8 max-w-sm">
-            {t('auth:screens.verifySuccess')}
-          </Typography>
-
-          <Button
-            variant="solid"
-            className="w-full py-6 text-sm font-semibold rounded-xl bg-foreground text-background hover:bg-foreground/90 active:scale-[0.98] transition-all duration-200"
-            onClick={() => router.push('/')}
-          >
-            {t('auth:actions.goToDashboard')}
-            <ArrowRight className="ml-2 w-4.5 h-4.5" />
-          </Button>
+          <div className="w-8 h-8 border-2 border-t-zinc-900 border-zinc-200 dark:border-t-zinc-100 rounded-full animate-spin" />
         </div>
       )}
 
-      {/* 3. EXPIRED STATE */}
       {state === 'expired' && (
-        <div className="text-center py-6 flex flex-col items-center select-none">
-          <div className="w-16 h-16 rounded-full bg-warning/10 text-warning flex items-center justify-center mb-6 shadow-[0_0_25px_rgba(var(--color-warning),0.3)] border border-warning/20 animate-bounce-short">
-            <RefreshCw size={32} className="text-warning" />
+        <div className="w-full flex flex-col items-center text-center">
+          <div className="w-16 h-16 bg-rose-50 dark:bg-rose-950 flex items-center justify-center rounded-2xl mb-6">
+            <ShieldAlert className="size-8 text-rose-600 dark:text-rose-400" />
           </div>
 
-          <Typography type="h2" className="text-2xl font-extrabold tracking-tight text-foreground mb-3 font-outfit">
-            {t('auth:screens.verifyExpiredTitle')}
+          <Typography.Heading level={3} className="text-2xl font-bold pb-2 text-zinc-900 dark:text-zinc-100">
+            Verification Expired
+          </Typography.Heading>
+          
+          <Typography className="text-sm text-zinc-500 dark:text-zinc-400 mb-8 max-w-sm">
+            Your verification token has expired. Request a new link to activate your profile.
           </Typography>
 
-          <Typography type="body-sm" className="text-muted leading-relaxed mb-8 max-w-sm font-outfit">
-            {t('auth:screens.verifyExpired')}
-          </Typography>
-
-          <div className="flex flex-col gap-3 w-full">
+          <div className="flex gap-4 w-full">
             <Button
-              variant="solid"
-              className="w-full py-6 text-sm font-semibold bg-zinc-900 hover:bg-zinc-800 text-white dark:bg-zinc-50 dark:hover:bg-zinc-100 dark:text-zinc-950"
-              onClick={() => {
-                if (targetEmail) {
-                  onResend({ email: targetEmail });
-                } else {
-                  setShowManualForm(true);
-                  setState('pending');
-                }
-              }}
+              variant="secondary"
+              fullWidth
+              className="h-12 rounded-xl text-zinc-800 dark:text-zinc-200"
+              onPress={() => router.push('/login')}
             >
-              {t('auth:toast.linkSentTitle')}
+              Back to Login
             </Button>
             <Button
-              variant="bordered"
-              className="w-full py-6 text-sm font-semibold font-outfit"
-              onClick={() => router.push('/login')}
-            >
-              {t('auth:actions.backToLogin')}
-            </Button>
-          </div>
-        </div>
-      )}
-
-      {/* 4. FAILED STATE */}
-      {state === 'failed' && (
-        <div className="text-center py-6 flex flex-col items-center select-none">
-          <div className="w-16 h-16 rounded-full bg-danger/10 text-danger flex items-center justify-center mb-6 shadow-[0_0_25px_rgba(var(--color-danger),0.3)] border border-danger/20 animate-bounce-short">
-            <ShieldAlert size={36} className="text-danger" />
-          </div>
-
-          <Typography type="h2" className="text-2xl font-extrabold tracking-tight text-foreground mb-3 font-outfit">
-            {t('auth:screens.verifyFailedTitle')}
-          </Typography>
-
-          <Typography type="body-sm" className="text-muted leading-relaxed mb-8 max-w-sm font-outfit">
-            {errorText || t('auth:screens.verifyFailed')}
-          </Typography>
-
-          <div className="flex flex-col gap-3 w-full">
-            <Button
-              variant="solid"
-              className="w-full py-6 text-sm font-semibold bg-zinc-900 hover:bg-zinc-800 text-white dark:bg-zinc-50 dark:hover:bg-zinc-100 dark:text-zinc-950 animate-scale-up"
-              onClick={() => {
+              fullWidth
+              className="h-12 rounded-xl bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 font-semibold"
+              onPress={() => {
                 setState('pending');
                 setShowManualForm(true);
               }}
             >
-              {t('auth:toast.linkSentTitle')}
-            </Button>
-            <Button
-              variant="bordered"
-              className="w-full py-6 text-sm font-semibold font-outfit"
-              onClick={() => router.push('/login')}
-            >
-              {t('auth:actions.backToLogin')}
+              Request new link
             </Button>
           </div>
         </div>
       )}
 
-      {/* 5. PENDING STATE */}
+      {state === 'failed' && (
+        <div className="w-full flex flex-col items-center text-center">
+          <div className="w-16 h-16 bg-rose-50 dark:bg-rose-950 flex items-center justify-center rounded-2xl mb-6">
+            <ShieldAlert className="size-8 text-rose-600 dark:text-rose-400" />
+          </div>
+
+          <Typography.Heading level={3} className="text-2xl font-bold pb-2 text-zinc-900 dark:text-zinc-100">
+            Verification Failed
+          </Typography.Heading>
+          
+          <Typography className="text-sm text-zinc-500 dark:text-zinc-400 mb-8 max-w-xs">
+            {errorMessage}
+          </Typography>
+
+          <div className="flex gap-4 w-full">
+            <Button
+              variant="secondary"
+              fullWidth
+              className="h-12 rounded-xl text-zinc-800 dark:text-zinc-200"
+              onPress={() => router.push('/login')}
+            >
+              Back to Login
+            </Button>
+            <Button
+              fullWidth
+              className="h-12 rounded-xl bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 font-semibold"
+              onPress={() => {
+                setState('pending');
+                setShowManualForm(true);
+              }}
+            >
+              Request new link
+            </Button>
+          </div>
+        </div>
+      )}
+
       {state === 'pending' && (
-        <div className="py-2 flex flex-col select-none">
-          <div className="text-center mb-6">
-            <div className="inline-flex w-12 h-12 rounded-full bg-surface-secondary text-muted items-center justify-center mb-4 border border-zinc-200/20">
-              <Mail size={22} />
-            </div>
-            <Typography type="h2" className="text-2xl font-extrabold tracking-tight text-foreground font-outfit">
-              {t('auth:title.verify')}
-            </Typography>
-            <Typography type="body-sm" className="text-muted mt-2 max-w-xs mx-auto font-outfit">
-              {t('auth:subtitle.verify')}
+        <div className="w-full flex flex-col items-center select-none font-outfit">
+          <div className="w-12 h-12 bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center rounded-xl mb-6">
+            <Mail className="size-6 text-zinc-900 dark:text-zinc-100" />
+          </div>
+
+          <div className="text-center w-full mb-8">
+            <Typography.Heading level={3} className="text-2xl font-bold pb-2 text-zinc-900 dark:text-zinc-100">
+              Verify your email
+            </Typography.Heading>
+            <Typography className="text-sm text-zinc-500 dark:text-zinc-400">
+              Please click the link sent to your email address to complete verification.
             </Typography>
           </div>
 
-          {targetEmail && !showManualForm && (
-            <div className="mb-6 p-4 rounded-2xl bg-surface-secondary border border-separator flex flex-col items-center text-center gap-2 font-outfit animate-scale-up">
-              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-success/10 text-success border border-success/20">
-                <CheckCircle2 size={12} />
-                <span>{t('auth:labels.verificationLinkSent')}</span>
-              </div>
-              <Typography type="body-xs" className="text-muted mt-1 max-w-[280px]">
-                {t('auth:screens.verifyPending').split(':')[0]}:
-              </Typography>
-              <span className="font-bold text-sm text-foreground bg-surface-secondary px-3 py-1 rounded-lg select-all">
-                {targetEmail}
-              </span>
-              <Typography type="body-xs" className="text-muted mt-2 max-w-[300px] leading-relaxed">
-                {t('auth:screens.verifyPendingInstructions')}
-              </Typography>
+          {emailInput && !showManualForm && (
+            <div className="w-full bg-zinc-50 dark:bg-zinc-850 border border-zinc-200 dark:border-zinc-800 rounded-xl p-5 mb-6 text-center animate-scale-up">
+              <span className="text-xs font-semibold text-zinc-450 dark:text-zinc-550 uppercase tracking-wider block mb-1">Sent to Address</span>
+              <span className="text-sm font-bold text-zinc-800 dark:text-zinc-200 block truncate">{emailInput}</span>
             </div>
           )}
 
-          <form onSubmit={handleSubmit(onResend)} className="space-y-4 font-outfit">
+          <Form className="w-full flex flex-col gap-4" onSubmit={onResend}>
             {showManualForm && (
-              <div className="flex flex-col gap-1.5 animate-scale-up">
-                <label className="text-xs font-semibold text-muted mb-0.5">
-                  {t('auth:labels.email')}
-                </label>
-                <div className="relative">
-                  <input
-                    type="email"
-                    placeholder="name@example.com"
-                    {...register('email')}
-                    disabled={resendLoading}
-                    className={[
-                      "w-full px-4 py-3 rounded-xl text-sm transition-all duration-200 bg-surface border outline-none focus:border-foreground focus:ring-1 focus:ring-focus",
-                      errors.email
-                        ? "border-danger focus:border-danger focus:ring-1 focus:ring-danger"
-                        : "border-border"
-                    ].join(' ')}
-                  />
-                  {errors.email && (
-                    <span className="text-xs text-danger font-medium mt-1.5 flex items-center gap-1.5">
-                      <ShieldAlert size={14} className="shrink-0" />
-                      {errors.email.message}
-                    </span>
-                  )}
-                </div>
-              </div>
+              <TextField isRequired name="email">
+                <Label className="text-sm font-medium text-zinc-700 dark:text-zinc-300 pb-1">Email Address</Label>
+                <Input
+                  type="email"
+                  placeholder="name@example.com"
+                  className="h-12"
+                  value={emailInput}
+                  onChange={(e) => setEmailInput(e.target.value)}
+                />
+              </TextField>
             )}
 
             <Button
               type="submit"
-              className="w-full mt-2 py-6 text-sm font-semibold rounded-xl bg-foreground text-background hover:bg-foreground/90 active:scale-[0.98] transition-all duration-200"
-              isLoading={resendLoading}
-              disabled={(!isValid && showManualForm) || resendLoading}
+              fullWidth
+              isPending={resendLoading}
+              isDisabled={!emailInput || resendLoading}
+              className="h-12 rounded-xl bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 font-semibold flex items-center justify-center gap-2"
             >
-              {resendLoading ? t('auth:actions.sendingVerification') : t('auth:actions.resendVerification')}
+              {resendLoading && <Spinner color="current" size="sm" />}
+              Resend verification link
             </Button>
-          </form>
+          </Form>
 
-          {/* Action Footer */}
-          <div className="text-center mt-6 flex flex-col gap-3 font-outfit">
-            {targetEmail && !showManualForm && (
+          <div className="text-center text-xs font-medium text-zinc-500 dark:text-zinc-400 pt-6 flex flex-col gap-3">
+            {emailInput && !showManualForm && (
               <button
                 type="button"
                 onClick={() => setShowManualForm(true)}
-                className="text-xs font-semibold text-muted hover:text-foreground hover:underline transition-colors inline-flex items-center justify-center gap-1.5 cursor-pointer"
+                className="font-semibold text-zinc-900 dark:text-zinc-100 hover:underline cursor-pointer bg-transparent border-0"
               >
-                {t('auth:actions.useDifferentEmail')}
+                Use a different email address
               </button>
             )}
 
             {showManualForm && targetEmail && (
               <button
                 type="button"
-                onClick={() => setShowManualForm(false)}
-                className="text-xs font-semibold text-muted hover:text-foreground hover:underline transition-colors inline-flex items-center justify-center gap-1.5 cursor-pointer"
+                onClick={() => {
+                  setShowManualForm(false);
+                  setEmailInput(targetEmail);
+                }}
+                className="font-semibold text-zinc-900 dark:text-zinc-100 hover:underline cursor-pointer bg-transparent border-0 inline-flex items-center justify-center gap-1.5"
               >
-                <ChevronLeft size={14} />
-                {t('auth:actions.backToSentInfo')}
+                <ChevronLeft size={14} /> Back to sent info
               </button>
             )}
 
-            <div className="text-xs text-muted">
-              {t('auth:actions.haveAccount')}{' '}
-              <Link
-                href="/login"
-                className="font-semibold text-foreground hover:underline"
-              >
-                {t('auth:actions.signInNow')}
+            <div>
+              Already verified?{" "}
+              <Link href="/login" className="font-semibold text-zinc-900 dark:text-zinc-100 hover:underline">
+                Sign In
               </Link>
             </div>
           </div>
@@ -375,7 +296,7 @@ export default function VerifyEmailPage() {
   return (
     <Suspense fallback={
       <div className="flex items-center justify-center p-8 min-h-[400px]">
-        <Spinner size="md" color="accent" />
+        <div className="w-8 h-8 border-2 border-t-zinc-900 border-zinc-200 dark:border-t-zinc-100 rounded-full animate-spin" />
       </div>
     }>
       <VerifyEmailContent />
