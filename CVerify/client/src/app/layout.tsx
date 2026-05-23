@@ -18,8 +18,11 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "CVerify AI - Enterprise Travel Companion Platform",
-  description: "Plan, secure, and experience customized itineraries designed by advanced travel intelligence.",
+  title: "CVerify",
+  description: "Access technical truth",
+  icons: {
+    icon: "/brand/logo.png",
+  },
 };
 
 export default async function RootLayout({
@@ -30,11 +33,11 @@ export default async function RootLayout({
   const cookieStore = await cookies();
   const cookieVal = cookieStore.get("i18next")?.value;
   const locale = (cookieVal === "en" || cookieVal === "vi") ? cookieVal : "vi";
-  
+
   // Read and clean cookie theme to match server state
   const themeVal = cookieStore.get("theme")?.value;
   const theme = themeVal || "dark";
-  
+
   // Determine layout direction (English and Vietnamese are Left-to-Right)
   const dir = "ltr";
 
@@ -46,7 +49,7 @@ export default async function RootLayout({
       data-theme={theme}
       suppressHydrationWarning
     >
-      <body 
+      <body
         className="min-h-full flex flex-col font-sans bg-background text-foreground transition-colors duration-300"
         suppressHydrationWarning
       >
