@@ -40,18 +40,18 @@ export function normalizeError(error: unknown): ApiError {
       }
 
       // 2. Map standard versioned error structure
-      const contractVersion = data.contractVersion || '1.0.0';
+      const contractVersion = (data.contractVersion as string) || '1.0.0';
       const status = typeof data.status === 'number' ? data.status : (axiosErr.response?.status || 500);
-      const code = data.code || (isValidationError ? 'VALIDATION_ERROR' : 'UNKNOWN_ERROR');
-      const category = data.category || (isValidationError ? 'VALIDATION' : 'UNKNOWN');
-      const severity = data.severity || 'Error';
+      const code = (data.code as string) || (isValidationError ? 'VALIDATION_ERROR' : 'UNKNOWN_ERROR');
+      const category = (data.category as string) || (isValidationError ? 'VALIDATION' : 'UNKNOWN');
+      const severity = (data.severity as 'Info' | 'Warning' | 'Error') || 'Error';
       
       // The backend-provided localization key, or fallback to system category matching
-      const messageKey = data.messageKey || `system.toast.error.${code.toLowerCase()}`;
+      const messageKey = (data.messageKey as string) || `system.toast.error.${code.toLowerCase()}`;
       
-      const mainMessage = data.detail || 
-                          data.message || 
-                          data.title || 
+      const mainMessage = (data.detail as string) || 
+                          (data.message as string) || 
+                          (data.title as string) || 
                           axiosErr.message || 
                           'An unexpected error occurred.';
 
@@ -59,18 +59,19 @@ export function normalizeError(error: unknown): ApiError {
         ? data.retryable 
         : (status >= 500 || axiosErr.code === 'ECONNABORTED');
 
-      const correlationId = data.correlationId || 
+      const correlationId = (data.correlationId as string) || 
                             axiosErr.response?.headers['x-correlation-id'] || 
                             '';
 
-      const timestamp = data.timestamp || new Date().toISOString();
+      const timestamp = (data.timestamp as string) || new Date().toISOString();
 
-      const uxSemantics: UxSemantics = data.uxSemantics 
+      const sem = data.uxSemantics as Record<string, unknown> | undefined;
+      const uxSemantics: UxSemantics = sem 
         ? {
-            displayMode: data.uxSemantics.displayMode || 'Toast',
-            resolutionStrategy: data.uxSemantics.resolutionStrategy || 'None',
-            userAction: data.uxSemantics.userAction || '',
-            targetPath: data.uxSemantics.targetPath || '',
+            displayMode: (sem.displayMode as UxSemantics['displayMode']) || 'Toast',
+            resolutionStrategy: (sem.resolutionStrategy as UxSemantics['resolutionStrategy']) || 'None',
+            userAction: (sem.userAction as string) || '',
+            targetPath: (sem.targetPath as string) || '',
           }
         : {
             ...defaultUxSemantics,
@@ -107,8 +108,8 @@ export function normalizeError(error: unknown): ApiError {
         uxSemantics,
         details,
         // Backward compatibility
-        remainingAttempts: typeof data.remainingAttempts === 'number' ? data.remainingAttempts : details.remainingAttempts,
-        cooldownSeconds: typeof data.cooldownSeconds === 'number' ? data.cooldownSeconds : details.cooldownSeconds,
+        remainingAttempts: typeof data.remainingAttempts === 'number' ? (data.remainingAttempts as number) : (details.remainingAttempts as number),
+        cooldownSeconds: typeof data.cooldownSeconds === 'number' ? (data.cooldownSeconds as number) : (details.cooldownSeconds as number),
       };
     }
 

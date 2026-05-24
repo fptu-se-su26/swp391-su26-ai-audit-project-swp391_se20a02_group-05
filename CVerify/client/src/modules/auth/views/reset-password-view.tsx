@@ -9,6 +9,8 @@ import {
 } from "@heroui/react";
 import { KeyRound, ShieldCheck, Eye, EyeOff } from 'lucide-react';
 import { Suspense } from 'react';
+import PasswordStrengthMeter from '@/shared/components/security/password-strength-meter';
+import { evaluatePasswordStrength } from '@/shared/security/password-policy';
 
 function ResetPasswordContent() {
   const searchParams = useSearchParams();
@@ -22,6 +24,8 @@ function ResetPasswordContent() {
   const [isConfirmVisible, setIsConfirmVisible] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
+  
+  const isPasswordValid = evaluatePasswordStrength(password, "default").percentage === 100;
 
   useEffect(() => {
     if (!token) {
@@ -33,7 +37,7 @@ function ResetPasswordContent() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!token || !password || password.length < 8) return;
+    if (!token || !password || !isPasswordValid) return;
     if (password !== confirmPassword) {
       toast.danger("Mismatch", { description: "Passwords do not match." });
       return;
@@ -63,25 +67,25 @@ function ResetPasswordContent() {
   };
 
   return (
-    <Card className="w-full bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 p-8 shadow-xl rounded-2xl">
+    <Card className="w-full bg-surface border border-border p-8 shadow-xl rounded-2xl">
       {!isSuccess ? (
         <div className="w-full flex flex-col items-center">
-          <div className="w-12 h-12 bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center rounded-xl mb-6">
-            <KeyRound className="size-6 text-zinc-900 dark:text-zinc-100" />
+          <div className="w-12 h-12 bg-surface-secondary flex items-center justify-center rounded-xl mb-6">
+            <KeyRound className="size-6 text-foreground" />
           </div>
 
           <div className="text-center w-full mb-8 font-outfit">
-            <Typography.Heading level={3} className="text-2xl font-bold pb-2 text-zinc-900 dark:text-zinc-100">
+            <Typography.Heading level={3} className="text-2xl font-bold pb-2 text-foreground">
               Reset Password
             </Typography.Heading>
-            <Typography className="text-sm text-zinc-500 dark:text-zinc-400">
+            <Typography className="text-sm text-muted">
               Establish a new password for your verified CVerify profile.
             </Typography>
           </div>
 
           <Form className="w-full flex flex-col gap-5" onSubmit={handleSubmit}>
             <TextField isRequired name="password" type="password">
-              <Label className="text-sm font-medium text-zinc-700 dark:text-zinc-300 pb-1">New Password</Label>
+              <Label className="text-sm font-medium text-foreground/80 pb-1">New Password</Label>
               <InputGroup>
                 <InputGroup.Input
                   className="h-12"
@@ -96,7 +100,7 @@ function ResetPasswordContent() {
                     isIconOnly
                     variant="ghost"
                     size="sm"
-                    className="text-zinc-400 hover:bg-transparent"
+                    className="text-muted hover:bg-transparent"
                     onPress={() => setIsVisible(!isVisible)}
                     isDisabled={isLoading || !token}
                   >
@@ -104,10 +108,11 @@ function ResetPasswordContent() {
                   </Button>
                 </InputGroup.Suffix>
               </InputGroup>
+              <PasswordStrengthMeter value={password} policyId="default" />
             </TextField>
 
             <TextField isRequired name="confirmPassword" type="password">
-              <Label className="text-sm font-medium text-zinc-700 dark:text-zinc-300 pb-1">Confirm Password</Label>
+              <Label className="text-sm font-medium text-foreground/80 pb-1">Confirm Password</Label>
               <InputGroup>
                 <InputGroup.Input
                   className="h-12"
@@ -122,7 +127,7 @@ function ResetPasswordContent() {
                     isIconOnly
                     variant="ghost"
                     size="sm"
-                    className="text-zinc-400 hover:bg-transparent"
+                    className="text-muted hover:bg-transparent"
                     onPress={() => setIsConfirmVisible(!isConfirmVisible)}
                     isDisabled={isLoading || !token}
                   >
@@ -136,8 +141,8 @@ function ResetPasswordContent() {
               type="submit"
               fullWidth
               isPending={isLoading}
-              isDisabled={!password || password.length < 8 || password !== confirmPassword || isLoading || !token}
-              className="h-12 rounded-xl bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 font-semibold mt-2 flex items-center justify-center gap-2"
+              isDisabled={!password || !isPasswordValid || password !== confirmPassword || isLoading || !token}
+              className="h-12 rounded-xl bg-foreground text-background font-semibold mt-2 flex items-center justify-center gap-2"
             >
               {isLoading && <Spinner color="current" size="sm" />}
               Update password
@@ -146,19 +151,19 @@ function ResetPasswordContent() {
         </div>
       ) : (
         <div className="w-full flex flex-col items-center py-6 text-center">
-          <div className="w-16 h-16 bg-emerald-50 dark:bg-emerald-950 flex items-center justify-center rounded-2xl mb-6">
-            <ShieldCheck className="size-8 text-emerald-600 dark:text-emerald-400" />
+          <div className="w-16 h-16 bg-success/10 flex items-center justify-center rounded-2xl mb-6">
+            <ShieldCheck className="size-8 text-success" />
           </div>
 
-          <Typography.Heading level={3} className="text-2xl font-bold pb-2 text-zinc-900 dark:text-zinc-100">
+          <Typography.Heading level={3} className="text-2xl font-bold pb-2 text-foreground">
             Password Updated
           </Typography.Heading>
           
-          <Typography className="text-sm text-zinc-500 dark:text-zinc-400 mb-8 max-w-sm">
+          <Typography className="text-sm text-muted mb-8 max-w-sm">
             Your password credential has been rotated successfully. You are being navigated to your CVerify workspace...
           </Typography>
 
-          <div className="w-8 h-8 border-2 border-t-zinc-900 border-zinc-200 dark:border-t-zinc-100 rounded-full animate-spin" />
+          <div className="w-8 h-8 border-2 border-t-foreground border-border rounded-full animate-spin" />
         </div>
       )}
     </Card>
@@ -169,7 +174,7 @@ export function ResetPasswordView() {
   return (
     <Suspense fallback={
       <div className="flex items-center justify-center p-8 min-h-[400px]">
-        <div className="w-8 h-8 border-2 border-t-zinc-900 border-zinc-200 dark:border-t-zinc-100 rounded-full animate-spin" />
+        <div className="w-8 h-8 border-2 border-t-foreground border-border rounded-full animate-spin" />
       </div>
     }>
       <ResetPasswordContent />

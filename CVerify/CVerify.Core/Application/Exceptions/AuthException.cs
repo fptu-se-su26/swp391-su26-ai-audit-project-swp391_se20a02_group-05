@@ -24,6 +24,7 @@ public static class AuthErrorCodes
     public const string ExpiredToken = "AUTH_EXPIRED_TOKEN";
     public const string TokenAlreadyConsumed = "AUTH_TOKEN_ALREADY_CONSUMED";
     public const string PasswordTooWeak = "AUTH_PASSWORD_TOO_WEAK";
+    public const string PasswordPolicyViolation = "AUTH_PASSWORD_POLICY_VIOLATION";
     public const string PasswordsDoNotMatch = "AUTH_PASSWORDS_DO_NOT_MATCH";
     public const string InvalidCredentials = "AUTH_INVALID_CREDENTIALS";
     public const string LockedOut = "AUTH_LOCKED_OUT";

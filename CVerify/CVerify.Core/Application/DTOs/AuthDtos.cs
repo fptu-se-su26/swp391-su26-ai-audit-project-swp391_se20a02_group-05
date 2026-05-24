@@ -24,9 +24,6 @@ public class RegisterRequest
     public string Email { get; init; } = null!;
 
     [Required]
-    [MinLength(8, ErrorMessage = "Password must be at least 8 characters long.")]
-    [RegularExpression(@"^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&#^()_\-+=\[\]{}|\\:;""'<>,.?/~`])[A-Za-z\d@$!%*?&#^()_\-+=\[\]{}|\\:;""'<>,.?/~`]{8,}$", 
-        ErrorMessage = "Password must contain at least one uppercase letter, one lowercase letter, one digit, and one special character.")]
     public string Password { get; init; } = null!;
 
     [Required]
@@ -73,9 +70,6 @@ public class ResetPasswordRequest
     public string Token { get; init; } = null!;
 
     [Required]
-    [MinLength(8, ErrorMessage = "Password must be at least 8 characters long.")]
-    [RegularExpression(@"^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&#^()_\-+=\[\]{}|\\:;""'<>,.?/~`])[A-Za-z\d@$!%*?&#^()_\-+=\[\]{}|\\:;""'<>,.?/~`]{8,}$", 
-        ErrorMessage = "Password must contain at least one uppercase letter, one lowercase letter, one digit, and one special character.")]
     public string Password { get; init; } = null!;
 
     [Required]
@@ -145,9 +139,6 @@ public class CreatePasswordRequest
     public string VerificationToken { get; init; } = null!;
 
     [Required]
-    [MinLength(8, ErrorMessage = "Password must be at least 8 characters long.")]
-    [RegularExpression(@"^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&#^()_\-+=\[\]{}|\\:;""'<>,.?/~`])[A-Za-z\d@$!%*?&#^()_\-+=\[\]{}|\\:;""'<>,.?/~`]{8,}$", 
-        ErrorMessage = "Password must contain at least one uppercase letter, one lowercase letter, one digit, and one special character.")]
     public string Password { get; init; } = null!;
 
     [Required]
@@ -192,9 +183,6 @@ public class SetupWorkspaceRequest
     public string OrganizationUsername { get; init; } = null!;
 
     [Required]
-    [MinLength(8, ErrorMessage = "Password must be at least 8 characters long.")]
-    [RegularExpression(@"^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&#^()_\-+=\[\]{}|\\:;""'<>,.?/~`])[A-Za-z\d@$!%*?&#^()_\-+=\[\]{}|\\:;""'<>,.?/~`]{8,}$", 
-        ErrorMessage = "Password must contain at least one uppercase letter, one lowercase letter, one digit, and one special character.")]
     public string Password { get; init; } = null!;
 
     [Required]
@@ -245,7 +233,7 @@ public record VerifyCompanyOnboardingResponse(
 public record CompleteOnboardingRequest(
     [Required] string Step2Token,
     [Required][RegularExpression(@"^[a-z0-9-]{4,32}$", ErrorMessage = "Workspace handle must be 4-32 characters, lowercase alphanumeric or dash")] string OrganizationUsername,
-    [Required][MinLength(12, ErrorMessage = "Password must be at least 12 characters long.")] string Password,
+    [Required] string Password,
     [Required] string ConfirmPassword,
     [Required][MaxLength(255)] string CompanyDisplayName
 );

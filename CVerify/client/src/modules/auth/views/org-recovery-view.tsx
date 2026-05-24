@@ -2,16 +2,16 @@
 
 import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { useForm, Controller } from "react-hook-form";
+import { useForm, useWatch } from "react-hook-form";
+import FormOtpField from "@/shared/components/security/form-otp-field";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { recoveryApi } from '@/features/auth/services/recovery.service';
+import { recoveryApi } from "@/features/auth/services/recovery.service";
 import {
   Card,
   Typography,
   Button,
   TextField,
-  InputOTP,
   InputGroup,
   Input,
   Form,
@@ -29,6 +29,8 @@ import {
   Building2,
 } from "lucide-react";
 import axios from "axios";
+import PasswordStrengthMeter from "@/shared/components/security/password-strength-meter";
+import { evaluatePasswordStrength } from "@/shared/security/password-policy";
 
 // Step 1 Schema: Tax Code validation
 const step1Schema = z.object({
@@ -48,11 +50,15 @@ const step3Schema = z
   .object({
     password: z
       .string()
-      .min(8, "Password must be at least 8 characters long")
-      .regex(
-        /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&#^()_\-+=\[\]{}|\\:;""'<>,.?/~`])[A-Za-z\d@$!%*?&#^()_\-+=\[\]{}|\\:;""'<>,.?/~`]{8,}$/,
-        "Password must contain at least one uppercase letter, one lowercase letter, one digit, and one special character.",
-      ),
+      .superRefine((val, ctx) => {
+        const evaluation = evaluatePasswordStrength(val, "enterprise");
+        if (evaluation.percentage < 100) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: "Password does not meet enterprise security requirements.",
+          });
+        }
+      }),
     confirmPassword: z.string(),
   })
   .refine((data) => data.password === data.confirmPassword, {
@@ -94,7 +100,6 @@ export function OrgRecoveryView() {
   const {
     control: control2,
     handleSubmit: handleSub2,
-    formState: { errors: err2 },
   } = useForm<Step2Input>({
     resolver: zodResolver(step2Schema),
     defaultValues: { code: "" },
@@ -104,9 +109,13 @@ export function OrgRecoveryView() {
     register: reg3,
     handleSubmit: handleSub3,
     formState: { errors: err3 },
+    control: control3,
   } = useForm<Step3Input>({
     resolver: zodResolver(step3Schema),
+    defaultValues: { password: "", confirmPassword: "" },
   });
+
+  const passwordVal = useWatch({ control: control3, name: "password" }) || "";
 
   // OTP resend cooldown timer
   useEffect(() => {
@@ -220,51 +229,50 @@ export function OrgRecoveryView() {
   };
 
   return (
-    <Card className="w-full bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 p-8 shadow-xl rounded-2xl">
+    <Card className="w-full p-12 rounded-2xl">
       {step === 1 && (
         <div className="w-full flex flex-col items-center">
           <div className="w-full flex justify-start mb-6">
-            <button
-              onClick={() => router.push("/login")}
-              className="inline-flex items-center gap-1.5 text-xs font-semibold text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100 transition-colors group cursor-pointer bg-transparent border-0"
+            <Button
+              variant="ghost"
+              size="sm"
+              className="absolute top-6 left-4 text-muted"
+              onPress={() => {
+                router.push("/login");
+              }}
             >
-              <ArrowLeft
-                size={14}
-                className="transition-transform group-hover:-translate-x-0.5"
-              />{" "}
-              Back to Sign In
-            </button>
+              <ArrowLeft className="size-3.5" />
+              Return to Login
+            </Button>
           </div>
 
-          <div className="w-12 h-12 bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center rounded-xl mb-6">
-            <Building2 className="size-6 text-zinc-900 dark:text-zinc-100" />
+          <div className="w-12 h-12 bg-surface-secondary flex items-center justify-center rounded-xl mb-6">
+            <Building2 className="size-6 text-foreground" />
           </div>
 
-          <div className="text-center w-full mb-8 font-outfit">
+          <div className="text-center w-full mb-6 flex flex-col items-center gap-2">
             <Typography.Heading
               level={3}
-              className="text-2xl font-bold pb-2 text-zinc-900 dark:text-zinc-100"
+              className="text-2xl font-bold text-foreground"
             >
               Corporate Recovery
             </Typography.Heading>
-            <Typography className="text-sm text-zinc-500 dark:text-zinc-400">
+            <Typography className="text-sm text-muted">
               Enter your official Tax Code to verify corporate ownership and
               receive a challenge code.
             </Typography>
           </div>
 
           <Form
-            className="w-full flex flex-col gap-4"
+            className="w-full flex flex-col gap-6"
             onSubmit={handleSub1(onSubmitTaxCode)}
           >
             <TextField isRequired name="taxCode" isInvalid={!!err1.taxCode}>
-              <Label className="text-sm font-medium text-zinc-700 dark:text-zinc-300 pb-1">
-                Business Tax Code (MST)
-              </Label>
+              <Label>Business Tax Code (MST)</Label>
               <Input
                 placeholder="Enter company tax code"
-                className="h-12"
                 {...reg1("taxCode")}
+                className="h-12"
               />
               {err1.taxCode && <FieldError>{err1.taxCode.message}</FieldError>}
             </TextField>
@@ -274,7 +282,7 @@ export function OrgRecoveryView() {
               fullWidth
               isPending={isLoading}
               isDisabled={isLoading}
-              className="h-12 rounded-xl bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 font-semibold mt-2 flex items-center justify-center gap-2"
+              className="h-12 rounded-2xl"
             >
               {isLoading && <Spinner color="current" size="sm" />}
               Request corporate OTP
@@ -285,88 +293,64 @@ export function OrgRecoveryView() {
 
       {step === 2 && (
         <div className="w-full flex flex-col items-center">
-          <div className="w-12 h-12 bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center rounded-xl mb-6">
-            <Mail className="size-6 text-zinc-900 dark:text-zinc-100" />
+          <div className="w-12 h-12 bg-surface-secondary flex items-center justify-center rounded-xl mb-6">
+            <Mail className="size-6 text-foreground" />
           </div>
 
-          <div className="text-center w-full mb-8 flex flex-col items-center">
+          <div className="text-center w-full mb-6 flex flex-col items-center gap-2">
             <Typography.Heading
               level={3}
-              className="text-2xl font-bold pb-2 text-zinc-900 dark:text-zinc-100"
+              className="text-2xl font-bold text-foreground"
             >
               Verify Corporate Mailbox
             </Typography.Heading>
-            <Typography className="text-xs text-zinc-500 dark:text-zinc-400 leading-normal max-w-sm">
+            <Typography className="text-sm text-muted">
               We resolved your registered recovery contact email as{" "}
-              <span className="font-semibold text-zinc-700 dark:text-zinc-300">
+              <span className="font-semibold text-foreground/85">
                 {maskedEmail}
               </span>
-              . Enter the 6-digit code sent there to confirm admin credentials
+              .
+              <br />
+              Enter the 6-digit code sent there to confirm admin credentials
               access.
             </Typography>
           </div>
 
           <Form
-            className="w-full flex flex-col gap-5 items-center"
+            className="w-full flex flex-col gap-6 items-center"
             onSubmit={handleSub2(onSubmitOtp)}
           >
-            <div className="flex flex-col gap-2 items-center w-full">
-              <Label className="text-sm font-medium text-zinc-700 dark:text-zinc-300 pb-1">
-                One-Time Code
-              </Label>
-
-              <Controller
-                name="code"
-                control={control2}
-                render={({ field }) => (
-                  <InputOTP
-                    maxLength={6}
-                    value={field.value}
-                    onChange={field.onChange}
-                  >
-                    <InputOTP.Group>
-                      <InputOTP.Slot index={0} />
-                      <InputOTP.Slot index={1} />
-                      <InputOTP.Slot index={2} />
-                    </InputOTP.Group>
-                    <InputOTP.Separator />
-                    <InputOTP.Group>
-                      <InputOTP.Slot index={3} />
-                      <InputOTP.Slot index={4} />
-                      <InputOTP.Slot index={5} />
-                    </InputOTP.Group>
-                  </InputOTP>
-                )}
-              />
-              {err2.code && (
-                <div className="text-danger text-xs font-semibold mt-1">
-                  {err2.code.message}
-                </div>
-              )}
-            </div>
+            <FormOtpField
+              name="code"
+              control={control2}
+              length={6}
+              groups={[3, 3]}
+              label="One-Time Code"
+              isDisabled={isLoading}
+            />
 
             <Button
               type="submit"
               fullWidth
               isPending={isLoading}
               isDisabled={isLoading}
-              className="h-12 rounded-xl bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 font-semibold flex items-center justify-center gap-2"
+              className="h-12 rounded-2xl"
             >
               {isLoading && <Spinner color="current" size="sm" />}
               Verify corporate identity
             </Button>
           </Form>
 
-          <div className="text-center text-xs font-medium text-zinc-500 dark:text-zinc-400 pt-6">
+          <div className="text-center text-xs font-medium text-muted pt-6">
             Didn&apos;t receive the code?{" "}
             {cooldown > 0 ? (
-              <span className="font-semibold text-zinc-400">
+              <span className="font-semibold text-muted">
                 Resend in {cooldown}s
               </span>
             ) : (
               <button
                 onClick={handleResendOtp}
-                className="font-semibold text-zinc-900 dark:text-zinc-100 hover:underline cursor-pointer bg-transparent border-0"
+                className="font-semibold text-foreground hover:underline cursor-pointer bg-transparent border-0"
               >
                 Resend code
               </button>
@@ -376,26 +360,23 @@ export function OrgRecoveryView() {
       )}
 
       {step === 3 && (
-        <div className="w-full flex flex-col items-center">
-          <div className="w-12 h-12 bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center rounded-xl mb-6">
-            <ShieldCheck className="size-6 text-zinc-900 dark:text-zinc-100" />
+        <div className="w-full flex flex-col items-center gap-6">
+          <div className="w-12 h-12 bg-background flex items-center justify-center rounded-xl mb-6">
+            <ShieldCheck className="size-6" />
           </div>
 
-          <div className="text-center w-full mb-8">
-            <Typography.Heading
-              level={3}
-              className="text-2xl font-bold pb-2 text-zinc-900 dark:text-zinc-100"
-            >
+          <div className="text-center w-full flex flex-col items-center gap-2">
+            <Typography.Heading level={3} className="text-2xl font-bold">
               Reset Administrator Password
             </Typography.Heading>
-            <Typography className="text-sm text-zinc-500 dark:text-zinc-400">
+            <Typography className="text-sm text-muted">
               Establish your new secure administrative credential for this
               organization workspace.
             </Typography>
           </div>
 
           <Form
-            className="w-full flex flex-col gap-5"
+            className="w-full flex flex-col gap-6"
             onSubmit={handleSub3(onSubmitPassword)}
           >
             <TextField
@@ -404,9 +385,7 @@ export function OrgRecoveryView() {
               type="password"
               isInvalid={!!err3.password}
             >
-              <Label className="text-sm font-medium text-zinc-700 dark:text-zinc-300 pb-1">
-                New Password
-              </Label>
+              <Label>New Password</Label>
               <InputGroup>
                 <InputGroup.Input
                   className="h-12"
@@ -419,7 +398,7 @@ export function OrgRecoveryView() {
                     isIconOnly
                     variant="ghost"
                     size="sm"
-                    className="text-zinc-400 hover:bg-transparent"
+                    className="text-muted"
                     onPress={() => setIsVisible(!isVisible)}
                   >
                     {isVisible ? (
@@ -433,6 +412,7 @@ export function OrgRecoveryView() {
               {err3.password && (
                 <FieldError>{err3.password.message}</FieldError>
               )}
+              <PasswordStrengthMeter value={passwordVal} policyId="enterprise" />
             </TextField>
 
             <TextField
@@ -441,9 +421,7 @@ export function OrgRecoveryView() {
               type="password"
               isInvalid={!!err3.confirmPassword}
             >
-              <Label className="text-sm font-medium text-zinc-700 dark:text-zinc-300 pb-1">
-                Confirm New Password
-              </Label>
+              <Label>Confirm New Password</Label>
               <InputGroup>
                 <InputGroup.Input
                   className="h-12"
@@ -456,7 +434,7 @@ export function OrgRecoveryView() {
                     isIconOnly
                     variant="ghost"
                     size="sm"
-                    className="text-zinc-400 hover:bg-transparent"
+                    className="text-muted"
                     onPress={() => setIsConfirmVisible(!isConfirmVisible)}
                   >
                     {isConfirmVisible ? (
@@ -477,7 +455,7 @@ export function OrgRecoveryView() {
               fullWidth
               isPending={isLoading}
               isDisabled={isLoading}
-              className="h-12 rounded-xl bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 font-semibold mt-2 flex items-center justify-center gap-2"
+              className="h-12 rounded-2xl"
             >
               {isLoading && <Spinner color="current" size="sm" />}
               Update credentials

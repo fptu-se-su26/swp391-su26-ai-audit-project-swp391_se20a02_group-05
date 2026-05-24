@@ -13,6 +13,8 @@ using Microsoft.Extensions.Logging;
 using CVerify.API.Application.DTOs;
 using CVerify.API.Application.Exceptions;
 using CVerify.API.Application.Interfaces;
+using CVerify.API.Application.Security.PasswordPolicies;
+using CVerify.API.Application.Security.OtpPolicies;
 using CVerify.API.Core.Entities;
 using CVerify.API.Infrastructure.Configuration;
 using CVerify.API.Infrastructure.Diagnostics;
@@ -40,6 +42,8 @@ public class AuthService : IAuthService
     private readonly TimeProvider _timeProvider;
     private readonly IHttpClientFactory _httpClientFactory;
     private readonly IIdentityStateResolver _identityStateResolver;
+    private readonly IPasswordPolicyService _passwordPolicyService;
+    private readonly IOtpPolicyService _otpPolicyService;
 
     public AuthService(
         ApplicationDbContext context,
@@ -53,7 +57,9 @@ public class AuthService : IAuthService
         AuthMetrics metrics,
         TimeProvider timeProvider,
         IHttpClientFactory httpClientFactory,
-        IIdentityStateResolver identityStateResolver)
+        IIdentityStateResolver identityStateResolver,
+        IPasswordPolicyService passwordPolicyService,
+        IOtpPolicyService otpPolicyService)
     {
         _context = context;
         _tokenService = tokenService;
@@ -67,6 +73,8 @@ public class AuthService : IAuthService
         _timeProvider = timeProvider;
         _httpClientFactory = httpClientFactory;
         _identityStateResolver = identityStateResolver;
+        _passwordPolicyService = passwordPolicyService;
+        _otpPolicyService = otpPolicyService;
     }
 
     /// <summary>
@@ -585,6 +593,8 @@ public class AuthService : IAuthService
         var correlationId = Guid.NewGuid().ToString("N");
         _logger.LogInformation("[CorrelationID: {CorrelationId}] Handling user registration request for {Email}.", correlationId, request.Email);
 
+        await _passwordPolicyService.ValidateAndThrowAsync(request.Password, "Default");
+
         var normalizedEmail = NormalizeEmailPolicy(request.Email);
 
         var existingUser = await _context.Users.FirstOrDefaultAsync(u => u.Email == normalizedEmail, cancellationToken);
@@ -1050,6 +1060,8 @@ public class AuthService : IAuthService
         var correlationId = Guid.NewGuid().ToString("N");
         _logger.LogInformation("[CorrelationID: {CorrelationId}] Processing password reset request.", correlationId);
 
+        await _passwordPolicyService.ValidateAndThrowAsync(request.Password, "Default");
+
         using var sha256 = SHA256.Create();
         var hashedToken = Convert.ToHexString(sha256.ComputeHash(Encoding.UTF8.GetBytes(request.Token))).ToLowerInvariant();
 
@@ -1439,6 +1451,7 @@ public class AuthService : IAuthService
 
     public async Task<VerifyOtpResponse> VerifyOtpAsync(VerifyOtpRequest request, CancellationToken cancellationToken = default)
     {
+        _otpPolicyService.ValidateAndThrow(request.Code, "Default");
         var normalizedEmail = NormalizeEmailPolicy(request.Email);
 
         var superAdminEmail = _envConfig.SuperAdmin.Email;
@@ -1505,6 +1518,8 @@ public class AuthService : IAuthService
 
     public async Task<AuthResponse> CreatePasswordAsync(CreatePasswordRequest request, CancellationToken cancellationToken = default)
     {
+        await _passwordPolicyService.ValidateAndThrowAsync(request.Password, "Default");
+
         var normalizedEmail = NormalizeEmailPolicy(request.Email);
         var cachedToken = await _cacheService.GetAsync<string>($"setup:token:{normalizedEmail}:{request.ChallengeId}");
 
@@ -1746,6 +1761,8 @@ public class AuthService : IAuthService
 
     public async Task<AuthResponse> SetupWorkspaceAsync(SetupWorkspaceRequest request, string userAgent, string ipAddress, CancellationToken cancellationToken = default)
     {
+        await _passwordPolicyService.ValidateAndThrowAsync(request.Password, "Enterprise");
+
         var normalizedEmail = NormalizeEmailPolicy(request.CompanyEmail);
         var cachedToken = await _cacheService.GetAsync<string>($"workspace:token:{normalizedEmail}");
 
@@ -2176,6 +2193,8 @@ public class AuthService : IAuthService
 
     public async Task<AuthResponse> CompleteOnboardingAsync(CompleteOnboardingRequest request, string userAgent, string ipAddress, CancellationToken cancellationToken = default)
     {
+        await _passwordPolicyService.ValidateAndThrowAsync(request.Password, "Enterprise");
+
         // 1. Idempotency Protection check
         var httpContext = _httpContextAccessor.HttpContext;
         string? idempotencyKey = httpContext?.Request.Headers["X-Idempotency-Key"];

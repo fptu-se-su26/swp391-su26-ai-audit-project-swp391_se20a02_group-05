@@ -16,13 +16,13 @@ export function UserDashboardView() {
   return (
     <div className="space-y-6 font-outfit">
       {/* Top Banner Message */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 p-6 rounded-2xl bg-linear-to-r from-zinc-950 via-zinc-900 to-zinc-800 text-white select-none">
+      <div className="dark flex flex-col md:flex-row md:items-center justify-between gap-4 p-6 rounded-2xl bg-linear-to-r from-background via-surface to-surface-secondary text-foreground select-none">
         <div className="space-y-1">
-          <Typography type="h2" className="text-xl font-bold flex items-center gap-2 text-white">
+          <Typography type="h2" className="text-xl font-bold flex items-center gap-2 text-foreground">
             {t('dashboard-user:banner.welcome', { name: user?.fullName || 'Traveler' })}{' '}
-            <Sparkles size={18} className="text-indigo-400 fill-indigo-400" />
+            <Sparkles size={18} className="text-accent fill-accent" />
           </Typography>
-          <Typography type="body-xs" className="text-zinc-400 font-light mt-0.5">
+          <Typography type="body-xs" className="text-muted font-light mt-0.5">
             {t('dashboard-user:banner.subtitle')}
           </Typography>
         </div>
@@ -169,7 +169,7 @@ export function UserDashboardView() {
               <div className="p-4 rounded-xl bg-accent/10 border border-accent/20 space-y-3 font-outfit">
                 <div className="flex items-center justify-between text-xs select-none">
                   <Typography type="body-xs" className="font-bold text-accent inline-block">{t('dashboard-user:sandbox.creatorEnabled')}</Typography>
-                  <span className="text-[10px] bg-accent text-white px-1.5 py-0.5 rounded font-extrabold tracking-wider uppercase">Active</span>
+                  <span className="text-[10px] bg-accent text-accent-foreground px-1.5 py-0.5 rounded font-extrabold tracking-wider uppercase">Active</span>
                 </div>
                 <Typography type="body-xs" className="text-foreground/80 leading-relaxed select-none">
                   {t('dashboard-user:sandbox.creatorEnabledDesc')}

@@ -2,6 +2,8 @@ using Microsoft.EntityFrameworkCore;
 using CVerify.API.Infrastructure.Persistence;
 using CVerify.API.Application.Interfaces;
 using CVerify.API.Application.Services;
+using CVerify.API.Application.Security.PasswordPolicies;
+using CVerify.API.Application.Security.OtpPolicies;
 using CVerify.API.Infrastructure.Services;
 using CVerify.API.Infrastructure.Configuration;
 using CVerify.API.Core.Entities;
@@ -277,6 +279,8 @@ builder.Services.AddScoped<IRecoveryTokenService, RecoveryTokenService>();
 builder.Services.AddScoped<ICandidateRecoveryService, CandidateRecoveryService>();
 builder.Services.AddScoped<IOrganizationRecoveryService, OrganizationRecoveryService>();
 builder.Services.AddScoped<IOrganizationReclaimService, OrganizationReclaimService>();
+builder.Services.AddScoped<IPasswordPolicyService, PasswordPolicyService>();
+builder.Services.AddScoped<IOtpPolicyService, OtpPolicyService>();
 
 // Register AI Service
 builder.Services.AddScoped<IHmacSignatureService, HmacSignatureService>();

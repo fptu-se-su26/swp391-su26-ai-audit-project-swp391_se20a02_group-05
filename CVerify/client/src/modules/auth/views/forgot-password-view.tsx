@@ -1,13 +1,29 @@
 "use client";
 
-import React, { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
-import { useAuth } from '@/features/auth/hooks/use-auth';
+import React, { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
+import OtpInput from "@/shared/components/security/otp-input";
+import { useAuth } from "@/features/auth/hooks/use-auth";
 import {
-  Card, Typography, Button, TextField, InputOTP,
-  InputGroup, Input, Form, Label, toast, Spinner
+  Card,
+  Typography,
+  Button,
+  TextField,
+  InputGroup,
+  Input,
+  Form,
+  Label,
+  toast,
+  Spinner,
 } from "@heroui/react";
-import { Eye, EyeOff, ShieldCheck, Mail, ArrowLeft, KeyRound } from 'lucide-react';
+import {
+  Eye,
+  EyeOff,
+  ShieldCheck,
+  Mail,
+  ArrowLeft,
+  KeyRound,
+} from "lucide-react";
 
 export function ForgotPasswordView() {
   const router = useRouter();
@@ -36,7 +52,8 @@ export function ForgotPasswordView() {
   const validateEmail = (val: string) => {
     return val.match(/^[^\s@]+@[^\s@]+\.[^\s@]+$/);
   };
-  const isEmailInvalid = emailTouched && email.length > 0 && !validateEmail(email);
+  const isEmailInvalid =
+    emailTouched && email.length > 0 && !validateEmail(email);
 
   useEffect(() => {
     if (cooldown <= 0) return;
@@ -51,7 +68,7 @@ export function ForgotPasswordView() {
     if (!email || isEmailInvalid) return;
 
     setIsLoading(true);
-    const result = await sendOtp(email, 'ForgotPassword');
+    const result = await sendOtp(email, "ForgotPassword");
     setIsLoading(false);
 
     if (result.success && result.data) {
@@ -59,11 +76,13 @@ export function ForgotPasswordView() {
       setStep(2);
       setCooldown(60);
       toast.success("Recovery Code Sent", {
-        description: `Please check ${email} for your password recovery code.`
+        description: `Please check ${email} for your password recovery code.`,
       });
     } else {
       toast.danger("Request Failed", {
-        description: result.error?.message || "Failed to trigger recovery. Ensure your email is correct."
+        description:
+          result.error?.message ||
+          "Failed to trigger recovery. Ensure your email is correct.",
       });
     }
   };
@@ -72,7 +91,7 @@ export function ForgotPasswordView() {
     if (cooldown > 0) return;
 
     setIsLoading(true);
-    const result = await sendOtp(email, 'ForgotPassword');
+    const result = await sendOtp(email, "ForgotPassword");
     setIsLoading(false);
 
     if (result.success && result.data) {
@@ -89,18 +108,25 @@ export function ForgotPasswordView() {
     if (otpCode.length < 6) return;
 
     setIsLoading(true);
-    const result = await verifyOtp(challengeId, email, otpCode, 'ForgotPassword');
+    const result = await verifyOtp(
+      challengeId,
+      email,
+      otpCode,
+      "ForgotPassword",
+    );
     setIsLoading(false);
 
     if (result.success && result.data) {
       setVerificationToken(result.data.verificationToken);
       setStep(3);
       toast.success("Recovery Code Verified", {
-        description: "Please establish your new password below."
+        description: "Please establish your new password below.",
       });
     } else {
       toast.danger("Verification Failed", {
-        description: result.error?.message || "The code entered is invalid or has expired."
+        description:
+          result.error?.message ||
+          "The code entered is invalid or has expired.",
       });
     }
   };
@@ -117,51 +143,67 @@ export function ForgotPasswordView() {
       verificationToken,
       password,
       confirmPassword,
-      fullName: undefined
+      fullName: undefined,
     });
     setIsLoading(false);
 
     if (result.success) {
       toast.success("Password Updated Successfully", {
-        description: "Your credential has been rotated. You have been automatically authenticated."
+        description:
+          "Your credential has been rotated. You have been automatically authenticated.",
       });
-      router.push('/');
+      router.push("/");
     } else {
       toast.danger("Rotation Failed", {
-        description: result.error?.message || "Failed to reset your password. Please try again."
+        description:
+          result.error?.message ||
+          "Failed to reset your password. Please try again.",
       });
     }
   };
 
   return (
-    <Card className="w-full bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 p-8 shadow-xl rounded-2xl">
+    <Card className="w-full bg-surface border border-border p-8 shadow-xl rounded-2xl">
       {step === 1 && (
         <div className="w-full flex flex-col items-center">
           <div className="w-full flex justify-start mb-6">
-            <button
-              onClick={() => router.push('/login')}
-              className="inline-flex items-center gap-1.5 text-xs font-semibold text-zinc-550 dark:text-zinc-450 hover:text-zinc-900 dark:hover:text-zinc-100 transition-colors group cursor-pointer bg-transparent border-0"
+            <Button
+              variant="ghost"
+              size="sm"
+              className="absolute top-6 left-4 text-muted"
+              onPress={() => {
+                router.push("/login");
+              }}
             >
-              <ArrowLeft size={14} className="transition-transform group-hover:-translate-x-0.5" /> Back to Sign In
-            </button>
+              <ArrowLeft className="size-3.5" />
+              Return to Login
+            </Button>
           </div>
 
-          <div className="w-12 h-12 bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center rounded-xl mb-6">
-            <KeyRound className="size-6 text-zinc-900 dark:text-zinc-100" />
+          <div className="w-12 h-12 bg-surface-secondary flex items-center justify-center rounded-xl mb-6">
+            <KeyRound className="size-6 text-foreground" />
           </div>
 
           <div className="text-center w-full mb-8 font-outfit">
-            <Typography.Heading level={3} className="text-2xl font-bold pb-2 text-zinc-900 dark:text-zinc-100">
+            <Typography.Heading
+              level={3}
+              className="text-2xl font-bold pb-2 text-foreground"
+            >
               Recover Credential
             </Typography.Heading>
-            <Typography className="text-sm text-zinc-500 dark:text-zinc-400">
+            <Typography className="text-sm text-muted">
               Enter your email to receive a challenge-based recovery code.
             </Typography>
           </div>
 
-          <Form className="w-full flex flex-col gap-4" onSubmit={handleRequestOtp}>
+          <Form
+            className="w-full flex flex-col gap-4"
+            onSubmit={handleRequestOtp}
+          >
             <TextField isRequired name="email" isInvalid={isEmailInvalid}>
-              <Label className="text-sm font-medium text-zinc-700 dark:text-zinc-300 pb-1">Email Address</Label>
+              <Label className="text-sm font-medium text-foreground/80 pb-1">
+                Email Address
+              </Label>
               <Input
                 placeholder="Enter registered email address"
                 className="h-12"
@@ -174,7 +216,9 @@ export function ForgotPasswordView() {
               />
               {isEmailInvalid && (
                 <div className="text-left w-full mt-1">
-                  <span className="text-danger text-xs font-medium">Please enter a valid email address.</span>
+                  <span className="text-danger text-xs font-medium">
+                    Please enter a valid email address.
+                  </span>
                 </div>
               )}
             </TextField>
@@ -184,7 +228,7 @@ export function ForgotPasswordView() {
               fullWidth
               isPending={isLoading}
               isDisabled={isEmailInvalid || !email || isLoading}
-              className="h-12 rounded-xl bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 font-semibold mt-2 flex items-center justify-center gap-2"
+              className="h-12 rounded-xl bg-foreground text-background font-semibold mt-2 flex items-center justify-center gap-2"
             >
               {isLoading && <Spinner color="current" size="sm" />}
               Request recovery code
@@ -195,35 +239,38 @@ export function ForgotPasswordView() {
 
       {step === 2 && (
         <div className="w-full flex flex-col items-center">
-          <div className="w-12 h-12 bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center rounded-xl mb-6">
-            <Mail className="size-6 text-zinc-900 dark:text-zinc-100" />
+          <div className="w-12 h-12 bg-surface-secondary flex items-center justify-center rounded-xl mb-6">
+            <Mail className="size-6 text-foreground" />
           </div>
 
           <div className="text-center w-full mb-8 flex flex-col items-center">
-            <Typography.Heading level={3} className="text-2xl font-bold pb-2 text-zinc-900 dark:text-zinc-100">
+            <Typography.Heading
+              level={3}
+              className="text-2xl font-bold pb-2 text-foreground"
+            >
               Confirm email ownership
             </Typography.Heading>
-            <Typography className="text-sm text-zinc-500 dark:text-zinc-400">
-              We&apos;ve sent a 6-digit challenge code to <span className="font-semibold text-zinc-700 dark:text-zinc-300">{email}</span>.
+            <Typography className="text-sm text-muted">
+              We&apos;ve sent a 6-digit challenge code to{" "}
+              <span className="font-semibold text-foreground/80">{email}</span>.
             </Typography>
           </div>
 
-          <Form className="w-full flex flex-col gap-5 items-center" onSubmit={handleVerifyOtp}>
+          <Form
+            className="w-full flex flex-col gap-5 items-center"
+            onSubmit={handleVerifyOtp}
+          >
             <div className="flex flex-col gap-2 items-center w-full">
-              <Label className="text-sm font-medium text-zinc-700 dark:text-zinc-300 pb-1">One-Time Code</Label>
-              <InputOTP maxLength={6} value={otpCode} onChange={setOtpCode}>
-                <InputOTP.Group>
-                  <InputOTP.Slot index={0} />
-                  <InputOTP.Slot index={1} />
-                  <InputOTP.Slot index={2} />
-                </InputOTP.Group>
-                <InputOTP.Separator />
-                <InputOTP.Group>
-                  <InputOTP.Slot index={3} />
-                  <InputOTP.Slot index={4} />
-                  <InputOTP.Slot index={5} />
-                </InputOTP.Group>
-              </InputOTP>
+              <Label className="text-sm font-medium text-foreground/80 pb-1">
+                One-Time Code
+              </Label>
+              <OtpInput
+                value={otpCode}
+                onChange={setOtpCode}
+                length={6}
+                groups={[3, 3]}
+                isDisabled={isLoading}
+              />
             </div>
 
             <Button
@@ -231,21 +278,23 @@ export function ForgotPasswordView() {
               fullWidth
               isPending={isLoading}
               isDisabled={otpCode.length < 6 || isLoading}
-              className="h-12 rounded-xl bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 font-semibold flex items-center justify-center gap-2"
+              className="h-12 rounded-xl bg-foreground text-background font-semibold flex items-center justify-center gap-2"
             >
               {isLoading && <Spinner color="current" size="sm" />}
               Verify code
             </Button>
           </Form>
 
-          <div className="text-center text-xs font-medium text-zinc-500 dark:text-zinc-400 pt-6">
+          <div className="text-center text-xs font-medium text-muted pt-6">
             Didn&apos;t receive the email?{" "}
             {cooldown > 0 ? (
-              <span className="font-semibold text-zinc-400">Resend in {cooldown}s</span>
+              <span className="font-semibold text-muted">
+                Resend in {cooldown}s
+              </span>
             ) : (
               <button
                 onClick={handleResendOtp}
-                className="font-semibold text-zinc-900 dark:text-zinc-100 hover:underline cursor-pointer bg-transparent border-0"
+                className="font-semibold text-foreground hover:underline cursor-pointer bg-transparent border-0"
               >
                 Resend code
               </button>
@@ -256,63 +305,86 @@ export function ForgotPasswordView() {
 
       {step === 3 && (
         <div className="w-full flex flex-col items-center">
-          <div className="w-12 h-12 bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center rounded-xl mb-6">
-            <ShieldCheck className="size-6 text-zinc-900 dark:text-zinc-100" />
+          <div className="w-12 h-12 bg-surface-secondary flex items-center justify-center rounded-xl mb-6">
+            <ShieldCheck className="size-6 text-foreground" />
           </div>
 
           <div className="text-center w-full mb-8">
-            <Typography.Heading level={3} className="text-2xl font-bold pb-2 text-zinc-900 dark:text-zinc-100">
+            <Typography.Heading
+              level={3}
+              className="text-2xl font-bold pb-2 text-foreground"
+            >
               Reset Password
             </Typography.Heading>
-            <Typography className="text-sm text-zinc-500 dark:text-zinc-400">
-              Establish a new secure password credential for your CVerify account.
+            <Typography className="text-sm text-muted">
+              Establish a new secure password credential for your CVerify
+              account.
             </Typography>
           </div>
 
-          <Form className="w-full flex flex-col gap-5" onSubmit={handleResetPassword}>
+          <Form
+            className="w-full flex flex-col gap-5"
+            onSubmit={handleResetPassword}
+          >
             <TextField isRequired name="password" type="password">
-              <Label className="text-sm font-medium text-zinc-700 dark:text-zinc-300 pb-1">New Password</Label>
+              <Label className="text-sm font-medium text-foreground/80 pb-1">
+                New Password
+              </Label>
               <InputGroup>
                 <InputGroup.Input
                   className="h-12"
                   type={isVisible ? "text" : "password"}
                   placeholder="Enter new password (min 8 chars)"
                   value={password}
-                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => setPassword(e.target.value)}
+                  onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                    setPassword(e.target.value)
+                  }
                 />
                 <InputGroup.Suffix>
                   <Button
                     isIconOnly
                     variant="ghost"
                     size="sm"
-                    className="text-zinc-400 hover:bg-transparent"
+                    className="text-muted hover:bg-transparent"
                     onPress={() => setIsVisible(!isVisible)}
                   >
-                    {isVisible ? <Eye className="size-4" /> : <EyeOff className="size-4" />}
+                    {isVisible ? (
+                      <Eye className="size-4" />
+                    ) : (
+                      <EyeOff className="size-4" />
+                    )}
                   </Button>
                 </InputGroup.Suffix>
               </InputGroup>
             </TextField>
 
             <TextField isRequired name="confirmPassword" type="password">
-              <Label className="text-sm font-medium text-zinc-700 dark:text-zinc-300 pb-1">Confirm New Password</Label>
+              <Label className="text-sm font-medium text-foreground/80 pb-1">
+                Confirm New Password
+              </Label>
               <InputGroup>
                 <InputGroup.Input
                   className="h-12"
                   type={isConfirmVisible ? "text" : "password"}
                   placeholder="Repeat your new password"
                   value={confirmPassword}
-                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => setConfirmPassword(e.target.value)}
+                  onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                    setConfirmPassword(e.target.value)
+                  }
                 />
                 <InputGroup.Suffix>
                   <Button
                     isIconOnly
                     variant="ghost"
                     size="sm"
-                    className="text-zinc-400 hover:bg-transparent"
+                    className="text-muted hover:bg-transparent"
                     onPress={() => setIsConfirmVisible(!isConfirmVisible)}
                   >
-                    {isConfirmVisible ? <Eye className="size-4" /> : <EyeOff className="size-4" />}
+                    {isConfirmVisible ? (
+                      <Eye className="size-4" />
+                    ) : (
+                      <EyeOff className="size-4" />
+                    )}
                   </Button>
                 </InputGroup.Suffix>
               </InputGroup>
@@ -322,8 +394,13 @@ export function ForgotPasswordView() {
               type="submit"
               fullWidth
               isPending={isLoading}
-              isDisabled={!password || password.length < 8 || password !== confirmPassword || isLoading}
-              className="h-12 rounded-xl bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 font-semibold mt-2 flex items-center justify-center gap-2"
+              isDisabled={
+                !password ||
+                password.length < 8 ||
+                password !== confirmPassword ||
+                isLoading
+              }
+              className="h-12 rounded-xl bg-foreground text-background font-semibold mt-2 flex items-center justify-center gap-2"
             >
               {isLoading && <Spinner color="current" size="sm" />}
               Reset password

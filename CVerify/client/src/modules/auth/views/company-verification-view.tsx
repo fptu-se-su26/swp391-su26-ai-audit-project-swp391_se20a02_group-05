@@ -2,14 +2,13 @@
 
 import React, { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
-import { useAuth } from '@/features/auth/hooks/use-auth';
+import { useAuth } from "@/features/auth/hooks/use-auth";
 import { Google } from "@thesvg/react";
 import {
   Card,
   Typography,
   Button,
   TextField,
-  InputOTP,
   InputGroup,
   Input,
   Form,
@@ -20,6 +19,7 @@ import {
   Description,
   Chip,
 } from "@heroui/react";
+import OtpInput from "@/shared/components/security/otp-input";
 import {
   Eye,
   EyeOff,
@@ -39,6 +39,8 @@ import {
   UserCheck,
 } from "lucide-react";
 import Script from "next/script";
+import PasswordStrengthMeter from "@/shared/components/security/password-strength-meter";
+import { evaluatePasswordStrength } from "@/shared/security/password-policy";
 
 const RESERVED_SLUGS = [
   "admin",
@@ -95,92 +97,7 @@ const generateSuggestedSlug = (name: string): string => {
   return slug.substring(0, 32);
 };
 
-// Password complexity metrics components
-function PasswordStrengthMeter({ value }: { value: string }) {
-  if (!value) return null;
 
-  const checks = {
-    length: value.length >= 12,
-    uppercase: /[A-Z]/.test(value),
-    lowercase: /[a-z]/.test(value),
-    digit: /\d/.test(value),
-    special: /[@$!%*?&#^()_\-+=\[\]{}|\\:;""'<>,.?/~`]/.test(value),
-  };
-
-  const score = Object.values(checks).filter(Boolean).length;
-
-  let label = "Very Weak";
-  let colorClass = "bg-danger";
-  let textColorClass = "text-danger";
-
-  if (score === 5) {
-    label = "Very Strong & Secure";
-    colorClass = "bg-success";
-    textColorClass = "text-success";
-  } else if (score === 4) {
-    label = "Strong";
-    colorClass = "bg-success/80";
-    textColorClass = "text-success/80";
-  } else if (score === 3) {
-    label = "Fair";
-    colorClass = "bg-warning";
-    textColorClass = "text-warning";
-  } else if (score >= 1) {
-    label = "Weak (Insecure)";
-    colorClass = "bg-danger";
-    textColorClass = "text-danger";
-  }
-
-  return (
-    <div className="space-y-2 mt-2 px-1 select-none">
-      <div className="flex justify-between items-center text-xs">
-        <span className="text-muted text-[11px] font-medium font-sans">
-          Security Strength
-        </span>
-        <span
-          className={`font-bold text-[11px] transition-colors ${textColorClass}`}
-        >
-          {label}
-        </span>
-      </div>
-
-      <div className="flex gap-1 h-1.5 w-full bg-surface-secondary rounded-full overflow-hidden">
-        <div
-          className={`h-full rounded-full transition-all duration-300 ${colorClass}`}
-          style={{ width: `${(score / 5) * 100}%` }}
-        />
-      </div>
-
-      <div className="grid grid-cols-2 gap-x-3 gap-y-1 text-[11px] text-muted mt-1.5">
-        <span
-          className={`flex items-center gap-1 transition-colors ${checks.length ? "text-success font-medium" : "text-muted/80"}`}
-        >
-          {checks.length ? "✓" : "○"} Min 12 characters
-        </span>
-        <span
-          className={`flex items-center gap-1 transition-colors ${checks.uppercase ? "text-success font-medium" : "text-muted/80"}`}
-        >
-          {checks.uppercase ? "✓" : "○"} Capital letter
-        </span>
-        <span
-          className={`flex items-center gap-1 transition-colors ${checks.lowercase ? "text-success font-medium" : "text-muted/80"}`}
-        >
-          {checks.lowercase ? "✓" : "○"} Lowercase letter
-        </span>
-        <span
-          className={`flex items-center gap-1 transition-colors ${checks.digit ? "text-success font-medium" : "text-muted/80"}`}
-        >
-          {checks.digit ? "✓" : "○"} One number
-        </span>
-        <span
-          className={`flex items-center gap-1 transition-colors ${checks.special ? "text-success font-medium" : "text-muted/80"}`}
-        >
-          {checks.special ? "✓" : "○"} Special character
-        </span>
-      </div>
-    </div>
-  );
-}
 
 interface GoogleIdentityResponse {
   credential?: string;
@@ -483,11 +400,7 @@ export function CompanyVerificationView() {
 
   // Step 3 Password complexity checks
   const isPasswordValid =
-    password.length >= 12 &&
-    /[A-Z]/.test(password) &&
-    /[a-z]/.test(password) &&
-    /\d/.test(password) &&
-    /[@$!%*?&#^()_\-+=\[\]{}|\\:;""'<>,.?/~`]/.test(password);
+    evaluatePasswordStrength(password, "enterprise").percentage === 100;
 
   const slugRegex = /^[a-z0-9-]{4,32}$/;
   const isSlugValid = slugRegex.test(organizationUsername);
@@ -727,7 +640,7 @@ export function CompanyVerificationView() {
                       value={companyName}
                       onChange={(e) => {
                         setCompanyName(e.target.value);
-                        setTaxCodeTouched(e.target.value.length > 0);
+                        setCompanyNameTouched(e.target.value.length > 0);
                       }}
                     />
                     {isCompanyNameInvalid && (
@@ -745,13 +658,15 @@ export function CompanyVerificationView() {
                   >
                     <Label>Tax Code (Vietnamese MST)</Label>
                     <Input
-                      placeholder="Enter your 10-digit tax code (e.g. 0401779383)"
+                      placeholder="Enter your 10-digit tax code (e.g. 0312345678)"
                       className="h-12 rounded-2xl"
                       value={taxCode}
                       onChange={(e) => {
                         setTaxCode(e.target.value);
-                        setTaxCodeTouched(e.target.value.length > 0);
                       }}
+                      onBlur={(e) =>
+                        setTaxCodeTouched(e.target.value.length > 0)
+                      }
                     />
                     <Description>
                       Supports 10-digit codes or 13-digit code branches (e.g.
@@ -995,41 +910,13 @@ export function CompanyVerificationView() {
                       <Label className="text-xs font-semibold text-foreground/80">
                         Enter 6-Digit OTP Code
                       </Label>
-                      <InputOTP
-                        maxLength={6}
+                      <OtpInput
                         value={otpCode}
                         onChange={setOtpCode}
-                      >
-                        <InputOTP.Group>
-                          <InputOTP.Slot
-                            className="border border-border rounded-xl h-12 w-12 text-sm font-bold text-center bg-surface"
-                            index={0}
-                          />
-                          <InputOTP.Slot
-                            className="border border-border rounded-xl h-12 w-12 text-sm font-bold text-center bg-surface"
-                            index={1}
-                          />
-                          <InputOTP.Slot
-                            className="border border-border rounded-xl h-12 w-12 text-sm font-bold text-center bg-surface"
-                            index={2}
-                          />
-                        </InputOTP.Group>
-                        <InputOTP.Separator />
-                        <InputOTP.Group>
-                          <InputOTP.Slot
-                            className="border border-border rounded-xl h-12 w-12 text-sm font-bold text-center bg-surface"
-                            index={3}
-                          />
-                          <InputOTP.Slot
-                            className="border border-border rounded-xl h-12 w-12 text-sm font-bold text-center bg-surface"
-                            index={4}
-                          />
-                          <InputOTP.Slot
-                            className="border border-border rounded-xl h-12 w-12 text-sm font-bold text-center bg-surface"
-                            index={5}
-                          />
-                        </InputOTP.Group>
-                      </InputOTP>
+                        length={6}
+                        groups={[3, 3]}
+                        isDisabled={isLoading}
+                      />
                     </div>
 
                     <div className="text-center text-xs font-semibold text-muted select-none shrink-0">
@@ -1328,7 +1215,7 @@ export function CompanyVerificationView() {
                     </InputGroup.Suffix>
                   </InputGroup>
                   <FieldError />
-                  <PasswordStrengthMeter value={password} />
+                  <PasswordStrengthMeter value={password} policyId="enterprise" />
                 </TextField>
 
                 {/* Confirm Password */}

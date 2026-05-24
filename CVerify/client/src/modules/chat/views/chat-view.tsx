@@ -43,10 +43,10 @@ function parseAndSanitizeMarkdown(text: string): string {
       code = lines.slice(1).join('\n');
     }
     return `
-      <div class="my-4 rounded-xl border border-separator bg-zinc-950 text-zinc-100 overflow-hidden font-mono text-xs select-text shadow-lg">
-        <div class="flex items-center justify-between px-4 py-2 border-b border-zinc-800 bg-zinc-900 select-none text-[10px] uppercase font-bold tracking-wider text-zinc-500">
+      <div class="my-4 rounded-xl border border-separator bg-surface-secondary text-foreground overflow-hidden font-mono text-xs select-text shadow-lg">
+        <div class="flex items-center justify-between px-4 py-2 border-b border-border/40 bg-surface-tertiary/50 select-none text-[10px] uppercase font-bold tracking-wider text-muted">
           <span>${language}</span>
-          <span class="text-zinc-400">code block</span>
+          <span class="text-muted/80">code block</span>
         </div>
         <pre class="p-4 overflow-x-auto leading-relaxed"><code>${escapeHtml(code)}</code></pre>
       </div>
@@ -368,7 +368,7 @@ export function ChatView() {
                 <Button
                   type="button"
                   onClick={cancelStreaming}
-                  className="bg-danger hover:bg-danger/90 text-white p-2.5 rounded-lg flex items-center justify-center shadow-lg border-0 hover:scale-[1.02] shrink-0 cursor-pointer"
+                  className="bg-danger hover:bg-danger/90 text-danger-foreground p-2.5 rounded-lg flex items-center justify-center shadow-lg border-0 hover:scale-[1.02] shrink-0 cursor-pointer"
                 >
                   <StopCircle size={16} />
                 </Button>

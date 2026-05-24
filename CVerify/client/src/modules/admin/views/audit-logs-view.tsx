@@ -88,7 +88,7 @@ export function AuditLogsView() {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <Typography type="h2" className="text-2xl font-extrabold tracking-tight text-foreground flex items-center gap-2 font-display">
-            <ShieldCheck className="text-emerald-500" size={24} />
+            <ShieldCheck className="text-accent" size={24} />
             {t('dashboard-admin:auditLogs.title')}
           </Typography>
           <Typography type="body-sm" className="text-muted mt-1 font-outfit">

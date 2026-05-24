@@ -146,7 +146,7 @@ export function UsersManagementView() {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <Typography type="h2" className="text-2xl font-extrabold tracking-tight flex items-center gap-2 font-display">
-            <Users className="text-indigo-500" size={24} />
+            <Users className="text-accent" size={24} />
             {t('dashboard-admin:users.title')}
           </Typography>
           <Typography type="body-sm" className="text-muted mt-1 font-outfit">
@@ -361,7 +361,7 @@ export function UsersManagementView() {
                     className="flex items-start gap-3 w-full cursor-pointer select-none"
                   >
                     <Checkbox.Control className="mt-1 border-2 border-border data-[selected=true]:bg-accent data-[selected=true]:border-accent rounded size-4 before:rounded">
-                      <Checkbox.Indicator className="text-white size-3" />
+                      <Checkbox.Indicator className="text-accent-foreground size-3" />
                     </Checkbox.Control>
                     <Checkbox.Content className="flex flex-col text-left">
                       <Label htmlFor={`role-${role.id}`} className="text-xs font-bold text-foreground cursor-pointer">

@@ -11,6 +11,8 @@ using Microsoft.Extensions.Logging;
 using CVerify.API.Application.DTOs;
 using CVerify.API.Application.Exceptions;
 using CVerify.API.Application.Interfaces;
+using CVerify.API.Application.Security.PasswordPolicies;
+using CVerify.API.Application.Security.OtpPolicies;
 using CVerify.API.Core.Entities;
 using CVerify.API.Infrastructure.Configuration;
 using CVerify.API.Infrastructure.Diagnostics;
@@ -30,6 +32,8 @@ public class OrganizationRecoveryService : IOrganizationRecoveryService
     private readonly ILogger<OrganizationRecoveryService> _logger;
     private readonly AuthMetrics _metrics;
     private readonly TimeProvider _timeProvider;
+    private readonly IPasswordPolicyService _passwordPolicyService;
+    private readonly IOtpPolicyService _otpPolicyService;
 
     public OrganizationRecoveryService(
         ApplicationDbContext context,
@@ -41,7 +45,9 @@ public class OrganizationRecoveryService : IOrganizationRecoveryService
         EnvConfiguration envConfig,
         ILogger<OrganizationRecoveryService> logger,
         AuthMetrics metrics,
-        TimeProvider timeProvider)
+        TimeProvider timeProvider,
+        IPasswordPolicyService passwordPolicyService,
+        IOtpPolicyService otpPolicyService)
     {
         _context = context;
         _recoveryTokenService = recoveryTokenService;
@@ -53,6 +59,8 @@ public class OrganizationRecoveryService : IOrganizationRecoveryService
         _logger = logger;
         _metrics = metrics;
         _timeProvider = timeProvider;
+        _passwordPolicyService = passwordPolicyService;
+        _otpPolicyService = otpPolicyService;
     }
 
     public async Task<OrganizationForgotResponse> ForgotPasswordAsync(OrganizationForgotRequest request, CancellationToken cancellationToken = default)
@@ -184,6 +192,7 @@ public class OrganizationRecoveryService : IOrganizationRecoveryService
 
     public async Task<VerifyOrganizationOtpResponse> VerifyRecoveryOtpAsync(VerifyOrganizationOtpRequest request, CancellationToken cancellationToken = default)
     {
+        _otpPolicyService.ValidateAndThrow(request.Code, "Default");
         var correlationId = Guid.NewGuid().ToString("N");
         _logger.LogInformation("[CorrelationID: {CorrelationId}] Verifying recovery OTP for Challenge: {ChallengeId}.", correlationId, request.ChallengeId);
 
@@ -259,6 +268,8 @@ public class OrganizationRecoveryService : IOrganizationRecoveryService
     {
         var correlationId = Guid.NewGuid().ToString("N");
         _logger.LogInformation("[CorrelationID: {CorrelationId}] Handling Business password reset request.", correlationId);
+
+        await _passwordPolicyService.ValidateAndThrowAsync(request.NewPassword, "Enterprise");
 
         var tokenEntity = await _recoveryTokenService.ValidateTokenAsync(request.Token, RecoveryTokenType.OrganizationRecoveryReset, cancellationToken);
         if (tokenEntity == null || !tokenEntity.OrganizationId.HasValue)

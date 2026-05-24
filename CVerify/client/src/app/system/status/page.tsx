@@ -143,7 +143,7 @@ export default function SystemStatusPage() {
   const overallStatus = getOverallStatus();
 
   return (
-    <div className="min-h-screen flex flex-col justify-between bg-[#030712] text-zinc-100 font-sans selection:bg-cyan-500/30 selection:text-cyan-300 relative overflow-hidden">
+    <div className="dark min-h-screen flex flex-col justify-between bg-background text-foreground font-sans selection:bg-accent/30 selection:text-accent relative overflow-hidden">
 
       {/* Visual Ambient Blur Accents */}
       <div className="absolute top-[-20%] left-[-10%] w-[500px] h-[500px] rounded-full bg-cyan-900/10 blur-[120px] pointer-events-none" />
@@ -155,14 +155,14 @@ export default function SystemStatusPage() {
         {/* Brand Header */}
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 mb-10">
           <div className="flex items-center gap-4">
-            <div className="w-12 h-12 rounded-xl bg-zinc-900 border border-zinc-800 flex items-center justify-center shadow-lg group">
-              <Compass size={24} className="text-cyan-400 group-hover:rotate-45 transition-transform duration-500" />
+            <div className="w-12 h-12 rounded-xl bg-surface border border-border flex items-center justify-center shadow-lg group">
+              <Compass size={24} className="text-accent group-hover:rotate-45 transition-transform duration-500" />
             </div>
             <div>
-              <h1 className="text-xl font-bold tracking-tight text-white flex items-center gap-2">
-                CVerify AI <span className="text-zinc-500 text-sm font-normal">/ status</span>
+              <h1 className="text-xl font-bold tracking-tight text-foreground flex items-center gap-2">
+                CVerify AI <span className="text-muted text-sm font-normal">/ status</span>
               </h1>
-              <p className="text-xs text-zinc-400">
+              <p className="text-xs text-muted">
                 Public service availability, API latency, and diagnostic dashboard
               </p>
             </div>
@@ -170,26 +170,26 @@ export default function SystemStatusPage() {
 
           {/* Interactive controls */}
           <div className="flex items-center gap-3">
-            <span className="text-xs text-zinc-500 flex items-center gap-1.5 bg-zinc-900/40 px-3 py-1.5 rounded-full border border-zinc-800/60">
-              <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-pulse" />
-              Auto-refreshing in <span className="font-mono text-cyan-400 font-medium">{countdown}s</span>
+            <span className="text-xs text-muted flex items-center gap-1.5 bg-surface/40 px-3 py-1.5 rounded-full border border-border/60">
+              <span className="w-1.5 h-1.5 rounded-full bg-accent animate-pulse" />
+              Auto-refreshing in <span className="font-mono text-accent font-medium">{countdown}s</span>
             </span>
 
             <button
               onClick={() => runDiagnostics()}
               disabled={isRefreshing}
-              className="flex items-center gap-2 px-4 py-1.5 rounded-lg bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 hover:border-zinc-700 text-xs font-semibold tracking-wide text-zinc-200 hover:text-white transition-all disabled:opacity-50 select-none shadow-md"
+              className="flex items-center gap-2 px-4 py-1.5 rounded-lg bg-surface hover:bg-surface-secondary border border-border hover:border-border/80 text-xs font-semibold tracking-wide text-foreground/80 hover:text-foreground transition-all disabled:opacity-50 select-none shadow-md"
             >
-              <RefreshCw size={13} className={`text-cyan-400 ${isRefreshing ? 'animate-spin' : ''}`} />
+              <RefreshCw size={13} className={`text-accent ${isRefreshing ? 'animate-spin' : ''}`} />
               Run Diagnostics
             </button>
           </div>
         </div>
 
         {/* Global Progress Countdown Bar */}
-        <div className="w-full h-[3px] bg-zinc-900 rounded-full mb-8 overflow-hidden">
+        <div className="w-full h-[3px] bg-surface-secondary rounded-full mb-8 overflow-hidden">
           <div
-            className="h-full bg-linear-to-r from-cyan-500 to-indigo-500 transition-all duration-1000 ease-linear rounded-full"
+            className="h-full bg-linear-to-r from-accent to-indigo-500 transition-all duration-1000 ease-linear rounded-full"
             style={{ width: `${(countdown / 30) * 100}%` }}
           />
         </div>
@@ -198,17 +198,17 @@ export default function SystemStatusPage() {
         {isLoading && !telemetry.lastChecked ? (
           <div className="space-y-6">
             {/* Header Glass Card Skeleton */}
-            <div className="h-44 rounded-2xl bg-zinc-900/30 border border-zinc-800/40 backdrop-blur-md animate-pulse flex items-center justify-center">
+            <div className="h-44 rounded-2xl bg-surface/30 border border-border/40 backdrop-blur-md animate-pulse flex items-center justify-center">
               <div className="flex flex-col items-center gap-3">
-                <Compass className="text-cyan-500/40 animate-spin-slow" size={40} />
-                <span className="text-xs text-zinc-500 font-semibold tracking-wider">COMPILING TELEMETRY DIAGNOSTICS...</span>
+                <Compass className="text-accent/40 animate-spin-slow" size={40} />
+                <span className="text-xs text-muted font-semibold tracking-wider">COMPILING TELEMETRY DIAGNOSTICS...</span>
               </div>
             </div>
 
             {/* Grid Skeletons */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               {[1, 2, 3].map((i) => (
-                <div key={i} className="h-32 rounded-xl bg-zinc-900/30 border border-zinc-800/40 backdrop-blur-md animate-pulse" />
+                <div key={i} className="h-32 rounded-xl bg-surface/30 border border-border/40 backdrop-blur-md animate-pulse" />
               ))}
             </div>
           </div>
@@ -262,27 +262,27 @@ export default function SystemStatusPage() {
                     </span>
                   </div>
 
-                  <h2 className="text-2xl md:text-3xl font-extrabold tracking-tight text-white">
+                  <h2 className="text-2xl md:text-3xl font-extrabold tracking-tight text-foreground">
                     {overallStatus === 'healthy' && 'All systems are operating normally.'}
                     {overallStatus === 'degraded' && 'Some systems are experiencing outages.'}
                     {overallStatus === 'offline' && 'Failed to establish connection to core APIs.'}
                   </h2>
 
-                  <p className="text-xs text-zinc-400 max-w-xl">
+                  <p className="text-xs text-muted max-w-xl">
                     {overallStatus === 'healthy' && 'We are monitoring API gateways, background workers, permission models, database queries, and storage targets. No incidents detected.'}
                     {overallStatus === 'degraded' && 'We have detected minor health degradation on one or more services. Engineers are automatically alerted.'}
                     {overallStatus === 'offline' && 'The connection to the backend was terminated or refused. Gateway returned an unresolvable response. Telemetry details below.'}
                   </p>
                 </div>
 
-                <div className="flex flex-col bg-zinc-950/60 border border-zinc-800/80 px-5 py-4 rounded-xl items-start md:items-end min-w-[200px] backdrop-blur-lg">
-                  <span className="text-[10px] text-zinc-500 uppercase tracking-widest font-semibold mb-1">
+                <div className="flex flex-col bg-surface/60 border border-border px-5 py-4 rounded-xl items-start md:items-end min-w-[200px] backdrop-blur-lg">
+                  <span className="text-[10px] text-muted uppercase tracking-widest font-semibold mb-1">
                     LAST CHECKED METRIC
                   </span>
-                  <span className="text-base font-bold text-zinc-100 font-mono">
+                  <span className="text-base font-bold text-foreground font-mono">
                     {telemetry.lastChecked || 'Never'}
                   </span>
-                  <span className="text-[10px] text-cyan-400/80 font-medium mt-1 flex items-center gap-1">
+                  <span className="text-[10px] text-accent/80 font-medium mt-1 flex items-center gap-1">
                     <Zap size={10} /> Active development port
                   </span>
                 </div>
@@ -304,9 +304,9 @@ export default function SystemStatusPage() {
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
 
               {/* A. DATABASE SERVICE */}
-              <div className="p-5 rounded-xl bg-zinc-900/40 border border-zinc-800/80 backdrop-blur-md shadow-lg transition-all duration-300 hover:border-zinc-700/80 group">
+              <div className="p-5 rounded-xl bg-surface-secondary/40 border border-border backdrop-blur-md shadow-lg transition-all duration-300 hover:border-border/85 group">
                 <div className="flex justify-between items-start mb-4">
-                  <div className="p-2.5 rounded-lg bg-zinc-950 border border-zinc-800 text-cyan-400 group-hover:text-white transition-colors">
+                  <div className="p-2.5 rounded-lg bg-surface border border-border text-accent group-hover:text-foreground transition-colors">
                     <Database size={18} />
                   </div>
                   {telemetry.health ? (
@@ -317,25 +317,25 @@ export default function SystemStatusPage() {
                       {telemetry.health.services.database}
                     </span>
                   ) : (
-                    <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-zinc-950 text-zinc-500 border border-zinc-800">
+                    <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-surface text-muted border border-border">
                       offline
                     </span>
                   )}
                 </div>
-                <h3 className="text-sm font-bold text-white mb-1">PostgreSQL Database</h3>
-                <p className="text-xs text-zinc-400 mb-3">
+                <h3 className="text-sm font-bold text-foreground mb-1">PostgreSQL Database</h3>
+                <p className="text-xs text-muted mb-3">
                   Hosts traveler registrations, customizable itineraries, and security access logs.
                 </p>
-                <div className="text-[10px] text-zinc-500 flex justify-between items-center border-t border-zinc-800/80 pt-2.5">
+                <div className="text-[10px] text-muted flex justify-between items-center border-t border-border pt-2.5">
                   <span>Probing status:</span>
-                  <span className="font-mono text-zinc-300">CanConnect() API</span>
+                  <span className="font-mono text-foreground/80">CanConnect() API</span>
                 </div>
               </div>
 
               {/* B. REDIS DISTRIBUTED STATE */}
-              <div className="p-5 rounded-xl bg-zinc-900/40 border border-zinc-800/80 backdrop-blur-md shadow-lg transition-all duration-300 hover:border-zinc-700/80 group">
+              <div className="p-5 rounded-xl bg-surface-secondary/40 border border-border backdrop-blur-md shadow-lg transition-all duration-300 hover:border-border/85 group">
                 <div className="flex justify-between items-start mb-4">
-                  <div className="p-2.5 rounded-lg bg-zinc-950 border border-zinc-800 text-cyan-400 group-hover:text-white transition-colors">
+                  <div className="p-2.5 rounded-lg bg-surface border border-border text-accent group-hover:text-foreground transition-colors">
                     <Cpu size={18} />
                   </div>
                   {telemetry.health ? (
@@ -346,25 +346,25 @@ export default function SystemStatusPage() {
                       {telemetry.health.services.redis}
                     </span>
                   ) : (
-                    <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-zinc-950 text-zinc-500 border border-zinc-800">
+                    <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-surface text-muted border border-border">
                       offline
                     </span>
                   )}
                 </div>
-                <h3 className="text-sm font-bold text-white mb-1">Redis In-Memory Cache</h3>
-                <p className="text-xs text-zinc-400 mb-3">
+                <h3 className="text-sm font-bold text-foreground mb-1">Redis In-Memory Cache</h3>
+                <p className="text-xs text-muted mb-3">
                   Handles session validation buffers, security throttling rates, and caching policies.
                 </p>
-                <div className="text-[10px] text-zinc-500 flex justify-between items-center border-t border-zinc-800/80 pt-2.5">
+                <div className="text-[10px] text-muted flex justify-between items-center border-t border-border pt-2.5">
                   <span>Multiplexer:</span>
-                  <span className="font-mono text-zinc-300">IsConnected API</span>
+                  <span className="font-mono text-foreground/80">IsConnected API</span>
                 </div>
               </div>
 
               {/* C. SECURITY AUTH INFRASTRUCTURE */}
-              <div className="p-5 rounded-xl bg-zinc-900/40 border border-zinc-800/80 backdrop-blur-md shadow-lg transition-all duration-300 hover:border-zinc-700/80 group">
+              <div className="p-5 rounded-xl bg-surface-secondary/40 border border-border backdrop-blur-md shadow-lg transition-all duration-300 hover:border-border/85 group">
                 <div className="flex justify-between items-start mb-4">
-                  <div className="p-2.5 rounded-lg bg-zinc-950 border border-zinc-800 text-cyan-400 group-hover:text-white transition-colors">
+                  <div className="p-2.5 rounded-lg bg-surface border border-border text-accent group-hover:text-foreground transition-colors">
                     <ShieldCheck size={18} />
                   </div>
                   {telemetry.health ? (
@@ -375,18 +375,18 @@ export default function SystemStatusPage() {
                       {telemetry.health.services.auth}
                     </span>
                   ) : (
-                    <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-zinc-950 text-zinc-500 border border-zinc-800">
+                    <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-surface text-muted border border-border">
                       offline
                     </span>
                   )}
                 </div>
-                <h3 className="text-sm font-bold text-white mb-1">Auth & Identity Security</h3>
-                <p className="text-xs text-zinc-400 mb-3">
+                <h3 className="text-sm font-bold text-foreground mb-1">Auth & Identity Security</h3>
+                <p className="text-xs text-muted mb-3">
                   Issues JWT access tokens, validates brute-force attempts, and processes role permissions.
                 </p>
-                <div className="text-[10px] text-zinc-500 flex justify-between items-center border-t border-zinc-800/80 pt-2.5">
+                <div className="text-[10px] text-muted flex justify-between items-center border-t border-border pt-2.5">
                   <span>Mechanism:</span>
-                  <span className="font-mono text-zinc-300">Secure HttpOnly Cookies</span>
+                  <span className="font-mono text-foreground/80">Secure HttpOnly Cookies</span>
                 </div>
               </div>
 
@@ -396,29 +396,29 @@ export default function SystemStatusPage() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
 
               {/* Telemetry Metrics */}
-              <div className="p-6 rounded-xl bg-zinc-900/40 border border-zinc-800/80 backdrop-blur-md space-y-4">
-                <h3 className="text-xs font-bold text-zinc-400 uppercase tracking-widest flex items-center gap-2">
-                  <Gauge size={14} className="text-cyan-400" />
+              <div className="p-6 rounded-xl bg-surface-secondary/40 border border-border backdrop-blur-md space-y-4">
+                <h3 className="text-xs font-bold text-muted uppercase tracking-widest flex items-center gap-2">
+                  <Gauge size={14} className="text-accent" />
                   API Performance Metrics
                 </h3>
 
                 <div className="grid grid-cols-2 gap-4">
-                  <div className="p-4 rounded-lg bg-zinc-950 border border-zinc-900">
-                    <span className="text-[10px] text-zinc-500 font-semibold block mb-1">ROUND-TRIP LATENCY</span>
+                  <div className="p-4 rounded-lg bg-surface border border-border">
+                    <span className="text-[10px] text-muted font-semibold block mb-1">ROUND-TRIP LATENCY</span>
                     {telemetry.latency !== null ? (
                       <div className="flex items-baseline gap-1">
-                        <span className="text-2xl font-bold font-mono text-cyan-400">
+                        <span className="text-2xl font-bold font-mono text-accent">
                           {telemetry.latency}
                         </span>
-                        <span className="text-[10px] font-bold text-zinc-400">ms</span>
+                        <span className="text-[10px] font-bold text-muted">ms</span>
                       </div>
                     ) : (
-                      <span className="text-sm font-bold text-zinc-600 font-mono">-- ms</span>
+                      <span className="text-sm font-bold text-muted/60 font-mono">-- ms</span>
                     )}
                   </div>
 
-                  <div className="p-4 rounded-lg bg-zinc-950 border border-zinc-900">
-                    <span className="text-[10px] text-zinc-500 font-semibold block mb-1">PING VERIFY</span>
+                  <div className="p-4 rounded-lg bg-surface border border-border">
+                    <span className="text-[10px] text-muted font-semibold block mb-1">PING VERIFY</span>
                     {telemetry.ping ? (
                       <span className="text-sm font-bold text-emerald-400 uppercase tracking-wider flex items-center gap-1">
                         <CheckCircle2 size={12} /> {telemetry.ping.message}
@@ -431,12 +431,12 @@ export default function SystemStatusPage() {
                   </div>
                 </div>
 
-                <div className="p-3.5 rounded-lg bg-zinc-950/40 border border-zinc-900 flex justify-between items-center text-xs text-zinc-400">
+                <div className="p-3.5 rounded-lg bg-surface/40 border border-border flex justify-between items-center text-xs text-muted">
                   <span className="flex items-center gap-1.5">
-                    <Clock size={13} className="text-zinc-500" />
+                    <Clock size={13} className="text-muted/60" />
                     Estimated connection state:
                   </span>
-                  <span className="font-semibold text-zinc-200">
+                  <span className="font-semibold text-foreground/90">
                     {telemetry.latency !== null
                       ? telemetry.latency < 50
                         ? 'Excellent (Local Host)'
@@ -449,92 +449,92 @@ export default function SystemStatusPage() {
               </div>
 
               {/* Server Details */}
-              <div className="p-6 rounded-xl bg-zinc-900/40 border border-zinc-800/80 backdrop-blur-md flex flex-col justify-between">
+              <div className="p-6 rounded-xl bg-surface-secondary/40 border border-border backdrop-blur-md flex flex-col justify-between">
                 <div className="space-y-4">
-                  <h3 className="text-xs font-bold text-zinc-400 uppercase tracking-widest flex items-center gap-2">
-                    <Server size={14} className="text-cyan-400" />
+                  <h3 className="text-xs font-bold text-muted uppercase tracking-widest flex items-center gap-2">
+                    <Server size={14} className="text-accent" />
                     Environment & Software Releases
                   </h3>
 
                   <div className="grid grid-cols-2 gap-4 text-xs">
                     <div className="space-y-1">
-                      <span className="text-[10px] text-zinc-500 uppercase font-semibold">Active Profile</span>
-                      <span className="font-bold text-zinc-200 block">
+                      <span className="text-[10px] text-muted uppercase font-semibold">Active Profile</span>
+                      <span className="font-bold text-foreground/80 block">
                         {telemetry.version?.environment || 'Development'}
                       </span>
                     </div>
 
                     <div className="space-y-1">
-                      <span className="text-[10px] text-zinc-500 uppercase font-semibold">Software Version</span>
-                      <span className="font-bold text-zinc-200 block">
+                      <span className="text-[10px] text-muted uppercase font-semibold">Software Version</span>
+                      <span className="font-bold text-foreground/80 block">
                         v{telemetry.version?.version || '1.0.0'}
                       </span>
                     </div>
 
                     <div className="space-y-1">
-                      <span className="text-[10px] text-zinc-500 uppercase font-semibold">CORS Protocol</span>
-                      <span className="font-bold text-zinc-200 block">
+                      <span className="text-[10px] text-muted uppercase font-semibold">CORS Protocol</span>
+                      <span className="font-bold text-foreground/80 block">
                         Credentials Enabled
                       </span>
                     </div>
 
                     <div className="space-y-1">
-                      <span className="text-[10px] text-zinc-500 uppercase font-semibold">Build Date Target</span>
-                      <span className="font-bold text-zinc-200 block">
+                      <span className="text-[10px] text-muted uppercase font-semibold">Build Date Target</span>
+                      <span className="font-bold text-foreground/80 block">
                         {telemetry.version?.buildDate || '2026-05-14'}
                       </span>
                     </div>
                   </div>
                 </div>
 
-                <div className="mt-4 pt-3 border-t border-zinc-800/80 text-[10px] text-zinc-500 flex justify-between items-center">
+                <div className="mt-4 pt-3 border-t border-border text-[10px] text-muted flex justify-between items-center">
                   <span>Server core build:</span>
-                  <span className="font-mono text-zinc-400">Next.js 16 Client + ASP.NET Core 10.0</span>
+                  <span className="font-mono text-muted">Next.js 16 Client + ASP.NET Core 10.0</span>
                 </div>
               </div>
 
             </div>
 
             {/* 5. TECHNICAL TELEMETRY RAW PREVIEW */}
-            <div className="rounded-xl border border-zinc-800/80 bg-zinc-950/40 backdrop-blur-md overflow-hidden">
+            <div className="rounded-xl border border-border bg-surface/40 backdrop-blur-md overflow-hidden">
               <button
                 onClick={() => setShowRawJson(!showRawJson)}
-                className="w-full flex justify-between items-center px-6 py-4 hover:bg-zinc-900/30 transition-colors text-xs font-semibold text-zinc-300"
+                className="w-full flex justify-between items-center px-6 py-4 hover:bg-surface-secondary/10 transition-colors text-xs font-semibold text-foreground/80"
               >
                 <span className="flex items-center gap-2">
-                  <Terminal size={14} className="text-cyan-400" />
+                  <Terminal size={14} className="text-accent" />
                   Show Technical Telemetry
                 </span>
-                <span className="text-[10px] font-mono bg-zinc-900 border border-zinc-800 text-zinc-400 px-2 py-0.5 rounded">
+                <span className="text-[10px] font-mono bg-surface-secondary border border-border text-muted px-2 py-0.5 rounded">
                   {showRawJson ? 'COLLAPSE' : 'EXPAND'}
                 </span>
               </button>
 
               {showRawJson && (
-                <div className="border-t border-zinc-800/80 p-5 bg-[#010409] font-mono text-[11px] text-zinc-300 overflow-x-auto space-y-4 max-h-[300px] overflow-y-auto">
+                <div className="border-t border-border p-5 bg-background font-mono text-[11px] text-foreground/80 overflow-x-auto space-y-4 max-h-[300px] overflow-y-auto">
                   <div className="space-y-1">
-                    <span className="text-cyan-400 text-xs font-bold font-sans flex items-center gap-1 select-none">
+                    <span className="text-accent text-xs font-bold font-sans flex items-center gap-1 select-none">
                       <ArrowUpRight size={10} /> Health Status Endpoint Payload (GET /api/system/health)
                     </span>
-                    <pre className="text-zinc-400 p-2.5 rounded bg-zinc-950/40 border border-zinc-900">
+                    <pre className="text-muted p-2.5 rounded bg-surface-secondary/40 border border-border">
                       {JSON.stringify(telemetry.health, null, 2)}
                     </pre>
                   </div>
 
                   <div className="space-y-1">
-                    <span className="text-cyan-400 text-xs font-bold font-sans flex items-center gap-1 select-none">
+                    <span className="text-accent text-xs font-bold font-sans flex items-center gap-1 select-none">
                       <ArrowUpRight size={10} /> Connection Ping Endpoint Payload (GET /api/system/ping)
                     </span>
-                    <pre className="text-zinc-400 p-2.5 rounded bg-zinc-950/40 border border-zinc-900">
+                    <pre className="text-muted p-2.5 rounded bg-surface-secondary/40 border border-border">
                       {JSON.stringify(telemetry.ping, null, 2)}
                     </pre>
                   </div>
 
                   <div className="space-y-1">
-                    <span className="text-cyan-400 text-xs font-bold font-sans flex items-center gap-1 select-none">
+                    <span className="text-accent text-xs font-bold font-sans flex items-center gap-1 select-none">
                       <ArrowUpRight size={10} /> Versioning Release Endpoint Payload (GET /api/system/version)
                     </span>
-                    <pre className="text-zinc-400 p-2.5 rounded bg-zinc-950/40 border border-zinc-900">
+                    <pre className="text-muted p-2.5 rounded bg-surface-secondary/40 border border-border">
                       {JSON.stringify(telemetry.version, null, 2)}
                     </pre>
                   </div>
@@ -548,14 +548,14 @@ export default function SystemStatusPage() {
       </main>
 
       {/* Footer Branding */}
-      <footer className="w-full max-w-5xl mx-auto px-4 py-8 border-t border-zinc-900/60 relative z-10 flex flex-col sm:flex-row justify-between items-center gap-4 text-[11px] text-zinc-500 font-medium">
+      <footer className="w-full max-w-5xl mx-auto px-4 py-8 border-t border-border/60 relative z-10 flex flex-col sm:flex-row justify-between items-center gap-4 text-[11px] text-muted font-medium">
         <div className="flex items-center gap-1.5">
           <span>&copy; {new Date().getFullYear()} CVerify AI Inc. All rights reserved.</span>
         </div>
         <div className="flex items-center gap-4">
-          <a href="/login" className="hover:text-zinc-300 transition-colors">Access Console</a>
-          <span className="text-zinc-800">|</span>
-          <span className="text-zinc-500 flex items-center gap-1">
+          <a href="/login" className="hover:text-foreground transition-colors">Access Console</a>
+          <span className="text-muted/40">|</span>
+          <span className="text-muted flex items-center gap-1">
             <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
             Cloud Gateways Live
           </span>

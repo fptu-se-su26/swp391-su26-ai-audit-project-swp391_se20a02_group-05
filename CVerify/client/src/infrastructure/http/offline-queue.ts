@@ -1,7 +1,8 @@
+import { AxiosRequestConfig } from 'axios';
 import { NotificationHub } from '../notifications/orchestrator';
 
 interface QueuedItem {
-  config: unknown;
+  config: AxiosRequestConfig;
   resolve: (value: unknown) => void;
   reject: (reason: unknown) => void;
 }
@@ -22,7 +23,7 @@ class OfflineQueueManager {
     }
   }
 
-  enqueue(config: unknown): Promise<unknown> {
+  enqueue(config: AxiosRequestConfig): Promise<unknown> {
     return new Promise((resolve, reject) => {
       this.queue.push({ config, resolve: resolve as (value: unknown) => void, reject });
 

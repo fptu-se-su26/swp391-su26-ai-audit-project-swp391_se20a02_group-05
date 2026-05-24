@@ -2,13 +2,12 @@
 
 import React, { useState, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useAuth } from '@/features/auth/hooks/use-auth';
+import { useAuth } from "@/features/auth/hooks/use-auth";
 import {
   Card,
   Typography,
   Button,
   TextField,
-  InputOTP,
   InputGroup,
   Form,
   Label,
@@ -16,90 +15,14 @@ import {
   toast,
   Spinner,
 } from "@heroui/react";
+import OtpInput from "@/shared/components/security/otp-input";
 import { Eye, EyeOff, ShieldCheck, Mail } from "lucide-react";
 import { Suspense } from "react";
+import PasswordStrengthMeter from "@/shared/components/security/password-strength-meter";
+import { evaluatePasswordStrength } from "@/shared/security/password-policy";
 
-function PasswordStrengthMeter({ value }: { value: string }) {
-  if (!value) return null;
 
-  const checks = {
-    length: value.length >= 8,
-    uppercase: /[A-Z]/.test(value),
-    lowercase: /[a-z]/.test(value),
-    digit: /\d/.test(value),
-    special: /[@$!%*?&#^()_\-+=\[\]{}|\\:;""'<>,.?/~`]/.test(value),
-  };
 
-  const score = Object.values(checks).filter(Boolean).length;
-
-  let label = "Very Weak";
-  let color = "bg-danger";
-  let textColor = "text-danger";
-
-  if (score === 5) {
-    label = "Strong";
-    color = "bg-success";
-    textColor = "text-success";
-  } else if (score >= 3) {
-    label = "Fair";
-    color = "bg-warning";
-    textColor = "text-warning";
-  } else if (score >= 1) {
-    label = "Weak";
-    color = "bg-danger";
-    textColor = "text-danger";
-  }
-
-  return (
-    <div className="space-y-2 mt-2 px-1 select-none">
-      <div className="flex justify-between items-center text-xs">
-        <span className="text-zinc-500 dark:text-zinc-400 text-[11px] font-medium font-sans">
-          Password Strength
-        </span>
-        <span
-          className={`font-bold text-[11px] transition-colors ${textColor}`}
-        >
-          {label}
-        </span>
-      </div>
-
-      <div className="flex gap-1 h-1.5 w-full bg-zinc-100 dark:bg-zinc-800 rounded-full overflow-hidden">
-        <div
-          className={`h-full rounded-full transition-all duration-300 ${color}`}
-          style={{ width: `${(score / 5) * 100}%` }}
-        />
-      </div>
-
-      <div className="grid grid-cols-2 gap-x-3 gap-y-1 text-[11px] text-zinc-500 dark:text-zinc-400 mt-1.5">
-        <span
-          className={`flex items-center gap-1 transition-colors ${checks.length ? "text-success font-medium" : "text-zinc-400 dark:text-zinc-500"}`}
-        >
-          {checks.length ? "✓" : "○"} At least 8 characters
-        </span>
-        <span
-          className={`flex items-center gap-1 transition-colors ${checks.uppercase ? "text-success font-medium" : "text-zinc-400 dark:text-zinc-500"}`}
-        >
-          {checks.uppercase ? "✓" : "○"} One uppercase letter
-        </span>
-        <span
-          className={`flex items-center gap-1 transition-colors ${checks.lowercase ? "text-success font-medium" : "text-zinc-400 dark:text-zinc-500"}`}
-        >
-          {checks.lowercase ? "✓" : "○"} One lowercase letter
-        </span>
-        <span
-          className={`flex items-center gap-1 transition-colors ${checks.digit ? "text-success font-medium" : "text-zinc-400 dark:text-zinc-500"}`}
-        >
-          {checks.digit ? "✓" : "○"} One number
-        </span>
-        <span
-          className={`flex items-center gap-1 transition-colors ${checks.special ? "text-success font-medium" : "text-zinc-400 dark:text-zinc-500"}`}
-        >
-          {checks.special ? "✓" : "○"} One special character
-        </span>
-      </div>
-    </div>
-  );
-}
 
 function ContinueWithEmailContent() {
   const router = useRouter();
@@ -185,11 +108,7 @@ function ContinueWithEmailContent() {
   };
 
   const isPasswordValid =
-    password.length >= 8 &&
-    /[A-Z]/.test(password) &&
-    /[a-z]/.test(password) &&
-    /\d/.test(password) &&
-    /[@$!%*?&#^()_\-+=\[\]{}|\\:;""'<>,.?/~`]/.test(password);
+    evaluatePasswordStrength(password, "default").percentage === 100;
 
   const handlePasswordSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -237,20 +156,23 @@ function ContinueWithEmailContent() {
   };
 
   return (
-    <Card className="w-full">
+    <Card className="w-full bg-surface border border-border p-6 shadow-xl rounded-2xl">
       {step === 1 ? (
         <div className="w-full flex flex-col items-center">
-          <div className="w-12 h-12 bg-background flex items-center justify-center rounded-xl my-6">
-            <Mail className="size-6" />
+          <div className="w-12 h-12 bg-surface-secondary flex items-center justify-center rounded-xl my-6">
+            <Mail className="size-6 text-foreground" />
           </div>
 
           <div className="text-center w-full mb-6 flex flex-col items-center gap-2">
-            <Typography.Heading level={3} className="text-2xl font-bold">
+            <Typography.Heading
+              level={3}
+              className="text-2xl font-bold text-foreground"
+            >
               Confirm email ownership
             </Typography.Heading>
             <Typography className="text-sm text-muted">
               We&apos;ve sent a 6-digit verification code to{" "}
-              <span className="font-bold">{email}</span>.
+              <span className="font-bold text-foreground/80">{email}</span>.
             </Typography>
           </div>
 
@@ -260,37 +182,13 @@ function ContinueWithEmailContent() {
           >
             <div className="flex flex-col gap-2 items-center w-full">
               <Label className="text-muted">One-Time Code</Label>
-              <InputOTP maxLength={6} value={otpCode} onChange={setOtpCode}>
-                <InputOTP.Group>
-                  <InputOTP.Slot
-                    className="border rounded-2xl h-12 w-12"
-                    index={0}
-                  />
-                  <InputOTP.Slot
-                    className="border rounded-2xl h-12 w-12"
-                    index={1}
-                  />
-                  <InputOTP.Slot
-                    className="border rounded-2xl h-12 w-12"
-                    index={2}
-                  />
-                </InputOTP.Group>
-                <InputOTP.Separator />
-                <InputOTP.Group>
-                  <InputOTP.Slot
-                    className="border rounded-2xl h-12 w-12"
-                    index={3}
-                  />
-                  <InputOTP.Slot
-                    className="border rounded-2xl h-12 w-12"
-                    index={4}
-                  />
-                  <InputOTP.Slot
-                    className="border rounded-2xl h-12 w-12"
-                    index={5}
-                  />
-                </InputOTP.Group>
-              </InputOTP>
+              <OtpInput
+                value={otpCode}
+                onChange={setOtpCode}
+                length={6}
+                groups={[3, 3]}
+                isDisabled={isOtpLoading}
+              />
             </div>
 
             <Button
@@ -298,7 +196,7 @@ function ContinueWithEmailContent() {
               fullWidth
               isPending={isOtpLoading}
               isDisabled={otpCode.length < 6 || isOtpLoading}
-              className="h-12 rounded-2xl"
+              className="h-12 rounded-2xl bg-foreground text-background font-semibold"
             >
               {isOtpLoading && <Spinner color="current" size="sm" />}
               Verify code
@@ -321,12 +219,15 @@ function ContinueWithEmailContent() {
         </div>
       ) : (
         <div className="w-full flex flex-col items-center">
-          <div className="w-12 h-12 bg-background flex items-center justify-center rounded-xl my-6">
-            <ShieldCheck className="size-6" />
+          <div className="w-12 h-12 bg-surface-secondary flex items-center justify-center rounded-xl my-6">
+            <ShieldCheck className="size-6 text-foreground" />
           </div>
 
           <div className="text-center w-full mb-6 flex flex-col items-center gap-2">
-            <Typography.Heading level={3} className="text-2xl font-bold">
+            <Typography.Heading
+              level={3}
+              className="text-2xl font-bold text-foreground"
+            >
               Establish Password
             </Typography.Heading>
             <Typography className="text-sm text-muted">
@@ -339,14 +240,18 @@ function ContinueWithEmailContent() {
             onSubmit={handlePasswordSubmit}
           >
             <TextField isRequired name="password" type="password">
-              <Label>Password</Label>
+              <Label className="text-sm font-medium text-foreground/80 pb-1">
+                Password
+              </Label>
               <InputGroup>
                 <InputGroup.Input
                   className="h-12"
                   type={isVisible ? "text" : "password"}
                   placeholder="Create password"
                   value={password}
-                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => setPassword(e.target.value)}
+                  onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                    setPassword(e.target.value)
+                  }
                 />
                 <InputGroup.Suffix>
                   <Button
@@ -354,6 +259,7 @@ function ContinueWithEmailContent() {
                     aria-label={isVisible ? "Hide password" : "Show password"}
                     size="sm"
                     variant="ghost"
+                    className="text-muted hover:text-foreground"
                     onPress={() => setIsVisible(!isVisible)}
                   >
                     {isVisible ? (
@@ -364,19 +270,23 @@ function ContinueWithEmailContent() {
                   </Button>
                 </InputGroup.Suffix>
               </InputGroup>
-              <PasswordStrengthMeter value={password} />
+              <PasswordStrengthMeter value={password} policyId="default" />
               <FieldError />
             </TextField>
 
             <TextField isRequired name="confirmPassword" type="password">
-              <Label>Confirm Password</Label>
+              <Label className="text-sm font-medium text-foreground/80 pb-1">
+                Confirm Password
+              </Label>
               <InputGroup>
                 <InputGroup.Input
                   className="h-12"
                   type={isConfirmVisible ? "text" : "password"}
                   placeholder="Confirm your password"
                   value={confirmPassword}
-                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => setConfirmPassword(e.target.value)}
+                  onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                    setConfirmPassword(e.target.value)
+                  }
                 />
                 <InputGroup.Suffix>
                   <Button
@@ -384,6 +294,7 @@ function ContinueWithEmailContent() {
                     aria-label={isVisible ? "Hide password" : "Show password"}
                     size="sm"
                     variant="ghost"
+                    className="text-muted hover:text-foreground"
                     onPress={() => setIsConfirmVisible(!isConfirmVisible)}
                   >
                     {isConfirmVisible ? (
@@ -406,7 +317,7 @@ function ContinueWithEmailContent() {
                 password !== confirmPassword ||
                 isPasswordLoading
               }
-              className="h-12 rounded-2xl"
+              className="h-12 rounded-2xl bg-foreground text-background font-semibold"
             >
               {({ isPending }) => (
                 <>
@@ -429,7 +340,7 @@ export function ContinueWithEmailView() {
     <Suspense
       fallback={
         <div className="flex items-center justify-center p-8 min-h-[400px]">
-          <div className="w-8 h-8 border-2 border-t-zinc-900 border-zinc-200 dark:border-t-zinc-100 rounded-full animate-spin" />
+          <div className="w-8 h-8 border-2 border-t-foreground border-border rounded-full animate-spin" />
         </div>
       }
     >

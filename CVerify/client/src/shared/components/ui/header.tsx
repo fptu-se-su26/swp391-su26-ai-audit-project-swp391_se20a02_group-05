@@ -51,12 +51,12 @@ export const Header: React.FC = () => {
       {/* Right side: Notifications, Session status, User profile avatar */}
       <div className="flex items-center gap-4">
         {/* Session protected indicator */}
-        <div className="hidden sm:flex items-center gap-2 bg-emerald-500/10 border border-emerald-500/25 px-2.5 py-1 rounded-full select-none">
+        <div className="hidden sm:flex items-center gap-2 bg-success/10 border border-success/25 px-2.5 py-1 rounded-full select-none">
           <span className="flex h-2 w-2 relative shrink-0">
-            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-            <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-success/80 opacity-75"></span>
+            <span className="relative inline-flex rounded-full h-2 w-2 bg-success"></span>
           </span>
-          <Typography type="body-xs" className="text-emerald-500 font-outfit font-bold text-[10px] tracking-wide uppercase leading-none">
+          <Typography type="body-xs" className="text-success font-outfit font-bold text-[10px] tracking-wide uppercase leading-none">
             {t('common:dashboard.sessionProtected', { defaultValue: 'Protected' })}
           </Typography>
         </div>

@@ -49,8 +49,8 @@ export class GlobalErrorBoundary extends Component<Props, State> {
   public render() {
     if (this.state.hasError) {
       return this.props.fallback || (
-        <div className="flex min-h-[400px] w-full items-center justify-center p-6 bg-background/50 backdrop-blur-md rounded-3xl border border-zinc-100 dark:border-zinc-800">
-          <Card className="max-w-md p-8 border border-danger/10 flex flex-col gap-6 text-center shadow-xl bg-card">
+        <div className="flex min-h-[400px] w-full items-center justify-center p-6 bg-background/50 backdrop-blur-md rounded-3xl border border-border">
+          <Card className="max-w-md p-8 border border-danger/10 flex flex-col gap-6 text-center shadow-xl bg-surface">
             <div className="w-12 h-12 bg-danger/5 rounded-2xl flex items-center justify-center mx-auto text-danger animate-pulse">
               <AlertTriangle className="size-6" />
             </div>
@@ -59,20 +59,20 @@ export class GlobalErrorBoundary extends Component<Props, State> {
               <h2 className="text-xl font-bold font-sans tracking-tight text-foreground">
                 Interface Hydration Failure
               </h2>
-              <p className="text-sm text-zinc-500 dark:text-zinc-400">
+              <p className="text-sm text-muted">
                 Something went wrong rendering this section of the traveler portal. Live telemetry has logged this exception.
               </p>
             </div>
 
             {process.env.NODE_ENV === 'development' && this.state.error && (
-              <pre className="text-left bg-zinc-950 p-4 rounded-xl text-xs overflow-auto text-danger border border-danger/20 max-h-[160px] font-mono select-all">
+              <pre className="text-left bg-surface-secondary p-4 rounded-xl text-xs overflow-auto text-danger border border-danger/20 max-h-[160px] font-mono select-all">
                 {this.state.error.toString()}
               </pre>
             )}
 
             <Button 
               onPress={() => window.location.reload()}
-              className="h-11 rounded-xl bg-zinc-900 text-white dark:bg-zinc-100 dark:text-black font-semibold shadow-md flex items-center gap-2 justify-center hover:opacity-90 transition-opacity"
+              className="h-11 rounded-xl bg-foreground text-background font-semibold shadow-md flex items-center gap-2 justify-center hover:opacity-90 transition-opacity"
             >
               <RefreshCw className="size-4 animate-spin-slow" />
               Reload Application

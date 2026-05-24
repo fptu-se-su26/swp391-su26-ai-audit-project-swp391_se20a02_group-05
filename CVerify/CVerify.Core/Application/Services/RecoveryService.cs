@@ -12,6 +12,7 @@ using CVerify.API.Core.Entities;
 using CVerify.API.Infrastructure.Configuration;
 using CVerify.API.Infrastructure.Persistence;
 using CVerify.API.Infrastructure.Security;
+using CVerify.API.Application.Security.OtpPolicies;
 
 namespace CVerify.API.Application.Services;
 
@@ -24,6 +25,7 @@ public class RecoveryService : IRecoveryService
     private readonly TimeProvider _timeProvider;
     private readonly ICacheService _cacheService;
     private readonly ILogger<RecoveryService> _logger;
+    private readonly IOtpPolicyService _otpPolicyService;
 
     public RecoveryService(
         ApplicationDbContext context,
@@ -32,7 +34,8 @@ public class RecoveryService : IRecoveryService
         EnvConfiguration envConfig,
         TimeProvider timeProvider,
         ICacheService cacheService,
-        ILogger<RecoveryService> logger)
+        ILogger<RecoveryService> logger,
+        IOtpPolicyService otpPolicyService)
     {
         _context = context;
         _encryptedFileStorageService = encryptedFileStorageService;
@@ -41,6 +44,7 @@ public class RecoveryService : IRecoveryService
         _timeProvider = timeProvider;
         _cacheService = cacheService;
         _logger = logger;
+        _otpPolicyService = otpPolicyService;
     }
 
     public async Task<SubmitClaimResponse> SubmitClaimAsync(
@@ -422,6 +426,7 @@ public class RecoveryService : IRecoveryService
 
     public async Task<VerifyOtpResponse> VerifyRecoveryOtpAsync(VerifyOtpRequest request, string taxCode, CancellationToken cancellationToken = default)
     {
+        _otpPolicyService.ValidateAndThrow(request.Code, "Default");
         var normalizedEmail = request.Email.Trim().ToLowerInvariant();
 
         var verification = await _context.OtpVerifications

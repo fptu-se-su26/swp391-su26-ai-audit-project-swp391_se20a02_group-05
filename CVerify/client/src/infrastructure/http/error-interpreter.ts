@@ -3,6 +3,16 @@ import { useErrorLifecycle } from '@/stores/use-error-lifecycle';
 import { NotificationHub } from '../notifications/orchestrator';
 import i18n from '@/lib/i18n';
 
+/** Checks whether a dynamic (backend-provided) key exists in the loaded i18n resources. */
+function i18nKeyExists(key: string): boolean {
+  return (i18n.exists as (key: string) => boolean)(key);
+}
+
+/** Resolves a dynamic (backend-provided) key against the loaded i18n resources. */
+function i18nResolve(key: string, fallback?: string): string {
+  return (i18n.t as (key: string, defaultValue?: string) => string)(key, fallback);
+}
+
 export interface InterpretationOptions {
   /** If true, validation errors are handled silently inline by forms, avoiding generic toast popups */
   silentValidation?: boolean;
@@ -54,13 +64,13 @@ export const ErrorInterpreter = {
 
     // 4. Fully Owning Copy: Prioritize messageKey, fall back to localized category defaults
     let resolvedDescription = '';
-    if (error.messageKey && i18n.exists(error.messageKey)) {
-      resolvedDescription = i18n.t(error.messageKey);
+    if (error.messageKey && i18nKeyExists(error.messageKey)) {
+      resolvedDescription = i18nResolve(error.messageKey);
     } else {
       // Fallback category localization mapping
       const categoryKey = `system.toast.category.${error.category.toLowerCase()}`;
-      resolvedDescription = i18n.exists(categoryKey)
-        ? i18n.t(categoryKey)
+      resolvedDescription = i18nKeyExists(categoryKey)
+        ? i18nResolve(categoryKey)
         : (error.message || fallbackMessage || 'An unexpected action failure occurred.');
     }
 

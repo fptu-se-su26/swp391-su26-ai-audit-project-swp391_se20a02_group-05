@@ -2,13 +2,13 @@
 
 import React, { useState, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { recoveryApi } from '@/features/auth/services/recovery.service';
+import OtpInput from "@/shared/components/security/otp-input";
+import { recoveryApi } from "@/features/auth/services/recovery.service";
 import {
   Card,
   Typography,
   Button,
   TextField,
-  InputOTP,
   Input,
   Form,
   Label,
@@ -200,7 +200,8 @@ export function ReclaimView() {
       setReceipt(response);
       setStep(4); // Display success receipt
       toast.success("Disputed Reclaim Claim Submitted!", {
-        description: "Our compliance managers have enqueued your legal business evidence for audit.",
+        description:
+          "Our compliance managers have enqueued your legal business evidence for audit.",
       });
     } catch (err) {
       const errorMessage =
@@ -233,7 +234,9 @@ export function ReclaimView() {
           </Typography.Heading>
 
           <Typography className="text-sm text-muted text-center mt-2 max-w-md leading-relaxed">
-            Your enterprise ownership reclaim has been registered. The anti-fraud verification engine has queued your legal proofs for manual auditor sign-off.
+            Your enterprise ownership reclaim has been registered. The
+            anti-fraud verification engine has queued your legal proofs for
+            manual auditor sign-off.
           </Typography>
 
           <div className="w-full mt-6 space-y-4 p-5 rounded-2xl bg-surface-secondary border border-border">
@@ -282,7 +285,7 @@ export function ReclaimView() {
 
           <div className="w-full mt-8 flex flex-col gap-3">
             <Button
-              className="h-12 rounded-xl bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 font-bold w-full"
+              className="h-12 rounded-xl bg-foreground text-background font-bold w-full"
               onPress={() => router.push("/login")}
             >
               Return to Login
@@ -427,7 +430,8 @@ export function ReclaimView() {
                 onBlur={(e) => setEmailTouched(e.target.value.length > 0)}
               />
               <Description>
-                Must be an active corporate domain matching official business registry details.
+                Must be an active corporate domain matching official business
+                registry details.
               </Description>
               <FieldError>Invalid email address format.</FieldError>
             </TextField>
@@ -437,7 +441,7 @@ export function ReclaimView() {
             <Button
               type="submit"
               fullWidth
-              className="h-12 rounded-xl bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 font-bold"
+              className="h-12 rounded-xl bg-foreground text-background font-bold"
               isDisabled={!isStep1Valid || isLoading}
               isPending={isLoading}
             >
@@ -471,28 +475,19 @@ export function ReclaimView() {
                 Confirm Claimant Email Ownership
               </Typography.Heading>
               <Typography className="text-xs text-muted mt-1.5 max-w-xs leading-normal">
-                We sent a 6-digit OTP code to verify ownership of <strong className="text-foreground">{recoveryEmail}</strong>. Enter it below to unlock document uploading.
+                We sent a 6-digit OTP code to verify ownership of{" "}
+                <strong className="text-foreground">{recoveryEmail}</strong>.
+                Enter it below to unlock document uploading.
               </Typography>
             </div>
 
-            <InputOTP
-              maxLength={6}
+            <OtpInput
               value={otpCode}
               onChange={setOtpCode}
-              className="font-sans font-extrabold select-none"
-            >
-              <InputOTP.Group>
-                <InputOTP.Slot index={0} />
-                <InputOTP.Slot index={1} />
-                <InputOTP.Slot index={2} />
-              </InputOTP.Group>
-              <InputOTP.Separator />
-              <InputOTP.Group>
-                <InputOTP.Slot index={3} />
-                <InputOTP.Slot index={4} />
-                <InputOTP.Slot index={5} />
-              </InputOTP.Group>
-            </InputOTP>
+              length={6}
+              groups={[3, 3]}
+              isDisabled={isLoading}
+            />
 
             <div className="flex flex-col items-center gap-2">
               <Button
@@ -513,7 +508,7 @@ export function ReclaimView() {
             <Button
               type="submit"
               fullWidth
-              className="h-12 rounded-xl bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 font-bold"
+              className="h-12 rounded-xl bg-foreground text-background font-bold"
               isDisabled={otpCode.length < 6 || isLoading}
               isPending={isLoading}
             >
@@ -539,7 +534,8 @@ export function ReclaimView() {
                 Provide Legal Business Ownership Evidence
               </Typography>
               <Typography className="text-[10px] text-muted mt-0.5 leading-normal">
-                Upload tax extracts, active business licenses, or legal representation credentials.
+                Upload tax extracts, active business licenses, or legal
+                representation credentials.
               </Typography>
             </div>
 
@@ -614,7 +610,7 @@ export function ReclaimView() {
             <Button
               type="submit"
               fullWidth
-              className="h-12 rounded-xl bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 font-bold"
+              className="h-12 rounded-xl bg-foreground text-background font-bold"
               isDisabled={files.length === 0 || isLoading}
               isPending={isLoading}
             >

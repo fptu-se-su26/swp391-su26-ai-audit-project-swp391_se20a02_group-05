@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
-import { useAuth } from '@/features/auth/hooks/use-auth';
+import { useAuth } from "@/features/auth/hooks/use-auth";
 import { Google } from "@thesvg/react";
 import {
   Card,
@@ -12,7 +12,6 @@ import {
   TextField,
   InputGroup,
   Input,
-  ErrorMessage,
   Form,
   Label,
   FieldError,
@@ -296,7 +295,7 @@ function LoginContent() {
         strategy="lazyOnload"
         onLoad={initializeGoogleSignIn}
       />
-      <Card className="w-full">
+      <Card className="w-full bg-surface border border-border p-12 shadow-xl rounded-2xl">
         <Tabs
           className="w-full"
           variant="secondary"
@@ -304,35 +303,26 @@ function LoginContent() {
           onSelectionChange={(key) => setSelectedTab(key as string)}
         >
           <Tabs.ListContainer>
-            <Tabs.List
-              aria-label="Options"
-              className="flex items-center gap-4 h-10"
-            >
-              <Tabs.Tab
-                id="overview"
-                className="flex items-center justify-center h-full pb-3"
-              >
+            <Tabs.List aria-label="Options">
+              <Tabs.Tab id="engineer" className="pb-6 h-full">
                 <Typography.Heading level={5}>Engineer</Typography.Heading>
-                <Tabs.Indicator className="bottom-0!" />
+                <Tabs.Indicator />
               </Tabs.Tab>
-              <Tabs.Tab
-                id="bussiness"
-                className="flex items-center justify-center h-full pb-3"
-              >
+              <Tabs.Tab id="business" className="pb-6 h-full">
                 <Typography.Heading level={5}>Business</Typography.Heading>
-                <Tabs.Indicator className="!bottom-0!" />
+                <Tabs.Indicator />
               </Tabs.Tab>
             </Tabs.List>
           </Tabs.ListContainer>
 
-          <Tabs.Panel className="pt-6 flex justify-center w-full" id="overview">
-            {selectedTab === "overview" && (
+          <Tabs.Panel className="pt-6 flex justify-center w-full" id="engineer">
+            {selectedTab === "engineer" && (
               <Card
                 variant="transparent"
-                className="w-full max-w-[90%] flex flex-col items-center"
+                className="w-full flex flex-col items-center"
               >
                 <CardHeader className="flex flex-col items-center text-center w-full">
-                  <Card.Title className="text-2xl pb-4">
+                  <Card.Title className="text-2xl pb-3">
                     Proof over promises
                   </Card.Title>
                   <Card.Description className="text-md pb-12">
@@ -351,7 +341,7 @@ function LoginContent() {
                     variant="tertiary"
                     size="lg"
                     fullWidth
-                    className="h-12 rounded-2xl transition-all duration-200 group-hover:opacity-90 group-active:scale-[0.98]"
+                    className="h-12 rounded-2xl"
                   >
                     <Google /> Continue with Google
                   </Button>
@@ -385,11 +375,9 @@ function LoginContent() {
                         onBlur={() => setEmailTouched(true)}
                       />
                       {isEmailInvalid && (
-                        <div className="text-left w-full mt-1">
-                          <ErrorMessage className="text-danger text-sm">
-                            Please enter a valid email address.
-                          </ErrorMessage>
-                        </div>
+                        <FieldError>
+                          Please enter a valid email address.
+                        </FieldError>
                       )}
                     </TextField>
 
@@ -408,11 +396,11 @@ function LoginContent() {
                 ) : (
                   <Form
                     onSubmit={handlePasswordLogin}
-                    className="w-full flex flex-col items-center gap-6 p-0"
+                    className="w-full flex flex-col items-center gap-6"
                   >
                     <TextField fullWidth aria-label="Email Address">
                       <Input
-                        className="h-12 bg-zinc-50 dark:bg-zinc-900 opacity-70"
+                        className="h-12"
                         id="email-locked"
                         type="email"
                         value={email}
@@ -486,7 +474,7 @@ function LoginContent() {
                           setEmailFlowPhase("EMAIL_INPUT");
                           setEngineerPassword("");
                         }}
-                        className="text-sm text-muted hover:underline cursor-pointer bg-transparent border-0 p-0"
+                        className="text-sm text-muted hover:underline cursor-pointer bg-transparent"
                       >
                         ← Use different email
                       </button>
@@ -503,25 +491,22 @@ function LoginContent() {
             )}
           </Tabs.Panel>
 
-          <Tabs.Panel
-            className="pt-4 flex justify-center w-full"
-            id="bussiness"
-          >
-            {selectedTab === "bussiness" && (
+          <Tabs.Panel className="pt-4 flex justify-center w-full" id="business">
+            {selectedTab === "business" && (
               <Card
                 variant="transparent"
-                className="w-full max-w-[90%] flex flex-col items-center"
+                className="w-full flex flex-col items-center"
               >
                 <CardHeader className="flex flex-col items-center text-center w-full">
-                  <Card.Title className="text-2xl pb-4">
+                  <Card.Title className="text-2xl pb-3">
                     Hire beyond resumes
                   </Card.Title>
-                  <Card.Description className="text-md pb-12 w-full">
+                  <Card.Description className="text-md pb-12">
                     Verify engineering talent through real technical evidence.
                   </Card.Description>
                 </CardHeader>
 
-                <CardContent className="w-full pb-3 p-0">
+                <CardContent className="w-full pb-3">
                   <Form
                     className="flex flex-col gap-6"
                     onSubmit={handleBusinessSubmit}
@@ -628,7 +613,7 @@ function LoginContent() {
                   New to CVerify?{" "}
                   <Link
                     href="/company-verification"
-                    className="cursor-pointer font-semibold text-zinc-900 dark:text-zinc-100 hover:underline"
+                    className="cursor-pointer font-semibold text-foreground hover:underline"
                   >
                     Register your company
                     <Link.Icon className="pt-1" />
@@ -648,7 +633,7 @@ export function LoginView() {
     <Suspense
       fallback={
         <div className="flex items-center justify-center p-8 min-h-[400px]">
-          <div className="w-8 h-8 border-2 border-t-zinc-900 border-zinc-200 dark:border-t-zinc-100 rounded-full animate-spin" />
+          <div className="w-8 h-8 border-2 border-t-foreground border-border rounded-full animate-spin" />
         </div>
       }
     >

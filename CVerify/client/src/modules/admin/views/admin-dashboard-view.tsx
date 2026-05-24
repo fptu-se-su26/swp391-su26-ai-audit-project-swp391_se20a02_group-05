@@ -14,13 +14,13 @@ export function AdminDashboardView() {
     <div className="space-y-6 font-outfit">
       
       {/* Header Banner */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 p-6 rounded-2xl bg-zinc-950 border border-zinc-900 text-white select-none">
+      <div className="dark flex flex-col md:flex-row md:items-center justify-between gap-4 p-6 rounded-2xl bg-background border border-border text-foreground select-none">
         <div className="space-y-1">
-          <Typography type="h2" className="text-xl font-bold flex items-center gap-2 text-white">
+          <Typography type="h2" className="text-xl font-bold flex items-center gap-2 text-foreground">
             {t('dashboard-admin:banner.title')}{' '}
             <ShieldAlert size={20} className="text-danger animate-pulse" />
           </Typography>
-          <Typography type="body-xs" className="text-zinc-400 font-light mt-0.5">
+          <Typography type="body-xs" className="text-muted font-light mt-0.5">
             {t('dashboard-admin:banner.subtitle')}
           </Typography>
         </div>
@@ -113,24 +113,24 @@ export function AdminDashboardView() {
           </Button>
         </div>
 
-        <div className="p-4 rounded-xl bg-zinc-950 font-mono text-xs text-zinc-300 space-y-2 max-h-56 overflow-y-auto shadow-inner border border-separator select-none font-medium">
+        <div className="p-4 rounded-xl bg-surface-secondary font-mono text-xs text-foreground space-y-2 max-h-56 overflow-y-auto shadow-inner border border-separator select-none font-medium">
           <div className="flex items-start gap-2.5">
-            <span className="text-zinc-400 font-semibold">[15:48:10]</span>
+            <span className="text-muted font-semibold">[15:48:10]</span>
             <span className="text-success font-bold">[SUCCESS]</span>
             <span>{t('dashboard-admin:console.logs.successRotation', { email: 'admin@cverify.ai' })}</span>
           </div>
           <div className="flex items-start gap-2.5">
-            <span className="text-zinc-400 font-semibold">[15:44:22]</span>
+            <span className="text-muted font-semibold">[15:44:22]</span>
             <span className="text-danger font-bold">[WARN]</span>
             <span>{t('dashboard-admin:console.logs.warnBruteForce', { ip: '192.168.1.42' })}</span>
           </div>
           <div className="flex items-start gap-2.5">
-            <span className="text-zinc-400 font-semibold">[15:39:15]</span>
+            <span className="text-muted font-semibold">[15:39:15]</span>
             <span className="text-success font-bold">[SUCCESS]</span>
             <span>{t('dashboard-admin:console.logs.successOAuth', { email: 'traveler_4892@gmail.com' })}</span>
           </div>
           <div className="flex items-start gap-2.5">
-            <span className="text-zinc-400 font-semibold">[15:32:04]</span>
+            <span className="text-muted font-semibold">[15:32:04]</span>
             <span className="text-warning font-bold">[INFO]</span>
             <span>{t('dashboard-admin:console.logs.infoJwt')}</span>
           </div>

@@ -122,7 +122,6 @@ public class ResetOrganizationPasswordRequest
     public string Token { get; init; } = null!;
 
     [System.ComponentModel.DataAnnotations.Required]
-    [System.ComponentModel.DataAnnotations.MinLength(8, ErrorMessage = "Password must be at least 8 characters long.")]
     public string NewPassword { get; init; } = null!;
 
     [System.ComponentModel.DataAnnotations.Required]

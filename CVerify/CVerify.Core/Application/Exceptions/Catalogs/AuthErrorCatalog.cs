@@ -31,6 +31,10 @@ public static class AuthErrorCatalog
             new(AuthErrorCodes.PasswordTooWeak, ErrorCategory.VALIDATION, "auth.validation.passwordStrength", "Password does not meet complexity requirements.")
         },
         {
+            AuthErrorCodes.PasswordPolicyViolation,
+            new(AuthErrorCodes.PasswordPolicyViolation, ErrorCategory.VALIDATION, "auth.validation.password_policy_failed", "Password does not satisfy the enterprise policy requirements.")
+        },
+        {
             AuthErrorCodes.PasswordsDoNotMatch,
             new(AuthErrorCodes.PasswordsDoNotMatch, ErrorCategory.VALIDATION, "auth.validation.passwordsMismatch", "Passwords do not match.")
         },
