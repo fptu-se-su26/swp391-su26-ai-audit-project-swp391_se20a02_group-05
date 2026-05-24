@@ -23,7 +23,7 @@ Nguyên tắc ghi changelog:
 | Mã môn học | SWP391 |
 | Lớp | SE20A02 |
 | Học kỳ | SU26 |
-| Tên bài tập / Project | TripGenie AI |
+| Tên bài tập / Project | CVerify |
 | Tên sinh viên / Nhóm | Nguyễn Hoàng Ngọc Ánh, Đoàn Thế Lực, Trương Văn Hiếu, Trần Nhất Long, Nguyễn La Hòa An |
 | MSSV / Danh sách MSSV | DE200147, DE200523, DE190105, DE200160, DE201043 |
 | Giảng viên hướng dẫn | QuangLTN3 |
@@ -58,7 +58,7 @@ Nguyên tắc ghi changelog:
 
 | STT | Nội dung thay đổi | Người thực hiện | File/Module liên quan | Minh chứng |
 |---:|---|---|---|---|
-| 1 | API docs research | Trần Nhất Long |   | https://docs.google.com/document/d/1NTzS0vvw8O6rIZAKrxMkTV2l-dVRa2EA/edit?usp=sharing&ouid=104864543920688382356&rtpof=true&sd=true |
+| 1 | API docs research | Trần Nhất Long |   | https://docs.google.com/document/d/1K6i3wU3Stycf3q3Jtsft35tII0XdPFchwYhq7Dr6J_s/edit?usp=sharing |
 | 2 | Update feature AI Log | Trần Nhất Long |   | https://github.com/fptu-se-su26/swp391-su26-ai-audit-project-swp391_se20a02_group-05/pull/28 |
 
 ## AI có hỗ trợ không?
@@ -75,7 +75,7 @@ Nguyên tắc ghi changelog:
 ## Ghi chú
 
 ```text
-Integrating External APIs into AI Agents, a Technical Research Report for an AI-Powered Travel App. Update feature for AI Logger, a tool help students can easily write their markdown reports.
+Integrating External APIs into AI Agents, a Technical Research Report for an AI intergrated webapp. Update feature for AI Logger, a tool help students can easily write their markdown reports.
 
 ```
 
@@ -86,7 +86,7 @@ Integrating External APIs into AI Agents, a Technical Research Report for an AI-
 ## 4.1. Các chức năng đã hoàn thành
 
 ```text
-Report consolidates research on how to integrate external APIs into Large Language Model (LLM)-powered AI agents, with a concrete target
+Report consolidates research on how to integrate external APIs into Large Language Model (LLM)-powered AI agents, with a concrete target. Complete the main functions for the AI ​​logger tool.
 ```
 
 ---
@@ -129,4 +129,4 @@ Sinh viên/nhóm cam kết rằng nội dung changelog phản ánh đúng các t
 
 | Đại diện sinh viên/nhóm | Ngày xác nhận |
 |---|---|
-| Nguyễn Hoàng Ngọc Ánh | 19/5/2026 |
+| Nguyễn Hoàng Ngọc Ánh | 24/5/2026 |
