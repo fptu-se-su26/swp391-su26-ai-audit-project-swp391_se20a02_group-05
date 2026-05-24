@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "../../../features/auth/hooks/use-auth";
 import { Google } from "@thesvg/react";
@@ -17,10 +17,8 @@ import {
   FieldError,
   toast,
   Spinner,
-  Link,
   Description,
   Chip,
-  DescriptionRoot,
 } from "@heroui/react";
 import {
   Eye,
@@ -32,7 +30,6 @@ import {
   ShieldCheck,
   Mail,
   Lock,
-  Globe,
   Search,
   Award,
   Sparkles,
@@ -42,7 +39,6 @@ import {
   UserCheck,
 } from "lucide-react";
 import Script from "next/script";
-import { z } from "zod";
 
 const RESERVED_SLUGS = [
   "admin",
@@ -292,7 +288,7 @@ export default function CompanyVerificationPage() {
   }, [cooldown]);
 
   // Google SSO Initializer inside Step 2 Link view
-  const handleGoogleCredentialResponse = async (
+  const handleGoogleCredentialResponse = useCallback(async (
     response: GoogleIdentityResponse,
   ) => {
     if (!response.credential || !step1Token) return;
@@ -326,9 +322,9 @@ export default function CompanyVerificationPage() {
       setIsLoading(false);
       toast.danger("An unexpected Google error occurred.");
     }
-  };
+  }, [step1Token, verifyOnboardingGoogle, verifiedCompanyInfo, companyName]);
 
-  const initializeGoogleSignIn = () => {
+  const initializeGoogleSignIn = useCallback(() => {
     const customWindow =
       typeof window !== "undefined"
         ? (window as unknown as CustomWindow)
@@ -365,13 +361,13 @@ export default function CompanyVerificationPage() {
         });
       }
     }
-  };
+  }, [step, activeLinkTab, handleGoogleCredentialResponse]);
 
   useEffect(() => {
     if (step === 2 && activeLinkTab === "google") {
       initializeGoogleSignIn();
     }
-  }, [step, activeLinkTab]);
+  }, [step, activeLinkTab, initializeGoogleSignIn]);
 
   // Step 1: Legal Identity validation submission
   const handleStep1Submit = async (e: React.FormEvent) => {
@@ -597,12 +593,10 @@ export default function CompanyVerificationPage() {
             <Button
               className="flex-1 h-12 rounded-2xl bg-accent hover:bg-accent-hover text-accent-foreground font-bold"
               onPress={() =>
-                toast.success(
-                  "Access recovery request submitted successfully!",
-                  {
-                    description:
-                      "Our compliance team will review your legal ownership details shortly.",
-                  },
+                router.push(
+                  `/company-recovery?taxCode=${taxCode}&companyName=${encodeURIComponent(
+                    recoveryInfo.organizationDisplayName
+                  )}`
                 )
               }
             >
@@ -1309,7 +1303,7 @@ export default function CompanyVerificationPage() {
                       type={isPasswordVisible ? "text" : "password"}
                       placeholder="Create a strong account password"
                       value={password}
-                      onChange={(e: any) => setPassword(e.target.value)}
+                      onChange={(e: React.ChangeEvent<HTMLInputElement>) => setPassword(e.target.value)}
                     />
                     <InputGroup.Suffix>
                       <Button
@@ -1351,7 +1345,7 @@ export default function CompanyVerificationPage() {
                       type={isConfirmVisible ? "text" : "password"}
                       placeholder="Re-enter password to confirm"
                       value={confirmPassword}
-                      onChange={(e: any) => setConfirmPassword(e.target.value)}
+                      onChange={(e: React.ChangeEvent<HTMLInputElement>) => setConfirmPassword(e.target.value)}
                     />
                     <InputGroup.Suffix>
                       <Button

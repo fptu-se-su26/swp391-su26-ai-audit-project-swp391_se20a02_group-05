@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useAuth } from '../../../features/auth/hooks/use-auth';
 import {
   Card, Typography, Button, TextField, InputOTP,
-  InputGroup, Input, Form, Label, FieldError, toast, Spinner
+  InputGroup, Input, Form, Label, toast, Spinner
 } from "@heroui/react";
 import { Eye, EyeOff, ShieldCheck, Mail, ArrowLeft, KeyRound } from 'lucide-react';
 
@@ -204,7 +204,7 @@ export default function ForgotPasswordPage() {
               Confirm email ownership
             </Typography.Heading>
             <Typography className="text-sm text-zinc-500 dark:text-zinc-400">
-              We've sent a 6-digit challenge code to <span className="font-semibold text-zinc-700 dark:text-zinc-300">{email}</span>.
+              We&apos;ve sent a 6-digit challenge code to <span className="font-semibold text-zinc-700 dark:text-zinc-300">{email}</span>.
             </Typography>
           </div>
 
@@ -239,7 +239,7 @@ export default function ForgotPasswordPage() {
           </Form>
 
           <div className="text-center text-xs font-medium text-zinc-500 dark:text-zinc-400 pt-6">
-            Didn't receive the email?{" "}
+            Didn&apos;t receive the email?{" "}
             {cooldown > 0 ? (
               <span className="font-semibold text-zinc-400">Resend in {cooldown}s</span>
             ) : (
@@ -278,7 +278,7 @@ export default function ForgotPasswordPage() {
                   type={isVisible ? "text" : "password"}
                   placeholder="Enter new password (min 8 chars)"
                   value={password}
-                  onChange={(e: any) => setPassword(e.target.value)}
+                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => setPassword(e.target.value)}
                 />
                 <InputGroup.Suffix>
                   <Button
@@ -302,7 +302,7 @@ export default function ForgotPasswordPage() {
                   type={isConfirmVisible ? "text" : "password"}
                   placeholder="Repeat your new password"
                   value={confirmPassword}
-                  onChange={(e: any) => setConfirmPassword(e.target.value)}
+                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => setConfirmPassword(e.target.value)}
                 />
                 <InputGroup.Suffix>
                   <Button

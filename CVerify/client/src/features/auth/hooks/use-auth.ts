@@ -231,12 +231,17 @@ export const useAuth = () => {
         store.setAuthStatusAndNextStep(response.status, response.nextStep);
         console.log(`[Auth System] Session bootstrap complete. User authenticated. Role: ${user.role}`);
         return { authenticated: true, user };
-      } catch (err: any) {
-        const status = err?.response?.status || err?.status;
+      } catch (err) {
+        interface AxiosErrorLike {
+          response?: { status?: number };
+          status?: number;
+        }
+        const error = err as AxiosErrorLike;
+        const status = error?.response?.status || error?.status;
         if (status === 401) {
           console.log('[Auth System] Session bootstrap: No active session (unauthenticated guest).');
         } else {
-          console.warn('[Auth System] Session bootstrap validation failed. Cleaning local session.', err);
+          console.warn('[Auth System] Session bootstrap validation failed. Cleaning local session.', error);
         }
         store.logout(false);
         return { authenticated: false, user: null };

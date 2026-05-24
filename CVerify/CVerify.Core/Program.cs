@@ -224,12 +224,15 @@ builder.Services.AddScoped<IIdentityRepository, IdentityRepository>();
 builder.Services.AddScoped<ISystemService, SystemService>();
 builder.Services.AddScoped<ICacheService, CacheService>();
 builder.Services.AddScoped<ITokenService, TokenService>();
+builder.Services.AddScoped<IEncryptedFileStorageService, EncryptedFileStorageService>();
 
 // Register Application Services
 builder.Services.AddScoped<IAccountService, AccountService>();
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IPermissionService, PermissionService>();
 builder.Services.AddScoped<IIdentityStateResolver, IdentityStateResolver>();
+builder.Services.AddScoped<IRecoveryExecutionEngine, RecoveryExecutionEngine>();
+builder.Services.AddScoped<IRecoveryService, RecoveryService>();
 
 // Register AI Service
 builder.Services.AddScoped<IHmacSignatureService, HmacSignatureService>();
@@ -245,6 +248,7 @@ builder.Services.AddEmailInfrastructure(builder.Configuration);
 // Register Background Outbox Processor and Token Sweeper Job
 builder.Services.AddHostedService<EmailOutboxBackgroundProcessor>();
 builder.Services.AddHostedService<TokenCleanupBackgroundJob>();
+builder.Services.AddHostedService<RecoveryClaimBackgroundWorker>();
 
 
 // Configure JWT Authentication

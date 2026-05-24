@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '../../../features/auth/hooks/use-auth';
 import { Google } from '@thesvg/react';
@@ -8,7 +8,7 @@ import {
   Card, Tabs, Typography, Button, TextField,
   InputGroup, Input, ErrorMessage, Form, Label,
   FieldError, Checkbox, toast, Spinner, CardHeader,
-  CardFooter, CardContent, Link
+  CardContent, Link
 } from "@heroui/react";
 import { Eye, EyeOff } from 'lucide-react';
 import Script from 'next/script';
@@ -34,7 +34,7 @@ interface CustomWindow extends Window {
 function LoginContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { loginWithGoogle, login, sendOtp, resolveEmailAuthState, companyLogin, isLoading } = useAuth();
+  const { loginWithGoogle, login, sendOtp, resolveEmailAuthState, companyLogin } = useAuth();
 
   // Callback URL for redirects
   const callbackUrl = searchParams.get('callbackUrl') || '/';
@@ -64,7 +64,7 @@ function LoginContent() {
   const [isBusinessLoading, setIsBusinessLoading] = useState(false);
 
   // Google SSO logic
-  const handleGoogleCredentialResponse = async (response: GoogleIdentityResponse) => {
+  const handleGoogleCredentialResponse = useCallback(async (response: GoogleIdentityResponse) => {
     try {
       if (!response.credential) return;
       const result = await loginWithGoogle(response.credential);
@@ -94,9 +94,9 @@ function LoginContent() {
         description: "An unexpected error occurred during Google authentication."
       });
     }
-  };
+  }, [loginWithGoogle, router, callbackUrl]);
 
-  const initializeGoogleSignIn = () => {
+  const initializeGoogleSignIn = useCallback(() => {
     const customWindow = typeof window !== 'undefined' ? (window as unknown as CustomWindow) : null;
     if (customWindow?.google?.accounts?.id) {
       customWindow.__googleIdentityListener = handleGoogleCredentialResponse;
@@ -122,11 +122,11 @@ function LoginContent() {
         );
       }
     }
-  };
+  }, [handleGoogleCredentialResponse]);
 
   useEffect(() => {
     initializeGoogleSignIn();
-  }, [isLoading, selectedTab]);
+  }, [initializeGoogleSignIn, selectedTab]);
 
   const handleContinueWithEmail = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -358,7 +358,7 @@ function LoginContent() {
                           type={isEngineerPasswordVisible ? "text" : "password"}
                           placeholder="Enter your password"
                           value={engineerPassword}
-                          onChange={(e: any) => setEngineerPassword(e.target.value)}
+                          onChange={(e: React.ChangeEvent<HTMLInputElement>) => setEngineerPassword(e.target.value)}
                           autoFocus
                         />
                         <InputGroup.Suffix>
@@ -448,7 +448,7 @@ function LoginContent() {
                           type={isVisible ? "text" : "password"}
                           placeholder="Enter your password"
                           value={businessPassword}
-                          onChange={(e: any) => setBusinessPassword(e.target.value)}
+                          onChange={(e: React.ChangeEvent<HTMLInputElement>) => setBusinessPassword(e.target.value)}
                         />
                         <InputGroup.Suffix>
                           <Button
@@ -485,7 +485,8 @@ function LoginContent() {
                         type="submit"
                         fullWidth
                         className="h-12 rounded-2xl"
-                        isDisabled={!businessUsername || !businessPassword}
+                        isDisabled={!businessUsername || !businessPassword || isBusinessLoading}
+                        isPending={isBusinessLoading}
                       >
                         Sign In
                       </Button>

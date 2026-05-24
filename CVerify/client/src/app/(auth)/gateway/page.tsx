@@ -8,7 +8,7 @@ import {
     FieldError, Checkbox
 } from "@heroui/react";
 import { Eye, EyeOff } from 'lucide-react';
-import { useState } from "react";
+import React, { useState } from "react";
 
 export default function GatewayPage() {
     const validateEmail = (email: string) => {
@@ -191,7 +191,7 @@ export default function GatewayPage() {
                                                         type={isVisible ? "text" : "password"}
                                                         placeholder="Enter your password"
                                                         value={businessPassword}
-                                                        onChange={(e: any) => setBusinessPassword(e.target.value)}
+                                                        onChange={(e: React.ChangeEvent<HTMLInputElement>) => setBusinessPassword(e.target.value)}
                                                     />
                                                     <InputGroup.Suffix>
                                                         <Button

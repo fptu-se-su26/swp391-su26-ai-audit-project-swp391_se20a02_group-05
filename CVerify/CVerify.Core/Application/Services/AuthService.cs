@@ -1867,14 +1867,37 @@ public class AuthService : IAuthService
             await _context.SaveChangesAsync(cancellationToken);
 
             // Member mapping
-            var member = new OrganizationMember
+            var authority = new OrganizationAuthority
             {
                 OrganizationId = org.Id,
                 UserId = user.Id,
-                Role = "Owner",
+                Role = "organization_owner",
                 JoinedAt = _timeProvider.GetUtcNow()
             };
-            _context.OrganizationMembers.Add(member);
+            _context.OrganizationAuthorities.Add(authority);
+
+            // Create Workspace presentation details
+            var workspace = new Workspace
+            {
+                OrganizationId = org.Id,
+                DisplayName = org.Name,
+                Slug = org.Username,
+                Status = "active",
+                CreatedAt = _timeProvider.GetUtcNow(),
+                UpdatedAt = _timeProvider.GetUtcNow()
+            };
+            _context.Workspaces.Add(workspace);
+            await _context.SaveChangesAsync(cancellationToken);
+
+            // Create WorkspaceMember
+            var workspaceMember = new WorkspaceMember
+            {
+                WorkspaceId = workspace.Id,
+                UserId = user.Id,
+                Role = "workspace_admin",
+                JoinedAt = _timeProvider.GetUtcNow()
+            };
+            _context.WorkspaceMembers.Add(workspaceMember);
             await _context.SaveChangesAsync(cancellationToken);
 
             // Map Verification Link ownership for audits
@@ -2325,14 +2348,37 @@ public class AuthService : IAuthService
             await _context.SaveChangesAsync(cancellationToken);
 
             // Link as Owner
-            var member = new OrganizationMember
+            var authority = new OrganizationAuthority
             {
                 OrganizationId = org.Id,
                 UserId = user.Id,
-                Role = "Owner",
+                Role = "organization_owner",
                 JoinedAt = _timeProvider.GetUtcNow()
             };
-            _context.OrganizationMembers.Add(member);
+            _context.OrganizationAuthorities.Add(authority);
+
+            // Create Workspace presentation details
+            var workspace = new Workspace
+            {
+                OrganizationId = org.Id,
+                DisplayName = org.Name,
+                Slug = org.Username,
+                Status = "active",
+                CreatedAt = _timeProvider.GetUtcNow(),
+                UpdatedAt = _timeProvider.GetUtcNow()
+            };
+            _context.Workspaces.Add(workspace);
+            await _context.SaveChangesAsync(cancellationToken);
+
+            // Create WorkspaceMember
+            var workspaceMember = new WorkspaceMember
+            {
+                WorkspaceId = workspace.Id,
+                UserId = user.Id,
+                Role = "workspace_admin",
+                JoinedAt = _timeProvider.GetUtcNow()
+            };
+            _context.WorkspaceMembers.Add(workspaceMember);
             await _context.SaveChangesAsync(cancellationToken);
 
             // Save Level 1 Verification audit metadata
@@ -2424,8 +2470,8 @@ public class AuthService : IAuthService
             return null;
         }
 
-        var ownerMember = await _context.OrganizationMembers
-            .Where(om => om.OrganizationId == org.Id && om.Role == "Owner")
+        var ownerMember = await _context.OrganizationAuthorities
+            .Where(om => om.OrganizationId == org.Id && om.Role == "organization_owner")
             .FirstOrDefaultAsync();
 
         if (ownerMember == null)

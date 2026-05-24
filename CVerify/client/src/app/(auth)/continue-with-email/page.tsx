@@ -10,7 +10,6 @@ import {
   TextField,
   InputOTP,
   InputGroup,
-  Input,
   Form,
   Label,
   FieldError,
@@ -347,7 +346,7 @@ function ContinueWithEmailContent() {
                   type={isVisible ? "text" : "password"}
                   placeholder="Create password"
                   value={password}
-                  onChange={(e: any) => setPassword(e.target.value)}
+                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => setPassword(e.target.value)}
                 />
                 <InputGroup.Suffix>
                   <Button
@@ -377,7 +376,7 @@ function ContinueWithEmailContent() {
                   type={isConfirmVisible ? "text" : "password"}
                   placeholder="Confirm your password"
                   value={confirmPassword}
-                  onChange={(e: any) => setConfirmPassword(e.target.value)}
+                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => setConfirmPassword(e.target.value)}
                 />
                 <InputGroup.Suffix>
                   <Button

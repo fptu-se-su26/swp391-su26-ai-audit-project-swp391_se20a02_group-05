@@ -1,9 +1,6 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
-import { jwtVerify } from 'jose';
 import { ROUTES } from './lib/constants/auth.constants';
-import { UserRole } from './types/auth.types';
-import { normalizeRole } from './lib/utils/auth-utils';
 
 const SUPPORTED_LANGS = ['vi', 'en'];
 const DEFAULT_LANG = 'vi';

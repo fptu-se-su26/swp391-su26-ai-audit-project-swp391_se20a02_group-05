@@ -70,10 +70,17 @@ public class ApplicationDbContext : DbContext
     public DbSet<AuthProvider> AuthProviders => Set<AuthProvider>();
     public DbSet<PasswordCredential> PasswordCredentials => Set<PasswordCredential>();
     public DbSet<Organization> Organizations => Set<Organization>();
-    public DbSet<OrganizationMember> OrganizationMembers => Set<OrganizationMember>();
+    public DbSet<OrganizationAuthority> OrganizationAuthorities => Set<OrganizationAuthority>();
     public DbSet<OtpVerification> OtpVerifications => Set<OtpVerification>();
     public DbSet<VerificationLink> VerificationLinks => Set<VerificationLink>();
     public DbSet<OrganizationVerification> OrganizationVerifications => Set<OrganizationVerification>();
+    public DbSet<Workspace> Workspaces => Set<Workspace>();
+    public DbSet<WorkspaceMember> WorkspaceMembers => Set<WorkspaceMember>();
+    public DbSet<RecoveryClaimDocument> RecoveryClaimDocuments => Set<RecoveryClaimDocument>();
+    public DbSet<WorkspaceArchiveSnapshot> WorkspaceArchiveSnapshots => Set<WorkspaceArchiveSnapshot>();
+    public DbSet<RecoveryExecutionLock> RecoveryExecutionLocks => Set<RecoveryExecutionLock>();
+    public DbSet<OrganizationRecoveryClaim> OrganizationRecoveryClaims => Set<OrganizationRecoveryClaim>();
+    public DbSet<ApprovedRecoverySession> ApprovedRecoverySessions => Set<ApprovedRecoverySession>();
 
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
@@ -94,10 +101,17 @@ public class ApplicationDbContext : DbContext
         modelBuilder.Entity<AuthProvider>().Property(ap => ap.Id).ValueGeneratedNever();
         modelBuilder.Entity<PasswordCredential>().Property(pc => pc.Id).ValueGeneratedNever();
         modelBuilder.Entity<Organization>().Property(o => o.Id).ValueGeneratedNever();
-        modelBuilder.Entity<OrganizationMember>().Property(om => om.Id).ValueGeneratedNever();
+        modelBuilder.Entity<OrganizationAuthority>().Property(oa => oa.Id).ValueGeneratedNever();
         modelBuilder.Entity<OtpVerification>().Property(ov => ov.Id).ValueGeneratedNever();
         modelBuilder.Entity<VerificationLink>().Property(vl => vl.Id).ValueGeneratedNever();
         modelBuilder.Entity<OrganizationVerification>().Property(ov => ov.Id).ValueGeneratedNever();
+        modelBuilder.Entity<Workspace>().Property(w => w.Id).ValueGeneratedNever();
+        modelBuilder.Entity<WorkspaceMember>().Property(wm => wm.Id).ValueGeneratedNever();
+        modelBuilder.Entity<RecoveryClaimDocument>().Property(rcd => rcd.Id).ValueGeneratedNever();
+        modelBuilder.Entity<WorkspaceArchiveSnapshot>().Property(was => was.Id).ValueGeneratedNever();
+        modelBuilder.Entity<RecoveryExecutionLock>().Property(rel => rel.Id).ValueGeneratedNever();
+        modelBuilder.Entity<OrganizationRecoveryClaim>().Property(orc => orc.Id).ValueGeneratedNever();
+        modelBuilder.Entity<ApprovedRecoverySession>().Property(ars => ars.Id).ValueGeneratedNever();
 
         // Enable PostgreSQL Extensions
         modelBuilder.HasPostgresExtension("citext");
@@ -322,19 +336,100 @@ public class ApplicationDbContext : DbContext
                   .HasDatabaseName("idx_organizations_tax_code_active");
         });
 
-        // OrganizationMember configurations
-        modelBuilder.Entity<OrganizationMember>(entity =>
+        // OrganizationAuthority configurations
+        modelBuilder.Entity<OrganizationAuthority>(entity =>
         {
-            entity.ToTable("organization_members");
-            entity.HasQueryFilter(om => om.Organization.DeletedAt == null);
-            entity.HasOne(om => om.Organization)
+            entity.ToTable("organization_authorities");
+            entity.HasQueryFilter(oa => oa.Organization.DeletedAt == null);
+            entity.HasOne(oa => oa.Organization)
                   .WithMany(o => o.Members)
-                  .HasForeignKey(om => om.OrganizationId)
+                  .HasForeignKey(oa => oa.OrganizationId)
                   .OnDelete(DeleteBehavior.Cascade);
-            entity.HasOne(om => om.User)
+            entity.HasOne(oa => oa.User)
                   .WithMany()
-                  .HasForeignKey(om => om.UserId)
+                  .HasForeignKey(oa => oa.UserId)
                   .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        // Workspace configurations
+        modelBuilder.Entity<Workspace>(entity =>
+        {
+            entity.ToTable("workspaces");
+            entity.HasQueryFilter(w => w.DeletedAt == null);
+            entity.HasOne(w => w.Organization)
+                  .WithMany()
+                  .HasForeignKey(w => w.OrganizationId)
+                  .OnDelete(DeleteBehavior.Cascade);
+            entity.HasIndex(w => w.Slug)
+                  .IsUnique()
+                  .HasFilter("deleted_at IS NULL")
+                  .HasDatabaseName("idx_workspaces_slug_active");
+        });
+
+        // WorkspaceMember configurations
+        modelBuilder.Entity<WorkspaceMember>(entity =>
+        {
+            entity.ToTable("workspace_members");
+            entity.HasOne(wm => wm.Workspace)
+                  .WithMany()
+                  .HasForeignKey(wm => wm.WorkspaceId)
+                  .OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(wm => wm.User)
+                  .WithMany()
+                  .HasForeignKey(wm => wm.UserId)
+                  .OnDelete(DeleteBehavior.Cascade);
+            entity.HasIndex(wm => new { wm.WorkspaceId, wm.UserId }).IsUnique();
+        });
+
+        // RecoveryClaimDocument configurations
+        modelBuilder.Entity<RecoveryClaimDocument>(entity =>
+        {
+            entity.ToTable("recovery_claim_documents");
+            entity.HasOne<OrganizationRecoveryClaim>()
+                  .WithMany(orc => orc.Documents)
+                  .HasForeignKey(rcd => rcd.RecoveryClaimId)
+                  .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        // WorkspaceArchiveSnapshot configurations
+        modelBuilder.Entity<WorkspaceArchiveSnapshot>(entity =>
+        {
+            entity.ToTable("workspace_archive_snapshots");
+            entity.HasOne<Workspace>()
+                  .WithMany()
+                  .HasForeignKey(was => was.WorkspaceId)
+                  .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        // RecoveryExecutionLock configurations
+        modelBuilder.Entity<RecoveryExecutionLock>(entity =>
+        {
+            entity.ToTable("recovery_execution_locks");
+            entity.HasOne<ApprovedRecoverySession>()
+                  .WithMany()
+                  .HasForeignKey(rel => rel.RecoverySessionId)
+                  .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        // OrganizationRecoveryClaim configurations
+        modelBuilder.Entity<OrganizationRecoveryClaim>(entity =>
+        {
+            entity.ToTable("organization_recovery_claims");
+            entity.HasOne(orc => orc.Organization)
+                  .WithMany()
+                  .HasForeignKey(orc => orc.OrganizationId)
+                  .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        // ApprovedRecoverySession configurations
+        modelBuilder.Entity<ApprovedRecoverySession>(entity =>
+        {
+            entity.ToTable("approved_recovery_sessions");
+            entity.HasOne(ars => ars.Organization)
+                  .WithMany()
+                  .HasForeignKey(ars => ars.OrganizationId)
+                  .OnDelete(DeleteBehavior.Cascade);
+            entity.HasIndex(ars => ars.RecoveryTokenHash).IsUnique();
         });
 
         // OtpVerification configurations

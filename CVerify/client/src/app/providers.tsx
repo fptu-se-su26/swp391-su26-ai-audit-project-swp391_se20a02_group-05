@@ -2,9 +2,8 @@
 
 import React, { useEffect } from 'react';
 import { useAuth } from '../features/auth/hooks/use-auth';
-import { Compass } from 'lucide-react';
 import { usePathname } from 'next/navigation';
-import { Toast, toast, Typography } from '@heroui/react';
+import { Toast, toast } from '@heroui/react';
 import i18n from '../lib/i18n';
 import { useThemeStore } from '../hooks/use-theme-store';
 

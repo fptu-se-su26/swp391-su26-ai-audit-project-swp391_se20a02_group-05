@@ -87,12 +87,24 @@ export function useVerificationStages(isAuthenticated: boolean): UseVerification
   const [displayedStage, setDisplayedStage] = useState<VerificationStage>(STAGE_MAP.IDLE);
   const [isExiting, setIsExiting] = useState(false);
 
-  const mountTimeRef = useRef(Date.now());
-  const lastTransitionRef = useRef(Date.now());
+  const lastTransitionRef = useRef<number>(0);
   const transitionTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const [hasMinTimeElapsed, setHasMinTimeElapsed] = useState(false);
+
+  // Track elapsed time safety on mount
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setHasMinTimeElapsed(true);
+    }, MIN_TOTAL_VISIBLE_MS);
+    return () => clearTimeout(timer);
+  }, []);
 
   // Resolve which stage to display, applying minimum transition delays
   useEffect(() => {
+    if (lastTransitionRef.current === 0) {
+      lastTransitionRef.current = Date.now();
+    }
     const targetStage = STAGE_MAP[bootstrapState];
     const now = Date.now();
     const elapsedSinceLastTransition = now - lastTransitionRef.current;
@@ -134,22 +146,16 @@ export function useVerificationStages(isAuthenticated: boolean): UseVerification
 
   // Determine completion readiness with minimum visible duration
   const isComplete = bootstrapState === 'READY';
-  const elapsedSinceMount = Date.now() - mountTimeRef.current;
-  const hasMinTimeElapsed = elapsedSinceMount >= MIN_TOTAL_VISIBLE_MS;
 
   // Trigger exit animation when bootstrap completes and minimum time has elapsed
   useEffect(() => {
-    if (!isComplete) return;
-
-    if (hasMinTimeElapsed) {
-      setIsExiting(true);
-      return;
+    if (isComplete && hasMinTimeElapsed) {
+      const timer = setTimeout(() => {
+        setIsExiting(true);
+      }, 0);
+      return () => clearTimeout(timer);
     }
-
-    const remaining = MIN_TOTAL_VISIBLE_MS - elapsedSinceMount;
-    const timeout = setTimeout(() => setIsExiting(true), remaining);
-    return () => clearTimeout(timeout);
-  }, [isComplete, hasMinTimeElapsed, elapsedSinceMount]);
+  }, [isComplete, hasMinTimeElapsed]);
 
   /** Called by the parent guard after fade-out animation completes to allow rendering children */
   const onTransitionComplete = useCallback(() => {

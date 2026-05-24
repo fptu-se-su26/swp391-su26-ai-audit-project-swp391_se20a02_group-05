@@ -5,7 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '../../../features/auth/hooks/use-auth';
 import {
     Card, Typography, Button, TextField,
-    InputGroup, Input, Form, Label, FieldError, toast, Spinner
+    InputGroup, Input, Form, Label, toast, Spinner
 } from "@heroui/react";
 import { Eye, EyeOff, LayoutTemplate, Sparkles } from 'lucide-react';
 import { Suspense } from 'react';
@@ -51,7 +51,11 @@ function WorkspaceSetupContent() {
       candidates.add(`${local}_workspace`);
     }
     
-    setSuggestions(Array.from(candidates).filter(c => c.length >= 3 && c.length <= 30));
+    const filteredCandidates = Array.from(candidates).filter(c => c.length >= 3 && c.length <= 30);
+    const timer = setTimeout(() => {
+      setSuggestions(filteredCandidates);
+    }, 0);
+    return () => clearTimeout(timer);
   }, [email]);
 
   const isWorkspaceInvalid = workspaceName.length > 0 && !workspaceName.match(/^[a-z0-9_]{3,30}$/);
@@ -144,7 +148,7 @@ function WorkspaceSetupContent() {
                 type={isVisible ? "text" : "password"}
                 placeholder="Password (min 8 chars)"
                 value={password}
-                onChange={(e: any) => setPassword(e.target.value)}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setPassword(e.target.value)}
               />
               <InputGroup.Suffix>
                 <Button
@@ -168,7 +172,7 @@ function WorkspaceSetupContent() {
                 type={isConfirmVisible ? "text" : "password"}
                 placeholder="Repeat your password"
                 value={confirmPassword}
-                onChange={(e: any) => setConfirmPassword(e.target.value)}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setConfirmPassword(e.target.value)}
               />
               <InputGroup.Suffix>
                 <Button

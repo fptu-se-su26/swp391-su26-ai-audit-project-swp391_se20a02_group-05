@@ -5,7 +5,7 @@ import { useSearchParams, useRouter } from 'next/navigation';
 import { useAuth } from '../../../features/auth/hooks/use-auth';
 import {
     Card, Typography, Button, TextField,
-    InputGroup, Input, Form, Label, toast, Spinner
+    InputGroup, Form, Label, toast, Spinner
 } from "@heroui/react";
 import { KeyRound, ShieldCheck, Eye, EyeOff } from 'lucide-react';
 import { Suspense } from 'react';
@@ -88,7 +88,7 @@ function ResetPasswordContent() {
                   type={isVisible ? "text" : "password"}
                   placeholder="Enter new password (min 8 chars)"
                   value={password}
-                  onChange={(e: any) => setPassword(e.target.value)}
+                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => setPassword(e.target.value)}
                   disabled={isLoading || !token}
                 />
                 <InputGroup.Suffix>
@@ -114,7 +114,7 @@ function ResetPasswordContent() {
                   type={isConfirmVisible ? "text" : "password"}
                   placeholder="Repeat your new password"
                   value={confirmPassword}
-                  onChange={(e: any) => setConfirmPassword(e.target.value)}
+                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => setConfirmPassword(e.target.value)}
                   disabled={isLoading || !token}
                 />
                 <InputGroup.Suffix>

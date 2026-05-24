@@ -4,7 +4,7 @@ using System.ComponentModel.DataAnnotations.Schema;
 
 namespace CVerify.API.Core.Entities;
 
-public class OrganizationMember
+public class OrganizationAuthority
 {
     [Key]
     [DatabaseGenerated(DatabaseGeneratedOption.None)]
@@ -24,7 +24,7 @@ public class OrganizationMember
 
     [Required]
     [MaxLength(50)]
-    public string Role { get; set; } = null!; // "Owner", "Admin", "Member"
+    public string Role { get; set; } = null!; // "organization_owner", "security_admin", "billing_admin"
 
     public DateTimeOffset JoinedAt { get; set; } = DateTimeOffset.UtcNow;
 }

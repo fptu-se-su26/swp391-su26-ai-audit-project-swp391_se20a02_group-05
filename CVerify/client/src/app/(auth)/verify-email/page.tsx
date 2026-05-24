@@ -9,10 +9,7 @@ import Link from 'next/link';
 import {
   ShieldCheck,
   ShieldAlert,
-  Shield,
   Mail,
-  ArrowRight,
-  CheckCircle2,
   ChevronLeft,
   RefreshCw
 } from 'lucide-react';
@@ -22,6 +19,14 @@ import {
 import { Suspense } from 'react';
 
 type VerifyState = 'pending' | 'verifying' | 'success' | 'failed' | 'expired';
+
+interface AxiosErrorLike {
+  response?: {
+    data?: {
+      message?: string;
+    };
+  };
+}
 
 function VerifyEmailContent() {
   const searchParams = useSearchParams();
@@ -43,10 +48,13 @@ function VerifyEmailContent() {
   useEffect(() => {
     const activeEmail = targetEmail || user?.email || '';
     if (activeEmail) {
-      setEmailInput(activeEmail);
-      if (showManualForm && pendingVerificationEmail) {
-        setShowManualForm(false);
-      }
+      const timer = setTimeout(() => {
+        setEmailInput(activeEmail);
+        if (showManualForm && pendingVerificationEmail) {
+          setShowManualForm(false);
+        }
+      }, 0);
+      return () => clearTimeout(timer);
     }
   }, [user, targetEmail, showManualForm, pendingVerificationEmail]);
 
@@ -92,9 +100,10 @@ function VerifyEmailContent() {
         description: `Please check ${emailInput} for your new verification link.`
       });
       setState('pending');
-    } catch (err: any) {
+    } catch (err) {
+      const error = err as AxiosErrorLike;
       toast.danger("Resend Failed", {
-        description: err.response?.data?.message || "Could not resend the link."
+        description: error.response?.data?.message || "Could not resend the link."
       });
     } finally {
       setResendLoading(false);

@@ -26,9 +26,11 @@ function VerifyLinkContent() {
 
   useEffect(() => {
     if (!token) {
-      setStatus('error');
-      setErrorMessage("No token provided. Please check the authorization link sent to your email.");
-      return;
+      const timer = setTimeout(() => {
+        setStatus('error');
+        setErrorMessage("No token provided. Please check the authorization link sent to your email.");
+      }, 0);
+      return () => clearTimeout(timer);
     }
 
     const runVerification = async () => {
@@ -47,7 +49,7 @@ function VerifyLinkContent() {
     };
 
     runVerification();
-  }, [token]);
+  }, [token, verifyCompanyLink]);
 
   const handleProceedToWorkspace = () => {
     if (!companyDetails) return;

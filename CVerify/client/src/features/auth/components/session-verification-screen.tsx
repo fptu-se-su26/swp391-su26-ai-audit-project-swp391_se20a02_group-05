@@ -32,7 +32,10 @@ export const SessionVerificationScreen: React.FC<SessionVerificationScreenProps>
   // SSR hydration safeguard: only render theme-dependent assets after client mount
   const [isMounted, setIsMounted] = useState(false);
   useEffect(() => {
-    setIsMounted(true);
+    const timer = setTimeout(() => {
+      setIsMounted(true);
+    }, 0);
+    return () => clearTimeout(timer);
   }, []);
 
   // Resolve theme-adaptive logo source

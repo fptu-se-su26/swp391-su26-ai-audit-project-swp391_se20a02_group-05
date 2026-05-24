@@ -27,7 +27,7 @@ export default function RegisterPage() {
       </Typography.Heading>
       
       <Typography className="text-sm text-zinc-500 dark:text-zinc-400 mb-6 max-w-xs mx-auto">
-        We have consolidated our signup and signin experience into a secure, single-step "Continue with Email" flow.
+        We have consolidated our signup and signin experience into a secure, single-step &quot;Continue with Email&quot; flow.
       </Typography>
 
       <Button

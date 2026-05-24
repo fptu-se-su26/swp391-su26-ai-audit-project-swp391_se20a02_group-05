@@ -1,11 +1,11 @@
-import React from 'react';
-import { Typography, Button, Link } from '@heroui/react';
+import { Typography, Link } from '@heroui/react';
 
 export const AuthShowcase: React.FC = () => {
   return (
     <div className="hidden xl:flex flex-col justify-center pl-12">
       <div className="absolute top-12 left-12">
         <Link href="/">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src="/brand/logo&name.png"
             alt="CVerify Logo"

@@ -27,6 +27,13 @@ public class Organization
     [MaxLength(100)]
     public string Username { get; set; } = null!;
 
+    [MaxLength(50)]
+    public string? RegistrationNumber { get; set; }
+
+    [Required]
+    [MaxLength(50)]
+    public string Status { get; set; } = "active"; // "active", "disputed", "archived", "superseded", "fraudulent"
+
     public bool IsVerified { get; set; } = false;
 
     public int VerificationLevel { get; set; } = 0; // 0 = Unverified/Onboarding, 1 = Legal Verified, 2 = Domain Verified, 3 = Domain Ownership Verified
@@ -37,5 +44,5 @@ public class Organization
 
     public DateTimeOffset? DeletedAt { get; set; }
 
-    public virtual ICollection<OrganizationMember> Members { get; set; } = new List<OrganizationMember>();
+    public virtual ICollection<OrganizationAuthority> Members { get; set; } = new List<OrganizationAuthority>();
 }
