@@ -340,6 +340,86 @@ public class AuthController : ControllerBase
         return Ok(response);
     }
 
+    [HttpPost("onboarding/verify-company")]
+    [AllowAnonymous]
+    [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(VerifyCompanyOnboardingResponse))]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<IActionResult> VerifyCompanyOnboarding(
+        [FromBody] VerifyCompanyOnboardingRequest request,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            var result = await _authService.VerifyCompanyOnboardingAsync(request, cancellationToken);
+            return Ok(result);
+        }
+        catch (AuthException ex)
+        {
+            return BadRequest(new { code = ex.Code, message = ex.Message });
+        }
+    }
+
+    [HttpPost("onboarding/verify-otp")]
+    [AllowAnonymous]
+    [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(VerifyOtpResponse))]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<IActionResult> VerifyOnboardingOtp(
+        [FromBody] VerifyOtpRequest request,
+        [FromHeader(Name = "X-Step1-Token")] string step1Token,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            var result = await _authService.VerifyOnboardingOtpAsync(request, step1Token, cancellationToken);
+            return Ok(result);
+        }
+        catch (AuthException ex)
+        {
+            return BadRequest(new { code = ex.Code, message = ex.Message });
+        }
+    }
+
+    [HttpPost("onboarding/verify-google")]
+    [AllowAnonymous]
+    [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(VerifyOtpResponse))]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<IActionResult> VerifyOnboardingGoogle(
+        [FromBody] GoogleOnboardingLinkRequest request,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            var result = await _authService.VerifyOnboardingGoogleAsync(request, cancellationToken);
+            return Ok(result);
+        }
+        catch (AuthException ex)
+        {
+            return BadRequest(new { code = ex.Code, message = ex.Message });
+        }
+    }
+
+    [HttpPost("onboarding/complete")]
+    [AllowAnonymous]
+    [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(AuthResponse))]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<IActionResult> CompleteOnboarding(
+        [FromBody] CompleteOnboardingRequest request,
+        CancellationToken cancellationToken)
+    {
+        var userAgent = Request.Headers["User-Agent"].ToString();
+        var ipAddress = HttpContext.Connection.RemoteIpAddress?.ToString() ?? "127.0.0.1";
+
+        try
+        {
+            var result = await _authService.CompleteOnboardingAsync(request, userAgent, ipAddress, cancellationToken);
+            return Ok(result);
+        }
+        catch (AuthException ex)
+        {
+            return BadRequest(new { code = ex.Code, message = ex.Message });
+        }
+    }
+
     [HttpGet("sessions")]
     [Authorize]
     [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(IEnumerable<SessionInfo>))]

@@ -1,197 +1,1415 @@
 "use client";
 
-import React, { useState } from 'react';
-import { useRouter } from 'next/navigation';
-import { useAuth } from '../../../features/auth/hooks/use-auth';
+import React, { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { useAuth } from "../../../features/auth/hooks/use-auth";
+import { Google } from "@thesvg/react";
 import {
-  Card, Typography, Button, TextField, CardHeader, CardContent,
-  Input, Form, Label, FieldError, Checkbox, toast, Spinner, Link
+  Card,
+  Typography,
+  Button,
+  TextField,
+  InputOTP,
+  InputGroup,
+  Input,
+  Form,
+  Label,
+  FieldError,
+  toast,
+  Spinner,
+  Link,
+  Description,
+  Chip,
+  DescriptionRoot,
 } from "@heroui/react";
-import { Building2, ArrowLeft } from 'lucide-react';
+import {
+  Eye,
+  EyeOff,
+  Building2,
+  Check,
+  ArrowRight,
+  ArrowLeft,
+  ShieldCheck,
+  Mail,
+  Lock,
+  Globe,
+  Search,
+  Award,
+  Sparkles,
+  AlertTriangle,
+  AlertCircle,
+  RefreshCw,
+  UserCheck,
+} from "lucide-react";
+import Script from "next/script";
+import { z } from "zod";
+
+const RESERVED_SLUGS = [
+  "admin",
+  "root",
+  "support",
+  "system",
+  "api",
+  "cverify",
+  "help",
+  "billing",
+  "status",
+  "security",
+];
+
+// Lookalike brand checkers (typosquatting prevention)
+const isLookalikeSlug = (slug: string): boolean => {
+  const normalized = slug
+    .replace(/0/g, "o")
+    .replace(/1/g, "i")
+    .replace(/3/g, "e")
+    .replace(/vv/g, "w")
+    .replace(/l1/g, "ll");
+
+  const criticalBrands = [
+    "google",
+    "facebook",
+    "linkedin",
+    "cverify",
+    "admin",
+    "microsoft",
+    "github",
+    "stripe",
+  ];
+  return criticalBrands.some(
+    (brand) => normalized.includes(brand) && slug !== brand,
+  );
+};
+
+// Normalized Suggested Slugs Generator based on Vietnamese accents removal
+const generateSuggestedSlug = (name: string): string => {
+  let slug = name
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "") // Strip accents
+    .replace(/đ/g, "d")
+    .replace(/[^a-z0-9\s-]/g, "") // Strip punctuation
+    .trim()
+    .replace(/\s+/g, "-") // Replace space with dash
+    .replace(/-+/g, "-"); // Deduplicate dashes
+
+  if (slug.length < 4) {
+    slug = slug.padEnd(4, "0");
+  }
+  return slug.substring(0, 32);
+};
+
+// Password complexity metrics components
+function PasswordStrengthMeter({ value }: { value: string }) {
+  if (!value) return null;
+
+  const checks = {
+    length: value.length >= 12,
+    uppercase: /[A-Z]/.test(value),
+    lowercase: /[a-z]/.test(value),
+    digit: /\d/.test(value),
+    special: /[@$!%*?&#^()_\-+=\[\]{}|\\:;""'<>,.?/~`]/.test(value),
+  };
+
+  const score = Object.values(checks).filter(Boolean).length;
+
+  let label = "Very Weak";
+  let colorClass = "bg-danger";
+  let textColorClass = "text-danger";
+
+  if (score === 5) {
+    label = "Very Strong & Secure";
+    colorClass = "bg-success";
+    textColorClass = "text-success";
+  } else if (score === 4) {
+    label = "Strong";
+    colorClass = "bg-success/80";
+    textColorClass = "text-success/80";
+  } else if (score === 3) {
+    label = "Fair";
+    colorClass = "bg-warning";
+    textColorClass = "text-warning";
+  } else if (score >= 1) {
+    label = "Weak (Insecure)";
+    colorClass = "bg-danger";
+    textColorClass = "text-danger";
+  }
+
+  return (
+    <div className="space-y-2 mt-2 px-1 select-none">
+      <div className="flex justify-between items-center text-xs">
+        <span className="text-muted text-[11px] font-medium font-sans">
+          Security Strength
+        </span>
+        <span
+          className={`font-bold text-[11px] transition-colors ${textColorClass}`}
+        >
+          {label}
+        </span>
+      </div>
+
+      <div className="flex gap-1 h-1.5 w-full bg-surface-secondary rounded-full overflow-hidden">
+        <div
+          className={`h-full rounded-full transition-all duration-300 ${colorClass}`}
+          style={{ width: `${(score / 5) * 100}%` }}
+        />
+      </div>
+
+      <div className="grid grid-cols-2 gap-x-3 gap-y-1 text-[11px] text-muted mt-1.5">
+        <span
+          className={`flex items-center gap-1 transition-colors ${checks.length ? "text-success font-medium" : "text-muted/80"}`}
+        >
+          {checks.length ? "✓" : "○"} Min 12 characters
+        </span>
+        <span
+          className={`flex items-center gap-1 transition-colors ${checks.uppercase ? "text-success font-medium" : "text-muted/80"}`}
+        >
+          {checks.uppercase ? "✓" : "○"} Capital letter
+        </span>
+        <span
+          className={`flex items-center gap-1 transition-colors ${checks.lowercase ? "text-success font-medium" : "text-muted/80"}`}
+        >
+          {checks.lowercase ? "✓" : "○"} Lowercase letter
+        </span>
+        <span
+          className={`flex items-center gap-1 transition-colors ${checks.digit ? "text-success font-medium" : "text-muted/80"}`}
+        >
+          {checks.digit ? "✓" : "○"} One number
+        </span>
+        <span
+          className={`flex items-center gap-1 transition-colors ${checks.special ? "text-success font-medium" : "text-muted/80"}`}
+        >
+          {checks.special ? "✓" : "○"} Special character
+        </span>
+      </div>
+    </div>
+  );
+}
+
+interface GoogleIdentityResponse {
+  credential?: string;
+}
+
+interface CustomWindow extends Window {
+  google?: {
+    accounts?: {
+      id?: {
+        initialize: (options: {
+          client_id: string;
+          callback: (response: GoogleIdentityResponse) => void;
+        }) => void;
+        renderButton: (
+          parent: HTMLElement,
+          options: {
+            theme?: string;
+            size?: string;
+            width?: number;
+            text?: string;
+          },
+        ) => void;
+      };
+    };
+  };
+  __googleIdentityListener?: (response: GoogleIdentityResponse) => void;
+  __googleIdentityInitialized?: boolean;
+}
 
 export default function CompanyVerificationPage() {
   const router = useRouter();
-  const { registerCompany } = useAuth();
+  const {
+    verifyCompanyOnboarding,
+    sendOtp,
+    verifyOnboardingOtp,
+    verifyOnboardingGoogle,
+    completeOnboarding,
+  } = useAuth();
 
-  // Form states
-  const [companyName, setCompanyName] = useState("");
-  const [taxCode, setTaxCode] = useState("");
-  const [companyEmail, setCompanyEmail] = useState("");
-  const [emailTouched, setEmailTouched] = useState(false);
-  const [acceptTerms, setAcceptTerms] = useState(false);
+  // Unified Wizard Step: 1 = Registry Lookup, 2 = Identity Link, 3 = Workspace Setup
+  const [step, setStep] = useState(1);
   const [isLoading, setIsLoading] = useState(false);
-  const [isSuccess, setIsSuccess] = useState(false);
 
-  const validateEmail = (val: string) => {
-    return val.match(/^[^\s@]+@[^\s@]+\.[^\s@]+$/);
+  // STEP 1 State: Legal Business Registry
+  const [taxCode, setTaxCode] = useState("");
+  const [companyName, setCompanyName] = useState("");
+  const [taxCodeTouched, setTaxCodeTouched] = useState(false);
+  const [companyNameTouched, setCompanyNameTouched] = useState(false);
+  const [verifiedCompanyInfo, setVerifiedCompanyInfo] = useState<{
+    officialCompanyName: string;
+    taxCode: string;
+  } | null>(null);
+  const [step1Token, setStep1Token] = useState("");
+  const [recoveryInfo, setRecoveryInfo] = useState<{
+    organizationDisplayName: string;
+    organizationSlug: string;
+  } | null>(null);
+
+  // STEP 2 State: Owner Identity Link
+  const [activeLinkTab, setActiveLinkTab] = useState<"email" | "google">(
+    "email",
+  );
+  const [ownerEmail, setOwnerEmail] = useState("");
+  const [ownerEmailTouched, setOwnerEmailTouched] = useState(false);
+  const [otpSent, setOtpSent] = useState(false);
+  const [challengeId, setChallengeId] = useState("");
+  const [otpCode, setOtpCode] = useState("");
+  const [cooldown, setCooldown] = useState(0);
+  const [step2Token, setStep2Token] = useState("");
+  const [verifiedEmail, setVerifiedEmail] = useState("");
+
+  // STEP 3 State: Workspace Provisioning
+  const [companyDisplayName, setCompanyDisplayName] = useState("");
+  const [organizationUsername, setOrganizationUsername] = useState("");
+  const [slugTouched, setSlugTouched] = useState(false);
+  const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [isPasswordVisible, setIsPasswordVisible] = useState(false);
+  const [isConfirmVisible, setIsConfirmVisible] = useState(false);
+
+  // Step names & descriptions
+  const steps = [
+    { id: 1, label: "Legal Identity", desc: "Company registration check" },
+    { id: 2, label: "Owner Ownership", desc: "Prove profile credentials" },
+    { id: 3, label: "Workspace Setup", desc: "Configure your space" },
+  ];
+
+  // Regex and validators
+  const taxCodeRegex = /^\d{10}(-\d{3})?$/;
+  const isTaxCodeValid = taxCodeRegex.test(taxCode);
+  const isTaxCodeInvalid = taxCodeTouched && !isTaxCodeValid;
+  const isCompanyNameInvalid =
+    companyNameTouched && companyName.trim().length < 2;
+
+  const validateEmail = (val: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(val);
+  const isOwnerEmailInvalid = ownerEmailTouched && !validateEmail(ownerEmail);
+
+  // Timer cooldown ticking for OTP
+  useEffect(() => {
+    if (cooldown <= 0) return;
+    const interval = setInterval(() => {
+      setCooldown((prev) => prev - 1);
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [cooldown]);
+
+  // Google SSO Initializer inside Step 2 Link view
+  const handleGoogleCredentialResponse = async (
+    response: GoogleIdentityResponse,
+  ) => {
+    if (!response.credential || !step1Token) return;
+    setIsLoading(true);
+    try {
+      const result = await verifyOnboardingGoogle(
+        response.credential,
+        step1Token,
+      );
+      setIsLoading(false);
+      if (result.success && result.data) {
+        setStep2Token(result.data.verificationToken);
+        setVerifiedEmail(result.data.email || "");
+        toast.success("Google link successful!", {
+          description: `Verified ownership as ${result.data.email}`,
+        });
+
+        // Setup initial default display name and suggested slug from verified company name
+        const officialName =
+          verifiedCompanyInfo?.officialCompanyName || companyName;
+        setCompanyDisplayName(officialName);
+        setOrganizationUsername(generateSuggestedSlug(officialName));
+      } else {
+        toast.danger("Google linking failed", {
+          description:
+            result.error?.message ||
+            "Verify company onboarding state link failed.",
+        });
+      }
+    } catch {
+      setIsLoading(false);
+      toast.danger("An unexpected Google error occurred.");
+    }
   };
-  const isEmailInvalid = emailTouched && companyEmail.length > 0 && !validateEmail(companyEmail);
-  const isTaxCodeInvalid = taxCode.length > 0 && !taxCode.match(/^\d{10}$/);
 
-  const handleRegister = async (e: React.FormEvent) => {
+  const initializeGoogleSignIn = () => {
+    const customWindow =
+      typeof window !== "undefined"
+        ? (window as unknown as CustomWindow)
+        : null;
+    if (
+      customWindow?.google?.accounts?.id &&
+      step === 2 &&
+      activeLinkTab === "google"
+    ) {
+      customWindow.__googleIdentityListener = handleGoogleCredentialResponse;
+
+      if (!customWindow.__googleIdentityInitialized) {
+        customWindow.google.accounts.id.initialize({
+          client_id:
+            process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID ||
+            "1014876615707-krcgh8vcr3b8p98sc89qff74n3ch7u8j.apps.googleusercontent.com",
+          callback: (response: GoogleIdentityResponse) => {
+            if (typeof customWindow.__googleIdentityListener === "function") {
+              customWindow.__googleIdentityListener(response);
+            }
+          },
+        });
+        customWindow.__googleIdentityInitialized = true;
+      }
+
+      const container = document.getElementById("google-signin-button");
+      if (container) {
+        container.innerHTML = "";
+        customWindow.google.accounts.id.renderButton(container, {
+          theme: "outline",
+          size: "large",
+          width: 320,
+          text: "signup_with",
+        });
+      }
+    }
+  };
+
+  useEffect(() => {
+    if (step === 2 && activeLinkTab === "google") {
+      initializeGoogleSignIn();
+    }
+  }, [step, activeLinkTab]);
+
+  // Step 1: Legal Identity validation submission
+  const handleStep1Submit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!companyName || !taxCode || !companyEmail || !acceptTerms) return;
-    if (isEmailInvalid || isTaxCodeInvalid) return;
+    setTaxCodeTouched(true);
+    setCompanyNameTouched(true);
+
+    if (!isTaxCodeValid || companyName.trim().length < 2) return;
 
     setIsLoading(true);
-    const result = await registerCompany({
-      companyName,
-      taxCode,
-      companyEmail,
-      agreeTerms: acceptTerms
-    });
+    const result = await verifyCompanyOnboarding(companyName, taxCode);
     setIsLoading(false);
 
-    if (result.success) {
-      setIsSuccess(true);
-      toast.success("Registration Successful", {
-        description: "An email verification link has been sent to your company email."
+    if (result.success && result.data) {
+      if (result.data.organizationExists) {
+        setRecoveryInfo({
+          organizationDisplayName:
+            result.data.organizationDisplayName ||
+            result.data.officialCompanyName ||
+            companyName,
+          organizationSlug: result.data.organizationSlug || "",
+        });
+        toast.warning("This company has already been registered.", {
+          description: "Transitioning to workspace access recovery.",
+        });
+        return;
+      }
+
+      setVerifiedCompanyInfo({
+        officialCompanyName: result.data.officialCompanyName,
+        taxCode: result.data.taxCode,
+      });
+      setStep1Token(result.data.signedToken || "");
+      toast.success("Vietnamese Business Identity verified!", {
+        description: "Official legal registry successfully verified.",
       });
     } else {
-      toast.danger("Registration Failed", {
-        description: result.error?.message || "Verify your details or check if tax code is already registered."
+      toast.danger("Registry Verification Failed", {
+        description:
+          result.error?.message ||
+          "Invalid tax code or company registry match failure.",
       });
     }
   };
 
-  return (
-    <Card className="w-full">
-      {!isSuccess ? (
-        <div className="w-full flex flex-col items-center">
-          <div className="w-12 h-12 bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center rounded-xl mb-6">
-            <Building2 className="size-6 text-zinc-900 dark:text-zinc-100" />
+  const handleStep1Confirm = () => {
+    // Advance to Step 2
+    setStep(2);
+    setActiveLinkTab("email");
+  };
+
+  // Step 2 OTP Dispatches
+  const handleSendOtp = async () => {
+    if (!ownerEmail || !validateEmail(ownerEmail)) return;
+    setIsLoading(true);
+    const result = await sendOtp(ownerEmail, "Onboarding");
+    setIsLoading(false);
+
+    if (result.success && result.data) {
+      setChallengeId(result.data.challengeId);
+      setOtpSent(true);
+      setCooldown(60);
+      toast.success("Verification code dispatched", {
+        description: `6-digit OTP code has been sent to ${ownerEmail}.`,
+      });
+    } else {
+      toast.danger("Email validation failed", {
+        description:
+          result.error?.message ||
+          "Invalid domain host resolution or burner email block.",
+      });
+    }
+  };
+
+  // Step 2 OTP Verification
+  const handleVerifyOtp = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!otpCode || otpCode.length < 6 || !step1Token) return;
+
+    setIsLoading(true);
+    const result = await verifyOnboardingOtp(
+      challengeId,
+      ownerEmail,
+      otpCode,
+      step1Token,
+    );
+    setIsLoading(false);
+
+    if (result.success && result.data) {
+      setStep2Token(result.data.verificationToken);
+      setVerifiedEmail(ownerEmail);
+      toast.success("Email OTP verified successfully!", {
+        description: "Your business owner credentials are linked.",
+      });
+
+      // Setup initial default display name and suggested slug from verified company name
+      const officialName =
+        verifiedCompanyInfo?.officialCompanyName || companyName;
+      setCompanyDisplayName(officialName);
+      setOrganizationUsername(generateSuggestedSlug(officialName));
+
+      // Advance to step 3
+      setStep(3);
+    } else {
+      toast.danger("OTP Verification failed", {
+        description:
+          result.error?.message ||
+          "Invalid or expired OTP code code. Please retry.",
+      });
+    }
+  };
+
+  // Step 3 Password complexity checks
+  const isPasswordValid =
+    password.length >= 12 &&
+    /[A-Z]/.test(password) &&
+    /[a-z]/.test(password) &&
+    /\d/.test(password) &&
+    /[@$!%*?&#^()_\-+=\[\]{}|\\:;""'<>,.?/~`]/.test(password);
+
+  const slugRegex = /^[a-z0-9-]{4,32}$/;
+  const isSlugValid = slugRegex.test(organizationUsername);
+  const isReservedSlug = RESERVED_SLUGS.includes(organizationUsername);
+  const isImpersonating = isLookalikeSlug(organizationUsername);
+
+  const isStep3Valid =
+    companyDisplayName.trim().length >= 2 &&
+    isSlugValid &&
+    !isReservedSlug &&
+    isPasswordValid &&
+    password === confirmPassword;
+
+  // Step 3: Setup workspace final provisioning
+  const handleStep3Submit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!isStep3Valid || !step2Token) return;
+
+    setIsLoading(true);
+    const idempotencyKey = crypto.randomUUID();
+
+    const result = await completeOnboarding(
+      {
+        step2Token,
+        organizationUsername,
+        password,
+        confirmPassword,
+        companyDisplayName,
+      },
+      idempotencyKey,
+    );
+
+    setIsLoading(false);
+
+    if (result.success) {
+      toast.success("Workspace Provisioned successfully!", {
+        description:
+          "Welcome to CVerify. Your organization trust level is Level 1 (Legal Verified)!",
+      });
+      router.push("/");
+    } else {
+      toast.danger("Provisioning failed", {
+        description:
+          result.error?.message ||
+          "Failed to set up workspace organization username.",
+      });
+    }
+  };
+
+  if (recoveryInfo) {
+    return (
+      <Card className="w-full relative overflow-hidden max-h-[80vh] flex flex-col p-6 pt-12">
+        {/* Visual Premium Header Spark */}
+        <div className="absolute top-0 left-0 w-full h-1.5 bg-accent shrink-0" />
+
+        {/* Top-left Return to Login Button */}
+        <Button
+          variant="ghost"
+          size="sm"
+          className="absolute top-6 left-4 text-muted"
+          onPress={() => {
+            setRecoveryInfo(null);
+            setStep(1);
+            router.push("/login");
+          }}
+        >
+          <ArrowLeft className="size-3.5" />
+          Return to Login
+        </Button>
+
+        <div className="w-full flex flex-col items-center flex-1 overflow-hidden">
+          <div className="flex flex-col items-center shrink-0 w-full mb-4 px-6 pt-2">
+            <div className="w-12 h-12 bg-warning/10 flex items-center justify-center rounded-xl mb-4">
+              <AlertTriangle className="size-6 text-warning" />
+            </div>
+
+            <div className="text-center w-full flex flex-col items-center gap-2">
+              <Typography.Heading level={3} className="text-xl font-bold">
+                This company has already been registered
+              </Typography.Heading>
+              <div className="p-4 rounded-2xl bg-surface-secondary border border-border select-none mt-1 w-full">
+                <span className="text-xs text-muted block">
+                  Registered Workspace
+                </span>
+                <span className="font-bold block mt-1">
+                  {recoveryInfo.organizationDisplayName}
+                </span>
+                <span className="text-xs text-muted font-mono block mt-1">
+                  cverify.com/workspace/{recoveryInfo.organizationSlug}
+                </span>
+              </div>
+
+              <Typography className="text-sm text-muted leading-relaxed text-center mt-2">
+                It looks like this organization{" "}
+                <span className="underline">already exists</span> on CVerify. If
+                your company registered previously and you no longer have
+                access, you can request ownership recovery or regain access to
+                the workspace.
+              </Typography>
+            </div>
           </div>
 
-          <CardHeader className="flex flex-col items-center text-center w-full">
-            <Card.Title className="text-2xl pb-4 pt-6">Register your company</Card.Title>
-            <Card.Description className="text-md pb-6">
-              Enter your details below to request a CVerify business account.
-            </Card.Description>
-          </CardHeader>
+          <div className="flex flex-row gap-3 w-full px-6 mt-4 pb-6 shrink-0">
+            <Button
+              className="flex-1 h-12 rounded-2xl bg-accent hover:bg-accent-hover text-accent-foreground font-bold"
+              onPress={() =>
+                toast.success(
+                  "Access recovery request submitted successfully!",
+                  {
+                    description:
+                      "Our compliance team will review your legal ownership details shortly.",
+                  },
+                )
+              }
+            >
+              <UserCheck className="size-4 mr-2" />
+              Request Access
+            </Button>
+            <Button
+              variant="secondary"
+              className="flex-1 h-12 rounded-2xl border border-border bg-surface-secondary text-foreground/80 font-medium"
+              onPress={() => window.open("mailto:cverify.career@gmail.com")}
+            >
+              <Mail className="size-4 mr-2" />
+              Contact Support
+            </Button>
+          </div>
+        </div>
+      </Card>
+    );
+  }
 
-          <CardContent className="w-full pb-3 px-6 lg:px-12 p-0">
-            <Form className="flex flex-col gap-6" onSubmit={handleRegister}>
-              <TextField
-                isRequired
-                name="companyName"
-                type="text"
-              >
-                <Label>Company Name</Label>
-                <Input
-                  placeholder="Enter official company name"
-                  className="h-12"
-                  maxLength={10}
-                  value={taxCode}
-                  onChange={(e) => setTaxCode(e.target.value.replace(/\D/g, ''))}
-                />
-                <FieldError />
-              </TextField>
-              <TextField
-                isRequired
-                name="taxCode"
-                type="text"
-                value={taxCode}
-                isInvalid={isTaxCodeInvalid}
-                validate={() => isTaxCodeInvalid ? "Tax code must be exactly 10 digits." : null}
-              >
-                <Label>Tax Code</Label>
-                <Input
-                  placeholder="Enter your 10-digit tax code"
-                  className="h-12"
-                  value={taxCode}
-                  onChange={(e) => setTaxCode(e.target.value)}
-                />
-                <FieldError />
-              </TextField>
-              <TextField
-                isRequired
-                name="companyEmail"
-                type="email"
-                isInvalid={isEmailInvalid}
-                validate={() => isEmailInvalid ? "Please enter a valid company email address." : null}
-              >
-                <Label>Company Email</Label>
-                <Input
-                  placeholder="Enter company email"
-                  className="h-12"
-                  value={companyEmail}
-                  onChange={(e) => {
-                    setCompanyEmail(e.target.value);
-                    setEmailTouched(true);
-                  }}
-                  onBlur={() => setEmailTouched(true)}
-                />
-                <FieldError />
-              </TextField>
-              <div className="flex items-center">
-                <Checkbox
-                  id="terms-agreement"
-                  isSelected={acceptTerms}
-                  onChange={setAcceptTerms}
-                >
-                  <Checkbox.Control>
-                    <Checkbox.Indicator />
-                  </Checkbox.Control>
-                  <Checkbox.Content>
-                    <Label htmlFor="terms-agreement" className="text-muted cursor-pointer">
-                      I agree to CVerify's{" "}
-                      <Link href="/terms-of-service" className="text-sm inline">
-                        Terms of Service<Link.Icon />
-                      </Link>{" "}
-                      and{" "}
-                      <Link href="/privacy-policy" className="text-sm inline">
-                        Privacy Policy<Link.Icon />
-                      </Link>
-                    </Label>
-                  </Checkbox.Content>
-                </Checkbox>
+  return (
+    <>
+      {step === 2 && activeLinkTab === "google" && (
+        <Script
+          src="https://accounts.google.com/gsi/client"
+          strategy="lazyOnload"
+          onLoad={initializeGoogleSignIn}
+        />
+      )}
+
+      <Card
+        className={`w-full relative overflow-hidden transition-all duration-300 max-h-[80vh] flex flex-col`}
+      >
+        {/* Visual Premium Header Spark */}
+        <div className="absolute top-0 left-0 w-full h-1.5 bg-accent shrink-0" />
+
+        {/* Dynamic Stepper Header Progress Block */}
+        <div className="w-full flex flex-col items-center mb-6 py-6 border-b border-border select-none shrink-0">
+          <div className="flex items-start justify-between w-full max-w-2xl px-2">
+            {steps.map((s, idx) => (
+              <React.Fragment key={s.id}>
+                {/* Step Item */}
+                <div className="flex flex-col items-center relative z-10 flex-1">
+                  {/* Circle */}
+                  <div
+                    className={`w-9 h-9 rounded-full flex items-center justify-center border-2 transition-all duration-300 font-bold font-mono text-xs ${
+                      step > s.id
+                        ? "bg-accent border-accent text-accent-foreground"
+                        : step === s.id
+                          ? "border-accent text-accent bg-surface"
+                          : "border-border text-muted bg-surface"
+                    }`}
+                  >
+                    {step > s.id ? (
+                      <Check className="size-4 stroke-[2.5]" />
+                    ) : (
+                      s.id
+                    )}
+                  </div>
+
+                  {/* Labels stacked below */}
+                  <div className="flex flex-col items-center mt-3 text-center px-1">
+                    <span
+                      className={`text-xs font-bold tracking-wide transition-colors whitespace-nowrap ${
+                        step >= s.id
+                          ? "text-foreground font-semibold"
+                          : "text-muted"
+                      }`}
+                    >
+                      {s.label}
+                    </span>
+                    <span className="text-[10px] text-muted font-medium mt-1 max-w-[120px] hidden sm:block leading-snug">
+                      {s.desc}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Connecting Line between steps */}
+                {idx < steps.length - 1 && (
+                  <div className="flex-1 h-[2px] bg-border mt-[17px] -mx-4 z-0 min-w-[20px] sm:min-w-[40px]">
+                    <div
+                      className="h-full bg-accent transition-all duration-500"
+                      style={{ width: step > s.id ? "100%" : "0%" }}
+                    />
+                  </div>
+                )}
+              </React.Fragment>
+            ))}
+          </div>
+        </div>
+
+        {/* ================= STEP 1: REGISTRY LOOKUP ================= */}
+        {step === 1 && (
+          <div className="w-full flex flex-col items-center flex-1 overflow-hidden">
+            <div className="flex flex-col items-center shrink-0 w-full mb-4 px-6 pt-2">
+              <div className="w-12 h-12 bg-background flex items-center justify-center rounded-xl mb-4">
+                <Building2 className="size-6" />
               </div>
-              <div className="flex gap-4 pb-6">
-                <Button
-                  type="button"
-                  variant="secondary"
-                  fullWidth
-                  className="h-12 rounded-2xl"
-                  onPress={() => router.push('/login')}
+
+              <div className="text-center w-full flex flex-col items-center gap-2">
+                <Typography.Heading level={3} className="text-2xl font-bold">
+                  Register Your Company
+                </Typography.Heading>
+                <Typography className="text-sm text-muted">
+                  Verify your legal Vietnamese business existence via VietQR
+                  corporate registry linkage.
+                </Typography>
+              </div>
+            </div>
+
+            {!verifiedCompanyInfo ? (
+              <Form
+                className="w-full flex flex-col flex-1 overflow-hidden"
+                onSubmit={handleStep1Submit}
+              >
+                <div className="flex-1 overflow-y-auto w-full px-6 pb-4 flex flex-col gap-6">
+                  <TextField
+                    isRequired
+                    name="companyName"
+                    type="text"
+                    isInvalid={isCompanyNameInvalid}
+                  >
+                    <Label>Company Name (Registration Name)</Label>
+                    <Input
+                      placeholder="Enter official registration name (e.g. FPT Software)"
+                      className="h-12 rounded-2xl"
+                      value={companyName}
+                      onChange={(e) => {
+                        setCompanyName(e.target.value);
+                        setTaxCodeTouched(e.target.value.length > 0);
+                      }}
+                    />
+                    {isCompanyNameInvalid && (
+                      <FieldError>
+                        Company name must be at least 2 characters.
+                      </FieldError>
+                    )}
+                  </TextField>
+
+                  <TextField
+                    isRequired
+                    name="taxCode"
+                    type="text"
+                    isInvalid={isTaxCodeInvalid}
+                  >
+                    <Label>Tax Code (Vietnamese MST)</Label>
+                    <Input
+                      placeholder="Enter your 10-digit tax code (e.g. 0401779383)"
+                      className="h-12 rounded-2xl"
+                      value={taxCode}
+                      onChange={(e) => {
+                        setTaxCode(e.target.value);
+                        setTaxCodeTouched(e.target.value.length > 0);
+                      }}
+                    />
+                    <Description>
+                      Supports 10-digit codes or 13-digit code branches (e.g.
+                      5702225973-003).
+                    </Description>
+                    {isTaxCodeInvalid && (
+                      <FieldError>
+                        Tax code format is invalid. Must be exactly 10 digits or
+                        10 digits plus -3 branch code.
+                      </FieldError>
+                    )}
+                  </TextField>
+                </div>
+
+                <div className="flex gap-4 px-6 py-4 border-t border-border bg-surface shrink-0 w-full">
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    fullWidth
+                    className="h-12 rounded-2xl"
+                    onPress={() => router.push("/login")}
+                  >
+                    Back to Sign In
+                  </Button>
+                  <Button
+                    type="submit"
+                    fullWidth
+                    className="h-12 rounded-2xl"
+                    isDisabled={
+                      !isTaxCodeValid ||
+                      companyName.trim().length < 2 ||
+                      isLoading
+                    }
+                    isPending={isLoading}
+                  >
+                    {isLoading ? (
+                      <Spinner color="current" size="sm" />
+                    ) : (
+                      <Search className="size-4 mr-2" />
+                    )}
+                    Verify Registry
+                  </Button>
+                </div>
+              </Form>
+            ) : (
+              <div className="w-full flex flex-col flex-1 overflow-hidden">
+                <div className="flex-1 overflow-y-auto w-full px-6 pb-4 flex flex-col gap-6">
+                  <div className="w-full p-6 rounded-2xl bg-success/5 border border-success/20 flex flex-col gap-3">
+                    <div className="flex items-center gap-3">
+                      <div className="w-8 h-8 rounded-full bg-success text-success-foreground flex items-center justify-center">
+                        <Check className="size-4 stroke-3" />
+                      </div>
+                      <div>
+                        <h4 className="text-sm font-bold text-success">
+                          VietQR Government Database Match
+                        </h4>
+                        <p className="text-xs text-success/80 font-medium">
+                          Verified active registry record found
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="h-px bg-success/10 w-full" />
+
+                    <div className="grid grid-cols-1 md:grid-cols-6 gap-4 text-xs">
+                      <div className="md:col-span-4">
+                        <span className="text-muted font-semibold block uppercase tracking-wider text-[10px]">
+                          Official Normalised Name
+                        </span>
+                        <span className="text-foreground font-bold mt-0.5 block">
+                          {verifiedCompanyInfo.officialCompanyName}
+                        </span>
+                      </div>
+
+                      <div className="md:col-span-2">
+                        <span className="text-muted font-semibold block uppercase tracking-wider text-[10px]">
+                          Verified Tax Identifier
+                        </span>
+                        <span className="text-foreground font-mono font-bold mt-0.5 block">
+                          {verifiedCompanyInfo.taxCode}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="w-full p-4 rounded-xl bg-surface-secondary border border-border flex items-start gap-3 select-none">
+                    <Award className="size-5 text-success shrink-0 mt-0.5 animate-pulse" />
+                    <p className="text-xs text-muted leading-relaxed font-medium">
+                      By verifying this legal business entity, the created
+                      workspace starts with trust status{" "}
+                      <span className="text-success font-bold">
+                        Level 1 (Legal Verified)
+                      </span>{" "}
+                      automatically on completion.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex gap-4 px-6 py-4 border-t border-border bg-surface shrink-0 w-full">
+                  <Button
+                    variant="secondary"
+                    fullWidth
+                    className="h-12 rounded-2xl text-foreground/80 border border-border bg-surface-secondary"
+                    onPress={() => setVerifiedCompanyInfo(null)}
+                  >
+                    Change Registry details
+                  </Button>
+                  <Button
+                    fullWidth
+                    className="h-12 rounded-2xl bg-accent hover:bg-accent-hover text-accent-foreground font-bold"
+                    onPress={handleStep1Confirm}
+                  >
+                    Confirm & Continue
+                    <ArrowRight className="size-4 ml-2" />
+                  </Button>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* ================= STEP 2: OWNER LINK ================= */}
+        {step === 2 && (
+          <div className="w-full flex flex-col items-center flex-1 overflow-hidden">
+            <div className="flex flex-col items-center shrink-0 w-full mb-4 px-6 pt-2">
+              <div className="w-12 h-12 bg-background flex items-center justify-center rounded-xl mb-4">
+                <UserCheck className="size-6" />
+              </div>
+
+              <div className="text-center w-full flex flex-col items-center gap-2">
+                <Typography.Heading level={3} className="text-2xl font-bold">
+                  Link Owner Profile
+                </Typography.Heading>
+                <Typography className="text-sm text-muted">
+                  Prove ownership identity to associate with verified legal
+                  business workspace.
+                </Typography>
+              </div>
+            </div>
+
+            {/* Custom visual horizontal tab switcher for Email OTP vs Google linking */}
+            <div className="flex h-14 bg-surface-secondary p-2 rounded-2xl w-[calc(100%-3rem)] mx-6 select-none shrink-0 mb-4">
+              <button
+                type="button"
+                className={`flex-1 flex items-center justify-center text-xs font-bold rounded-xl transition-all ${
+                  activeLinkTab === "email"
+                    ? "bg-surface text-foreground shadow-sm"
+                    : "text-muted hover:text-foreground"
+                }`}
+                onClick={() => setActiveLinkTab("email")}
+              >
+                <Mail className="size-3.5 mr-2" /> Email Verification
+              </button>
+              <button
+                type="button"
+                className={`flex-1 flex items-center justify-center text-xs font-bold rounded-xl transition-all ${
+                  activeLinkTab === "google"
+                    ? "bg-surface text-foreground shadow-sm"
+                    : "text-muted hover:text-foreground"
+                }`}
+                onClick={() => setActiveLinkTab("google")}
+              >
+                <Google className="size-3.5 mr-2" /> Continue with Google
+              </button>
+            </div>
+
+            {activeLinkTab === "email" ? (
+              // EMAIL OTP SUITE
+              !otpSent ? (
+                <div className="w-full flex flex-col flex-1 overflow-hidden">
+                  <div className="flex-1 overflow-y-auto w-full px-6 pb-4 flex flex-col gap-6">
+                    <TextField
+                      isRequired
+                      name="email"
+                      type="email"
+                      isInvalid={isOwnerEmailInvalid}
+                    >
+                      <Label>Professional Business Email</Label>
+                      <Input
+                        placeholder="Enter professional company email (e.g. ceo@fpt.vn)"
+                        className="h-12 rounded-2xl"
+                        value={ownerEmail}
+                        onChange={(e) => {
+                          setOwnerEmail(e.target.value);
+                          setOwnerEmailTouched(e.target.value.length > 0);
+                        }}
+                      />
+                      <Description className="text-[10px] text-muted">
+                        Note: Burner domains, temp mailboxes, and domains
+                        without active host MX DNS resolvers are automatically
+                        rejected to prevent namespace abuse.
+                      </Description>
+                      {isOwnerEmailInvalid && (
+                        <FieldError>
+                          Please enter a valid business email.
+                        </FieldError>
+                      )}
+                    </TextField>
+                  </div>
+
+                  <div className="flex gap-4 px-6 py-4 border-t border-border bg-surface shrink-0 w-full">
+                    <Button
+                      variant="secondary"
+                      fullWidth
+                      className="h-12 rounded-2xl"
+                      onPress={() => setStep(1)}
+                    >
+                      Back to step 1
+                    </Button>
+                    <Button
+                      fullWidth
+                      className="h-12 rounded-2xl"
+                      isDisabled={
+                        !ownerEmail || isOwnerEmailInvalid || isLoading
+                      }
+                      isPending={isLoading}
+                      onPress={handleSendOtp}
+                    >
+                      {isLoading && <Spinner color="current" size="sm" />}
+                      Send Verification Code
+                    </Button>
+                  </div>
+                </div>
+              ) : (
+                // OTP Code Entry Panel
+                <Form
+                  className="w-full flex flex-col flex-1 overflow-hidden"
+                  onSubmit={handleVerifyOtp}
                 >
-                  Back to Sign In
+                  <div className="flex-1 overflow-y-auto w-full px-6 pb-4 flex flex-col gap-6 items-center">
+                    <div className="text-center bg-surface-secondary p-4 rounded-2xl w-full border border-border select-none shrink-0">
+                      <p className="text-xs text-muted font-medium">
+                        Verification 6-digit OTP code sent to:
+                      </p>
+                      <p className="text-sm font-bold text-foreground mt-1">
+                        {ownerEmail}
+                      </p>
+                    </div>
+
+                    <div className="flex flex-col gap-3 items-center w-full mt-2 shrink-0">
+                      <Label className="text-xs font-semibold text-foreground/80">
+                        Enter 6-Digit OTP Code
+                      </Label>
+                      <InputOTP
+                        maxLength={6}
+                        value={otpCode}
+                        onChange={setOtpCode}
+                      >
+                        <InputOTP.Group>
+                          <InputOTP.Slot
+                            className="border border-border rounded-xl h-12 w-12 text-sm font-bold text-center bg-surface"
+                            index={0}
+                          />
+                          <InputOTP.Slot
+                            className="border border-border rounded-xl h-12 w-12 text-sm font-bold text-center bg-surface"
+                            index={1}
+                          />
+                          <InputOTP.Slot
+                            className="border border-border rounded-xl h-12 w-12 text-sm font-bold text-center bg-surface"
+                            index={2}
+                          />
+                        </InputOTP.Group>
+                        <InputOTP.Separator />
+                        <InputOTP.Group>
+                          <InputOTP.Slot
+                            className="border border-border rounded-xl h-12 w-12 text-sm font-bold text-center bg-surface"
+                            index={3}
+                          />
+                          <InputOTP.Slot
+                            className="border border-border rounded-xl h-12 w-12 text-sm font-bold text-center bg-surface"
+                            index={4}
+                          />
+                          <InputOTP.Slot
+                            className="border border-border rounded-xl h-12 w-12 text-sm font-bold text-center bg-surface"
+                            index={5}
+                          />
+                        </InputOTP.Group>
+                      </InputOTP>
+                    </div>
+
+                    <div className="text-center text-xs font-semibold text-muted select-none shrink-0">
+                      Didn&apos;t receive the OTP?{" "}
+                      {cooldown > 0 ? (
+                        <span className="text-foreground/80">
+                          Resend in {cooldown}s
+                        </span>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={handleSendOtp}
+                          className="text-foreground hover:underline cursor-pointer bg-transparent border-0 font-bold"
+                        >
+                          Resend code
+                        </button>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="flex gap-4 px-6 py-4 border-t border-border bg-surface shrink-0 w-full mt-auto">
+                    <Button
+                      variant="secondary"
+                      fullWidth
+                      className="h-12 rounded-2xl"
+                      onPress={() => setOtpSent(false)}
+                    >
+                      Change Email
+                    </Button>
+                    <Button
+                      type="submit"
+                      fullWidth
+                      className="h-12 rounded-2xl bg-accent hover:bg-accent-hover text-accent-foreground font-bold"
+                      isDisabled={otpCode.length < 6 || isLoading}
+                      isPending={isLoading}
+                    >
+                      {isLoading ? (
+                        <Spinner color="current" size="sm" />
+                      ) : (
+                        <ShieldCheck className="size-4 mr-2" />
+                      )}
+                      Verify OTP Code
+                    </Button>
+                  </div>
+                </Form>
+              )
+            ) : // GOOGLE SSO LINK SUITE
+            verifiedEmail ? (
+              // GOOGLE SSO LINK SUITE (LINKED STATE)
+              <div className="w-full flex flex-col flex-1 overflow-hidden animate-in fade-in duration-300">
+                <div className="flex-1 overflow-y-auto w-full px-6 pb-4 flex flex-col gap-6">
+                  <div className="w-full p-4 rounded-xl bg-success/5 border border-success/20 flex items-start gap-3 select-none shrink-0">
+                    <Check className="size-5 text-success shrink-0 mt-0.5" />
+                    <div className="flex-1">
+                      <h4 className="text-xs font-bold text-success text-left">
+                        Google Account Linked
+                      </h4>
+                      <p className="text-[11px] text-success/80 font-medium mt-0.5 text-left">
+                        Your identity has been successfully verified.
+                      </p>
+                    </div>
+                  </div>
+
+                  <TextField
+                    isReadOnly
+                    name="linkedGoogleEmail"
+                    type="email"
+                    className="w-full"
+                  >
+                    <Label className="text-xs font-semibold text-foreground/80">
+                      Linked Google Email
+                    </Label>
+                    <Input
+                      value={verifiedEmail}
+                      className="h-12 rounded-2xl"
+                      readOnly
+                    />
+                  </TextField>
+
+                  <Button
+                    variant="secondary"
+                    fullWidth
+                    className="h-12 rounded-2xl border border-border bg-surface-secondary text-foreground font-semibold hover:bg-surface-secondary/80 shrink-0"
+                    onPress={() => {
+                      setVerifiedEmail("");
+                      setStep2Token("");
+                    }}
+                  >
+                    <RefreshCw className="size-4 mr-2" /> Link another email
+                  </Button>
+                </div>
+
+                <div className="flex gap-4 px-6 py-4 border-t border-border bg-surface shrink-0 w-full">
+                  <Button
+                    variant="secondary"
+                    className="h-12 rounded-2xl flex-1"
+                    onPress={() => setStep(1)}
+                  >
+                    Back to step 1
+                  </Button>
+                  <Button
+                    className="h-12 rounded-2xl flex-1 text-accent-foreground bg-accent hover:bg-accent-hover font-bold"
+                    onPress={() => setStep(3)}
+                  >
+                    Confirm & Continue
+                    <ArrowRight className="size-4 ml-2" />
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              // GOOGLE SSO LINK SUITE (UNLINKED STATE)
+              <div className="w-full flex flex-col flex-1 overflow-hidden">
+                <div className="flex-1 overflow-y-auto w-full px-6 pb-4 flex flex-col gap-6 items-center">
+                  <div className="text-center bg-surface-secondary p-6 rounded-2xl w-full">
+                    <Sparkles className="size-6 text-success mx-auto mb-2" />
+                    <h4 className="text-sm font-bold mb-2">
+                      Secure OAuth Linking
+                    </h4>
+                    <p className="text-xs text-muted">
+                      Authenticate via Google Single Sign-On. Your Google email
+                      identity will serve as your primary owner account
+                      workspace.
+                    </p>
+                  </div>
+
+                  <div className="w-full pb-3 relative overflow-hidden rounded-2xl group shrink-0">
+                    {/* Invisible Google Sign In Button container overlay */}
+                    <div
+                      id="google-signin-button"
+                      className="absolute inset-0 opacity-[0.01] z-10 cursor-pointer overflow-hidden flex justify-center items-center [&_iframe]:w-full [&_iframe]:h-full [&_iframe]:scale-[2.5] [&_iframe]:origin-center"
+                      style={{ minHeight: "48px" }}
+                    />
+                    <Button
+                      variant="tertiary"
+                      size="lg"
+                      fullWidth
+                      className="h-12 rounded-2xl"
+                    >
+                      <Google /> Continue with Google
+                    </Button>
+                  </div>
+                </div>
+
+                <div className="flex gap-4 px-6 py-4 border-t border-border bg-surface shrink-0 w-full">
+                  <Button
+                    variant="secondary"
+                    className="w-full h-12 rounded-2xl"
+                    onPress={() => setStep(1)}
+                  >
+                    Back to step 1
+                  </Button>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* ================= STEP 3: WORKSPACE CONFIGURATION ================= */}
+        {step === 3 && (
+          <div className="w-full flex flex-col items-center flex-1 overflow-hidden">
+            <div className="flex flex-col items-center shrink-0 w-full mb-4 px-6 pt-2">
+              <div className="text-center w-full flex flex-col items-center gap-2">
+                <Typography.Heading level={3} className="text-2xl font-bold">
+                  Setup Workspace
+                </Typography.Heading>
+                <Typography className="text-sm text-muted">
+                  Create your tenant profile, slug handle, and owner credential
+                  settings.
+                </Typography>
+              </div>
+            </div>
+
+            <Form
+              className="w-full flex flex-col flex-1 overflow-hidden"
+              onSubmit={handleStep3Submit}
+            >
+              <div className="flex-1 overflow-y-auto w-full px-6 pb-4 flex flex-col gap-6">
+                <div className="w-full p-4 rounded-2xl bg-surface-secondary border border-border flex items-center justify-between select-none">
+                  <div>
+                    <span className="text-xs text-muted block">
+                      Linked Owner Profile
+                    </span>
+                    <span className="text-foreground font-medium text-sm block">
+                      {verifiedEmail}
+                    </span>
+                  </div>
+                  <Chip color="success">Verified</Chip>
+                </div>
+
+                {/* Public Display Name */}
+                <TextField isRequired name="companyDisplayName" type="text">
+                  <Label>Public Company Name</Label>
+                  <Input
+                    placeholder="Enter business public name (e.g. FPT Software)"
+                    className="h-12 rounded-2xl"
+                    value={companyDisplayName}
+                    onChange={(e) => setCompanyDisplayName(e.target.value)}
+                  />
+                  <Description>
+                    Legal default retrieved:{" "}
+                    <span className="font-bold">
+                      {verifiedCompanyInfo?.officialCompanyName}
+                    </span>
+                  </Description>
+                </TextField>
+
+                {/* Workspace Username Slug */}
+                <TextField
+                  isRequired
+                  name="organizationUsername"
+                  type="text"
+                  isInvalid={!isSlugValid && slugTouched}
+                >
+                  <Label> Workspace Handle Slug (URL)</Label>
+                  <InputGroup>
+                    <InputGroup.Prefix className="text-muted text-xs font-mono font-bold pl-3.5 select-none bg-surface-secondary h-full flex items-center border-r border-border">
+                      cverify.com/
+                    </InputGroup.Prefix>
+                    <Input
+                      placeholder="fpt-software"
+                      className="h-12 rounded-r-2xl rounded-l-none w-full"
+                      value={organizationUsername}
+                      onChange={(e) => {
+                        setOrganizationUsername(
+                          e.target.value.toLowerCase().replace(/\s+/g, "-"),
+                        );
+                        setSlugTouched(e.target.value.length > 0);
+                      }}
+                    />
+                  </InputGroup>
+
+                  {/* Slug suggestions or validation blocks */}
+                  {isSlugValid && !isReservedSlug && !isImpersonating && (
+                    <div className="text-[10px] text-muted mt-1.5 font-medium flex items-center gap-1 select-none">
+                      <Check className="size-3 text-success" />
+                      Slug handle available:{" "}
+                      <span className="font-mono text-foreground/80 font-bold">
+                        cverify.com/workspace/{organizationUsername}
+                      </span>
+                    </div>
+                  )}
+
+                  {isReservedSlug && (
+                    <div className="text-danger text-[10px] mt-1.5 font-bold flex items-center gap-1">
+                      <AlertCircle className="size-3 text-danger shrink-0" />
+                      This namespace handle is reserved and cannot be requested.
+                    </div>
+                  )}
+
+                  {isImpersonating && (
+                    <div className="text-warning text-[10px] mt-1.5 font-bold flex items-center gap-1">
+                      <AlertTriangle className="size-3 text-warning shrink-0" />
+                      Warning: Name resembles a major global brand.
+                      Anti-impersonation system checks will run.
+                    </div>
+                  )}
+
+                  {!isSlugValid && slugTouched && (
+                    <FieldError className="text-danger text-xs mt-1">
+                      Slug must be 4-32 characters, lowercase alphanumeric or
+                      dashes only.
+                    </FieldError>
+                  )}
+                </TextField>
+
+                {/* Password */}
+                <TextField isRequired name="password" type="password">
+                  <Label>Set Account Password</Label>
+                  <InputGroup>
+                    <InputGroup.Input
+                      className="h-12"
+                      type={isPasswordVisible ? "text" : "password"}
+                      placeholder="Create a strong account password"
+                      value={password}
+                      onChange={(e: any) => setPassword(e.target.value)}
+                    />
+                    <InputGroup.Suffix>
+                      <Button
+                        isIconOnly
+                        aria-label={
+                          isPasswordVisible ? "Hide password" : "Show password"
+                        }
+                        size="sm"
+                        variant="ghost"
+                        className="text-muted hover:text-foreground"
+                        onPress={() => setIsPasswordVisible(!isPasswordVisible)}
+                      >
+                        {isPasswordVisible ? (
+                          <Eye className="size-4" />
+                        ) : (
+                          <EyeOff className="size-4" />
+                        )}
+                      </Button>
+                    </InputGroup.Suffix>
+                  </InputGroup>
+                  <FieldError />
+                  <PasswordStrengthMeter value={password} />
+                </TextField>
+
+                {/* Confirm Password */}
+                <TextField
+                  isRequired
+                  name="confirmPassword"
+                  type="password"
+                  isInvalid={
+                    confirmPassword.length > 0 && password !== confirmPassword
+                  }
+                >
+                  <Label>Confirm Account Password</Label>
+                  <FieldError />
+                  <InputGroup>
+                    <InputGroup.Input
+                      className="h-12"
+                      type={isConfirmVisible ? "text" : "password"}
+                      placeholder="Re-enter password to confirm"
+                      value={confirmPassword}
+                      onChange={(e: any) => setConfirmPassword(e.target.value)}
+                    />
+                    <InputGroup.Suffix>
+                      <Button
+                        isIconOnly
+                        aria-label={
+                          isConfirmVisible ? "Hide password" : "Show password"
+                        }
+                        size="sm"
+                        variant="ghost"
+                        className="text-muted hover:text-foreground"
+                        onPress={() => setIsConfirmVisible(!isConfirmVisible)}
+                      >
+                        {isConfirmVisible ? (
+                          <Eye className="size-4" />
+                        ) : (
+                          <EyeOff className="size-4" />
+                        )}
+                      </Button>
+                    </InputGroup.Suffix>
+                  </InputGroup>
+                  {confirmPassword.length > 0 &&
+                    password !== confirmPassword && (
+                      <FieldError className="text-danger text-xs mt-1">
+                        Passwords must match exactly.
+                      </FieldError>
+                    )}
+                </TextField>
+              </div>
+
+              {/* Pinned Button Footer */}
+              <div className="flex gap-4 px-6 py-4 border-t border-border bg-surface shrink-0 w-full">
+                <Button
+                  variant="secondary"
+                  className="h-12 rounded-2xl"
+                  onPress={() => setStep(2)}
+                  isDisabled={isLoading}
+                >
+                  Back to step 2
                 </Button>
                 <Button
                   type="submit"
                   fullWidth
                   className="h-12 rounded-2xl"
-                  isDisabled={isEmailInvalid || isTaxCodeInvalid || !companyName || !taxCode || !companyEmail || !acceptTerms || isLoading}
+                  isDisabled={!isStep3Valid || isLoading}
                   isPending={isLoading}
                 >
-                  Register
+                  {isLoading ? (
+                    <Spinner color="current" size="sm" />
+                  ) : (
+                    <Lock className="size-4 mr-2" />
+                  )}
+                  Provision Workspace Organization
                 </Button>
               </div>
             </Form>
-          </CardContent>
-        </div>
-      ) : (
-        <div className="w-full flex flex-col items-center py-6 text-center">
-          <div className="w-16 h-16 bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center rounded-2xl mb-6">
-            <Building2 className="size-8 text-zinc-900 dark:text-zinc-100" />
           </div>
-
-          <Typography.Heading level={3} className="text-2xl font-bold pb-2 text-zinc-900 dark:text-zinc-100">
-            Verification link sent!
-          </Typography.Heading>
-
-          <Typography className="text-sm text-zinc-500 dark:text-zinc-400 mb-8 max-w-sm">
-            We have sent a secure authorization link to <span className="font-semibold text-zinc-700 dark:text-zinc-300">{companyEmail}</span>. Please click the link inside to complete verification and set up your workspace.
-          </Typography>
-
-          <Button
-            variant="secondary"
-            className="h-12 rounded-xl text-zinc-800 dark:text-zinc-200 px-6"
-            onPress={() => router.push('/login')}
-          >
-            <ArrowLeft className="size-4 mr-2" /> Back to Sign In
-          </Button>
-        </div>
-      )}
-    </Card>
+        )}
+      </Card>
+    </>
   );
 }

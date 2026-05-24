@@ -227,3 +227,31 @@ public record ResolveEmailAuthStateResponse(
     CVerify.API.Core.Enums.EmailAuthState AuthState
 );
 
+public record VerifyCompanyOnboardingRequest(
+    [Required][MaxLength(255)] string CompanyName,
+    [Required][MaxLength(50)] string TaxCode
+);
+
+public record VerifyCompanyOnboardingResponse(
+    string? SignedToken,
+    string OfficialCompanyName,
+    string TaxCode,
+    bool OrganizationExists = false,
+    string? OrganizationDisplayName = null,
+    string? OrganizationSlug = null,
+    bool RecoveryRequired = false
+);
+
+public record CompleteOnboardingRequest(
+    [Required] string Step2Token,
+    [Required][RegularExpression(@"^[a-z0-9-]{4,32}$", ErrorMessage = "Workspace handle must be 4-32 characters, lowercase alphanumeric or dash")] string OrganizationUsername,
+    [Required][MinLength(12, ErrorMessage = "Password must be at least 12 characters long.")] string Password,
+    [Required] string ConfirmPassword,
+    [Required][MaxLength(255)] string CompanyDisplayName
+);
+
+public record GoogleOnboardingLinkRequest(
+    [Required] string IdToken,
+    [Required] string Step1Token
+);
+

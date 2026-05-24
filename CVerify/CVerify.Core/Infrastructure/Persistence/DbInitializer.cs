@@ -41,6 +41,7 @@ public static class DbInitializer
                 DROP TABLE IF EXISTS user_roles CASCADE;
                 DROP TABLE IF EXISTS verification_links CASCADE;
                 DROP TABLE IF EXISTS otp_verifications CASCADE;
+                DROP TABLE IF EXISTS organization_verifications CASCADE;
                 DROP TABLE IF EXISTS organization_members CASCADE;
                 DROP TABLE IF EXISTS organizations CASCADE;
                 DROP TABLE IF EXISTS password_credentials CASCADE;
@@ -152,12 +153,27 @@ public static class DbInitializer
                 email VARCHAR(255) NOT NULL,
                 username VARCHAR(100) NOT NULL,
                 is_verified BOOLEAN NOT NULL DEFAULT FALSE,
+                verification_level INTEGER NOT NULL DEFAULT 0,
                 created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
                 updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
                 deleted_at TIMESTAMP WITH TIME ZONE
             );
             CREATE UNIQUE INDEX IF NOT EXISTS idx_organizations_username_active ON organizations(username) WHERE deleted_at IS NULL;
             CREATE UNIQUE INDEX IF NOT EXISTS idx_organizations_tax_code_active ON organizations(tax_code) WHERE deleted_at IS NULL;
+
+            -- Stores organization verification records
+            CREATE TABLE IF NOT EXISTS organization_verifications (
+                id UUID PRIMARY KEY,
+                organization_id UUID NOT NULL,
+                verification_type VARCHAR(50) NOT NULL,
+                is_verified BOOLEAN NOT NULL DEFAULT FALSE,
+                verified_value VARCHAR(255),
+                verified_at TIMESTAMP WITH TIME ZONE,
+                verified_by VARCHAR(100),
+                metadata TEXT,
+                CONSTRAINT fk_organization_verifications_organization FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE
+            );
+            CREATE INDEX IF NOT EXISTS idx_organization_verifications_org_id ON organization_verifications(organization_id);
 
             -- Stores organization workspace membership records
             CREATE TABLE IF NOT EXISTS organization_members (
@@ -335,6 +351,15 @@ public static class DbInitializer
                     WHERE table_name = 'user_roles' AND column_name = 'assigned_at'
                 ) THEN
                     ALTER TABLE user_roles ADD COLUMN assigned_at TIMESTAMP WITH TIME ZONE DEFAULT NOW();
+                END IF;
+
+                -- Safely provision verification_level column to organizations if missing
+                IF NOT EXISTS (
+                    SELECT 1 
+                    FROM information_schema.columns 
+                    WHERE table_name = 'organizations' AND column_name = 'verification_level'
+                ) THEN
+                    ALTER TABLE organizations ADD COLUMN verification_level INTEGER NOT NULL DEFAULT 0;
                 END IF;
             END $$;
 

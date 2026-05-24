@@ -133,6 +133,16 @@ public class IntegrationTestApplicationFactory : WebApplicationFactory<Program>
             // Register our Single in-memory fake sender in DI
             services.AddSingleton<IEmailSender>(InMemoryEmailSender);
             services.AddKeyedSingleton<IEmailSender>("raw", InMemoryEmailSender);
+
+            // Mock IHttpClientFactory to return a stubbed response for VietQR v2 business tax registry lookups
+            var mockFactory = new Moq.Mock<IHttpClientFactory>();
+            var mockHandler = new MockHttpMessageHandler();
+            var mockClient = new HttpClient(mockHandler)
+            {
+                BaseAddress = new Uri("https://api.vietqr.io")
+            };
+            mockFactory.Setup(_ => _.CreateClient(Moq.It.IsAny<string>())).Returns(mockClient);
+            services.Replace(ServiceDescriptor.Singleton<IHttpClientFactory>(mockFactory.Object));
         });
     }
 }
@@ -222,5 +232,20 @@ public abstract class BaseIntegrationTest : IAsyncLifetime
             var server = multiplexer.GetServer(ep);
             await server.FlushDatabaseAsync().ConfigureAwait(false);
         }
+    }
+}
+
+public class MockHttpMessageHandler : HttpMessageHandler
+{
+    protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, System.Threading.CancellationToken cancellationToken)
+    {
+        var response = new HttpResponseMessage(System.Net.HttpStatusCode.OK)
+        {
+            Content = new StringContent(
+                "{\"code\":\"00\",\"desc\":\"success\",\"data\":{\"name\":\"CÔNG TY TNHH PHẦN MỀM FPT\",\"status\":\"đang hoạt động\"}}",
+                System.Text.Encoding.UTF8,
+                "application/json")
+        };
+        return Task.FromResult(response);
     }
 }

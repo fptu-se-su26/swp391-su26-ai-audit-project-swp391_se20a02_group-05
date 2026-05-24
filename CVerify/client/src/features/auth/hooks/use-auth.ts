@@ -427,6 +427,90 @@ export const useAuth = () => {
       }
     };
 
+    // Verify Company Onboarding (Step 1)
+    const verifyCompanyOnboarding = async (companyName: string, taxCode: string) => {
+      store.setLoading(true);
+      setAuthError(null);
+      try {
+        const response = await authApi.verifyCompanyOnboarding(companyName, taxCode);
+        store.setLoading(false);
+        return { success: true, data: response };
+      } catch (err: unknown) {
+        const parsedError = normalizeError(err);
+        setAuthError(parsedError.message);
+        store.setLoading(false);
+        return { success: false, error: parsedError };
+      }
+    };
+
+    // Verify Onboarding OTP (Step 2)
+    const verifyOnboardingOtp = async (challengeId: string, email: string, code: string, step1Token: string) => {
+      store.setLoading(true);
+      setAuthError(null);
+      try {
+        const response = await authApi.verifyOnboardingOtp(challengeId, email, code, step1Token);
+        store.setLoading(false);
+        return { success: true, data: response };
+      } catch (err: unknown) {
+        const parsedError = normalizeError(err);
+        setAuthError(parsedError.message);
+        store.setLoading(false);
+        return { success: false, error: parsedError };
+      }
+    };
+
+    // Verify Onboarding Google (Step 2)
+    const verifyOnboardingGoogle = async (idToken: string, step1Token: string) => {
+      store.setLoading(true);
+      setAuthError(null);
+      try {
+        const response = await authApi.verifyOnboardingGoogle(idToken, step1Token);
+        store.setLoading(false);
+        return { success: true, data: response };
+      } catch (err: unknown) {
+        const parsedError = normalizeError(err);
+        setAuthError(parsedError.message);
+        store.setLoading(false);
+        return { success: false, error: parsedError };
+      }
+    };
+
+    // Complete Onboarding Workspace Provisioning (Step 3)
+    const completeOnboarding = async (
+      payload: {
+        step2Token: string;
+        organizationUsername: string;
+        password: string;
+        confirmPassword: string;
+        companyDisplayName: string;
+      },
+      idempotencyKey: string
+    ) => {
+      store.setLoading(true);
+      setAuthError(null);
+      try {
+        const response = await authApi.completeOnboarding(payload, idempotencyKey);
+        const user: User = {
+          id: response.id,
+          email: response.email,
+          fullName: response.fullName,
+          avatarUrl: response.avatarUrl,
+          role: normalizeRole(response.roles),
+          permissions: response.permissions,
+          isEmailVerified: response.isEmailVerified,
+        };
+        store.login(user);
+        store.setAuthStatusAndNextStep(response.status, response.nextStep);
+        store.setLoading(false);
+        return { success: true, user, nextStep: response.nextStep };
+      } catch (err: unknown) {
+        const parsedError = normalizeError(err);
+        setAuthError(parsedError.message);
+        store.setLoading(false);
+        return { success: false, error: parsedError };
+      }
+    };
+
   return {
     // Zustand States
     user: store.user,
@@ -457,6 +541,12 @@ export const useAuth = () => {
     companyLogin,
     fetchSessions,
     revokeSession,
+    
+    // Unified Onboarding flow
+    verifyCompanyOnboarding,
+    verifyOnboardingOtp,
+    verifyOnboardingGoogle,
+    completeOnboarding,
 
     // Guards Facades
     hasRole: (role: UserRole) => store.hasRole(role),

@@ -73,6 +73,7 @@ public class ApplicationDbContext : DbContext
     public DbSet<OrganizationMember> OrganizationMembers => Set<OrganizationMember>();
     public DbSet<OtpVerification> OtpVerifications => Set<OtpVerification>();
     public DbSet<VerificationLink> VerificationLinks => Set<VerificationLink>();
+    public DbSet<OrganizationVerification> OrganizationVerifications => Set<OrganizationVerification>();
 
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
@@ -96,6 +97,7 @@ public class ApplicationDbContext : DbContext
         modelBuilder.Entity<OrganizationMember>().Property(om => om.Id).ValueGeneratedNever();
         modelBuilder.Entity<OtpVerification>().Property(ov => ov.Id).ValueGeneratedNever();
         modelBuilder.Entity<VerificationLink>().Property(vl => vl.Id).ValueGeneratedNever();
+        modelBuilder.Entity<OrganizationVerification>().Property(ov => ov.Id).ValueGeneratedNever();
 
         // Enable PostgreSQL Extensions
         modelBuilder.HasPostgresExtension("citext");
@@ -353,6 +355,18 @@ public class ApplicationDbContext : DbContext
             entity.HasIndex(vl => vl.TokenHash)
                   .HasFilter("deleted_at IS NULL AND consumed_at IS NULL")
                   .HasDatabaseName("idx_verification_links_active");
+        });
+
+        // OrganizationVerification configurations
+        modelBuilder.Entity<OrganizationVerification>(entity =>
+        {
+            entity.ToTable("organization_verifications");
+            entity.HasOne(ov => ov.Organization)
+                  .WithMany()
+                  .HasForeignKey(ov => ov.OrganizationId)
+                  .OnDelete(DeleteBehavior.Cascade);
+            entity.HasIndex(ov => ov.OrganizationId)
+                  .HasDatabaseName("idx_organization_verifications_org_id");
         });
     }
 }

@@ -127,6 +127,7 @@ public class IdentityStateResolver : IIdentityStateResolver
             {
                 local = local[..plusIndex];
             }
+            local = local.Replace(".", "");
         }
 
         return $"{local}@{domain}";

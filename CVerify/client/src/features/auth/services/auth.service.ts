@@ -214,4 +214,80 @@ export const authApi = {
     const response = await axiosClient.delete<{ message: string }>(`/auth/sessions/${sessionId}`);
     return response.data;
   },
+
+  /**
+   * Verify company details for onboarding (Step 1)
+   */
+  verifyCompanyOnboarding: async (companyName: string, taxCode: string): Promise<{
+    signedToken: string | null;
+    officialCompanyName: string;
+    taxCode: string;
+    organizationExists: boolean;
+    organizationDisplayName?: string;
+    organizationSlug?: string;
+    recoveryRequired: boolean;
+  }> => {
+    const response = await axiosClient.post<{
+      signedToken: string | null;
+      officialCompanyName: string;
+      taxCode: string;
+      organizationExists: boolean;
+      organizationDisplayName?: string;
+      organizationSlug?: string;
+      recoveryRequired: boolean;
+    }>('/auth/onboarding/verify-company', {
+      companyName,
+      taxCode,
+    });
+    return response.data;
+  },
+
+  /**
+   * Verify OTP during onboarding flow (Step 2)
+   */
+  verifyOnboardingOtp: async (challengeId: string, email: string, code: string, step1Token: string): Promise<VerifyOtpResponseData> => {
+    const response = await axiosClient.post<VerifyOtpResponseData>('/auth/onboarding/verify-otp', {
+      challengeId,
+      email,
+      code,
+      purpose: 'Onboarding'
+    }, {
+      headers: {
+        'X-Step1-Token': step1Token
+      }
+    });
+    return response.data;
+  },
+
+  /**
+   * Verify Google OAuth during onboarding (Step 2)
+   */
+  verifyOnboardingGoogle: async (idToken: string, step1Token: string): Promise<VerifyOtpResponseData> => {
+    const response = await axiosClient.post<VerifyOtpResponseData>('/auth/onboarding/verify-google', {
+      idToken,
+      step1Token
+    });
+    return response.data;
+  },
+
+  /**
+   * Complete 3-step company onboarding workspace provisioning (Step 3)
+   */
+  completeOnboarding: async (
+    payload: {
+      step2Token: string;
+      organizationUsername: string;
+      password: string;
+      confirmPassword: string;
+      companyDisplayName: string;
+    },
+    idempotencyKey: string
+  ): Promise<LoginResponseData> => {
+    const response = await axiosClient.post<LoginResponseData>('/auth/onboarding/complete', payload, {
+      headers: {
+        'X-Idempotency-Key': idempotencyKey
+      }
+    });
+    return response.data;
+  },
 };
