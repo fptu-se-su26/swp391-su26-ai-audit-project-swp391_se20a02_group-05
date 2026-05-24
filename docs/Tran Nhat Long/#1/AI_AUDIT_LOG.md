@@ -8,7 +8,7 @@
 | Mã môn học | SWP391 |
 | Lớp | SE20A02 |
 | Học kỳ | SU26 |
-| Tên bài tập / Project | TripGenie AI |
+| Tên bài tập / Project | CVerify |
 | Tên sinh viên / Nhóm | Nguyễn Hoàng Ngọc Ánh, Đoàn Thế Lực, Trương Văn Hiếu, Trần Nhất Long, Nguyễn La Hòa An |
 | MSSV / Danh sách MSSV | DE200147, DE200523, DE190105, DE200160, DE201043 |
 | Giảng viên hướng dẫn | QuangLTN3 |
@@ -48,79 +48,75 @@ Research and Requirement analysis, Generate documents. Checking folders and file
 | Nội dung | Thông tin |
 |---|---|
 | Ngày sử dụng | 2026-05-15 |
-| Công cụ AI | Claude |
-| Mục đích sử dụng | Thiết kế một hệ thống AI Agent chuyên cho travel planning với khả năng:  Thu thập requirement từ user qua survey hoặc chat prompt Sinh travel itinerary hoàn chỉnh Generate structured plan dưới dạng Google Sheet Cho phép user chỉnh sửa thủ công AI tự reconcile thay đổi và regenerate plan mới Mở rộng thành ecosystem AI gồm: recommendation engine planner engine chatbot assistant validation system classification/tagging summarization  Mục tiêu thực tế:  Biến AI thành orchestration layer cho travel SaaS Tách AI layer khỏi business logic để scale dễ hơn Chuẩn hóa structured output để FE/BE xử lý deterministic thay vì parsing text tự do |
+| Công cụ AI | GitHub Copilot |
+| Mục đích sử dụng | Checking and update feature for tool.; Thiết kế PostgreSQL database schema cho CVerify |
 | Phần việc liên quan | Requirement |
 | Mức độ sử dụng | Sinh chính nội dung |
 
 #### 4.1. Prompt đã sử dụng
 
 ```text
-* Context: Tôi muốn tạo một AI Agent để tạo và lên plan cho khách hàng muốn lên plan đi du lịch(bao gồm chỗ đi chơi, ăn uống, nhà hàng, khách sạn). Agent sẽ đảm nhiệm vai trò lấy nhu cầu của khách hàng thông qua survey hoặc từ prompt input của khách hàng sau đó sẽ tạo ra một implement plan rồi gen ra 1 bảng google sheet. User/Guest có quyền chỉnh sửa các phần trong plan của AI tạo ra và sau đó Agent sẽ sửa lại theo đúng nhu cầu khách hàng.
-* Yêu cầu: phân tích, tìm hiểu và đề xuất giải pháp custom AI API cho hệ thống, bao gồm:
-   * Lựa chọn API AI phù hợp với bài toán
-   * Nghiên cứu cách hoạt động của AI API (request, prompt, response, token, streaming, function calling,…)
-   * Thiết kế và custom cấu trúc response từ AI để phù hợp với nghiệp vụ hệ thống
-   * Xây dựng cơ chế để front-end phân tích và xử lý response nhằm thực hiện các task cụ thể
-   * Đề xuất workflow giao tiếp giữa Front-end ↔ Backend ↔ AI API
-   * Thiết kế các AI task mở rộng và tích hợp vào hệ thống như:
-      * AI recommendation
-      * AI planner/generator
-      * AI summarization
-      * AI chatbot assistant
-      * AI classification/tagging
-      * AI validation/checking
-   * Đề xuất hướng triển khai thực tế, tối ưu chi phí API, performance và scalability
-   * Phân chia hướng implement AI features vào kiến trúc hệ thống hiện tại để đảm bảo khả năng mở rộng về sau.
-* Yêu cầu output: đảm bảo giải thích bằng từ ngữ và tạo file json để visualize json data thành dạng graph workflow cho dễ nhìn
-* Tài liệu đã nghiên cứu được đính kèm
+[Prompt 1: Checking and update feature for tool.]
+Check ExportCenter.tsx in the folder tools to see if the "Download All" button is present. If not, add it and enable its functionality to download all four files (REFLECTION, CHANGELOG, PROMPS, AI_AUDIT_LOG) simultaneously.
+
+---
+
+[Prompt 2: Thiết kế PostgreSQL database schema cho CVerify]
+Thiết kế PostgreSQL database schema cho CVerify — nền tảng tuyển dụng IT evidence-based. Các entity chính:
+- Users (roles: JobSeeker, Recruiter, Admin)
+- CV (sections: experience, education, skills, projects)
+- Repository (GitHub link, analysis results: ownership_score, originality_score, commit_frequency)
+- JobPosting (by Recruiter, có JD text)
+- Application (JobSeeker apply vào JobPosting)
+- SkillTag (kỹ năng extract từ CV + repo)
+- TrustScore (per JobSeeker)
+
+Yêu cầu kỹ thuật:
+- PostgreSQL 16 với pgvector extension
+- Cần lưu embedding vectors (1536 dimensions) cho CV và JobPosting để semantic search
+- Soft delete (deleted_at)
+- Audit fields (created_at, updated_at)
+- Scale cho 10,000 users ban đầu
+
+Trả về: SQL DDL + giải thích từng quyết định thiết kế + recommended indexes.
 ```
 
 #### 4.2. Kết quả AI gợi ý
 
 ```text
+[Prompt 1] Files modified: tools/AI Log/src/components/export/ExportCenter.tsx
 
-EXECUTIVE SUMMARY (ENGLISH)
-AI_TRAVEL_PLANNER_SUMMARY.md
-A complete English guide covering:
+---
 
-AI API Selection - Why Anthropic Claude (Sonnet 4.6 + Haiku 4.5) is optimal
-Core Concepts - Tokens, streaming, function-calling, prompt caching explained
-Structured Output Design - How to force JSON schema compliance via "emit_itinerary" terminal tool
-Frontend Response Dispatcher - Type-based routing for itinerary_draft, clarification, validation messages
-Complete Workflow - Step-by-step: User → FE → Gateway → Orchestrator → Claude → Tools → APIs → Database
-AI Microservices - 7 parallel AI tasks (classifier, planner, validator, chatbot, summarizer, recommender)
-Cost Optimization - Prompt caching (90% savings), model routing (40% savings), 7 tactics
-Scalability - Stateless orchestrator, async queuing, horizontal scaling beyond 5k trips/month
-System Layers - 6-tier architecture (Presentation → Gateway → AI → Tools → APIs → State)
-Implementation Stack - FastAPI + Next.js + Postgres + Redis + Langfuse
-Security & Compliance - Secrets management, OAuth, PCI-DSS, Vietnam PDPL
-Success Metrics - KPIs for UX, cost, reliability, adoption
-JSON Structure - What's in the workflow file
-Quick Start Checklist - 20-step implementation roadmap
+[Prompt 2] ChatGPT trả về DDL đầy đủ cho 11 tables, foreign keys, indexes bao gồm HNSW index cho vector columns, và giải thích tại sao dùng JSONB cho một số fields. Gợi ý thêm partial index cho soft delete pattern.
 ```
 
 #### 4.3. Phần sinh viên/nhóm đã sử dụng từ AI
 
 ```text
-- API selection, tool-use pattern, ReAct flow, 4-phase lifecycle, state management
-- Pricing model, security best practices, FastAPI + Next.js stack recommendation
+[Prompt 1] Existing per-file download helper (handleDownload) and markdown generators from @/lib/markdown/generators.
+
+---
+
+[Prompt 2] Cấu trúc cơ bản của 9/11 tables được giữ lại. Naming convention, data types, và HNSW index configuration được sử dụng trực tiếp.
 ```
 
 #### 4.4. Phần sinh viên/nhóm tự chỉnh sửa hoặc cải tiến
 
 ```text
-Terminal tool pattern — emit_itinerary tool to force JSON schema
-Response Dispatcher — Type-based FE routing (text/itinerary/clarification/final)
-6-layer architecture — Explicit Gateway + AI Orchestration layers
-7 parallel AI tasks — Decomposed agents with model routing (Haiku for 70% of work)
-Prompt caching math — Concrete ROI calculation
-Context compression — Prevents unbounded token growth
-Diff-based edit flow — How user edits trigger re-planning
-Per-turn Langfuse tracing — trace_id on every message for debugging
-PostgreSQL schema — Concrete table design
-Redis TTL strategy — Specific cache durations per data type
-Fallback orchestration — Recovery paths for API outages
+[Prompt 1] - Added: handleDownloadAll() to invoke downloads for:
+AI_AUDIT_LOG.md, PROMPTS.md, CHANGELOG.md, REFLECTION.md
+- Added: a header button labeled "Download all files" that calls handleDownloadAll().
+- Preserved: existing individual file Download and Copy buttons.
+- Ensured: Blob creation + URL handling is safe (created element, clicked, cleaned up).
+
+---
+
+[Prompt 2] - Thêm bảng AuditLog riêng cho compliance logging.
+- Tách SkillTag table ra thêm CandidateSkill junction table.
+- Chuyển một số JSONB thành typed columns (language_breakdown → LanguageBreakdown table riêng).
+- Thêm CHECK constraint cho trust_score BETWEEN 0 AND 100.
+- Chuyển toàn bộ từ DDL SQL sang EF Core Code-First migrations.
 ```
 
 #### 4.5. Minh chứng
@@ -148,36 +144,69 @@ Fallback orchestration — Recovery paths for API outages
 |---|---|
 | Ngày sử dụng | 2026-05-19 |
 | Công cụ AI | GitHub Copilot |
-| Mục đích sử dụng | Checking and update feature for tool. |
+| Mục đích sử dụng | Checking and update feature for tool.; Fix lỗi 401 Unauthorized khi gọi API |
 | Phần việc liên quan | Requirement |
 | Mức độ sử dụng | Hỗ trợ một phần |
 
 #### 4.1. Prompt đã sử dụng
 
 ```text
+[Prompt 1: Checking and update feature for tool.]
 Check ExportCenter.tsx in the folder tools to see if the "Download All" button is present. If not, add it and enable its functionality to download all four files (REFLECTION, CHANGELOG, PROMPS, AI_AUDIT_LOG) simultaneously.
+
+---
+
+[Prompt 2: Fix lỗi 401 Unauthorized khi gọi API]
+Tôi đang bị lỗi 401 Unauthorized khi gọi API từ Next.js 16 đến ASP.NET Core v10.
+
+Setup:
+- Frontend: Next.js 16, gọi fetch() với header Authorization: Bearer <token>
+- Backend: ASP.NET Core v10 với AddJwtBearer()
+- Token được lưu trong cookie httpOnly (Next.js)
+
+Stack trace backend:
+Microsoft.AspNetCore.Authentication.JwtBearer: Bearer was not authenticated. Failure message: No SecurityTokenValidator available for token.
+
+Tôi đã config JwtBearerOptions với ValidateIssuer=true, ValidateAudience=true, ValidateIssuerSigningKey=true.
+
+Next.js gửi request như sau (đã check Network tab):
+Authorization: Bearer eyJhbGci...
+
+Lỗi này do đâu?
 ```
 
 #### 4.2. Kết quả AI gợi ý
 
 ```text
-Files modified: tools/AI Log/src/components/export/ExportCenter.tsx
+[Prompt 1] Files modified: tools/AI Log/src/components/export/ExportCenter.tsx
+
+---
+
+[Prompt 2] Claude phân tích 3 nguyên nhân có thể: (1) thiếu AddAuthentication() trước AddJwtBearer(), (2) token audience không match, (3) CORS preflight chặn Authorization header. Hướng dẫn kiểm tra từng case với code snippet cụ thể.
 ```
 
 #### 4.3. Phần sinh viên/nhóm đã sử dụng từ AI
 
 ```text
-Existing per-file download helper (handleDownload) and markdown generators from @/lib/markdown/generators.
+[Prompt 1] Existing per-file download helper (handleDownload) and markdown generators from @/lib/markdown/generators.
+
+---
+
+[Prompt 2] Nguyên nhân là case (1): nhóm quên gọi app.UseAuthentication() trước app.UseAuthorization() trong middleware pipeline. Fix 1 dòng, bug resolved.
 ```
 
 #### 4.4. Phần sinh viên/nhóm tự chỉnh sửa hoặc cải tiến
 
 ```text
-- Added: handleDownloadAll() to invoke downloads for:
+[Prompt 1] - Added: handleDownloadAll() to invoke downloads for:
 AI_AUDIT_LOG.md, PROMPTS.md, CHANGELOG.md, REFLECTION.md
 - Added: a header button labeled "Download all files" that calls handleDownloadAll().
 - Preserved: existing individual file Download and Copy buttons.
 - Ensured: Blob creation + URL handling is safe (created element, clicked, cleaned up).
+
+---
+
+[Prompt 2] Sau khi fix bug, nhóm thêm integration test để verify authentication pipeline hoạt động đúng, tránh lỗi tương tự xảy ra lại sau khi refactor.
 ```
 
 #### 4.5. Minh chứng
@@ -234,7 +263,7 @@ Research how to integrate APIs into the system, compare criteria, and provide su
 
 | Thành viên | MSSV | Nhiệm vụ chính | Có sử dụng AI không? | Minh chứng đóng góp |
 |---|---|---|---|---|
-| Đoàn Thế Lực | DE200523 | Review, comment and merge pull request | Không |   |
+| Trần Nhất Long | DE200160 | 1. Problem statement và core concept của CVerify: Ý tưởng Proof-of-Work thay thế claim-based CV là ý tưởng gốc của bản thân.  2. Quyết định kiến trúc tổng quan: Chọn monolith modular thay vì microservices, chọn tech stack cụ thể (Next.js 16 + ASP.NET Core v10), từ chối các đề xuất phức tạp của AI.  3. Business logic và thuật toán: Thuật toán tính OwnershipScore dựa trên weighted lines changed, TrustScore decay model, logic semantic matching threshold.  4. Scope management: Quyết định tính năng nào implement, tính năng nào cắt bỏ để phù hợp timeline.  5. Integration và glue code: Code nối giữa các module (GitHub API → RepositoryAnalysis → pgvector → SemanticMatching) là tự viết. | Có | https://docs.google.com/document/d/1K6i3wU3Stycf3q3Jtsft35tII0XdPFchwYhq7Dr6J_s/edit?usp=sharing |
 
 ---
 
@@ -248,4 +277,4 @@ Research how to integrate APIs into the system, compare criteria, and provide su
 
 | Đại diện sinh viên/nhóm | Ngày xác nhận |
 |---|---|
-| Nguyễn Hoàng Ngọc Ánh | 19/5/2026 |
+| Nguyễn Hoàng Ngọc Ánh | 24/5/2026 |

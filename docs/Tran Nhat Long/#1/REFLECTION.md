@@ -8,11 +8,11 @@
 | Mã môn học | SWP391 |
 | Lớp | SE20A02 |
 | Học kỳ | SU26 |
-| Tên bài tập / Project | TripGenie AI |
+| Tên bài tập / Project | CVerify |
 | Tên sinh viên / Nhóm | Nguyễn Hoàng Ngọc Ánh, Đoàn Thế Lực, Trương Văn Hiếu, Trần Nhất Long, Nguyễn La Hòa An |
 | MSSV / Danh sách MSSV | DE200147, DE200523, DE190105, DE200160, DE201043 |
 | Giảng viên hướng dẫn | QuangLTN3 |
-| Ngày hoàn thành reflection | 2026-05-19 |
+| Ngày hoàn thành reflection | 2026-05-24 |
 
 ---
 
@@ -25,43 +25,19 @@ File này dùng để sinh viên/nhóm tự đánh giá quá trình sử dụng 
 ## 3. Tóm tắt quá trình sử dụng AI
 
 ```text
-Summary of the AI ​​usage process in the project.
-1. **Input**: Upload tài liệu AI research 20+ trang → Claude đọc bằng `bash_tool`
-2. **Analysis**: Claude phân tích 17 chapters, xác định nội dung có thể dùng được
-3. **Design**: Claude thiết kế 6-layer architecture, bổ sung các concepts không có trong tài liệu
-4. **Output**: Gen 3 files (Summary.md, workflow.json, reflection.md) dùng `create_file`
+Nhóm sử dụng AI xuyên suốt toàn bộ 6 phase của dự án CVerify, nhưng với mức độ và mục đích khác nhau ở từng giai đoạn.
 
-## Cách Claude Sử Dụng AI
-- **Tool-use**: Gọi bash/create_file tools để đọc file, tạo output (giống AI Agent pattern)
-- **ReAct loop**: Thought → Action (bash_tool) → Observation → Output
-- **Structured output**: Mọi output có schema rõ ràng (JSON, Markdown sections)
+Giai đoạn đầu (Phase 01-02), AI được dùng chủ yếu để phân tích yêu cầu và viết user stories. Claude giúp nhóm brainstorm nhanh và gợi ý các tính năng nhóm chưa nghĩ đến (trust score decay, consent toggle). Tuy nhiên, nhóm phải loại bỏ ~20% kết quả vì scope quá lớn.
 
-## Nội Dung Từ Tài Liệu (80%)
-✅ Chapters 4-6, 8-10, 12, 15-16 được sử dụng trực tiếp
-✅ Tool-use pattern, 4-phase lifecycle, API stack, security, MVP roadmap
+Giai đoạn thiết kế (Phase 03), AI hỗ trợ thiết kế database schema với pgvector và gợi ý API naming convention. ChatGPT đặc biệt hữu ích trong việc giải thích cách dùng HNSW index — công nghệ hoàn toàn mới với nhóm.
 
-## Cải Thiện Claude Thêm Vào (20%)
-- Terminal tool (emit_itinerary) để force JSON output
-- Response Dispatcher layer cho FE routing
-- 7 parallel AI microservices breakdown
-- Concrete cost calculations & Redis TTL strategies
-- Edit diff workflow cụ thể
+Giai đoạn coding (Phase 04), GitHub Copilot và Cursor là hai công cụ được dùng nhiều nhất. AI sinh boilerplate code, CRUD patterns, và EF Core migrations nhanh hơn khoảng 40%. Tuy nhiên, toàn bộ business logic, thuật toán scoring, và integration logic là do nhóm tự viết.
 
-## Gaps Được Identify
-❌ Failure recovery paths
-❌ User preference learning
-❌ Multi-traveler conflict resolution
-❌ Offline mode support
-❌ A/B testing prompts safely
-❌ Explainability (why this choice?)
+Công cụ được dùng nhiều nhất: GitHub Copilot (coding), Claude (phân tích + debug), ChatGPT (thiết kế + giải thích khái niệm).
 
-## Giá Trị Mang Lại
-⏱️ 2-3 tuần research → 1 giờ gen document
-📋 14 sections covered (LLM selection, cost, security, scalability, risks)
-✅ Actionable (20-step checklist, concrete schema, specific TTL values)
-🚀 Production-ready blueprint chứ không phải lý thuyết
+AI giúp cải thiện chất lượng bài làm rõ rệt ở khâu debug — thay vì mất hàng giờ tìm nguyên nhân, AI giúp thu hẹp không gian tìm kiếm xuống 2-3 nguyên nhân có thể.
 
----
+Có một số phần AI gợi ý nhưng nhóm không sử dụng: kiến trúc microservices, event sourcing, và một số user stories quá phức tạp cho scope SWP391.
 ```
 
 ---
@@ -71,8 +47,8 @@ Summary of the AI ​​usage process in the project.
 - [x] ChatGPT
 - [x] Gemini
 - [x] Claude
-- [ ] GitHub Copilot
-- [ ] Cursor
+- [x] GitHub Copilot
+- [x] Cursor
 - [ ] Antigravity
 - [ ] Microsoft Copilot
 - [ ] Perplexity
@@ -97,18 +73,18 @@ Tiết kiệm thời gian, Sinh code nhanh, Kiểm tra lỗi, Tối ưu thuật 
 - [x] Hiểu yêu cầu đề bài
 - [x] Phân tích bài toán
 - [x] Tìm ý tưởng giải pháp
-- [ ] Thiết kế database
+- [x] Thiết kế database
 - [x] Thiết kế giao diện
 - [x] Thiết kế kiến trúc hệ thống
 - [x] Viết code mẫu
-- [ ] Debug lỗi
+- [x] Debug lỗi
 - [x] Viết test case
-- [ ] Review code
+- [x] Review code
 - [x] Tối ưu code
 - [x] Kiểm tra bảo mật
 - [x] Viết báo cáo
 - [ ] Chuẩn bị thuyết trình
-- [ ] Tìm hiểu công nghệ mới
+- [x] Tìm hiểu công nghệ mới
 
 ### Mô tả chi tiết
 
@@ -123,13 +99,20 @@ Tiết kiệm thời gian, Sinh code nhanh, Kiểm tra lỗi, Tối ưu thuật 
 ### 6.1. Những điểm AI giúp em/nhóm học tốt hơn
 
 ```text
-The data source is larger and faster to query, resulting in quicker data generation compared to manual methods.
+- Hiểu bài nhanh hơn nhờ AI giải thích khái niệm phức tạp bằng ngôn ngữ đơn giản kèm ví dụ cụ thể.
+- Biết thêm pattern tổ chức code (Clean Architecture, Repository Pattern, CQRS) qua ví dụ AI sinh ra.
+- Debug lỗi nhanh và học được nguyên nhân gốc rễ — không chỉ fix bug mà hiểu tại sao bug xảy ra.
+- Biết cách thiết kế API chuẩn RESTful với naming convention nhất quán.
+- Tiếp cận được công nghệ AI mới (pgvector, Function Calling) nằm ngoài curriculum trường.
 ```
 
 ### 6.2. Những điểm AI chưa giúp tốt hoặc gây khó khăn
 
 ```text
-Sometimes misunderstanding the context and user requirements can lead to outputs that deviate from what was intended.
+- AI không biết context môn học SWP391 → thường gợi ý scope quá lớn hoặc giải pháp quá phức tạp cho dự án sinh viên.
+- AI đôi khi sinh code không chạy (wrong API endpoint, deprecated method) → cần verify với official docs.
+- AI trả lời chung chung khi prompt không đủ context → mất thời gian hỏi lại nhiều lần.
+- Dễ bị "AI-brained" — có xu hướng dùng solution AI gợi ý mà không suy nghĩ xem có giải pháp đơn giản hơn không.
 ```
 
 ### 6.3. Em/nhóm có bị phụ thuộc vào AI không?
@@ -142,7 +125,7 @@ Sometimes misunderstanding the context and user requirements can lead to outputs
 Giải thích:
 
 ```text
-AI only assists in searching for documents and information, saving time, and does not participate fully in the research process.
+Nhóm có xu hướng nhờ AI trước khi tự nghĩ, đặc biệt với debug. Tuy nhiên, nhóm đã nhận ra điều này và thực hiện quy tắc: tự debug ít nhất 15 phút trước khi hỏi AI. Kết quả là kỹ năng debugging của cả nhóm được cải thiện rõ rệt trong nửa sau dự án.
 ```
 
 ---
@@ -164,17 +147,17 @@ AI only assists in searching for documents and information, saving time, and doe
 ### Mô tả quá trình kiểm chứng
 
 ```text
- 
+Nhóm áp dụng quy tắc "Zero Trust AI" cho code: không có đoạn code nào từ AI được commit vào repo mà không qua ít nhất 2 bước kiểm chứng: (1) chạy thử locally và xem output, (2) peer review trong PR. Với technical decisions (kiến trúc, database, index), nhóm đối chiếu với official documentation của PostgreSQL, Microsoft, và Next.js trước khi áp dụng.
 ```
 
 ### Ví dụ cụ thể về một lần kiểm chứng
 
 | Nội dung | Mô tả |
 |---|---|
-| AI đã gợi ý gì? | Provide links to documents from official sources for verification. |
-| Em/nhóm đã kiểm tra bằng cách nào? | Manually comparing and contrasting generated information with information from official websites on the internet. |
-| Kết quả kiểm tra | Đúng |
-| Em/nhóm đã xử lý tiếp như thế nào? | Accept the information generated by AI and develop further ideas from it. |
+| AI đã gợi ý gì? | ChatGPT gợi ý dùng IVFFlat index cho pgvector embedding search |
+| Em/nhóm đã kiểm tra bằng cách nào? | Đọc pgvector GitHub documentation và so sánh IVFFlat vs HNSW |
+| Kết quả kiểm tra | Cần chỉnh sửa — HNSW tốt hơn IVFFlat cho dataset <1M rows vì không cần train trước |
+| Em/nhóm đã xử lý tiếp như thế nào? | Dùng HNSW thay vì IVFFlat, viết lại migration script |
 
 ---
 
@@ -182,16 +165,21 @@ AI only assists in searching for documents and information, saving time, and doe
 
 | Nội dung | Mô tả |
 |---|---|
-| AI đã gợi ý gì? | During the research process using AI, the team has not observed any serious information errors from the AI. |
-| Vì sao gợi ý đó sai/chưa phù hợp? | none |
-| Em/nhóm phát hiện bằng cách nào? | none |
-| Em/nhóm đã sửa như thế nào? | none |
-| Bài học rút ra | none |
+| AI đã gợi ý gì? | GitHub Copilot sinh code gọi sai GitHub API endpoint cho commit comparison (dùng /compare thay vì /commits với sha range) |
+| Vì sao gợi ý đó sai/chưa phù hợp? | AI dùng endpoint cũ (deprecated) không còn return đầy đủ data cần thiết |
+| Em/nhóm phát hiện bằng cách nào? | Viết unit test và nhận được response thiếu fields — debug bằng Postman và phát hiện endpoint sai |
+| Em/nhóm đã sửa như thế nào? | Tra cứu GitHub REST API v3 docs, dùng đúng endpoint /repos/{owner}/{repo}/commits với since/until params |
+| Bài học rút ra | Luôn verify API endpoint với official docs, không tin tưởng AI về external API calls |
 ---
 
 ## 9. Phần đóng góp thật sự của sinh viên/nhóm
 
-Students manually researched the topic requirements to master business rules, along with creating their own documentation and academic evidence to provide context for AI to expand the scope of their research.
+### [Đóng góp] Review, comment and merge pull request
+- **Thành viên:** Trần Nhất Long (DE200160)
+- **Minh chứng:** Chưa có
+- **Đánh giá AI:** Không sử dụng AI
+- **Loại đóng góp thật sự:** AI Assisted (Có sự hỗ trợ của AI)
+- **Chi tiết thực hiện & So sánh:** Thực hiện đúng yêu cầu đề tài.
 
 ---
 
@@ -199,7 +187,7 @@ Students manually researched the topic requirements to master business rules, al
 
 | Nội dung | Trước khi dùng AI | Sau khi dùng AI | Cải thiện đạt được |
 |---|---|---|---|
-| Research | Slow | Fast | Understand the project's business structure. |
+| Research | Slow | Fast | Phân tích nhanh nhưng thiếu sâu, bỏ sót edge cases | Phân tích có hệ thống hơn, ít bỏ sót hơn, toàn diện hơn |
 
 ---
 
@@ -210,7 +198,15 @@ Students manually researched the topic requirements to master business rules, al
 - Kiểm thử sớm giúp giảm thiểu lỗi
 - Tầm quan trọng của làm việc nhóm
 
-Learn how to use GitHub effectively and how to use AI efficiently for project design.
+Sau dự án CVerify, nhóm hiểu sâu hơn nhiều về SDLC thực tế:
+
+1. Requirements là nền tảng: Một user story không rõ ràng sẽ dẫn đến code sai, phải làm lại. Đầu tư thời gian cho requirements không bao giờ là lãng phí.
+
+2. Design trước, code sau: ERD và API design kỹ giúp implementation nhanh và ít bug hơn. Ngược lại, "code trước design sau" tạo ra technical debt khó xử lý.
+
+3. Testing là kỹ năng, không phải việc thêm vào cuối: Nhóm học được rằng viết test case song song với code giúp phát hiện bug sớm và tiết kiệm thời gian tổng thể.
+
+4. Git workflow quan trọng hơn nhóm nghĩ: PR review giúp code quality tốt hơn và là cơ hội học từ code của nhau.
 
 ---
 
@@ -221,7 +217,17 @@ Learn how to use GitHub effectively and how to use AI efficiently for project de
 - Tôn trọng tính trung thực trong học thuật
 - Tránh sao chép mù quáng kết quả từ AI
 
-Include maintaining human oversight to avoid bias, protecting data privacy, verifying AI-generated content to avoid inaccuracies, and being transparent when AI is used.
+Dự án CVerify là lần đầu tiên nhóm sử dụng AI một cách có hệ thống trong toàn bộ SDLC. Bài học về AI có trách nhiệm:
+
+1. AI là junior developer rất nhanh, không phải senior: AI sinh code nhanh nhưng không hiểu business context, không biết constraint của dự án, và có thể sai về technical facts. Nhóm phải là người review và quyết định.
+
+2. Transparency quan trọng hơn nhóm nghĩ: Ghi nhận việc sử dụng AI (file này) không chỉ là yêu cầu của giảng viên mà thực sự giúp nhóm nhìn lại quá trình và học được nhiều hơn.
+
+3. Không nộp nguyên văn = không nộp mà không hiểu: Nhóm đặt ra quy tắc: nếu không giải thích được đoạn code này làm gì, thì không được commit. Rule này phòng được việc "black box" từ AI.
+
+4. AI tạo ra ảo giác năng lực: Dễ cảm thấy mình giỏi khi có AI hỗ trợ. Nhưng khi không có AI (ví dụ thi), năng lực thật mới lộ ra. Nhóm cần tự học và hiểu, không chỉ dùng AI để "chạy deadline".
+
+5. Bias của AI: AI có xu hướng đề xuất các giải pháp phức tạp và "over-engineered". Nhóm phải tự đặt câu hỏi "Có giải pháp đơn giản hơn không?" trước khi áp dụng.
 
 ---
 
@@ -249,7 +255,19 @@ Include maintaining human oversight to avoid bias, protecting data privacy, veri
 - Đảm bảo tính nhất quán của UI/UX
 - Cải thiện quy trình làm việc với Git
 
-Provide context, reasonable and complete requirements for AI. Do not let AI generate code or documentation from scratch; manual testing and verification are mandatory afterward.
+1. Viết prompt theo template cố định ngay từ đầu (Context → Goal → Constraints → Output format) thay vì viết tự nhiên.
+
+2. Cung cấp nhiều ngữ cảnh hơn về môn học và scope trong prompt — đặc biệt là constraints về team size và timeline.
+
+3. Ghi log prompt ngay khi sử dụng, không để cuối phase mới ghi hồi ký — nhiều chi tiết bị quên.
+
+4. Thực hiện "AI-free day" mỗi tuần để kiểm tra năng lực thực sự và không bị phụ thuộc.
+
+5. Luôn đối chiếu kết quả AI với official documentation trước khi sử dụng, đặc biệt với external APIs.
+
+6. Thảo luận với nhóm trước khi áp dụng AI suggestion quan trọng — không để một người quyết định một mình.
+
+7. Liên kết log AI với commit hash cụ thể để truy vết dễ hơn.
 
 ---
 
@@ -272,25 +290,25 @@ Provide context, reasonable and complete requirements for AI. Do not let AI gene
 ### 16.1. Nếu giảng viên hỏi về phần AI đã hỗ trợ, em/nhóm có giải thích lại được không?
 
 ```text
-Được
+Có. Nhóm đặt ra quy tắc từ đầu: không commit code mà không giải thích được. Mọi thành viên đều review code của nhau trong PR. Nhóm tự tin giải thích toàn bộ hệ thống CVerify, từ database schema đến business logic đến deployment architecture.
 ```
 
 ### 16.2. Nếu không có AI, em/nhóm có thể tự làm lại phần quan trọng nhất không?
 
 ```text
-Được
+Có, với các phần core. Authentication (JWT), CRUD operations, và database queries là những phần nhóm có thể tự viết lại mà không cần AI. Phần khó nhất nếu không có AI là pgvector HNSW configuration và GitHub API integration — những phần này sẽ cần nhiều thời gian nghiên cứu hơn nhưng vẫn có thể tự làm.
 ```
 
 ### 16.3. Phần nào trong bài thể hiện rõ nhất năng lực thật sự của em/nhóm?
 
 ```text
-Designing project frameworks and workflows for engineering business processes.
+Phần thể hiện rõ nhất năng lực thật sự của em/nhóm là business logic layer: thuật toán tính OwnershipScore, TrustScore model, và logic semantic matching threshold. Đây là những phần AI không thể gợi ý cụ thể vì không biết business context của CVerify — nhóm phải tự phân tích và thiết kế.
 ```
 
 ### 16.4. Em/nhóm muốn cải thiện kỹ năng nào sau bài này?
 
 ```text
-Management and design skills, project planning. Task allocation and improved use of AI and GitHub.
+Kỹ năng quản lý và thiết kế, lập kế hoạch dự án. Phân bổ nhiệm vụ và nâng cao hiệu quả sử dụng AI và GitHub.
 ```
 
 ---
@@ -299,4 +317,4 @@ Management and design skills, project planning. Task allocation and improved use
 
 | Đại diện sinh viên/nhóm | Ngày xác nhận |
 |---|---|
-| Nguyễn Hoàng Ngọc Ánh | 19/5/2026 |
+| Nguyễn Hoàng Ngọc Ánh | 24/5/2026 |
