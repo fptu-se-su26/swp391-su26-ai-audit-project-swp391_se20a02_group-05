@@ -1,18 +1,31 @@
 "use client";
 
-import React, { useState, useEffect, useCallback } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
-import { useAuth } from '../../../features/auth/hooks/use-auth';
-import { Google } from '@thesvg/react';
+import React, { useState, useEffect, useCallback } from "react";
+import { useRouter } from "next/navigation";
+import { useAuth } from "../../../features/auth/hooks/use-auth";
+import { Google } from "@thesvg/react";
 import {
-  Card, Tabs, Typography, Button, TextField,
-  InputGroup, Input, ErrorMessage, Form, Label,
-  FieldError, Checkbox, toast, Spinner, CardHeader,
-  CardContent, Link
+  Card,
+  Tabs,
+  Typography,
+  Button,
+  TextField,
+  InputGroup,
+  Input,
+  ErrorMessage,
+  Form,
+  Label,
+  FieldError,
+  Checkbox,
+  toast,
+  Spinner,
+  CardHeader,
+  CardContent,
+  Link,
 } from "@heroui/react";
-import { Eye, EyeOff } from 'lucide-react';
-import Script from 'next/script';
-import { Suspense } from 'react';
+import { Eye, EyeOff } from "lucide-react";
+import Script from "next/script";
+import { Suspense } from "react";
 
 interface GoogleIdentityResponse {
   credential?: string;
@@ -22,8 +35,19 @@ interface CustomWindow extends Window {
   google?: {
     accounts?: {
       id?: {
-        initialize: (options: { client_id: string; callback: (response: GoogleIdentityResponse) => void }) => void;
-        renderButton: (parent: HTMLElement, options: { theme?: string; size?: string; width?: number; text?: string }) => void;
+        initialize: (options: {
+          client_id: string;
+          callback: (response: GoogleIdentityResponse) => void;
+        }) => void;
+        renderButton: (
+          parent: HTMLElement,
+          options: {
+            theme?: string;
+            size?: string;
+            width?: number;
+            text?: string;
+          },
+        ) => void;
       };
     };
   };
@@ -33,11 +57,13 @@ interface CustomWindow extends Window {
 
 function LoginContent() {
   const router = useRouter();
-  const searchParams = useSearchParams();
-  const { loginWithGoogle, login, sendOtp, resolveEmailAuthState, companyLogin } = useAuth();
-
-  // Callback URL for redirects
-  const callbackUrl = searchParams.get('callbackUrl') || '/';
+  const {
+    loginWithGoogle,
+    login,
+    sendOtp,
+    resolveEmailAuthState,
+    companyLogin,
+  } = useAuth();
 
   // Engineer state
   const [email, setEmail] = useState("");
@@ -45,16 +71,19 @@ function LoginContent() {
   const [isEmailLoading, setIsEmailLoading] = useState(false);
 
   // Engineer identity flow phase: email input → password login (if credentials exist)
-  type EmailFlowPhase = 'EMAIL_INPUT' | 'PASSWORD_LOGIN';
-  const [emailFlowPhase, setEmailFlowPhase] = useState<EmailFlowPhase>('EMAIL_INPUT');
+  type EmailFlowPhase = "EMAIL_INPUT" | "PASSWORD_LOGIN";
+  const [emailFlowPhase, setEmailFlowPhase] =
+    useState<EmailFlowPhase>("EMAIL_INPUT");
   const [engineerPassword, setEngineerPassword] = useState("");
-  const [isEngineerPasswordVisible, setIsEngineerPasswordVisible] = useState(false);
+  const [isEngineerPasswordVisible, setIsEngineerPasswordVisible] =
+    useState(false);
   const [isPasswordLoginLoading, setIsPasswordLoginLoading] = useState(false);
 
   const validateEmail = (val: string) => {
     return val.match(/^[^\s@]+@[^\s@]+\.[^\s@]+$/);
   };
-  const isEmailInvalid = emailTouched && email.length > 0 && !validateEmail(email);
+  const isEmailInvalid =
+    emailTouched && email.length > 0 && !validateEmail(email);
 
   // Business state
   const [selectedTab, setSelectedTab] = useState("overview");
@@ -64,48 +93,57 @@ function LoginContent() {
   const [isBusinessLoading, setIsBusinessLoading] = useState(false);
 
   // Google SSO logic
-  const handleGoogleCredentialResponse = useCallback(async (response: GoogleIdentityResponse) => {
-    try {
-      if (!response.credential) return;
-      const result = await loginWithGoogle(response.credential);
+  const handleGoogleCredentialResponse = useCallback(
+    async (response: GoogleIdentityResponse) => {
+      try {
+        if (!response.credential) return;
+        const result = await loginWithGoogle(response.credential);
 
-      if (result.success) {
-        if (result.isUnverified || result.nextStep === 'VERIFY_EMAIL') {
-          toast.warning("Verification Pending", {
-            description: "Please check your email to complete verification."
-          });
-          router.push('/verify-email');
-          return;
-        }
+        if (result.success) {
+          if (result.isUnverified || result.nextStep === "VERIFY_EMAIL") {
+            toast.warning("Verification Pending", {
+              description: "Please check your email to complete verification.",
+            });
+            router.push("/verify-email");
+            return;
+          }
 
-        if (result.user) {
-          toast.success("Welcome to CVerify!", {
-            description: "Successfully logged in via Google SSO."
+          if (result.user) {
+            toast.success("Welcome to CVerify!", {
+              description: "Successfully logged in via Google SSO.",
+            });
+            // Navigation is handled by AuthOrchestrator (respects callbackUrl)
+          }
+        } else if (result.error) {
+          toast.danger("Google Login Failed", {
+            description: result.error.message,
           });
-          router.push(callbackUrl);
         }
-      } else if (result.error) {
-        toast.danger("Google Login Failed", {
-          description: result.error.message
+      } catch {
+        toast.danger("Google SSO Failed", {
+          description:
+            "An unexpected error occurred during Google authentication.",
         });
       }
-    } catch {
-      toast.danger("Google SSO Failed", {
-        description: "An unexpected error occurred during Google authentication."
-      });
-    }
-  }, [loginWithGoogle, router, callbackUrl]);
+    },
+    [loginWithGoogle, router],
+  );
 
   const initializeGoogleSignIn = useCallback(() => {
-    const customWindow = typeof window !== 'undefined' ? (window as unknown as CustomWindow) : null;
+    const customWindow =
+      typeof window !== "undefined"
+        ? (window as unknown as CustomWindow)
+        : null;
     if (customWindow?.google?.accounts?.id) {
       customWindow.__googleIdentityListener = handleGoogleCredentialResponse;
 
       if (!customWindow.__googleIdentityInitialized) {
         customWindow.google.accounts.id.initialize({
-          client_id: process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || 'your_google_client_id_here',
+          client_id:
+            process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID ||
+            "your_google_client_id_here",
           callback: (response: GoogleIdentityResponse) => {
-            if (typeof customWindow.__googleIdentityListener === 'function') {
+            if (typeof customWindow.__googleIdentityListener === "function") {
               customWindow.__googleIdentityListener(response);
             }
           },
@@ -113,13 +151,15 @@ function LoginContent() {
         customWindow.__googleIdentityInitialized = true;
       }
 
-      const container = document.getElementById('google-signin-button');
+      const container = document.getElementById("google-signin-button");
       if (container) {
-        container.innerHTML = '';
-        customWindow.google.accounts.id.renderButton(
-          container,
-          { theme: 'outline', size: 'large', width: 390, text: 'continue_with' }
-        );
+        container.innerHTML = "";
+        customWindow.google.accounts.id.renderButton(container, {
+          theme: "outline",
+          size: "large",
+          width: 390,
+          text: "continue_with",
+        });
       }
     }
   }, [handleGoogleCredentialResponse]);
@@ -140,7 +180,7 @@ function LoginContent() {
 
     if (!stateResult.success || !stateResult.data) {
       toast.danger("Failed to resolve identity", {
-        description: stateResult.error?.message || "An error occurred."
+        description: stateResult.error?.message || "An error occurred.",
       });
       return;
     }
@@ -148,41 +188,42 @@ function LoginContent() {
     const { authState } = stateResult.data;
 
     switch (authState) {
-      case 'REQUIRES_AUTHENTICATION':
+      case "REQUIRES_AUTHENTICATION":
         // User has password credentials — show inline password form
-        setEmailFlowPhase('PASSWORD_LOGIN');
+        setEmailFlowPhase("PASSWORD_LOGIN");
         break;
 
-      case 'REQUIRES_ONBOARDING': {
+      case "REQUIRES_ONBOARDING": {
         // New user or Google-only — trigger OTP onboarding
         setIsEmailLoading(true);
-        const otpResult = await sendOtp(email, 'Authentication');
+        const otpResult = await sendOtp(email, "Authentication");
         setIsEmailLoading(false);
         if (otpResult.success && otpResult.data) {
           toast.success("OTP Code Sent", {
-            description: `Please check your email: ${email} for the 6-digit verification code.`
+            description: `Please check your email: ${email} for the 6-digit verification code.`,
           });
           router.push(
-            `/continue-with-email?email=${encodeURIComponent(email)}&challengeId=${otpResult.data.challengeId}`
+            `/continue-with-email?email=${encodeURIComponent(email)}&challengeId=${otpResult.data.challengeId}`,
           );
         } else {
           toast.danger("Failed to send OTP", {
-            description: otpResult.error?.message || "An error occurred."
+            description: otpResult.error?.message || "An error occurred.",
           });
         }
         break;
       }
 
-      case 'REQUIRES_VERIFICATION':
+      case "REQUIRES_VERIFICATION":
         toast.warning("Verification Pending", {
-          description: "Please check your email to complete verification."
+          description: "Please check your email to complete verification.",
         });
-        router.push('/verify-email');
+        router.push("/verify-email");
         break;
 
-      case 'ACCOUNT_RESTRICTED':
+      case "ACCOUNT_RESTRICTED":
         toast.danger("Account Restricted", {
-          description: "This account has been restricted. Please contact support."
+          description:
+            "This account has been restricted. Please contact support.",
         });
         break;
     }
@@ -193,22 +234,28 @@ function LoginContent() {
     if (!email || !engineerPassword) return;
 
     setIsPasswordLoginLoading(true);
-    const result = await login({ email, password: engineerPassword, rememberMe: false });
+    const result = await login({
+      email,
+      password: engineerPassword,
+      rememberMe: false,
+    });
     setIsPasswordLoginLoading(false);
 
     if (result.success) {
-      if (result.isUnverified || result.nextStep === 'VERIFY_EMAIL') {
+      if (result.isUnverified || result.nextStep === "VERIFY_EMAIL") {
         toast.warning("Verification Pending", {
-          description: "Please check your email to complete verification."
+          description: "Please check your email to complete verification.",
         });
-        router.push('/verify-email');
+        router.push("/verify-email");
         return;
       }
-      toast.success("Welcome back!", { description: "Successfully logged in." });
-      router.push(callbackUrl);
+      toast.success("Welcome back!", {
+        description: "Successfully logged in.",
+      });
+      // Navigation is handled by AuthOrchestrator (respects callbackUrl)
     } else {
       toast.danger("Login Failed", {
-        description: result.error?.message || "Invalid email or password."
+        description: result.error?.message || "Invalid email or password.",
       });
     }
   };
@@ -220,18 +267,19 @@ function LoginContent() {
     setIsBusinessLoading(true);
     const result = await companyLogin({
       organizationUsername: businessUsername,
-      password: businessPassword
+      password: businessPassword,
     });
     setIsBusinessLoading(false);
 
     if (result.success) {
       toast.success("Workspace authenticated", {
-        description: `Logged in to organization: ${businessUsername}`
+        description: `Logged in to organization: ${businessUsername}`,
       });
-      router.push(callbackUrl);
+      // Navigation is handled by AuthOrchestrator (respects callbackUrl)
     } else {
       toast.danger("Authentication Failed", {
-        description: result.error?.message || "Invalid workspace username or password."
+        description:
+          result.error?.message || "Invalid workspace username or password.",
       });
     }
   };
@@ -256,12 +304,21 @@ function LoginContent() {
           onSelectionChange={(key) => setSelectedTab(key as string)}
         >
           <Tabs.ListContainer>
-            <Tabs.List aria-label="Options" className="flex items-center gap-4 h-10">
-              <Tabs.Tab id="overview" className="flex items-center justify-center h-full pb-3">
+            <Tabs.List
+              aria-label="Options"
+              className="flex items-center gap-4 h-10"
+            >
+              <Tabs.Tab
+                id="overview"
+                className="flex items-center justify-center h-full pb-3"
+              >
                 <Typography.Heading level={5}>Engineer</Typography.Heading>
                 <Tabs.Indicator className="bottom-0!" />
               </Tabs.Tab>
-              <Tabs.Tab id="bussiness" className="flex items-center justify-center h-full pb-3">
+              <Tabs.Tab
+                id="bussiness"
+                className="flex items-center justify-center h-full pb-3"
+              >
                 <Typography.Heading level={5}>Business</Typography.Heading>
                 <Tabs.Indicator className="!bottom-0!" />
               </Tabs.Tab>
@@ -270,9 +327,14 @@ function LoginContent() {
 
           <Tabs.Panel className="pt-6 flex justify-center w-full" id="overview">
             {selectedTab === "overview" && (
-              <Card variant="transparent" className="w-full max-w-[90%] flex flex-col items-center">
+              <Card
+                variant="transparent"
+                className="w-full max-w-[90%] flex flex-col items-center"
+              >
                 <CardHeader className="flex flex-col items-center text-center w-full">
-                  <Card.Title className="text-2xl pb-4">Proof over promises</Card.Title>
+                  <Card.Title className="text-2xl pb-4">
+                    Proof over promises
+                  </Card.Title>
                   <Card.Description className="text-md pb-12">
                     Evidence-backed profiles for modern engineering hiring.
                   </Card.Description>
@@ -283,22 +345,27 @@ function LoginContent() {
                   <div
                     id="google-signin-button"
                     className="absolute inset-0 opacity-[0.01] z-10 cursor-pointer overflow-hidden flex justify-center items-center [&_iframe]:w-full [&_iframe]:h-full [&_iframe]:scale-[2.5] [&_iframe]:origin-center"
-                    style={{ minHeight: '48px' }}
+                    style={{ minHeight: "48px" }}
                   />
-                  <Button 
-                    variant="tertiary" 
-                    size="lg" 
-                    fullWidth 
+                  <Button
+                    variant="tertiary"
+                    size="lg"
+                    fullWidth
                     className="h-12 rounded-2xl transition-all duration-200 group-hover:opacity-90 group-active:scale-[0.98]"
                   >
                     <Google /> Continue with Google
                   </Button>
                 </div>
 
-                <Typography type="body-sm" color="muted" className="pb-3">OR</Typography>
+                <Typography type="body-sm" color="muted" className="pb-3">
+                  OR
+                </Typography>
 
-                {emailFlowPhase === 'EMAIL_INPUT' ? (
-                  <Form onSubmit={handleContinueWithEmail} className="w-full flex flex-col items-center gap-6 p-0">
+                {emailFlowPhase === "EMAIL_INPUT" ? (
+                  <Form
+                    onSubmit={handleContinueWithEmail}
+                    className="w-full flex flex-col items-center gap-6 p-0"
+                  >
                     <TextField
                       fullWidth
                       isInvalid={isEmailInvalid}
@@ -339,7 +406,10 @@ function LoginContent() {
                     </Button>
                   </Form>
                 ) : (
-                  <Form onSubmit={handlePasswordLogin} className="w-full flex flex-col items-center gap-6 p-0">
+                  <Form
+                    onSubmit={handlePasswordLogin}
+                    className="w-full flex flex-col items-center gap-6 p-0"
+                  >
                     <TextField fullWidth aria-label="Email Address">
                       <Input
                         className="h-12 bg-zinc-50 dark:bg-zinc-900 opacity-70"
@@ -350,7 +420,12 @@ function LoginContent() {
                       />
                     </TextField>
 
-                    <TextField isRequired name="password" type="password" fullWidth>
+                    <TextField
+                      isRequired
+                      name="password"
+                      type="password"
+                      fullWidth
+                    >
                       <Label>Password</Label>
                       <InputGroup>
                         <InputGroup.Input
@@ -358,18 +433,32 @@ function LoginContent() {
                           type={isEngineerPasswordVisible ? "text" : "password"}
                           placeholder="Enter your password"
                           value={engineerPassword}
-                          onChange={(e: React.ChangeEvent<HTMLInputElement>) => setEngineerPassword(e.target.value)}
+                          onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                            setEngineerPassword(e.target.value)
+                          }
                           autoFocus
                         />
                         <InputGroup.Suffix>
                           <Button
                             isIconOnly
-                            aria-label={isEngineerPasswordVisible ? "Hide password" : "Show password"}
+                            aria-label={
+                              isEngineerPasswordVisible
+                                ? "Hide password"
+                                : "Show password"
+                            }
                             size="sm"
                             variant="ghost"
-                            onPress={() => setIsEngineerPasswordVisible(!isEngineerPasswordVisible)}
+                            onPress={() =>
+                              setIsEngineerPasswordVisible(
+                                !isEngineerPasswordVisible,
+                              )
+                            }
                           >
-                            {isEngineerPasswordVisible ? <Eye className="size-4" /> : <EyeOff className="size-4" />}
+                            {isEngineerPasswordVisible ? (
+                              <Eye className="size-4" />
+                            ) : (
+                              <EyeOff className="size-4" />
+                            )}
                           </Button>
                         </InputGroup.Suffix>
                       </InputGroup>
@@ -384,14 +473,19 @@ function LoginContent() {
                       isPending={isPasswordLoginLoading}
                       className="h-12 rounded-2xl"
                     >
-                      {isPasswordLoginLoading && <Spinner color="current" size="sm" />}
+                      {isPasswordLoginLoading && (
+                        <Spinner color="current" size="sm" />
+                      )}
                       Sign In
                     </Button>
 
                     <div className="flex items-center justify-between w-full">
                       <button
                         type="button"
-                        onClick={() => { setEmailFlowPhase('EMAIL_INPUT'); setEngineerPassword(''); }}
+                        onClick={() => {
+                          setEmailFlowPhase("EMAIL_INPUT");
+                          setEngineerPassword("");
+                        }}
                         className="text-sm text-muted hover:underline cursor-pointer bg-transparent border-0 p-0"
                       >
                         ← Use different email
@@ -409,23 +503,31 @@ function LoginContent() {
             )}
           </Tabs.Panel>
 
-          <Tabs.Panel className="pt-4 flex justify-center w-full" id="bussiness">
+          <Tabs.Panel
+            className="pt-4 flex justify-center w-full"
+            id="bussiness"
+          >
             {selectedTab === "bussiness" && (
-              <Card variant="transparent" className="w-full max-w-[90%] flex flex-col items-center">
+              <Card
+                variant="transparent"
+                className="w-full max-w-[90%] flex flex-col items-center"
+              >
                 <CardHeader className="flex flex-col items-center text-center w-full">
-                  <Card.Title className="text-2xl pb-4">Hire beyond resumes</Card.Title>
+                  <Card.Title className="text-2xl pb-4">
+                    Hire beyond resumes
+                  </Card.Title>
                   <Card.Description className="text-md pb-12 w-full">
                     Verify engineering talent through real technical evidence.
                   </Card.Description>
                 </CardHeader>
 
                 <CardContent className="w-full pb-3 p-0">
-                  <Form className="flex flex-col gap-6" onSubmit={handleBusinessSubmit} onReset={handleBusinessReset}>
-                    <TextField
-                      isRequired
-                      name="username"
-                      type="text"
-                    >
+                  <Form
+                    className="flex flex-col gap-6"
+                    onSubmit={handleBusinessSubmit}
+                    onReset={handleBusinessReset}
+                  >
+                    <TextField isRequired name="username" type="text">
                       <Label>Username</Label>
                       <Input
                         placeholder="Enter your username"
@@ -436,11 +538,7 @@ function LoginContent() {
                       <FieldError />
                     </TextField>
 
-                    <TextField
-                      isRequired
-                      name="password"
-                      type="password"
-                    >
+                    <TextField isRequired name="password" type="password">
                       <Label>Password</Label>
                       <InputGroup>
                         <InputGroup.Input
@@ -448,17 +546,25 @@ function LoginContent() {
                           type={isVisible ? "text" : "password"}
                           placeholder="Enter your password"
                           value={businessPassword}
-                          onChange={(e: React.ChangeEvent<HTMLInputElement>) => setBusinessPassword(e.target.value)}
+                          onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                            setBusinessPassword(e.target.value)
+                          }
                         />
                         <InputGroup.Suffix>
                           <Button
                             isIconOnly
-                            aria-label={isVisible ? "Hide password" : "Show password"}
+                            aria-label={
+                              isVisible ? "Hide password" : "Show password"
+                            }
                             size="sm"
                             variant="ghost"
                             onPress={() => setIsVisible(!isVisible)}
                           >
-                            {isVisible ? <Eye className="size-4" /> : <EyeOff className="size-4" />}
+                            {isVisible ? (
+                              <Eye className="size-4" />
+                            ) : (
+                              <EyeOff className="size-4" />
+                            )}
                           </Button>
                         </InputGroup.Suffix>
                       </InputGroup>
@@ -471,11 +577,19 @@ function LoginContent() {
                           <Checkbox.Indicator />
                         </Checkbox.Control>
                         <Checkbox.Content>
-                          <Label htmlFor="remember-me" className="text-muted cursor-pointer">Remember me</Label>
+                          <Label
+                            htmlFor="remember-me"
+                            className="text-muted cursor-pointer"
+                          >
+                            Remember me
+                          </Label>
                         </Checkbox.Content>
                       </Checkbox>
 
-                      <Link href="/forgot-password" className="text-sm text-muted hover:underline cursor-pointer">
+                      <Link
+                        href="/forgot-password"
+                        className="text-sm text-muted hover:underline cursor-pointer"
+                      >
                         Forgot password?
                       </Link>
                     </div>
@@ -485,7 +599,11 @@ function LoginContent() {
                         type="submit"
                         fullWidth
                         className="h-12 rounded-2xl"
-                        isDisabled={!businessUsername || !businessPassword || isBusinessLoading}
+                        isDisabled={
+                          !businessUsername ||
+                          !businessPassword ||
+                          isBusinessLoading
+                        }
                         isPending={isBusinessLoading}
                       >
                         Sign In
@@ -502,18 +620,18 @@ function LoginContent() {
                   </Form>
                 </CardContent>
 
-                <Typography type="body-sm" color="muted" className="pb-3 pt-3">OR</Typography>
+                <Typography type="body-sm" color="muted" className="pb-3 pt-3">
+                  OR
+                </Typography>
 
-                <Typography
-                  type="body-sm"
-                  color="muted"
-                >
+                <Typography type="body-sm" color="muted">
                   New to CVerify?{" "}
                   <Link
                     href="/company-verification"
                     className="cursor-pointer font-semibold text-zinc-900 dark:text-zinc-100 hover:underline"
                   >
-                    Register your company<Link.Icon className="pt-1" />
+                    Register your company
+                    <Link.Icon className="pt-1" />
                   </Link>
                 </Typography>
               </Card>
@@ -527,11 +645,13 @@ function LoginContent() {
 
 export default function LoginPage() {
   return (
-    <Suspense fallback={
-      <div className="flex items-center justify-center p-8 min-h-[400px]">
-        <div className="w-8 h-8 border-2 border-t-zinc-900 border-zinc-200 dark:border-t-zinc-100 rounded-full animate-spin" />
-      </div>
-    }>
+    <Suspense
+      fallback={
+        <div className="flex items-center justify-center p-8 min-h-[400px]">
+          <div className="w-8 h-8 border-2 border-t-zinc-900 border-zinc-200 dark:border-t-zinc-100 rounded-full animate-spin" />
+        </div>
+      }
+    >
       <LoginContent />
     </Suspense>
   );

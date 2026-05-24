@@ -85,6 +85,18 @@ axiosClient.interceptors.response.use(
         console.log(`[Auth Interceptor] Auth flow request 401: ${originalRequest.url}. Skipping refresh rotation.`);
         if (isRefreshRequest || isLogoutRequest) {
           useAuthStore.getState().logout(true); // logout and broadcast to all tabs
+          
+          if (isRefreshRequest && typeof window !== 'undefined') {
+            const currentPath = window.location.pathname;
+            const isProtectedPage = ['/admin', '/business', '/user', '/chat'].some(p => currentPath.startsWith(p));
+            
+            if (isProtectedPage) {
+              console.log(`[Auth Interceptor] Refresh token expired. Redirecting user away from protected page: ${currentPath}`);
+              window.location.href = `/login?session_expired=true&callbackUrl=${encodeURIComponent(
+                window.location.pathname + window.location.search
+              )}`;
+            }
+          }
         }
         return Promise.reject(apiError);
       }
@@ -132,7 +144,7 @@ axiosClient.interceptors.response.use(
               
               if (typeof window !== 'undefined') {
                 const currentPath = window.location.pathname;
-                const isProtectedPage = ['/admin', '/business', '/user'].some(p => currentPath.startsWith(p));
+                const isProtectedPage = ['/admin', '/business', '/user', '/chat'].some(p => currentPath.startsWith(p));
                 
                 if (isProtectedPage) {
                   console.log(`[Auth Interceptor] Redirecting user away from protected page: ${currentPath}`);

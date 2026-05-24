@@ -288,41 +288,42 @@ export default function CompanyVerificationPage() {
   }, [cooldown]);
 
   // Google SSO Initializer inside Step 2 Link view
-  const handleGoogleCredentialResponse = useCallback(async (
-    response: GoogleIdentityResponse,
-  ) => {
-    if (!response.credential || !step1Token) return;
-    setIsLoading(true);
-    try {
-      const result = await verifyOnboardingGoogle(
-        response.credential,
-        step1Token,
-      );
-      setIsLoading(false);
-      if (result.success && result.data) {
-        setStep2Token(result.data.verificationToken);
-        setVerifiedEmail(result.data.email || "");
-        toast.success("Google link successful!", {
-          description: `Verified ownership as ${result.data.email}`,
-        });
+  const handleGoogleCredentialResponse = useCallback(
+    async (response: GoogleIdentityResponse) => {
+      if (!response.credential || !step1Token) return;
+      setIsLoading(true);
+      try {
+        const result = await verifyOnboardingGoogle(
+          response.credential,
+          step1Token,
+        );
+        setIsLoading(false);
+        if (result.success && result.data) {
+          setStep2Token(result.data.verificationToken);
+          setVerifiedEmail(result.data.email || "");
+          toast.success("Google link successful!", {
+            description: `Verified ownership as ${result.data.email}`,
+          });
 
-        // Setup initial default display name and suggested slug from verified company name
-        const officialName =
-          verifiedCompanyInfo?.officialCompanyName || companyName;
-        setCompanyDisplayName(officialName);
-        setOrganizationUsername(generateSuggestedSlug(officialName));
-      } else {
-        toast.danger("Google linking failed", {
-          description:
-            result.error?.message ||
-            "Verify company onboarding state link failed.",
-        });
+          // Setup initial default display name and suggested slug from verified company name
+          const officialName =
+            verifiedCompanyInfo?.officialCompanyName || companyName;
+          setCompanyDisplayName(officialName);
+          setOrganizationUsername(generateSuggestedSlug(officialName));
+        } else {
+          toast.danger("Google linking failed", {
+            description:
+              result.error?.message ||
+              "Verify company onboarding state link failed.",
+          });
+        }
+      } catch {
+        setIsLoading(false);
+        toast.danger("An unexpected Google error occurred.");
       }
-    } catch {
-      setIsLoading(false);
-      toast.danger("An unexpected Google error occurred.");
-    }
-  }, [step1Token, verifyOnboardingGoogle, verifiedCompanyInfo, companyName]);
+    },
+    [step1Token, verifyOnboardingGoogle, verifiedCompanyInfo, companyName],
+  );
 
   const initializeGoogleSignIn = useCallback(() => {
     const customWindow =
@@ -595,8 +596,8 @@ export default function CompanyVerificationPage() {
               onPress={() =>
                 router.push(
                   `/company-recovery?taxCode=${taxCode}&companyName=${encodeURIComponent(
-                    recoveryInfo.organizationDisplayName
-                  )}`
+                    recoveryInfo.organizationDisplayName,
+                  )}`,
                 )
               }
             >
@@ -1303,7 +1304,9 @@ export default function CompanyVerificationPage() {
                       type={isPasswordVisible ? "text" : "password"}
                       placeholder="Create a strong account password"
                       value={password}
-                      onChange={(e: React.ChangeEvent<HTMLInputElement>) => setPassword(e.target.value)}
+                      onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                        setPassword(e.target.value)
+                      }
                     />
                     <InputGroup.Suffix>
                       <Button
@@ -1345,7 +1348,9 @@ export default function CompanyVerificationPage() {
                       type={isConfirmVisible ? "text" : "password"}
                       placeholder="Re-enter password to confirm"
                       value={confirmPassword}
-                      onChange={(e: React.ChangeEvent<HTMLInputElement>) => setConfirmPassword(e.target.value)}
+                      onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                        setConfirmPassword(e.target.value)
+                      }
                     />
                     <InputGroup.Suffix>
                       <Button

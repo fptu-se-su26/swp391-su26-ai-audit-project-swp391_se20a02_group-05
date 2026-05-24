@@ -45,7 +45,7 @@ export async function proxy(request: NextRequest) {
   const accessToken = request.cookies.get('access_token')?.value;
 
   // Define route classifications
-  const isDashboardRoute = ['/admin', '/business', '/user'].some(p => pathname.startsWith(p));
+  const isDashboardRoute = ['/admin', '/business', '/user', '/chat'].some(p => pathname.startsWith(p));
 
   // Development environment gated edge logging to prevent production data leakage
   if (isDev) {
