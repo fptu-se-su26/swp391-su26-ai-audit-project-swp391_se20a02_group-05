@@ -112,6 +112,47 @@ builder.Services.AddOpenApi(options =>
     });
 });
 builder.Services.AddControllers()
+    .ConfigureApiBehaviorOptions(options =>
+    {
+        options.InvalidModelStateResponseFactory = context =>
+        {
+            var errors = new Dictionary<string, string[]>();
+            foreach (var (key, value) in context.ModelState)
+            {
+                if (value.Errors.Count > 0)
+                {
+                    var messages = new List<string>();
+                    foreach (var error in value.Errors)
+                    {
+                        messages.Add(error.ErrorMessage);
+                    }
+                    errors.Add(key, messages.ToArray());
+                }
+            }
+
+            var correlationId = CVerify.API.Infrastructure.Diagnostics.AsyncLocalCorrelationScope.CurrentCorrelationId 
+                                ?? context.HttpContext.TraceIdentifier;
+
+            var responsePayload = new CVerify.API.Application.DTOs.ApiErrorResponse
+            {
+                Status = Microsoft.AspNetCore.Http.StatusCodes.Status400BadRequest,
+                Code = CVerify.API.Application.Exceptions.Catalogs.SystemErrorCatalog.ValidationError,
+                Category = CVerify.API.Application.Exceptions.ErrorCategory.VALIDATION.ToString(),
+                Severity = "Error",
+                MessageKey = "system.toast.error.validation",
+                Message = "Please check the form fields for errors.",
+                Retryable = false,
+                Errors = errors,
+                CorrelationId = correlationId,
+                UxSemantics = new CVerify.API.Application.DTOs.UxSemantics("Inline", "None", string.Empty, string.Empty)
+            };
+
+            return new Microsoft.AspNetCore.Mvc.BadRequestObjectResult(responsePayload)
+            {
+                ContentTypes = { "application/json" }
+            };
+        };
+    })
     .AddJsonOptions(options =>
     {
         options.JsonSerializerOptions.Converters.Add(

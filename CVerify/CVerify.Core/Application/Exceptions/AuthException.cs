@@ -2,18 +2,18 @@ using System;
 
 namespace CVerify.API.Application.Exceptions;
 
-public class AuthException : Exception
+public class AuthException : AuthenticationException
 {
-    public string Code { get; }
+    public string Code => ErrorCode;
 
-    public AuthException(string code, string message) : base(message)
+    public AuthException(string code, string message) 
+        : base(code, message)
     {
-        Code = code;
     }
 
-    public AuthException(string code, string message, Exception innerException) : base(message, innerException)
+    public AuthException(string code, string message, Exception innerException) 
+        : base(code, message, innerException)
     {
-        Code = code;
     }
 }
 

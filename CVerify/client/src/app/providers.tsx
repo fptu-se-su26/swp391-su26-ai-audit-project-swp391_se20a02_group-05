@@ -3,11 +3,12 @@
 import React, { useEffect } from 'react';
 import { useAuth } from '../features/auth/hooks/use-auth';
 import { usePathname } from 'next/navigation';
-import { Toast, toast } from '@heroui/react';
+import { Toast } from '@heroui/react';
 import i18n from '../lib/i18n';
 import { useThemeStore } from '../hooks/use-theme-store';
-
 import { AuthOrchestrator } from '../features/auth/components/auth-orchestrator';
+import { NotificationHub } from '../infrastructure/notifications/orchestrator';
+import { HeroUIToastRenderer } from '../infrastructure/notifications/renderers/heroui-toast-renderer';
 
 export function Providers({ children, locale }: { children: React.ReactNode; locale: string }) {
   const { initializeSession } = useAuth();
@@ -38,11 +39,18 @@ export function Providers({ children, locale }: { children: React.ReactNode; loc
     initializeSession();
   }, [initializeSession]);
 
+  // Register decoupled HeroUI renderer to the abstract system NotificationHub
+  useEffect(() => {
+    const renderer = new HeroUIToastRenderer();
+    const unbind = NotificationHub.registerRenderer(renderer);
+    return () => {
+      unbind();
+    };
+  }, []);
+
   // Clear toasts on navigation to decouple page contexts
   useEffect(() => {
-    if (toast && typeof toast.clear === 'function') {
-      toast.clear();
-    }
+    NotificationHub.clearAll();
   }, [pathname]);
 
   return (
