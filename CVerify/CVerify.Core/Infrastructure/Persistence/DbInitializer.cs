@@ -767,6 +767,70 @@ public static class DbInitializer
                 (SELECT id FROM users WHERE email = @adminEmail),
                 (SELECT id FROM roles WHERE name = 'SUPER_ADMIN')
             ON CONFLICT DO NOTHING;
+
+            -- =========================================================
+            -- Seed Test Business Accounts (Tier 1 and Tier 2)
+            -- =========================================================
+
+            -- Seed Tier 1 Organization
+            INSERT INTO organizations (id, name, tax_code, email, username, is_verified, verification_level, status)
+            SELECT '01900000-0000-0000-0000-000000000001'::uuid, 'FPT Software Tier 1 Test', '1111111111', 'tier1@testbusiness.com', 'tier1-business', TRUE, 1, 'active'
+            WHERE NOT EXISTS (SELECT 1 FROM organizations WHERE tax_code = '1111111111');
+
+            -- Seed Tier 1 Owner User
+            INSERT INTO users (id, email, password_hash, full_name, status, email_verified_at)
+            SELECT '01900000-0000-0000-0000-000000000002'::uuid, 'owner1@testbusiness.com', crypt('TestPassword123', gen_salt('bf', 10)), 'Tier 1 Business Owner', 'ACTIVE', NOW()
+            WHERE NOT EXISTS (SELECT 1 FROM users WHERE email = 'owner1@testbusiness.com');
+
+            -- Seed Tier 1 User-Role
+            INSERT INTO user_roles (user_id, role_id)
+            SELECT '01900000-0000-0000-0000-000000000002'::uuid, '018fc35b-1c5d-7b8a-9a2d-3e4f5a6b7c8d'::uuid
+            WHERE NOT EXISTS (SELECT 1 FROM user_roles WHERE user_id = '01900000-0000-0000-0000-000000000002'::uuid AND role_id = '018fc35b-1c5d-7b8a-9a2d-3e4f5a6b7c8d'::uuid);
+
+            -- Seed Tier 1 Organization Authority
+            INSERT INTO organization_authorities (id, organization_id, user_id, role)
+            SELECT '01900000-0000-0000-0000-000000000003'::uuid, '01900000-0000-0000-0000-000000000001'::uuid, '01900000-0000-0000-0000-000000000002'::uuid, 'organization_owner'
+            WHERE NOT EXISTS (SELECT 1 FROM organization_authorities WHERE organization_id = '01900000-0000-0000-0000-000000000001'::uuid AND user_id = '01900000-0000-0000-0000-000000000002'::uuid);
+
+            -- Seed Tier 1 Workspace
+            INSERT INTO workspaces (id, organization_id, display_name, slug, status)
+            SELECT '01900000-0000-0000-0000-000000000004'::uuid, '01900000-0000-0000-0000-000000000001'::uuid, 'Tier 1 Default Workspace', 'tier1-workspace', 'active'
+            WHERE NOT EXISTS (SELECT 1 FROM workspaces WHERE slug = 'tier1-workspace');
+
+            -- Seed Tier 1 Workspace Member
+            INSERT INTO workspace_members (id, workspace_id, user_id, role)
+            SELECT '01900000-0000-0000-0000-000000000005'::uuid, '01900000-0000-0000-0000-000000000004'::uuid, '01900000-0000-0000-0000-000000000002'::uuid, 'workspace_admin'
+            WHERE NOT EXISTS (SELECT 1 FROM workspace_members WHERE workspace_id = '01900000-0000-0000-0000-000000000004'::uuid AND user_id = '01900000-0000-0000-0000-000000000002'::uuid);
+
+            -- Seed Tier 2 Organization
+            INSERT INTO organizations (id, name, tax_code, email, username, is_verified, verification_level, status)
+            SELECT '01900000-0000-0000-0000-000000000011'::uuid, 'FPT Software Tier 2 Test', '2222222222', 'tier2@testbusiness.com', 'tier2-business', TRUE, 2, 'active'
+            WHERE NOT EXISTS (SELECT 1 FROM organizations WHERE tax_code = '2222222222');
+
+            -- Seed Tier 2 Owner User
+            INSERT INTO users (id, email, password_hash, full_name, status, email_verified_at)
+            SELECT '01900000-0000-0000-0000-000000000012'::uuid, 'owner2@testbusiness.com', crypt('TestPassword123', gen_salt('bf', 10)), 'Tier 2 Business Owner', 'ACTIVE', NOW()
+            WHERE NOT EXISTS (SELECT 1 FROM users WHERE email = 'owner2@testbusiness.com');
+
+            -- Seed Tier 2 User-Role
+            INSERT INTO user_roles (user_id, role_id)
+            SELECT '01900000-0000-0000-0000-000000000012'::uuid, '018fc35b-1c5d-7b8a-9a2d-3e4f5a6b7c8d'::uuid
+            WHERE NOT EXISTS (SELECT 1 FROM user_roles WHERE user_id = '01900000-0000-0000-0000-000000000012'::uuid AND role_id = '018fc35b-1c5d-7b8a-9a2d-3e4f5a6b7c8d'::uuid);
+
+            -- Seed Tier 2 Organization Authority
+            INSERT INTO organization_authorities (id, organization_id, user_id, role)
+            SELECT '01900000-0000-0000-0000-000000000013'::uuid, '01900000-0000-0000-0000-000000000011'::uuid, '01900000-0000-0000-0000-000000000012'::uuid, 'organization_owner'
+            WHERE NOT EXISTS (SELECT 1 FROM organization_authorities WHERE organization_id = '01900000-0000-0000-0000-000000000011'::uuid AND user_id = '01900000-0000-0000-0000-000000000012'::uuid);
+
+            -- Seed Tier 2 Workspace
+            INSERT INTO workspaces (id, organization_id, display_name, slug, status)
+            SELECT '01900000-0000-0000-0000-000000000014'::uuid, '01900000-0000-0000-0000-000000000011'::uuid, 'Tier 2 Default Workspace', 'tier2-workspace', 'active'
+            WHERE NOT EXISTS (SELECT 1 FROM workspaces WHERE slug = 'tier2-workspace');
+
+            -- Seed Tier 2 Workspace Member
+            INSERT INTO workspace_members (id, workspace_id, user_id, role)
+            SELECT '01900000-0000-0000-0000-000000000015'::uuid, '01900000-0000-0000-0000-000000000014'::uuid, '01900000-0000-0000-0000-000000000012'::uuid, 'workspace_admin'
+            WHERE NOT EXISTS (SELECT 1 FROM workspace_members WHERE workspace_id = '01900000-0000-0000-0000-000000000014'::uuid AND user_id = '01900000-0000-0000-0000-000000000012'::uuid);
         ";
 
         var superAdminEmail = Environment.GetEnvironmentVariable("SUPER_ADMIN_EMAIL")?.Trim().ToLowerInvariant() ?? "admin@system.com";
