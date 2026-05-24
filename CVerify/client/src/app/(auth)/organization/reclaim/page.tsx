@@ -2,8 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useAuth } from "../../../features/auth/hooks/use-auth";
-import { recoveryApi } from "../../../features/auth/services/recovery.service";
+import { recoveryApi } from "../../../../features/auth/services/recovery.service";
 import {
   Card,
   Typography,
@@ -29,32 +28,20 @@ import {
   X,
   FileCheck2,
 } from "lucide-react";
-import { axiosClient } from "../../../services/axios-client";
 
-interface AxiosErrorLike {
-  response?: {
-    data?: {
-      message?: string;
-    };
-  };
-}
-
-export default function CompanyRecoveryPage() {
+export default function OrganizationReclaimPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { sendOtp } = useAuth();
 
   // Route parameters
-  const initialTaxCode = searchParams.get("taxCode") || "";
-  const initialCompanyName = searchParams.get("companyName") || "";
+  const taxCode = searchParams.get("taxCode") || "";
+  const companyName = searchParams.get("companyName") || "";
 
   // Step state: 1 = Representative Info & OTP Send, 2 = Verify OTP, 3 = Legal Documents Upload, 4 = Success Receipt
   const [step, setStep] = useState(1);
   const [isLoading, setIsLoading] = useState(false);
 
   // Form State
-  const [taxCode] = useState(initialTaxCode);
-  const [companyName] = useState(initialCompanyName);
   const [fullName, setFullName] = useState("");
   const [position, setPosition] = useState("");
   const [phoneNumber, setPhoneNumber] = useState("");
@@ -102,28 +89,28 @@ export default function CompanyRecoveryPage() {
     return () => clearInterval(interval);
   }, [cooldown]);
 
-  // Dispatch OTP code
+  // Dispatch OTP code securely to verify corporate email domain ownership before claiming
   const handleSendOtp = async () => {
     setEmailTouched(true);
     if (!isEmailValid) return;
 
     setIsLoading(true);
-    const result = await sendOtp(recoveryEmail, "Recovery");
-    setIsLoading(false);
-
-    if (result.success && result.data) {
-      setChallengeId(result.data.challengeId);
-      setCooldown(60);
+    try {
+      const result = await recoveryApi.orgForgot(taxCode);
+      setChallengeId(result.challengeId);
+      setCooldown(result.cooldownSeconds);
       setStep(2); // Go to OTP verification step
       toast.success("Security OTP sent!", {
-        description: `Verification code dispatched to ${recoveryEmail}.`,
+        description: `Verification code dispatched to the registered company recovery email ${result.maskedEmail}.`,
       });
-    } else {
+    } catch (err: any) {
       toast.danger("Verification code failed to send", {
         description:
-          result.error?.message ||
-          "Please check the email format or try again.",
+          err.response?.data?.message ||
+          "Please verify that the Tax Code is correct and try again.",
       });
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -134,31 +121,25 @@ export default function CompanyRecoveryPage() {
 
     setIsLoading(true);
     try {
-      // Call recovery verify-otp to get signed token
-      const response = await axiosClient.post(
-        `/recovery/verify-otp?taxCode=${taxCode}`,
-        {
-          challengeId,
-          email: recoveryEmail,
-          code: otpCode,
-          purpose: "Recovery",
-        },
-      );
+      const response = await recoveryApi.orgVerifyOtp({
+        taxCode,
+        challengeId,
+        code: otpCode,
+      });
 
-      setIsLoading(false);
-      setEmailVerificationToken(response.data.verificationToken);
+      setEmailVerificationToken(response.verificationToken);
       setStep(3); // Advance to upload step
       toast.success("OTP verified successfully!", {
-        description: "Your representative identity is linked.",
+        description: "Your claimant corporate identity is securely verified.",
       });
-    } catch (err) {
-      const error = err as AxiosErrorLike;
-      setIsLoading(false);
+    } catch (err: any) {
       toast.danger("OTP Verification failed", {
         description:
-          error.response?.data?.message ||
+          err.response?.data?.message ||
           "The OTP code entered is incorrect or has expired.",
       });
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -211,24 +192,23 @@ export default function CompanyRecoveryPage() {
         documents: files,
       });
 
-      setIsLoading(false);
       setReceipt(response);
       setStep(4); // Display success receipt
-      toast.success("Claim submitted successfully!", {
-        description: "Our compliance officers are reviewing your legal proof.",
+      toast.success("Disputed Reclaim Claim Submitted!", {
+        description: "Our compliance managers have enqueued your legal business evidence for audit.",
       });
-    } catch (err) {
-      const error = err as AxiosErrorLike;
-      setIsLoading(false);
-      toast.danger("Failed to submit recovery claim", {
+    } catch (err: any) {
+      toast.danger("Failed to submit claim", {
         description:
-          error.response?.data?.message ||
-          "An unexpected error occurred during submission.",
+          err.response?.data?.message ||
+          "An unexpected error occurred during document submission.",
       });
+    } finally {
+      setIsLoading(false);
     }
   };
 
-  // STEP 4: Success Receipt Render Helper
+  // STEP 4: Success Receipt
   if (step === 4 && receipt) {
     return (
       <Card className="w-full relative overflow-hidden max-h-[85vh] flex flex-col premium-glass border-accent/20">
@@ -242,12 +222,11 @@ export default function CompanyRecoveryPage() {
             level={3}
             className="text-2xl font-extrabold text-foreground text-center"
           >
-            Recovery Request Received
+            Disputed Ownership Reclaim Registered
           </Typography.Heading>
 
           <Typography className="text-sm text-muted text-center mt-2 max-w-md leading-relaxed">
-            Your legal business ownership recovery claim has been registered.
-            The anti-fraud verification engine has queued your documents.
+            Your enterprise ownership reclaim has been registered. The anti-fraud verification engine has queued your legal proofs for manual auditor sign-off.
           </Typography>
 
           <div className="w-full mt-6 space-y-4 p-5 rounded-2xl bg-surface-secondary border border-border">
@@ -282,7 +261,7 @@ export default function CompanyRecoveryPage() {
             <div className="flex justify-between items-center text-xs">
               <span className="text-muted">Risk Assessment Queue</span>
               <span className="font-semibold text-warning">
-                Pending Worker Analysis
+                Compliance Dual-Review Enforced
               </span>
             </div>
 
@@ -296,15 +275,15 @@ export default function CompanyRecoveryPage() {
 
           <div className="w-full mt-8 flex flex-col gap-3">
             <Button
-              className="h-12 rounded-2xl bg-accent text-accent-foreground font-bold hover:bg-accent-hover w-full"
+              className="h-12 rounded-xl bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 font-bold w-full"
               onPress={() => router.push("/login")}
             >
               Return to Login
             </Button>
             <Typography className="text-[10px] text-muted text-center leading-normal">
-              You will receive an email verification link at{" "}
+              You will receive an administrative bootstrap link at{" "}
               <strong className="text-foreground">{recoveryEmail}</strong> once
-              the admin review is finalized (usually under 24 hours).
+              compliance validation is approved (typically under 24 hours).
             </Typography>
           </div>
         </div>
@@ -324,10 +303,10 @@ export default function CompanyRecoveryPage() {
           </div>
           <div>
             <Typography className="text-sm font-bold text-foreground leading-none">
-              Reclaim Access
+              Reclaim Organization Ownership
             </Typography>
             <Typography className="text-[10px] text-muted font-medium mt-1 leading-none">
-              MST: {taxCode}
+              MST: {taxCode} | Exceptional Recovery
             </Typography>
           </div>
         </div>
@@ -348,7 +327,7 @@ export default function CompanyRecoveryPage() {
         </Button>
       </div>
 
-      {/* STAGES INDICATOR PROGRESS BAR */}
+      {/* PROGRESS TIMELINE */}
       <div className="w-full h-1 bg-surface-secondary shrink-0">
         <div
           className="h-full bg-accent transition-all duration-300"
@@ -356,7 +335,7 @@ export default function CompanyRecoveryPage() {
         />
       </div>
 
-      {/* STEP 1: REPRESENTATIVE DETAILS FORM */}
+      {/* STEP 1: CLAIMANT POSITION & EMAIL CHALLENGE */}
       {step === 1 && (
         <Form
           className="w-full flex flex-col flex-1 overflow-hidden"
@@ -368,7 +347,7 @@ export default function CompanyRecoveryPage() {
           <div className="flex-1 overflow-y-auto px-6 py-6 space-y-5">
             <div className="p-4 rounded-xl bg-surface-secondary border border-border mb-2 select-none text-center">
               <Typography className="text-[11px] text-muted">
-                Target Legal Entity
+                Target Disputed Entity
               </Typography>
               <Typography className="font-bold text-foreground mt-0.5">
                 {companyName}
@@ -399,7 +378,7 @@ export default function CompanyRecoveryPage() {
               >
                 <Label>Your Position / Job Title</Label>
                 <Input
-                  placeholder="e.g. Director, Legal Counsel"
+                  placeholder="e.g. CEO, Director"
                   className="h-11 rounded-xl"
                   value={position}
                   onChange={(e) => setPosition(e.target.value)}
@@ -441,7 +420,7 @@ export default function CompanyRecoveryPage() {
                 onBlur={(e) => setEmailTouched(e.target.value.length > 0)}
               />
               <Description>
-                Must be a corporate domain or matching official business emails.
+                Must be an active corporate domain matching official business registry details.
               </Description>
               <FieldError>Invalid email address format.</FieldError>
             </TextField>
@@ -451,7 +430,7 @@ export default function CompanyRecoveryPage() {
             <Button
               type="submit"
               fullWidth
-              className="h-12 rounded-xl bg-accent text-accent-foreground hover:bg-accent-hover font-bold"
+              className="h-12 rounded-xl bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 font-bold"
               isDisabled={!isStep1Valid || isLoading}
               isPending={isLoading}
             >
@@ -466,7 +445,7 @@ export default function CompanyRecoveryPage() {
         </Form>
       )}
 
-      {/* STEP 2: OTP VERIFICATION VIEW */}
+      {/* STEP 2: OTP VERIFICATION */}
       {step === 2 && (
         <Form
           className="w-full flex flex-col flex-1 overflow-hidden"
@@ -482,12 +461,10 @@ export default function CompanyRecoveryPage() {
                 level={4}
                 className="text-lg font-bold text-foreground"
               >
-                Enter Verification Code
+                Confirm Claimant Email Ownership
               </Typography.Heading>
               <Typography className="text-xs text-muted mt-1.5 max-w-xs leading-normal">
-                We have sent a 6-digit OTP code to{" "}
-                <strong className="text-foreground">{recoveryEmail}</strong>.
-                Enter it below to unlock the file upload.
+                We sent a 6-digit OTP code to verify ownership of <strong className="text-foreground">{recoveryEmail}</strong>. Enter it below to unlock document uploading.
               </Typography>
             </div>
 
@@ -498,33 +475,15 @@ export default function CompanyRecoveryPage() {
               className="font-sans font-extrabold select-none"
             >
               <InputOTP.Group>
-                <InputOTP.Slot
-                  className="border border-border rounded-xl h-12 w-12 text-sm font-bold text-center bg-surface"
-                  index={0}
-                />
-                <InputOTP.Slot
-                  className="border border-border rounded-xl h-12 w-12 text-sm font-bold text-center bg-surface"
-                  index={1}
-                />
-                <InputOTP.Slot
-                  className="border border-border rounded-xl h-12 w-12 text-sm font-bold text-center bg-surface"
-                  index={2}
-                />
+                <InputOTP.Slot index={0} />
+                <InputOTP.Slot index={1} />
+                <InputOTP.Slot index={2} />
               </InputOTP.Group>
               <InputOTP.Separator />
               <InputOTP.Group>
-                <InputOTP.Slot
-                  className="border border-border rounded-xl h-12 w-12 text-sm font-bold text-center bg-surface"
-                  index={3}
-                />
-                <InputOTP.Slot
-                  className="border border-border rounded-xl h-12 w-12 text-sm font-bold text-center bg-surface"
-                  index={4}
-                />
-                <InputOTP.Slot
-                  className="border border-border rounded-xl h-12 w-12 text-sm font-bold text-center bg-surface"
-                  index={5}
-                />
+                <InputOTP.Slot index={3} />
+                <InputOTP.Slot index={4} />
+                <InputOTP.Slot index={5} />
               </InputOTP.Group>
             </InputOTP>
 
@@ -537,7 +496,7 @@ export default function CompanyRecoveryPage() {
                 onPress={handleSendOtp}
               >
                 {cooldown > 0
-                  ? `Resend OTP in ${cooldown}s`
+                  ? `Resend OTP in {cooldown}s`
                   : "Resend Verification Code"}
               </Button>
             </div>
@@ -547,21 +506,21 @@ export default function CompanyRecoveryPage() {
             <Button
               type="submit"
               fullWidth
-              className="h-12 rounded-xl bg-accent text-accent-foreground hover:bg-accent-hover font-bold"
+              className="h-12 rounded-xl bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 font-bold"
               isDisabled={otpCode.length < 6 || isLoading}
               isPending={isLoading}
             >
               {isLoading ? (
                 <Spinner color="current" size="sm" />
               ) : (
-                "Verify Identity & Link"
+                "Verify claimant Identity"
               )}
             </Button>
           </div>
         </Form>
       )}
 
-      {/* STEP 3: DOCUMENT UPLOAD VIEW */}
+      {/* STEP 3: DISPUTED EVIDENCE PDF UPLOADER */}
       {step === 3 && (
         <Form
           className="w-full flex flex-col flex-1 overflow-hidden"
@@ -573,12 +532,10 @@ export default function CompanyRecoveryPage() {
                 Provide Legal Business Ownership Evidence
               </Typography>
               <Typography className="text-[10px] text-muted mt-0.5 leading-normal">
-                Upload tax registry extracts, business licenses, or
-                representative authorization deeds.
+                Upload tax extracts, active business licenses, or legal representation credentials.
               </Typography>
             </div>
 
-            {/* Dropzone container */}
             <div className="relative border-2 border-dashed border-border hover:border-accent/40 rounded-xl p-6 flex flex-col items-center justify-center bg-surface-secondary/40 select-none cursor-pointer group transition-colors min-h-[140px]">
               <input
                 type="file"
@@ -603,7 +560,6 @@ export default function CompanyRecoveryPage() {
               </div>
             )}
 
-            {/* Uploaded File List */}
             {files.length > 0 && (
               <div className="space-y-2 flex-1 overflow-y-auto min-h-[100px] border border-border/80 rounded-xl p-3 bg-surface-secondary/15">
                 <Typography className="text-[10px] font-bold text-muted select-none">
@@ -651,14 +607,14 @@ export default function CompanyRecoveryPage() {
             <Button
               type="submit"
               fullWidth
-              className="h-12 rounded-xl bg-accent text-accent-foreground hover:bg-accent-hover font-bold"
+              className="h-12 rounded-xl bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 font-bold"
               isDisabled={files.length === 0 || isLoading}
               isPending={isLoading}
             >
               {isLoading ? (
                 <Spinner color="current" size="sm" />
               ) : (
-                "Submit Claim for Legal Audit"
+                "Submit Reclaim for legal compliance audit"
               )}
             </Button>
           </div>

@@ -86,3 +86,46 @@ public record ExecuteRecoveryRequest(
     string DisplayName,
     string Slug
 );
+
+public record OrganizationForgotRequest(
+    [System.ComponentModel.DataAnnotations.Required]
+    [System.ComponentModel.DataAnnotations.MaxLength(50)]
+    string TaxCode
+);
+
+public record OrganizationForgotResponse(
+    Guid ChallengeId,
+    string MaskedEmail,
+    int CooldownSeconds
+);
+
+public record VerifyOrganizationOtpRequest(
+    [System.ComponentModel.DataAnnotations.Required]
+    [System.ComponentModel.DataAnnotations.MaxLength(50)]
+    string TaxCode,
+
+    [System.ComponentModel.DataAnnotations.Required]
+    Guid ChallengeId,
+
+    [System.ComponentModel.DataAnnotations.Required]
+    [System.ComponentModel.DataAnnotations.MaxLength(10)]
+    string Code
+);
+
+public record VerifyOrganizationOtpResponse(
+    string VerificationToken
+);
+
+public class ResetOrganizationPasswordRequest
+{
+    [System.ComponentModel.DataAnnotations.Required]
+    public string Token { get; init; } = null!;
+
+    [System.ComponentModel.DataAnnotations.Required]
+    [System.ComponentModel.DataAnnotations.MinLength(8, ErrorMessage = "Password must be at least 8 characters long.")]
+    public string NewPassword { get; init; } = null!;
+
+    [System.ComponentModel.DataAnnotations.Required]
+    [System.ComponentModel.DataAnnotations.Compare(nameof(NewPassword), ErrorMessage = "Passwords do not match.")]
+    public string ConfirmPassword { get; init; } = null!;
+}

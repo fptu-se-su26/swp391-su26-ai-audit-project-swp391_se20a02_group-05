@@ -587,7 +587,7 @@ function LoginContent() {
                       </Checkbox>
 
                       <Link
-                        href="/forgot-password"
+                        href="/organization/recovery"
                         className="text-sm text-muted hover:underline cursor-pointer"
                       >
                         Forgot password?

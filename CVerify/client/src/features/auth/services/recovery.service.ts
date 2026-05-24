@@ -81,6 +81,18 @@ export interface ExecuteRecoveryPayload {
   slug: string;
 }
 
+export interface VerifyOrganizationOtpPayload {
+  taxCode: string;
+  challengeId: string;
+  code: string;
+}
+
+export interface ResetOrganizationPasswordPayload {
+  token: string;
+  newPassword: string;
+  confirmPassword: string;
+}
+
 export const recoveryApi = {
   /**
    * Submit an organization access recovery claim with legal documents
@@ -98,7 +110,7 @@ export const recoveryApi = {
       formData.append('documents', file);
     });
 
-    const response = await axiosClient.post<SubmitClaimResponseData>('/recovery/request', formData, {
+    const response = await axiosClient.post<SubmitClaimResponseData>('/auth/recovery/reclaim/submit-claim', formData, {
       headers: {
         'Content-Type': 'multipart/form-data',
       },
@@ -110,7 +122,7 @@ export const recoveryApi = {
    * Fetch all claims (admin-only queue)
    */
   getClaims: async (): Promise<ClaimDetailsResponseData[]> => {
-    const response = await axiosClient.get<ClaimDetailsResponseData[]>('/recovery/claims');
+    const response = await axiosClient.get<ClaimDetailsResponseData[]>('/auth/recovery/reclaim/claims');
     return response.data;
   },
 
@@ -118,7 +130,7 @@ export const recoveryApi = {
    * Review a claim (admin approve / reject)
    */
   reviewClaim: async (claimId: string, status: 'Approved' | 'Rejected', rejectionReason: string | null): Promise<{ success: boolean }> => {
-    const response = await axiosClient.post<{ success: boolean }>(`/recovery/claims/${claimId}/review`, {
+    const response = await axiosClient.post<{ success: boolean }>(`/auth/recovery/reclaim/claims/${claimId}/review`, {
       status,
       rejectionReason,
     });
@@ -129,7 +141,7 @@ export const recoveryApi = {
    * Download a claim document as a blob (admin only)
    */
   downloadDocument: async (claimId: string, docId: string): Promise<Blob> => {
-    const response = await axiosClient.get(`/recovery/claims/${claimId}/document/${docId}`, {
+    const response = await axiosClient.get(`/auth/recovery/reclaim/claims/${claimId}/document/${docId}`, {
       responseType: 'blob',
     });
     return response.data;
@@ -139,7 +151,7 @@ export const recoveryApi = {
    * Verify bootstrap recovery link token
    */
   verifyBootstrap: async (token: string): Promise<VerifyBootstrapResponseData> => {
-    const response = await axiosClient.get<VerifyBootstrapResponseData>(`/recovery/bootstrap/verify`, {
+    const response = await axiosClient.get<VerifyBootstrapResponseData>(`/auth/recovery/reclaim/bootstrap/verify`, {
       params: { token },
     });
     return response.data;
@@ -149,7 +161,7 @@ export const recoveryApi = {
    * Step 1: Set up new owner password credentials
    */
   setupCredentials: async (payload: SetupRecoveryCredentialsPayload): Promise<SetupRecoveryCredentialsResponseData> => {
-    const response = await axiosClient.post<SetupRecoveryCredentialsResponseData>('/recovery/bootstrap/setup-credentials', payload);
+    const response = await axiosClient.post<SetupRecoveryCredentialsResponseData>('/auth/recovery/reclaim/bootstrap/setup-credentials', payload);
     return response.data;
   },
 
@@ -157,7 +169,31 @@ export const recoveryApi = {
    * Step 2: Confirm strategy and execute clean rebuild / takeover
    */
   executeRecovery: async (payload: ExecuteRecoveryPayload): Promise<LoginResponseData> => {
-    const response = await axiosClient.post<LoginResponseData>('/recovery/bootstrap/execute', payload);
+    const response = await axiosClient.post<LoginResponseData>('/auth/recovery/reclaim/bootstrap/execute', payload);
+    return response.data;
+  },
+
+  /**
+   * Standard Corporate Recovery: Step 1: Request OTP by taxCode (backend-resolved email)
+   */
+  orgForgot: async (taxCode: string): Promise<{ challengeId: string; maskedEmail: string; cooldownSeconds: number }> => {
+    const response = await axiosClient.post<{ challengeId: string; maskedEmail: string; cooldownSeconds: number }>('/auth/recovery/organization/forgot', { taxCode });
+    return response.data;
+  },
+
+  /**
+   * Standard Corporate Recovery: Step 2: Verify OTP
+   */
+  orgVerifyOtp: async (payload: VerifyOrganizationOtpPayload): Promise<{ verificationToken: string }> => {
+    const response = await axiosClient.post<{ verificationToken: string }>('/auth/recovery/organization/verify-otp', payload);
+    return response.data;
+  },
+
+  /**
+   * Standard Corporate Recovery: Step 3: Reset password with token
+   */
+  orgResetPassword: async (payload: ResetOrganizationPasswordPayload): Promise<LoginResponseData> => {
+    const response = await axiosClient.post<LoginResponseData>('/auth/recovery/organization/reset-password', payload);
     return response.data;
   },
 };

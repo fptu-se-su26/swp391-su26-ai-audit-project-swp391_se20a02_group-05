@@ -595,7 +595,7 @@ export default function CompanyVerificationPage() {
               className="flex-1 h-12 rounded-2xl bg-accent hover:bg-accent-hover text-accent-foreground font-bold"
               onPress={() =>
                 router.push(
-                  `/company-recovery?taxCode=${taxCode}&companyName=${encodeURIComponent(
+                  `/organization/reclaim?taxCode=${taxCode}&companyName=${encodeURIComponent(
                     recoveryInfo.organizationDisplayName,
                   )}`,
                 )

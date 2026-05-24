@@ -9,6 +9,8 @@ export const ROUTES = {
   REGISTER: '/register',
   FORGOT_PASSWORD: '/forgot-password',
   RESET_PASSWORD: '/reset-password',
+  ORGANIZATION_RECOVERY: '/organization/recovery',
+  ORGANIZATION_RECLAIM: '/organization/reclaim',
   VERIFY_EMAIL: '/verify-email',
   UNAUTHORIZED: '/unauthorized',
   DASHBOARD: {

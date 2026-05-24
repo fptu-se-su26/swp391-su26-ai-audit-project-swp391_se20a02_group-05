@@ -232,7 +232,10 @@ builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IPermissionService, PermissionService>();
 builder.Services.AddScoped<IIdentityStateResolver, IdentityStateResolver>();
 builder.Services.AddScoped<IRecoveryExecutionEngine, RecoveryExecutionEngine>();
-builder.Services.AddScoped<IRecoveryService, RecoveryService>();
+builder.Services.AddScoped<IRecoveryTokenService, RecoveryTokenService>();
+builder.Services.AddScoped<ICandidateRecoveryService, CandidateRecoveryService>();
+builder.Services.AddScoped<IOrganizationRecoveryService, OrganizationRecoveryService>();
+builder.Services.AddScoped<IOrganizationReclaimService, OrganizationReclaimService>();
 
 // Register AI Service
 builder.Services.AddScoped<IHmacSignatureService, HmacSignatureService>();

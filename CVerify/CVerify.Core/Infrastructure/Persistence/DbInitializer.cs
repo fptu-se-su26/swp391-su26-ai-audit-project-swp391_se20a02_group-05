@@ -40,6 +40,7 @@ public static class DbInitializer
                 DROP TABLE IF EXISTS conversations CASCADE;
                 DROP TABLE IF EXISTS audit_logs CASCADE;
                 DROP TABLE IF EXISTS outbox_messages CASCADE;
+                DROP TABLE IF EXISTS recovery_tokens CASCADE;
                 DROP TABLE IF EXISTS reset_password_tokens CASCADE;
                 DROP TABLE IF EXISTS verification_tokens CASCADE;
                 DROP TABLE IF EXISTS refresh_tokens CASCADE;
@@ -636,6 +637,26 @@ public static class DbInitializer
                 consumed_at TIMESTAMP WITH TIME ZONE,
                 CONSTRAINT fk_reset_password_tokens_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
             );
+
+            -- Unified Recovery Tokens table for Candidate, Organization OTP, reset, and Reclaim bootstrap
+            CREATE TABLE IF NOT EXISTS recovery_tokens (
+                id UUID PRIMARY KEY,
+                user_id UUID,
+                organization_id UUID,
+                token_hash VARCHAR(255) NOT NULL,
+                token_type INTEGER NOT NULL,
+                purpose VARCHAR(100) NOT NULL,
+                metadata_json TEXT,
+                expires_at TIMESTAMP WITH TIME ZONE NOT NULL,
+                consumed_at TIMESTAMP WITH TIME ZONE,
+                revoked_at TIMESTAMP WITH TIME ZONE,
+                created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+                CONSTRAINT fk_recovery_tokens_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+                CONSTRAINT fk_recovery_tokens_organization FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE
+            );
+            CREATE INDEX IF NOT EXISTS idx_recovery_tokens_active ON recovery_tokens(token_hash) WHERE consumed_at IS NULL AND revoked_at IS NULL;
+            CREATE INDEX IF NOT EXISTS idx_recovery_tokens_user_id ON recovery_tokens(user_id);
+            CREATE INDEX IF NOT EXISTS idx_recovery_tokens_organization_id ON recovery_tokens(organization_id);
 
             -- Outbox Pattern Table for reliable asynchronous email delivery
             CREATE TABLE IF NOT EXISTS outbox_messages (

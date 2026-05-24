@@ -80,7 +80,7 @@ public class RecoveryFlowTests : BaseIntegrationTest
         fileContent.Headers.ContentType = MediaTypeHeaderValue.Parse("application/pdf");
         content.Add(fileContent, "documents", "license.pdf");
 
-        var response1 = await Client.PostAsync("/api/recovery/request", content);
+        var response1 = await Client.PostAsync("/api/auth/recovery/reclaim/submit-claim", content);
         response1.StatusCode.Should().Be(HttpStatusCode.OK);
 
         // Second Claim immediately (trigger cooldown)
@@ -97,7 +97,7 @@ public class RecoveryFlowTests : BaseIntegrationTest
         fileContent2.Headers.ContentType = MediaTypeHeaderValue.Parse("application/pdf");
         content2.Add(fileContent2, "documents", "license2.pdf");
 
-        var response2 = await Client.PostAsync("/api/recovery/request", content2);
+        var response2 = await Client.PostAsync("/api/auth/recovery/reclaim/submit-claim", content2);
         response2.StatusCode.Should().Be(HttpStatusCode.BadRequest);
 
         var errorMsg = await response2.Content.ReadAsStringAsync();
@@ -140,10 +140,10 @@ public class RecoveryFlowTests : BaseIntegrationTest
         // Mock authentication as an admin
         // Note: Integration tests helper usually has custom token generator or endpoints to authenticate.
         // Let's call the review service directly inside scope to verify logic correctness bypass token configs
-        var recoveryService = scope.ServiceProvider.GetRequiredService<CVerify.API.Application.Interfaces.IRecoveryService>();
+        var reclaimService = scope.ServiceProvider.GetRequiredService<CVerify.API.Application.Interfaces.IOrganizationReclaimService>();
         
         // First approval
-        var partialApproved = await recoveryService.ReviewClaimAsync(claim.Id, new ReviewClaimRequest("Approved", null), "admin1@cverify.ai");
+        var partialApproved = await reclaimService.ReviewClaimAsync(claim.Id, new ReviewClaimRequest("Approved", null), "admin1@cverify.ai");
         partialApproved.Should().BeTrue();
 
         // Verify status is not yet approved
@@ -153,12 +153,12 @@ public class RecoveryFlowTests : BaseIntegrationTest
         claimAfterFirst.SecondReviewerBy.Should().BeNull();
 
         // Attempt same admin signing off twice should fail
-        var action = () => recoveryService.ReviewClaimAsync(claim.Id, new ReviewClaimRequest("Approved", null), "admin1@cverify.ai");
+        var action = () => reclaimService.ReviewClaimAsync(claim.Id, new ReviewClaimRequest("Approved", null), "admin1@cverify.ai");
         await action.Should().ThrowAsync<InvalidOperationException>()
             .WithMessage("The same administrator cannot sign off twice for a high-risk recovery claim.");
 
         // Second approval by different admin
-        var fullyApproved = await recoveryService.ReviewClaimAsync(claim.Id, new ReviewClaimRequest("Approved", null), "admin2@cverify.ai");
+        var fullyApproved = await reclaimService.ReviewClaimAsync(claim.Id, new ReviewClaimRequest("Approved", null), "admin2@cverify.ai");
         fullyApproved.Should().BeTrue();
 
         var claimAfterSecond = await db.OrganizationRecoveryClaims.AsNoTracking().FirstOrDefaultAsync(c => c.Id == claim.Id);

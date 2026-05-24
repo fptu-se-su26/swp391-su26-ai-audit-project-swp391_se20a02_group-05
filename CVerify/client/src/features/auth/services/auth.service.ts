@@ -95,7 +95,7 @@ export const authApi = {
    * Trigger forgot password reset email link
    */
   forgotPassword: async (payload: ForgotPasswordPayload): Promise<AuthSuccessResponse> => {
-    const response = await axiosClient.post<AuthSuccessResponse>('/auth/forgot-password', payload);
+    const response = await axiosClient.post<AuthSuccessResponse>('/auth/recovery/candidate/forgot', payload);
     return response.data;
   },
 
@@ -103,7 +103,7 @@ export const authApi = {
    * Reset user password using the cryptographically verified token
    */
   resetPassword: async (payload: ResetPasswordPayload): Promise<LoginResponseData> => {
-    const response = await axiosClient.post<LoginResponseData>('/auth/reset-password', {
+    const response = await axiosClient.post<LoginResponseData>('/auth/recovery/candidate/reset', {
       token: payload.token,
       password: payload.password,
       confirmPassword: payload.confirmPassword,

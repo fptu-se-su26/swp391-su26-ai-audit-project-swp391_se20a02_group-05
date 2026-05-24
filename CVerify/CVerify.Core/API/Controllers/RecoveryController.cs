@@ -6,55 +6,165 @@ using System.Threading.Tasks;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using CVerify.API.Application.DTOs;
 using CVerify.API.Application.Interfaces;
+using CVerify.API.Application.Exceptions;
 
 namespace CVerify.API.API.Controllers;
 
 [ApiController]
-[Route("api/recovery")]
+[Route("api/auth/recovery")]
 public class RecoveryController : ControllerBase
 {
-    private readonly IRecoveryService _recoveryService;
+    private readonly ICandidateRecoveryService _candidateRecoveryService;
+    private readonly IOrganizationRecoveryService _organizationRecoveryService;
+    private readonly IOrganizationReclaimService _organizationReclaimService;
 
-    public RecoveryController(IRecoveryService recoveryService)
+    public RecoveryController(
+        ICandidateRecoveryService candidateRecoveryService,
+        IOrganizationRecoveryService organizationRecoveryService,
+        IOrganizationReclaimService organizationReclaimService)
     {
-        _recoveryService = recoveryService;
+        _candidateRecoveryService = candidateRecoveryService;
+        _organizationRecoveryService = organizationRecoveryService;
+        _organizationReclaimService = organizationReclaimService;
     }
 
-    [HttpPost("verify-otp")]
+    // ==========================================
+    // 1. CANDIDATE RECOVERY FLOW
+    // ==========================================
+
+    [HttpPost("candidate/forgot")]
     [AllowAnonymous]
-    [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(VerifyOtpResponse))]
+    [EnableRateLimiting("ForgotPasswordLimit")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
-    public async Task<IActionResult> VerifyOtp(
-        [FromBody] VerifyOtpRequest request,
-        [FromQuery] string taxCode,
-        CancellationToken cancellationToken)
+    public async Task<IActionResult> CandidateForgot([FromBody] ForgotPasswordRequest request, CancellationToken cancellationToken)
     {
         try
         {
-            var response = await _recoveryService.VerifyRecoveryOtpAsync(request, taxCode, cancellationToken);
-            return Ok(response);
+            var result = await _candidateRecoveryService.ForgotPasswordAsync(request, cancellationToken);
+            if (result)
+            {
+                return Ok(new { message = "If the email is registered, a password reset link has been enqueued." });
+            }
+            return BadRequest(new { message = "Request could not be processed." });
         }
-        catch (InvalidOperationException ex)
+        catch (AuthException ex)
         {
-            return BadRequest(new { message = ex.Message });
+            return BadRequest(new { code = ex.Code, message = ex.Message });
         }
     }
 
-    [HttpPost("request")]
+    [HttpPost("candidate/reset")]
+    [AllowAnonymous]
+    [EnableRateLimiting("ResetPasswordLimit")]
+    [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(AuthResponse))]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<IActionResult> CandidateReset([FromBody] ResetPasswordRequest request, CancellationToken cancellationToken)
+    {
+        try
+        {
+            var result = await _candidateRecoveryService.ResetPasswordAsync(request, cancellationToken);
+            if (result != null)
+            {
+                return Ok(result);
+            }
+            return BadRequest(new { message = "Password reset could not be processed." });
+        }
+        catch (AuthException ex)
+        {
+            return BadRequest(new { code = ex.Code, message = ex.Message });
+        }
+    }
+
+    // ==========================================
+    // 2. STANDARD ORGANIZATION RECOVERY FLOW
+    // ==========================================
+
+    [HttpPost("organization/forgot")]
+    [AllowAnonymous]
+    [EnableRateLimiting("ForgotPasswordLimit")]
+    [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(OrganizationForgotResponse))]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<IActionResult> OrganizationForgot([FromBody] OrganizationForgotRequest request, CancellationToken cancellationToken)
+    {
+        try
+        {
+            var response = await _organizationRecoveryService.ForgotPasswordAsync(request, cancellationToken);
+            return Ok(response);
+        }
+        catch (AuthException ex)
+        {
+            return BadRequest(new { code = ex.Code, message = ex.Message });
+        }
+    }
+
+    [HttpPost("organization/verify-otp")]
+    [AllowAnonymous]
+    [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(VerifyOrganizationOtpResponse))]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<IActionResult> OrganizationVerifyOtp([FromBody] VerifyOrganizationOtpRequest request, CancellationToken cancellationToken)
+    {
+        try
+        {
+            var response = await _organizationRecoveryService.VerifyRecoveryOtpAsync(request, cancellationToken);
+            return Ok(response);
+        }
+        catch (AuthException ex)
+        {
+            return BadRequest(new { code = ex.Code, message = ex.Message });
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return NotFound(new { message = ex.Message });
+        }
+    }
+
+    [HttpPost("organization/reset-password")]
+    [AllowAnonymous]
+    [EnableRateLimiting("ResetPasswordLimit")]
+    [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(AuthResponse))]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<IActionResult> OrganizationResetPassword([FromBody] ResetOrganizationPasswordRequest request, CancellationToken cancellationToken)
+    {
+        try
+        {
+            var response = await _organizationRecoveryService.ResetPasswordAsync(request, cancellationToken);
+            if (response != null)
+            {
+                return Ok(response);
+            }
+            return BadRequest(new { message = "Corporate credential rotation failed." });
+        }
+        catch (AuthException ex)
+        {
+            return BadRequest(new { code = ex.Code, message = ex.Message });
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return NotFound(new { message = ex.Message });
+        }
+    }
+
+    // ==========================================
+    // 3. ENTERPRISE ORGANIZATION RECLAIM FLOW
+    // ==========================================
+
+    [HttpPost("reclaim/submit-claim")]
     [AllowAnonymous]
     [Consumes("multipart/form-data")]
     [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(SubmitClaimResponse))]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
-    public async Task<IActionResult> SubmitClaim(
+    public async Task<IActionResult> SubmitReclaimClaim(
         [FromForm] SubmitClaimRequest request,
         [FromForm] List<IFormFile> documents,
         CancellationToken cancellationToken)
     {
         if (request == null)
         {
-            return BadRequest("Recovery claim request payload is missing.");
+            return BadRequest("Reclaim claim request payload is missing.");
         }
 
         var userAgent = Request.Headers.UserAgent.ToString();
@@ -68,7 +178,7 @@ public class RecoveryController : ControllerBase
 
         try
         {
-            var response = await _recoveryService.SubmitClaimAsync(request, docList, userAgent, ipAddress, cancellationToken);
+            var response = await _organizationReclaimService.SubmitClaimAsync(request, docList, userAgent, ipAddress, cancellationToken);
             return Ok(response);
         }
         catch (InvalidOperationException ex)
@@ -81,20 +191,20 @@ public class RecoveryController : ControllerBase
         }
     }
 
-    [HttpGet("claims")]
+    [HttpGet("reclaim/claims")]
     [Authorize(Roles = "SUPER_ADMIN,ADMIN")]
     [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(List<ClaimDetailsResponse>))]
-    public async Task<IActionResult> GetClaims(CancellationToken cancellationToken)
+    public async Task<IActionResult> GetReclaimClaims(CancellationToken cancellationToken)
     {
-        var claims = await _recoveryService.GetPendingClaimsAsync(cancellationToken);
+        var claims = await _organizationReclaimService.GetPendingClaimsAsync(cancellationToken);
         return Ok(claims);
     }
 
-    [HttpPost("claims/{id}/review")]
+    [HttpPost("reclaim/claims/{id}/review")]
     [Authorize(Roles = "SUPER_ADMIN,ADMIN")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
-    public async Task<IActionResult> ReviewClaim(
+    public async Task<IActionResult> ReviewReclaimClaim(
         Guid id,
         [FromBody] ReviewClaimRequest request,
         CancellationToken cancellationToken)
@@ -103,7 +213,7 @@ public class RecoveryController : ControllerBase
         
         try
         {
-            var result = await _recoveryService.ReviewClaimAsync(id, request, reviewerName, cancellationToken);
+            var result = await _organizationReclaimService.ReviewClaimAsync(id, request, reviewerName, cancellationToken);
             return Ok(new { success = result });
         }
         catch (InvalidOperationException ex)
@@ -116,10 +226,10 @@ public class RecoveryController : ControllerBase
         }
     }
 
-    [HttpGet("claims/{id}/document/{docId}")]
+    [HttpGet("reclaim/claims/{id}/document/{docId}")]
     [Authorize(Roles = "SUPER_ADMIN,ADMIN")]
     [ProducesResponseType(StatusCodes.Status200OK)]
-    public async Task<IActionResult> DownloadDocument(
+    public async Task<IActionResult> DownloadReclaimDocument(
         Guid id,
         Guid docId,
         CancellationToken cancellationToken)
@@ -128,7 +238,7 @@ public class RecoveryController : ControllerBase
 
         try
         {
-            var (fileStream, fileName, contentType) = await _recoveryService.DownloadDocumentAsync(docId, reviewerName, cancellationToken);
+            var (fileStream, fileName, contentType) = await _organizationReclaimService.DownloadDocumentAsync(docId, reviewerName, cancellationToken);
             return File(fileStream, contentType, fileName);
         }
         catch (KeyNotFoundException ex)
@@ -137,12 +247,12 @@ public class RecoveryController : ControllerBase
         }
     }
 
-    [HttpGet("bootstrap/verify")]
+    [HttpGet("reclaim/bootstrap/verify")]
     [AllowAnonymous]
     [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(VerifyBootstrapResponse))]
-    public async Task<IActionResult> VerifyBootstrap([FromQuery] string token, CancellationToken cancellationToken)
+    public async Task<IActionResult> VerifyReclaimBootstrap([FromQuery] string token, CancellationToken cancellationToken)
     {
-        var response = await _recoveryService.VerifyBootstrapTokenAsync(token, cancellationToken);
+        var response = await _organizationReclaimService.VerifyBootstrapTokenAsync(token, cancellationToken);
         if (!response.IsValid)
         {
             return BadRequest(new { message = "Recovery token is invalid, expired, or has already been used." });
@@ -151,14 +261,14 @@ public class RecoveryController : ControllerBase
         return Ok(response);
     }
 
-    [HttpPost("bootstrap/setup-credentials")]
+    [HttpPost("reclaim/bootstrap/setup-credentials")]
     [AllowAnonymous]
     [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(SetupRecoveryCredentialsResponse))]
-    public async Task<IActionResult> SetupCredentials([FromBody] SetupRecoveryCredentialsRequest request, CancellationToken cancellationToken)
+    public async Task<IActionResult> SetupReclaimCredentials([FromBody] SetupRecoveryCredentialsRequest request, CancellationToken cancellationToken)
     {
         try
         {
-            var response = await _recoveryService.SetupRecoveryCredentialsAsync(request, cancellationToken);
+            var response = await _organizationReclaimService.SetupRecoveryCredentialsAsync(request, cancellationToken);
             return Ok(response);
         }
         catch (InvalidOperationException ex)
@@ -167,17 +277,17 @@ public class RecoveryController : ControllerBase
         }
     }
 
-    [HttpPost("bootstrap/execute")]
+    [HttpPost("reclaim/bootstrap/execute")]
     [AllowAnonymous]
     [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(AuthResponse))]
-    public async Task<IActionResult> ExecuteRecovery([FromBody] ExecuteRecoveryRequest request, CancellationToken cancellationToken)
+    public async Task<IActionResult> ExecuteReclaimRecovery([FromBody] ExecuteRecoveryRequest request, CancellationToken cancellationToken)
     {
         var userAgent = Request.Headers.UserAgent.ToString();
         var ipAddress = HttpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown";
 
         try
         {
-            var response = await _recoveryService.ExecuteRecoveryAsync(request, userAgent, ipAddress, cancellationToken);
+            var response = await _organizationReclaimService.ExecuteRecoveryAsync(request, userAgent, ipAddress, cancellationToken);
             return Ok(response);
         }
         catch (InvalidOperationException ex)

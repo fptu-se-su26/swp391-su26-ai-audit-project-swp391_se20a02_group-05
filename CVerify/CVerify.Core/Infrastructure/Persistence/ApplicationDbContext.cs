@@ -81,6 +81,7 @@ public class ApplicationDbContext : DbContext
     public DbSet<RecoveryExecutionLock> RecoveryExecutionLocks => Set<RecoveryExecutionLock>();
     public DbSet<OrganizationRecoveryClaim> OrganizationRecoveryClaims => Set<OrganizationRecoveryClaim>();
     public DbSet<ApprovedRecoverySession> ApprovedRecoverySessions => Set<ApprovedRecoverySession>();
+    public DbSet<RecoveryToken> RecoveryTokens => Set<RecoveryToken>();
 
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
@@ -112,6 +113,7 @@ public class ApplicationDbContext : DbContext
         modelBuilder.Entity<RecoveryExecutionLock>().Property(rel => rel.Id).ValueGeneratedNever();
         modelBuilder.Entity<OrganizationRecoveryClaim>().Property(orc => orc.Id).ValueGeneratedNever();
         modelBuilder.Entity<ApprovedRecoverySession>().Property(ars => ars.Id).ValueGeneratedNever();
+        modelBuilder.Entity<RecoveryToken>().Property(rt => rt.Id).ValueGeneratedNever();
 
         // Enable PostgreSQL Extensions
         modelBuilder.HasPostgresExtension("citext");
@@ -160,6 +162,20 @@ public class ApplicationDbContext : DbContext
             .HasForeignKey(rt => rt.UserId)
             .OnDelete(DeleteBehavior.Cascade);
 
+        // Configure RecoveryToken -> User (Many-to-One Cascade)
+        modelBuilder.Entity<RecoveryToken>()
+            .HasOne(rt => rt.User)
+            .WithMany()
+            .HasForeignKey(rt => rt.UserId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        // Configure RecoveryToken -> Organization (Many-to-One Cascade)
+        modelBuilder.Entity<RecoveryToken>()
+            .HasOne(rt => rt.Organization)
+            .WithMany()
+            .HasForeignKey(rt => rt.OrganizationId)
+            .OnDelete(DeleteBehavior.Cascade);
+
         // Configure AuditLog -> User (Many-to-One SetNull)
         modelBuilder.Entity<AuditLog>()
             .HasOne(al => al.User)
@@ -203,6 +219,13 @@ public class ApplicationDbContext : DbContext
             .ValueGeneratedOnAddOrUpdate()
             .IsConcurrencyToken();
 
+        modelBuilder.Entity<RecoveryToken>()
+            .Property(rt => rt.Version)
+            .HasColumnName("xmin")
+            .HasColumnType("xid")
+            .ValueGeneratedOnAddOrUpdate()
+            .IsConcurrencyToken();
+
         // Indexes
         modelBuilder.Entity<User>().HasIndex(u => u.Email).IsUnique().HasFilter("deleted_at IS NULL");
         modelBuilder.Entity<Role>().HasIndex(r => r.Name).IsUnique();
@@ -231,6 +254,11 @@ public class ApplicationDbContext : DbContext
             .HasFilter("consumed_at IS NULL")
             .HasDatabaseName("idx_reset_password_tokens_active");
 
+        modelBuilder.Entity<RecoveryToken>()
+            .HasIndex(rt => rt.TokenHash)
+            .HasFilter("consumed_at IS NULL AND revoked_at IS NULL")
+            .HasDatabaseName("idx_recovery_tokens_active");
+
         modelBuilder.Entity<OutboxMessage>()
             .HasIndex(om => om.CreatedAt)
             .HasFilter("processed_at IS NULL")
@@ -244,6 +272,14 @@ public class ApplicationDbContext : DbContext
         modelBuilder.Entity<ResetPasswordToken>()
             .HasIndex(rt => rt.UserId)
             .HasDatabaseName("idx_reset_password_tokens_user_id");
+
+        modelBuilder.Entity<RecoveryToken>()
+            .HasIndex(rt => rt.UserId)
+            .HasDatabaseName("idx_recovery_tokens_user_id");
+
+        modelBuilder.Entity<RecoveryToken>()
+            .HasIndex(rt => rt.OrganizationId)
+            .HasDatabaseName("idx_recovery_tokens_organization_id");
 
         modelBuilder.Entity<AuditLog>()
             .HasIndex(al => al.UserId)

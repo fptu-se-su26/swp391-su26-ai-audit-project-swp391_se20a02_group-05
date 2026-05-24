@@ -154,6 +154,18 @@ public class EmailOutboxBackgroundProcessor : BackgroundService
                             }
                             break;
 
+                        case "OrganizationRecoveryOtp":
+                            var orgOtpPayload = JsonSerializer.Deserialize<OrganizationRecoveryOtpPayload>(message.Payload);
+                            if (orgOtpPayload != null)
+                            {
+                                await emailService.SendOtpEmailAsync(
+                                    orgOtpPayload.Email,
+                                    orgOtpPayload.CompanyName + " Admin",
+                                    orgOtpPayload.Code,
+                                    stoppingToken).ConfigureAwait(false);
+                            }
+                            break;
+
                         default:
                             _logger.LogWarning("Unknown outbox message type: '{Type}'. Skipping message.", message.Type);
                             break;
@@ -214,5 +226,14 @@ public class EmailOutboxBackgroundProcessor : BackgroundService
         public string Email { get; set; } = null!;
         public string CompanyName { get; set; } = null!;
         public string Link { get; set; } = null!;
+    }
+
+    private class OrganizationRecoveryOtpPayload
+    {
+        public string Email { get; set; } = null!;
+        public string CompanyName { get; set; } = null!;
+        public string TaxCode { get; set; } = null!;
+        public string Code { get; set; } = null!;
+        public string CorrelationId { get; set; } = null!;
     }
 }
