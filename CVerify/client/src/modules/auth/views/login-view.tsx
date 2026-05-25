@@ -23,36 +23,7 @@ import {
   Link,
 } from "@heroui/react";
 import { Eye, EyeOff } from "lucide-react";
-import Script from "next/script";
 import { Suspense } from "react";
-
-interface GoogleIdentityResponse {
-  credential?: string;
-}
-
-interface CustomWindow extends Window {
-  google?: {
-    accounts?: {
-      id?: {
-        initialize: (options: {
-          client_id: string;
-          callback: (response: GoogleIdentityResponse) => void;
-        }) => void;
-        renderButton: (
-          parent: HTMLElement,
-          options: {
-            theme?: string;
-            size?: string;
-            width?: number;
-            text?: string;
-          },
-        ) => void;
-      };
-    };
-  };
-  __googleIdentityListener?: (response: GoogleIdentityResponse) => void;
-  __googleIdentityInitialized?: boolean;
-}
 
 function LoginContent() {
   const router = useRouter();
@@ -92,11 +63,13 @@ function LoginContent() {
   const [isBusinessLoading, setIsBusinessLoading] = useState(false);
 
   // Google SSO logic
-  const handleGoogleCredentialResponse = useCallback(
-    async (response: GoogleIdentityResponse) => {
+  const [isGoogleLoading, setIsGoogleLoading] = useState(false);
+
+  const handleGoogleLogin = useCallback(
+    async (idToken: string) => {
+      setIsGoogleLoading(true);
       try {
-        if (!response.credential) return;
-        const result = await loginWithGoogle(response.credential);
+        const result = await loginWithGoogle(idToken);
 
         if (result.success) {
           if (result.isUnverified || result.nextStep === "VERIFY_EMAIL") {
@@ -123,49 +96,79 @@ function LoginContent() {
           description:
             "An unexpected error occurred during Google authentication.",
         });
+      } finally {
+        setIsGoogleLoading(false);
       }
     },
     [loginWithGoogle, router],
   );
 
-  const initializeGoogleSignIn = useCallback(() => {
-    const customWindow =
-      typeof window !== "undefined"
-        ? (window as unknown as CustomWindow)
-        : null;
-    if (customWindow?.google?.accounts?.id) {
-      customWindow.__googleIdentityListener = handleGoogleCredentialResponse;
+  const handleGoogleSignIn = () => {
+    if (isGoogleLoading) return;
+    setIsGoogleLoading(true);
 
-      if (!customWindow.__googleIdentityInitialized) {
-        customWindow.google.accounts.id.initialize({
-          client_id:
-            process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID ||
-            "your_google_client_id_here",
-          callback: (response: GoogleIdentityResponse) => {
-            if (typeof customWindow.__googleIdentityListener === "function") {
-              customWindow.__googleIdentityListener(response);
-            }
-          },
-        });
-        customWindow.__googleIdentityInitialized = true;
-      }
-
-      const container = document.getElementById("google-signin-button");
-      if (container) {
-        container.innerHTML = "";
-        customWindow.google.accounts.id.renderButton(container, {
-          theme: "outline",
-          size: "large",
-          width: 390,
-          text: "continue_with",
-        });
-      }
+    const clientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID;
+    if (!clientId) {
+      toast.danger("Configuration Error", {
+        description: "Google Client ID is not configured.",
+      });
+      setIsGoogleLoading(false);
+      return;
     }
-  }, [handleGoogleCredentialResponse]);
 
-  useEffect(() => {
-    initializeGoogleSignIn();
-  }, [initializeGoogleSignIn, selectedTab]);
+    const redirectUri = `${window.location.origin}/auth/callback/google`;
+    const nonce = Math.random().toString(36).substring(2) + Date.now().toString(36);
+    const scope = encodeURIComponent("openid profile email");
+    const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${clientId}&redirect_uri=${encodeURIComponent(
+      redirectUri,
+    )}&response_type=id_token&scope=${scope}&nonce=${nonce}&state=google-login`;
+
+    const width = 500;
+    const height = 650;
+    const left = window.screenX + (window.innerWidth - width) / 2;
+    const top = window.screenY + (window.innerHeight - height) / 2;
+
+    const popup = window.open(
+      authUrl,
+      "google-oauth",
+      `width=${width},height=${height},left=${left},top=${top},status=no,resizable=yes`,
+    );
+
+    if (!popup) {
+      toast.danger("Popup Blocked", {
+        description: "Please allow popups for this site to sign in with Google.",
+      });
+      setIsGoogleLoading(false);
+      return;
+    }
+
+    const messageListener = async (event: MessageEvent) => {
+      if (event.origin !== window.location.origin) return;
+      if (event.data?.type === "GOOGLE_OAUTH_SUCCESS" && event.data?.idToken) {
+        window.removeEventListener("message", messageListener);
+        clearInterval(checkClosed);
+        const idToken = event.data.idToken;
+        await handleGoogleLogin(idToken);
+      } else if (event.data?.type === "GOOGLE_OAUTH_ERROR") {
+        window.removeEventListener("message", messageListener);
+        clearInterval(checkClosed);
+        setIsGoogleLoading(false);
+        toast.danger("Google Login Failed", {
+          description: event.data.error || "Authentication cancelled.",
+        });
+      }
+    };
+
+    window.addEventListener("message", messageListener);
+
+    const checkClosed = setInterval(() => {
+      if (!popup || popup.closed) {
+        clearInterval(checkClosed);
+        window.removeEventListener("message", messageListener);
+        setIsGoogleLoading(false);
+      }
+    }, 1000);
+  };
 
   const handleContinueWithEmail = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -290,12 +293,7 @@ function LoginContent() {
 
   return (
     <>
-      <Script
-        src="https://accounts.google.com/gsi/client"
-        strategy="lazyOnload"
-        onLoad={initializeGoogleSignIn}
-      />
-      <Card className="w-full bg-surface border border-border p-12 shadow-xl rounded-2xl">
+      <Card className="w-full p-12 rounded-2xl">
         <Tabs
           className="w-full"
           variant="secondary"
@@ -330,22 +328,17 @@ function LoginContent() {
                   </Card.Description>
                 </CardHeader>
 
-                <div className="w-full pb-3 relative overflow-hidden rounded-2xl group">
-                  {/* Invisible Google Sign In Button container overlay */}
-                  <div
-                    id="google-signin-button"
-                    className="absolute inset-0 opacity-[0.01] z-10 cursor-pointer overflow-hidden flex justify-center items-center [&_iframe]:w-full [&_iframe]:h-full [&_iframe]:scale-[2.5] [&_iframe]:origin-center"
-                    style={{ minHeight: "48px" }}
-                  />
-                  <Button
-                    variant="tertiary"
-                    size="lg"
-                    fullWidth
-                    className="h-12 rounded-2xl"
-                  >
-                    <Google /> Continue with Google
-                  </Button>
-                </div>
+                <Button
+                  variant="tertiary"
+                  fullWidth
+                  className="h-12 rounded-2xl"
+                  onPress={handleGoogleSignIn}
+                  isDisabled={isGoogleLoading || isEmailLoading || isPasswordLoginLoading}
+                  isPending={isGoogleLoading}
+                >
+                  {!isGoogleLoading && <Google />}
+                  Continue with Google
+                </Button>
 
                 <Typography type="body-sm" color="muted" className="pb-3">
                   OR

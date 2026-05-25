@@ -38,7 +38,6 @@ import {
   RefreshCw,
   UserCheck,
 } from "lucide-react";
-import Script from "next/script";
 import PasswordStrengthMeter from "@/shared/components/security/password-strength-meter";
 import { evaluatePasswordStrength } from "@/shared/security/password-policy";
 
@@ -96,36 +95,6 @@ const generateSuggestedSlug = (name: string): string => {
   }
   return slug.substring(0, 32);
 };
-
-
-
-interface GoogleIdentityResponse {
-  credential?: string;
-}
-
-interface CustomWindow extends Window {
-  google?: {
-    accounts?: {
-      id?: {
-        initialize: (options: {
-          client_id: string;
-          callback: (response: GoogleIdentityResponse) => void;
-        }) => void;
-        renderButton: (
-          parent: HTMLElement,
-          options: {
-            theme?: string;
-            size?: string;
-            width?: number;
-            text?: string;
-          },
-        ) => void;
-      };
-    };
-  };
-  __googleIdentityListener?: (response: GoogleIdentityResponse) => void;
-  __googleIdentityInitialized?: boolean;
-}
 
 export function CompanyVerificationView() {
   const router = useRouter();
@@ -204,17 +173,15 @@ export function CompanyVerificationView() {
     return () => clearInterval(interval);
   }, [cooldown]);
 
-  // Google SSO Initializer inside Step 2 Link view
-  const handleGoogleCredentialResponse = useCallback(
-    async (response: GoogleIdentityResponse) => {
-      if (!response.credential || !step1Token) return;
-      setIsLoading(true);
+  // Google SSO logic
+  const [isGoogleLoading, setIsGoogleLoading] = useState(false);
+
+  const handleGoogleLogin = useCallback(
+    async (idToken: string) => {
+      if (!step1Token) return;
+      setIsGoogleLoading(true);
       try {
-        const result = await verifyOnboardingGoogle(
-          response.credential,
-          step1Token,
-        );
-        setIsLoading(false);
+        const result = await verifyOnboardingGoogle(idToken, step1Token);
         if (result.success && result.data) {
           setStep2Token(result.data.verificationToken);
           setVerifiedEmail(result.data.email || "");
@@ -227,6 +194,9 @@ export function CompanyVerificationView() {
             verifiedCompanyInfo?.officialCompanyName || companyName;
           setCompanyDisplayName(officialName);
           setOrganizationUsername(generateSuggestedSlug(officialName));
+
+          // Advance to step 3 automatically on success
+          setStep(3);
         } else {
           toast.danger("Google linking failed", {
             description:
@@ -235,57 +205,80 @@ export function CompanyVerificationView() {
           });
         }
       } catch {
-        setIsLoading(false);
         toast.danger("An unexpected Google error occurred.");
+      } finally {
+        setIsGoogleLoading(false);
       }
     },
     [step1Token, verifyOnboardingGoogle, verifiedCompanyInfo, companyName],
   );
 
-  const initializeGoogleSignIn = useCallback(() => {
-    const customWindow =
-      typeof window !== "undefined"
-        ? (window as unknown as CustomWindow)
-        : null;
-    if (
-      customWindow?.google?.accounts?.id &&
-      step === 2 &&
-      activeLinkTab === "google"
-    ) {
-      customWindow.__googleIdentityListener = handleGoogleCredentialResponse;
+  const handleGoogleSignIn = () => {
+    if (isGoogleLoading) return;
+    setIsGoogleLoading(true);
 
-      if (!customWindow.__googleIdentityInitialized) {
-        customWindow.google.accounts.id.initialize({
-          client_id:
-            process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID ||
-            "1014876615707-krcgh8vcr3b8p98sc89qff74n3ch7u8j.apps.googleusercontent.com",
-          callback: (response: GoogleIdentityResponse) => {
-            if (typeof customWindow.__googleIdentityListener === "function") {
-              customWindow.__googleIdentityListener(response);
-            }
-          },
-        });
-        customWindow.__googleIdentityInitialized = true;
-      }
-
-      const container = document.getElementById("google-signin-button");
-      if (container) {
-        container.innerHTML = "";
-        customWindow.google.accounts.id.renderButton(container, {
-          theme: "outline",
-          size: "large",
-          width: 320,
-          text: "signup_with",
-        });
-      }
+    const clientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID;
+    if (!clientId) {
+      toast.danger("Configuration Error", {
+        description: "Google Client ID is not configured.",
+      });
+      setIsGoogleLoading(false);
+      return;
     }
-  }, [step, activeLinkTab, handleGoogleCredentialResponse]);
 
-  useEffect(() => {
-    if (step === 2 && activeLinkTab === "google") {
-      initializeGoogleSignIn();
+    const redirectUri = `${window.location.origin}/auth/callback/google`;
+    const nonce = Math.random().toString(36).substring(2) + Date.now().toString(36);
+    const scope = encodeURIComponent("openid profile email");
+    const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${clientId}&redirect_uri=${encodeURIComponent(
+      redirectUri,
+    )}&response_type=id_token&scope=${scope}&nonce=${nonce}&state=google-onboarding`;
+
+    const width = 500;
+    const height = 650;
+    const left = window.screenX + (window.innerWidth - width) / 2;
+    const top = window.screenY + (window.innerHeight - height) / 2;
+
+    const popup = window.open(
+      authUrl,
+      "google-oauth",
+      `width=${width},height=${height},left=${left},top=${top},status=no,resizable=yes`,
+    );
+
+    if (!popup) {
+      toast.danger("Popup Blocked", {
+        description: "Please allow popups for this site to sign in with Google.",
+      });
+      setIsGoogleLoading(false);
+      return;
     }
-  }, [step, activeLinkTab, initializeGoogleSignIn]);
+
+    const messageListener = async (event: MessageEvent) => {
+      if (event.origin !== window.location.origin) return;
+      if (event.data?.type === "GOOGLE_OAUTH_SUCCESS" && event.data?.idToken) {
+        window.removeEventListener("message", messageListener);
+        clearInterval(checkClosed);
+        const idToken = event.data.idToken;
+        await handleGoogleLogin(idToken);
+      } else if (event.data?.type === "GOOGLE_OAUTH_ERROR") {
+        window.removeEventListener("message", messageListener);
+        clearInterval(checkClosed);
+        setIsGoogleLoading(false);
+        toast.danger("Google Link Failed", {
+          description: event.data.error || "Authentication cancelled.",
+        });
+      }
+    };
+
+    window.addEventListener("message", messageListener);
+
+    const checkClosed = setInterval(() => {
+      if (!popup || popup.closed) {
+        clearInterval(checkClosed);
+        window.removeEventListener("message", messageListener);
+        setIsGoogleLoading(false);
+      }
+    }, 1000);
+  };
 
   // Step 1: Legal Identity validation submission
   const handleStep1Submit = async (e: React.FormEvent) => {
@@ -533,14 +526,6 @@ export function CompanyVerificationView() {
 
   return (
     <>
-      {step === 2 && activeLinkTab === "google" && (
-        <Script
-          src="https://accounts.google.com/gsi/client"
-          strategy="lazyOnload"
-          onLoad={initializeGoogleSignIn}
-        />
-      )}
-
       <Card
         className={`w-full relative overflow-hidden transition-all duration-300 max-h-[80vh] flex flex-col`}
       >
@@ -1042,22 +1027,18 @@ export function CompanyVerificationView() {
                     </p>
                   </div>
 
-                  <div className="w-full pb-3 relative overflow-hidden rounded-2xl group shrink-0">
-                    {/* Invisible Google Sign In Button container overlay */}
-                    <div
-                      id="google-signin-button"
-                      className="absolute inset-0 opacity-[0.01] z-10 cursor-pointer overflow-hidden flex justify-center items-center [&_iframe]:w-full [&_iframe]:h-full [&_iframe]:scale-[2.5] [&_iframe]:origin-center"
-                      style={{ minHeight: "48px" }}
-                    />
-                    <Button
-                      variant="tertiary"
-                      size="lg"
-                      fullWidth
-                      className="h-12 rounded-2xl"
-                    >
-                      <Google /> Continue with Google
-                    </Button>
-                  </div>
+                  <Button
+                    variant="tertiary"
+                    size="lg"
+                    fullWidth
+                    className="h-12 rounded-2xl"
+                    onPress={handleGoogleSignIn}
+                    isDisabled={isGoogleLoading || isLoading}
+                    isPending={isGoogleLoading}
+                  >
+                    {!isGoogleLoading && <Google />}
+                    Continue with Google
+                  </Button>
                 </div>
 
                 <div className="flex gap-4 px-6 py-4 border-t border-border bg-surface shrink-0 w-full">
