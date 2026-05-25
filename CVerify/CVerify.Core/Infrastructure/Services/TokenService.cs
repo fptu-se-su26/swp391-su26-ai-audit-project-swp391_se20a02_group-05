@@ -54,6 +54,7 @@ using System.IdentityModel.Tokens.Jwt; using System.Security.Claims; using Syste
             HttpOnly = true,
             Secure = !isDevelopment, // Secure only in production, false in local development HTTP
             SameSite = SameSiteMode.Lax,
+            Path = "/",
             Expires = expires ?? DateTime.UtcNow.AddDays(7)
         };
 

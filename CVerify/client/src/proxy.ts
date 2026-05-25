@@ -56,12 +56,13 @@ export async function proxy(request: NextRequest) {
 
   // 1. Protecting Dashboard Sub-Routes (Coarse Gating)
   if (isDashboardRoute) {
-    if (!accessToken) {
+    const refreshToken = request.cookies.get('refresh_token')?.value;
+    if (!accessToken && !refreshToken) {
       const callbackUrl = encodeURIComponent(pathname + request.nextUrl.search);
       const redirectUrl = new URL(`${ROUTES.LOGIN}?callbackUrl=${callbackUrl}`, request.url);
       
       if (isDev) {
-        console.log(`[Security Proxy] Access token cookie missing. Redirecting to login: ${redirectUrl.toString()}`);
+        console.log(`[Security Proxy] Both access and refresh tokens missing. Redirecting to login: ${redirectUrl.toString()}`);
       }
 
       // Clean cookies on redirect to clear potentially broken sessions
