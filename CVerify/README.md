@@ -1,10 +1,10 @@
-﻿# CVerify AI - Full-Stack Travel Planner
+# CVerify AI - Full-Stack Travel Planner
 
 Welcome to **CVerify AI**, an enterprise-grade full-stack travel planning application. CVerify leverages advanced large language models to construct optimized, collaborative travel itineraries. It features a responsive, beautifully animated React/Next.js frontend and a resilient, high-performance ASP.NET Core backend.
 
 This repository is structured as a monorepo containing:
-*   **Frontend (Client Layer)**: [`/client`](file:///d:/Coding%20Space/FPT/SWP391/swp391-su26-ai-audit-project-swp391_se20a02_group-05/CVerify/client) — Built on Next.js 16 (App Router), React 19, HeroUI v3, Tailwind CSS v4, and Zustand.
-*   **Backend (Server Layer)**: [`/CVerify.Core`](file:///d:/Coding%20Space/FPT/SWP391/swp391-su26-ai-audit-project-swp391_se20a02_group-05/CVerify/CVerify.Core) — Built on ASP.NET Core v10, PostgreSQL, Entity Framework Core, Redis, and Claude AI API.
+*   **Frontend (Client Layer)**: [`/client`](file:///d:/Coding%20Space/FPT/SWP391/swp391-su26-ai-audit-project-swp391_se20a02_group-05/CVerify/client) — Built on Next.js 16 (App Router), React 19, HeroUI v3, Tailwind CSS v4, and Zustand. Employs a strict **feature-driven folder structure** with a **zero-duplication anti-shared-layer** modular design.
+*   **Backend (Server Layer)**: [`/CVerify.Core`](file:///d:/Coding%20Space/FPT/SWP391/swp391-su26-ai-audit-project-swp391_se20a02_group-05/CVerify/CVerify.Core) — Built on ASP.NET Core v10, PostgreSQL, Entity Framework Core, Redis, and Claude AI API. Follows Clean Architecture design principles.
 
 ---
 
@@ -163,5 +163,5 @@ Verify that the full-stack setup is fully integrated and functioning by checking
 ## 📖 Sub-Project Documentations
 
 For detailed deep-dives into specialized layers, refer to:
-*   📚 **[Frontend Developer Guide](file:///d:/Coding%20Space/FPT/SWP391/swp391-su26-ai-audit-project-swp391_se20a02_group-05/CVerify/client/README.md)**: Details on Next.js edge proxies, HeroUI styling variables, Zustand stores, and state hydration.
+*   📚 **[Frontend Developer Guide](file:///d:/Coding%20Space/FPT/SWP391/swp391-su26-ai-audit-project-swp391_se20a02_group-05/CVerify/client/README.md)**: Details on Next.js edge proxies, HeroUI styling variables, Zustand stores, state hydration, and the strict zero-duplication folder modularity.
 *   📚 **[Backend Developer Guide](file:///d:/Coding%20Space/FPT/SWP391/swp391-su26-ai-audit-project-swp391_se20a02_group-05/CVerify/CVerify.Core/README.md)**: Details on Clean Architecture layers, outbox patterns, rate limiter rules, MailKit SMTP transport failovers, and EF Core enum mappings.
