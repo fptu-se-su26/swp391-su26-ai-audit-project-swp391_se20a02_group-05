@@ -227,7 +227,8 @@ export function CompanyVerificationView() {
     }
 
     const redirectUri = `${window.location.origin}/auth/callback/google`;
-    const nonce = Math.random().toString(36).substring(2) + Date.now().toString(36);
+    const nonce =
+      Math.random().toString(36).substring(2) + Date.now().toString(36);
     const scope = encodeURIComponent("openid profile email");
     const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${clientId}&redirect_uri=${encodeURIComponent(
       redirectUri,
@@ -246,7 +247,8 @@ export function CompanyVerificationView() {
 
     if (!popup) {
       toast.danger("Popup Blocked", {
-        description: "Please allow popups for this site to sign in with Google.",
+        description:
+          "Please allow popups for this site to sign in with Google.",
       });
       setIsGoogleLoading(false);
       return;
@@ -498,7 +500,7 @@ export function CompanyVerificationView() {
 
           <div className="flex flex-row gap-3 w-full px-6 mt-4 pb-6 shrink-0">
             <Button
-              className="flex-1 h-12 rounded-2xl bg-accent hover:bg-accent-hover text-accent-foreground font-bold"
+              className="flex-1 rounded-xl"
               onPress={() =>
                 router.push(
                   `/organization/reclaim?taxCode=${taxCode}&companyName=${encodeURIComponent(
@@ -512,7 +514,7 @@ export function CompanyVerificationView() {
             </Button>
             <Button
               variant="secondary"
-              className="flex-1 h-12 rounded-2xl border border-border bg-surface-secondary text-foreground/80 font-medium"
+              className="flex-1 rounded-xl"
               onPress={() => window.open("mailto:cverify.career@gmail.com")}
             >
               <Mail className="size-4 mr-2" />
@@ -533,7 +535,7 @@ export function CompanyVerificationView() {
         <div className="absolute top-0 left-0 w-full h-1.5 bg-accent shrink-0" />
 
         {/* Dynamic Stepper Header Progress Block */}
-        <div className="w-full flex flex-col items-center mb-6 py-6 border-b border-border select-none shrink-0">
+        <div className="w-full flex flex-col items-center py-3 border-b border-border select-none shrink-0">
           <div className="flex items-start justify-between w-full max-w-2xl px-2">
             {steps.map((s, idx) => (
               <React.Fragment key={s.id}>
@@ -590,16 +592,15 @@ export function CompanyVerificationView() {
         {/* ================= STEP 1: REGISTRY LOOKUP ================= */}
         {step === 1 && (
           <div className="w-full flex flex-col items-center flex-1 overflow-hidden">
-            <div className="flex flex-col items-center shrink-0 w-full mb-4 px-6 pt-2">
-              <div className="w-12 h-12 bg-background flex items-center justify-center rounded-xl mb-4">
-                <Building2 className="size-6" />
-              </div>
-
-              <div className="text-center w-full flex flex-col items-center gap-2">
-                <Typography.Heading level={3} className="text-2xl font-bold">
+            <div className="flex flex-col items-center shrink-0 w-full mb-12 mt-3 px-12">
+              <div className="text-center w-full flex flex-col items-centergap-2">
+                <Typography.Heading
+                  level={3}
+                  className="text-2xl font-bold text-center"
+                >
                   Register Your Company
                 </Typography.Heading>
-                <Typography className="text-sm text-muted">
+                <Typography className="text-sm text-muted text-center">
                   Verify your legal Vietnamese business existence via VietQR
                   corporate registry linkage.
                 </Typography>
@@ -611,7 +612,7 @@ export function CompanyVerificationView() {
                 className="w-full flex flex-col flex-1 overflow-hidden"
                 onSubmit={handleStep1Submit}
               >
-                <div className="flex-1 overflow-y-auto w-full px-6 pb-4 flex flex-col gap-6">
+                <div className="flex-1 overflow-y-auto w-full px-6 pb-12 flex flex-col gap-6">
                   <TextField
                     isRequired
                     name="companyName"
@@ -620,8 +621,7 @@ export function CompanyVerificationView() {
                   >
                     <Label>Company Name (Registration Name)</Label>
                     <Input
-                      placeholder="Enter official registration name (e.g. FPT Software)"
-                      className="h-12 rounded-2xl"
+                      placeholder="e.g. FPT Software"
                       value={companyName}
                       onChange={(e) => {
                         setCompanyName(e.target.value);
@@ -643,8 +643,7 @@ export function CompanyVerificationView() {
                   >
                     <Label>Tax Code (Vietnamese MST)</Label>
                     <Input
-                      placeholder="Enter your 10-digit tax code (e.g. 0312345678)"
-                      className="h-12 rounded-2xl"
+                      placeholder="e.g. 0312345678"
                       value={taxCode}
                       onChange={(e) => {
                         setTaxCode(e.target.value);
@@ -666,12 +665,12 @@ export function CompanyVerificationView() {
                   </TextField>
                 </div>
 
-                <div className="flex gap-4 px-6 py-4 border-t border-border bg-surface shrink-0 w-full">
+                <div className="flex gap-4 px-6 py-6 border-t border-border bg-surface w-full">
                   <Button
                     type="button"
                     variant="secondary"
                     fullWidth
-                    className="h-12 rounded-2xl"
+                    className="rounded-xl"
                     onPress={() => router.push("/login")}
                   >
                     Back to Sign In
@@ -679,7 +678,7 @@ export function CompanyVerificationView() {
                   <Button
                     type="submit"
                     fullWidth
-                    className="h-12 rounded-2xl"
+                    className="rounded-xl"
                     isDisabled={
                       !isTaxCodeValid ||
                       companyName.trim().length < 2 ||
@@ -1196,7 +1195,10 @@ export function CompanyVerificationView() {
                     </InputGroup.Suffix>
                   </InputGroup>
                   <FieldError />
-                  <PasswordStrengthMeter value={password} policyId="enterprise" />
+                  <PasswordStrengthMeter
+                    value={password}
+                    policyId="enterprise"
+                  />
                 </TextField>
 
                 {/* Confirm Password */}

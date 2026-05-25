@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { recoveryApi } from "@/modules/auth/services/recovery.service";
+import { recoveryApi } from "@/features/auth/services/recovery.service";
 import {
   Card,
   Typography,

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/features/auth/hooks/use-auth";
 import { Google } from "@thesvg/react";
@@ -117,7 +117,8 @@ function LoginContent() {
     }
 
     const redirectUri = `${window.location.origin}/auth/callback/google`;
-    const nonce = Math.random().toString(36).substring(2) + Date.now().toString(36);
+    const nonce =
+      Math.random().toString(36).substring(2) + Date.now().toString(36);
     const scope = encodeURIComponent("openid profile email");
     const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${clientId}&redirect_uri=${encodeURIComponent(
       redirectUri,
@@ -136,7 +137,8 @@ function LoginContent() {
 
     if (!popup) {
       toast.danger("Popup Blocked", {
-        description: "Please allow popups for this site to sign in with Google.",
+        description:
+          "Please allow popups for this site to sign in with Google.",
       });
       setIsGoogleLoading(false);
       return;
@@ -293,7 +295,7 @@ function LoginContent() {
 
   return (
     <>
-      <Card className="w-full p-12 rounded-2xl">
+      <Card className="w-full py-6 px-18 rounded-2xl">
         <Tabs
           className="w-full"
           variant="secondary"
@@ -302,52 +304,54 @@ function LoginContent() {
         >
           <Tabs.ListContainer>
             <Tabs.List aria-label="Options">
-              <Tabs.Tab id="engineer" className="pb-6 h-full">
-                <Typography.Heading level={5}>Engineer</Typography.Heading>
+              <Tabs.Tab id="engineer" className="pb-3 h-full">
+                <Typography.Heading level={6}>Engineer</Typography.Heading>
                 <Tabs.Indicator />
               </Tabs.Tab>
-              <Tabs.Tab id="business" className="pb-6 h-full">
-                <Typography.Heading level={5}>Business</Typography.Heading>
+              <Tabs.Tab id="business" className="pb-3 h-full">
+                <Typography.Heading level={6}>Business</Typography.Heading>
                 <Tabs.Indicator />
               </Tabs.Tab>
             </Tabs.List>
           </Tabs.ListContainer>
 
-          <Tabs.Panel className="pt-6 flex justify-center w-full" id="engineer">
+          <Tabs.Panel className="pt-3 flex justify-center w-full" id="engineer">
             {selectedTab === "engineer" && (
               <Card
                 variant="transparent"
                 className="w-full flex flex-col items-center"
               >
                 <CardHeader className="flex flex-col items-center text-center w-full">
-                  <Card.Title className="text-2xl pb-3">
+                  <Card.Title className="text-2xl font-bold pb-2">
                     Proof over promises
                   </Card.Title>
-                  <Card.Description className="text-md pb-12">
+                  <Card.Description className="text-md pb-6">
                     Evidence-backed profiles for modern engineering hiring.
                   </Card.Description>
                 </CardHeader>
 
                 <Button
                   variant="tertiary"
+                  className="rounded-xl"
                   fullWidth
-                  className="h-12 rounded-2xl"
                   onPress={handleGoogleSignIn}
-                  isDisabled={isGoogleLoading || isEmailLoading || isPasswordLoginLoading}
+                  isDisabled={
+                    isGoogleLoading || isEmailLoading || isPasswordLoginLoading
+                  }
                   isPending={isGoogleLoading}
                 >
                   {!isGoogleLoading && <Google />}
                   Continue with Google
                 </Button>
 
-                <Typography type="body-sm" color="muted" className="pb-3">
+                <Typography type="body-xs" color="muted" className="pb-2">
                   OR
                 </Typography>
 
                 {emailFlowPhase === "EMAIL_INPUT" ? (
                   <Form
                     onSubmit={handleContinueWithEmail}
-                    className="w-full flex flex-col items-center gap-6 p-0"
+                    className="w-full flex flex-col items-center gap-6"
                   >
                     <TextField
                       fullWidth
@@ -355,7 +359,6 @@ function LoginContent() {
                       aria-label="Email Address"
                     >
                       <Input
-                        className="h-12"
                         id="email"
                         type="email"
                         placeholder="Enter your email"
@@ -376,11 +379,10 @@ function LoginContent() {
 
                     <Button
                       type="submit"
-                      size="lg"
                       fullWidth
                       isDisabled={isEmailInvalid || !email || isEmailLoading}
                       isPending={isEmailLoading}
-                      className="h-12 rounded-2xl"
+                      className="rounded-xl"
                     >
                       {isEmailLoading && <Spinner color="current" size="sm" />}
                       Continue with email
@@ -393,7 +395,6 @@ function LoginContent() {
                   >
                     <TextField fullWidth aria-label="Email Address">
                       <Input
-                        className="h-12"
                         id="email-locked"
                         type="email"
                         value={email}
@@ -410,7 +411,6 @@ function LoginContent() {
                       <Label>Password</Label>
                       <InputGroup>
                         <InputGroup.Input
-                          className="h-12"
                           type={isEngineerPasswordVisible ? "text" : "password"}
                           placeholder="Enter your password"
                           value={engineerPassword}
@@ -448,11 +448,10 @@ function LoginContent() {
 
                     <Button
                       type="submit"
-                      size="lg"
                       fullWidth
                       isDisabled={!engineerPassword || isPasswordLoginLoading}
                       isPending={isPasswordLoginLoading}
-                      className="h-12 rounded-2xl"
+                      className="rounded-xl"
                     >
                       {isPasswordLoginLoading && (
                         <Spinner color="current" size="sm" />
@@ -467,13 +466,13 @@ function LoginContent() {
                           setEmailFlowPhase("EMAIL_INPUT");
                           setEngineerPassword("");
                         }}
-                        className="text-sm text-muted hover:underline cursor-pointer bg-transparent"
+                        className="text-xs text-muted hover:underline cursor-pointer"
                       >
                         ← Use different email
                       </button>
                       <Link
                         href={`/forgot-password?email=${encodeURIComponent(email)}`}
-                        className="text-sm text-muted hover:underline cursor-pointer"
+                        className="text-xs text-muted hover:underline cursor-pointer"
                       >
                         Forgot password?
                       </Link>
@@ -491,15 +490,15 @@ function LoginContent() {
                 className="w-full flex flex-col items-center"
               >
                 <CardHeader className="flex flex-col items-center text-center w-full">
-                  <Card.Title className="text-2xl pb-3">
+                  <Card.Title className="text-2xl font-bold pb-2">
                     Hire beyond resumes
                   </Card.Title>
-                  <Card.Description className="text-md pb-12">
+                  <Card.Description className="text-md pb-6">
                     Verify engineering talent through real technical evidence.
                   </Card.Description>
                 </CardHeader>
 
-                <CardContent className="w-full pb-3">
+                <CardContent className="w-full pb-2">
                   <Form
                     className="flex flex-col gap-6"
                     onSubmit={handleBusinessSubmit}
@@ -509,7 +508,6 @@ function LoginContent() {
                       <Label>Username</Label>
                       <Input
                         placeholder="Enter your username"
-                        className="h-12"
                         value={businessUsername}
                         onChange={(e) => setBusinessUsername(e.target.value)}
                       />
@@ -520,7 +518,6 @@ function LoginContent() {
                       <Label>Password</Label>
                       <InputGroup>
                         <InputGroup.Input
-                          className="h-12"
                           type={isVisible ? "text" : "password"}
                           placeholder="Enter your password"
                           value={businessPassword}
@@ -557,7 +554,7 @@ function LoginContent() {
                         <Checkbox.Content>
                           <Label
                             htmlFor="remember-me"
-                            className="text-muted cursor-pointer"
+                            className="text-muted cursor-pointer text-xs"
                           >
                             Remember me
                           </Label>
@@ -566,7 +563,7 @@ function LoginContent() {
 
                       <Link
                         href="/organization/recovery"
-                        className="text-sm text-muted hover:underline cursor-pointer"
+                        className="text-xs text-muted hover:underline cursor-pointer"
                       >
                         Forgot password?
                       </Link>
@@ -576,7 +573,7 @@ function LoginContent() {
                       <Button
                         type="submit"
                         fullWidth
-                        className="h-12 rounded-2xl"
+                        className="rounded-xl"
                         isDisabled={
                           !businessUsername ||
                           !businessPassword ||
@@ -590,7 +587,7 @@ function LoginContent() {
                         type="reset"
                         variant="secondary"
                         fullWidth
-                        className="h-12 rounded-2xl"
+                        className="rounded-xl"
                       >
                         Reset
                       </Button>
@@ -598,15 +595,15 @@ function LoginContent() {
                   </Form>
                 </CardContent>
 
-                <Typography type="body-sm" color="muted" className="pb-3 pt-3">
+                <Typography type="body-xs" color="muted">
                   OR
                 </Typography>
 
-                <Typography type="body-sm" color="muted">
+                <Typography type="body-xs" color="muted">
                   New to CVerify?{" "}
                   <Link
                     href="/company-verification"
-                    className="cursor-pointer font-semibold text-foreground hover:underline"
+                    className="cursor-pointer font-semibold text-foreground hover:underline text-xs"
                   >
                     Register your company
                     <Link.Icon className="pt-1" />

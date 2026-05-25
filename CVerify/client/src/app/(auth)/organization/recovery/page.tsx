@@ -1,6 +1,6 @@
 "use client";
 
-import { OrgRecoveryView } from '@/modules/auth/views/org-recovery-view';
+import { OrgRecoveryView } from '@/features/auth/views/org-recovery-view';
 
 export default function OrganizationRecoveryPage() {
   return <OrgRecoveryView />;

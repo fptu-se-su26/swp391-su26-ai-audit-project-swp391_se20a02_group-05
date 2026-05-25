@@ -1,6 +1,6 @@
 "use client";
 
-import { CompanyOnboardingVerifyView } from '@/modules/auth/views/company-onboarding-verify-view';
+import { CompanyOnboardingVerifyView } from '@/features/auth/views/company-onboarding-verify-view';
 
 export default function VerifyLinkPage() {
   return <CompanyOnboardingVerifyView />;

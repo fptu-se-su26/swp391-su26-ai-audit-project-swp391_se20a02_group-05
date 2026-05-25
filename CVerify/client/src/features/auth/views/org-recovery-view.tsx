@@ -48,17 +48,15 @@ const step2Schema = z.object({
 // Step 3 Schema: Password rotation validation
 const step3Schema = z
   .object({
-    password: z
-      .string()
-      .superRefine((val, ctx) => {
-        const evaluation = evaluatePasswordStrength(val, "enterprise");
-        if (evaluation.percentage < 100) {
-          ctx.addIssue({
-            code: z.ZodIssueCode.custom,
-            message: "Password does not meet enterprise security requirements.",
-          });
-        }
-      }),
+    password: z.string().superRefine((val, ctx) => {
+      const evaluation = evaluatePasswordStrength(val, "enterprise");
+      if (evaluation.percentage < 100) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "Password does not meet enterprise security requirements.",
+        });
+      }
+    }),
     confirmPassword: z.string(),
   })
   .refine((data) => data.password === data.confirmPassword, {
@@ -97,10 +95,7 @@ export function OrgRecoveryView() {
     resolver: zodResolver(step1Schema),
   });
 
-  const {
-    control: control2,
-    handleSubmit: handleSub2,
-  } = useForm<Step2Input>({
+  const { control: control2, handleSubmit: handleSub2 } = useForm<Step2Input>({
     resolver: zodResolver(step2Schema),
     defaultValues: { code: "" },
   });
@@ -232,7 +227,7 @@ export function OrgRecoveryView() {
     <Card className="w-full p-12 rounded-2xl">
       {step === 1 && (
         <div className="w-full flex flex-col items-center">
-          <div className="w-full flex justify-start mb-6">
+          <div className="w-full flex justify-start mb-3">
             <Button
               variant="ghost"
               size="sm"
@@ -241,23 +236,23 @@ export function OrgRecoveryView() {
                 router.push("/login");
               }}
             >
-              <ArrowLeft className="size-3.5" />
+              <ArrowLeft className="size-3 mt-0.5" />
               Return to Login
             </Button>
           </div>
 
-          <div className="w-12 h-12 bg-surface-secondary flex items-center justify-center rounded-xl mb-6">
+          <div className="w-12 h-12 bg-surface-secondary flex items-center justify-center rounded-xl mb-3">
             <Building2 className="size-6 text-foreground" />
           </div>
 
           <div className="text-center w-full mb-6 flex flex-col items-center gap-2">
             <Typography.Heading
               level={3}
-              className="text-2xl font-bold text-foreground"
+              className="text-2xl font-bold text-center"
             >
               Corporate Recovery
             </Typography.Heading>
-            <Typography className="text-sm text-muted">
+            <Typography className="text-sm text-muted text-center">
               Enter your official Tax Code to verify corporate ownership and
               receive a challenge code.
             </Typography>
@@ -272,7 +267,6 @@ export function OrgRecoveryView() {
               <Input
                 placeholder="Enter company tax code"
                 {...reg1("taxCode")}
-                className="h-12"
               />
               {err1.taxCode && <FieldError>{err1.taxCode.message}</FieldError>}
             </TextField>
@@ -282,7 +276,7 @@ export function OrgRecoveryView() {
               fullWidth
               isPending={isLoading}
               isDisabled={isLoading}
-              className="h-12 rounded-2xl"
+              className="rounded-xl"
             >
               {isLoading && <Spinner color="current" size="sm" />}
               Request corporate OTP
@@ -293,26 +287,22 @@ export function OrgRecoveryView() {
 
       {step === 2 && (
         <div className="w-full flex flex-col items-center">
-          <div className="w-12 h-12 bg-surface-secondary flex items-center justify-center rounded-xl mb-6">
+          <div className="w-12 h-12 bg-surface-secondary flex items-center justify-center rounded-xl mb-3 -my-4">
             <Mail className="size-6 text-foreground" />
           </div>
 
           <div className="text-center w-full mb-6 flex flex-col items-center gap-2">
             <Typography.Heading
-              level={3}
-              className="text-2xl font-bold text-foreground"
+              level={4}
+              className="font-bold text-center pb-2"
             >
               Verify Corporate Mailbox
             </Typography.Heading>
-            <Typography className="text-sm text-muted">
-              We resolved your registered recovery contact email as{" "}
-              <span className="font-semibold text-foreground/85">
-                {maskedEmail}
-              </span>
-              .
+            <Typography className="text-xs text-muted leading-normal text-center">
+              We sent a 6-digit OTP code to verify ownership of{" "}
+              <strong className="text-foreground">{maskedEmail}.</strong>
               <br />
-              Enter the 6-digit code sent there to confirm admin credentials
-              access.
+              Enter it below to unlock document uploading.
             </Typography>
           </div>
 
@@ -341,7 +331,7 @@ export function OrgRecoveryView() {
             </Button>
           </Form>
 
-          <div className="text-center text-xs font-medium text-muted pt-6">
+          <div className="text-center text-xs font-medium text-muted pt-6 -mb-3">
             Didn&apos;t receive the code?{" "}
             {cooldown > 0 ? (
               <span className="font-semibold text-muted">
@@ -360,23 +350,26 @@ export function OrgRecoveryView() {
       )}
 
       {step === 3 && (
-        <div className="w-full flex flex-col items-center gap-6">
-          <div className="w-12 h-12 bg-background flex items-center justify-center rounded-xl mb-6">
-            <ShieldCheck className="size-6" />
+        <div className="w-full flex flex-col items-center">
+          <div className="w-12 h-12 bg-surface-secondary flex items-center justify-center rounded-xl mb-3 -my-4">
+            <ShieldCheck className="size-6 text-foreground" />
           </div>
 
           <div className="text-center w-full flex flex-col items-center gap-2">
-            <Typography.Heading level={3} className="text-2xl font-bold">
+            <Typography.Heading
+              level={3}
+              className="text-2xl font-bold text-center"
+            >
               Reset Administrator Password
             </Typography.Heading>
-            <Typography className="text-sm text-muted">
+            <Typography className="text-sm text-muted text-center">
               Establish your new secure administrative credential for this
               organization workspace.
             </Typography>
           </div>
 
           <Form
-            className="w-full flex flex-col gap-6"
+            className="w-full flex flex-col gap-6 pt-6"
             onSubmit={handleSub3(onSubmitPassword)}
           >
             <TextField
@@ -412,7 +405,10 @@ export function OrgRecoveryView() {
               {err3.password && (
                 <FieldError>{err3.password.message}</FieldError>
               )}
-              <PasswordStrengthMeter value={passwordVal} policyId="enterprise" />
+              <PasswordStrengthMeter
+                value={passwordVal}
+                policyId="enterprise"
+              />
             </TextField>
 
             <TextField
@@ -455,7 +451,7 @@ export function OrgRecoveryView() {
               fullWidth
               isPending={isLoading}
               isDisabled={isLoading}
-              className="h-12 rounded-2xl"
+              className="h-12 rounded-xl"
             >
               {isLoading && <Spinner color="current" size="sm" />}
               Update credentials
