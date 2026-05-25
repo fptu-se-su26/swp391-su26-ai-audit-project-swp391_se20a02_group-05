@@ -10,7 +10,15 @@
     "settings": "Profile Settings",
     "logout": "Logout",
     "avatarAlt": "User Avatar",
-    "userMenu": "User Menu"
+    "userMenu": "User Menu",
+    "profile": "View Profile",
+    "remainCredit": "Remain Credit",
+    "themes": "Themes",
+    "languages": "Languages",
+    "support": "Support",
+    "themes_light": "Light",
+    "themes_dark": "Dark",
+    "themes_system": "System"
   },
   "badge": {
     "sandbox": "Sandbox"

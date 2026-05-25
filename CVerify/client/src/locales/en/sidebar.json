@@ -17,5 +17,7 @@
     "activeBanner": "Active traveler session",
     "timeoutWarn": "Session timeout warning",
     "roleGated": "Role Gated Controls"
-  }
+  },
+  "expand": "Expand Sidebar",
+  "collapse": "Collapse Sidebar"
 }

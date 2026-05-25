@@ -129,38 +129,38 @@ export function AuthAvatar() {
           <Dropdown.Section className="gap-1">
             <Dropdown.Item
               id="profile"
-              textValue="View Profile"
+              textValue={t("navbar:menu.profile", { defaultValue: "View Profile" })}
               className="rounded-lg"
             >
               <div className="flex items-center gap-2.5 w-full">
                 <User className="size-4 shrink-0 text-muted" />
                 <Label className="cursor-pointer font-semibold text-foreground">
-                  View Profile
+                  {t("navbar:menu.profile", { defaultValue: "View Profile" })}
                 </Label>
               </div>
             </Dropdown.Item>
             <Dropdown.Item
               id="settings"
-              textValue="Settings"
+              textValue={t("navbar:menu.settings", { defaultValue: "Profile Settings" })}
               className="rounded-lg"
             >
               <div className="flex items-center gap-2.5 w-full">
                 <Settings className="size-4 shrink-0 text-muted" />
                 <Label className="cursor-pointer font-semibold text-foreground">
-                  Settings
+                  {t("navbar:menu.settings", { defaultValue: "Profile Settings" })}
                 </Label>
               </div>
             </Dropdown.Item>
             <Dropdown.Item
               id="balance"
-              textValue="Check Balance"
+              textValue={t("navbar:menu.remainCredit", { defaultValue: "Remain Credit" })}
               className="rounded-lg"
             >
               <div className="flex items-center justify-between w-full gap-2">
                 <div className="flex items-center gap-2.5">
                   <CreditCard className="size-4 shrink-0 text-muted" />
                   <Label className="cursor-pointer font-semibold text-foreground">
-                    Remain Credit
+                    {t("navbar:menu.remainCredit", { defaultValue: "Remain Credit" })}
                   </Label>
                 </div>
                 <Chip
@@ -178,14 +178,14 @@ export function AuthAvatar() {
           <Dropdown.Section className="gap-1">
             <Dropdown.Item
               id="theme-selector"
-              textValue="Themes"
+              textValue={t("navbar:menu.themes", { defaultValue: "Themes" })}
               className="rounded-lg pointer-events-none"
             >
               <div className="flex items-center justify-between w-full gap-2">
                 <div className="flex items-center gap-2.5">
                   <Palette className="size-4 shrink-0 text-muted" />
                   <Label className="font-semibold text-foreground">
-                    Themes
+                    {t("navbar:menu.themes", { defaultValue: "Themes" })}
                   </Label>
                 </div>
                 <div className="pointer-events-auto">
@@ -206,7 +206,7 @@ export function AuthAvatar() {
                               <div className="flex items-center justify-center gap-1.5">
                                 <LaptopMinimal className="size-3" />
                                 <Label className="text-[10px] cursor-pointer">
-                                  System
+                                  {t("navbar:menu.themes_system", { defaultValue: "System" })}
                                 </Label>
                               </div>
                             );
@@ -216,7 +216,7 @@ export function AuthAvatar() {
                               <div className="flex items-center justify-center gap-1.5">
                                 <Moon className="size-3" />
                                 <Label className="text-[10px] cursor-pointer">
-                                  Dark
+                                  {t("navbar:menu.themes_dark", { defaultValue: "Dark" })}
                                 </Label>
                               </div>
                             );
@@ -225,7 +225,7 @@ export function AuthAvatar() {
                             <div className="flex items-center justify-center gap-1.5">
                               <Sun className="size-3" />
                               <Label className="text-[10px] cursor-pointer">
-                                Light
+                                {t("navbar:menu.themes_light", { defaultValue: "Light" })}
                               </Label>
                             </div>
                           );
@@ -252,37 +252,37 @@ export function AuthAvatar() {
                       >
                         <Dropdown.Item
                           id="light"
-                          textValue="Light"
+                          textValue={t("navbar:menu.themes_light", { defaultValue: "Light" })}
                           className="rounded-lg"
                         >
                           <div className="flex items-center gap-2 w-full">
                             <Sun className="size-4 shrink-0 text-muted" />
                             <Label className="cursor-pointer font-semibold text-foreground">
-                              Light
+                              {t("navbar:menu.themes_light", { defaultValue: "Light" })}
                             </Label>
                           </div>
                         </Dropdown.Item>
                         <Dropdown.Item
                           id="dark"
-                          textValue="Dark"
+                          textValue={t("navbar:menu.themes_dark", { defaultValue: "Dark" })}
                           className="rounded-lg"
                         >
                           <div className="flex items-center gap-2 w-full">
                             <Moon className="size-4 shrink-0 text-muted" />
                             <Label className="cursor-pointer font-semibold text-foreground">
-                              Dark
+                              {t("navbar:menu.themes_dark", { defaultValue: "Dark" })}
                             </Label>
                           </div>
                         </Dropdown.Item>
                         <Dropdown.Item
                           id="system"
-                          textValue="System"
+                          textValue={t("navbar:menu.themes_system", { defaultValue: "System" })}
                           className="rounded-lg"
                         >
                           <div className="flex items-center gap-2 w-full">
                             <LaptopMinimal className="size-4 shrink-0 text-muted" />
                             <Label className="cursor-pointer font-semibold text-foreground">
-                              System
+                              {t("navbar:menu.themes_system", { defaultValue: "System" })}
                             </Label>
                           </div>
                         </Dropdown.Item>
@@ -294,14 +294,14 @@ export function AuthAvatar() {
             </Dropdown.Item>
             <Dropdown.Item
               id="language-selector"
-              textValue="Languages"
+              textValue={t("navbar:menu.languages", { defaultValue: "Languages" })}
               className="rounded-lg pointer-events-none"
             >
               <div className="flex items-center justify-between w-full gap-2">
                 <div className="flex items-center gap-2.5">
                   <Globe className="size-4 shrink-0 text-muted" />
                   <Label className="font-semibold text-foreground">
-                    Languages
+                    {t("navbar:menu.languages", { defaultValue: "Languages" })}
                   </Label>
                 </div>
                 <div className="pointer-events-auto">
@@ -363,13 +363,13 @@ export function AuthAvatar() {
             </Dropdown.Item>
             <Dropdown.Item
               id="support"
-              textValue="Support"
+              textValue={t("navbar:menu.support", { defaultValue: "Support" })}
               className="rounded-lg"
             >
               <div className="flex items-center gap-2.5 w-full">
                 <Headset className="size-4 shrink-0 text-muted" />
                 <Label className="cursor-pointer font-semibold text-foreground">
-                  Support
+                  {t("navbar:menu.support", { defaultValue: "Support" })}
                 </Label>
               </div>
             </Dropdown.Item>
@@ -378,14 +378,14 @@ export function AuthAvatar() {
           <Dropdown.Section className="gap-1">
             <Dropdown.Item
               id="logout"
-              textValue="Logout"
+              textValue={t("navbar:menu.logout", { defaultValue: "Logout" })}
               className="rounded-lg hover:bg-danger-soft"
             >
               <div className="flex items-center justify-between w-full gap-2">
                 <div className="flex items-center gap-2.5">
                   <LogOut className="size-4 shrink-0 rotate-180 text-danger" />
                   <Label className="text-danger cursor-pointer font-bold">
-                    Logout
+                    {t("navbar:menu.logout", { defaultValue: "Logout" })}
                   </Label>
                 </div>
                 <Kbd slot="keyboard" variant="light">

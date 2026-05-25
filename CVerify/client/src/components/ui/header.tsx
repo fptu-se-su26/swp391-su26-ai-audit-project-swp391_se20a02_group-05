@@ -11,7 +11,7 @@ import { getRouteMetadata, getDynamicSegmentLabel } from "../../config/routes";
 import { AppBreadcrumbs } from "../../components/ui/app-breadcrumbs";
 
 export const Header: React.FC = () => {
-  const { t } = useTranslation(["common"]);
+  const { t } = useTranslation(["common", "navbar", "sidebar"]);
   const pathname = usePathname();
   const { isCollapsed, toggleCollapsed, setMobileOpen } = useSidebarStore();
 
@@ -38,7 +38,7 @@ export const Header: React.FC = () => {
         {/* Mobile: Hamburger toggle button */}
         <button
           onClick={() => setMobileOpen(true)}
-          aria-label="Open Menu"
+          aria-label={t("navbar:menu.userMenu", { defaultValue: "Open Menu" })}
           className="md:hidden flex h-9 w-9 items-center justify-center rounded-lg hover:bg-surface-secondary text-muted hover:text-foreground cursor-pointer transition-colors outline-hidden focus-visible:ring-2 focus-visible:ring-focus"
         >
           <Menu size={20} />
@@ -50,7 +50,11 @@ export const Header: React.FC = () => {
           isIconOnly
           className="rounded-lg"
           onClick={toggleCollapsed}
-          aria-label={isCollapsed ? "Expand Sidebar" : "Collapse Sidebar"}
+          aria-label={
+            isCollapsed
+              ? t("sidebar:expand", { defaultValue: "Expand Sidebar" })
+              : t("sidebar:collapse", { defaultValue: "Collapse Sidebar" })
+          }
         >
           <PanelLeft className="w-5 h-5" />
         </Button>
@@ -78,7 +82,7 @@ export const Header: React.FC = () => {
         <Button
           variant="ghost"
           isIconOnly
-          aria-label="Notifications"
+          aria-label={t("navbar:notifications.title", { defaultValue: "Notifications" })}
           className="rounded-lg"
         >
           <Bell size={18} />
