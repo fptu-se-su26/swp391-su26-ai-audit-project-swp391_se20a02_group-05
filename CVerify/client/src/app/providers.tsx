@@ -53,6 +53,27 @@ export function Providers({ children, locale }: { children: React.ReactNode; loc
     NotificationHub.clearAll();
   }, [pathname]);
 
+  // Swallow harmless View Transition abort errors (InvalidStateError) to prevent annoying Next.js dev overlays in development
+  useEffect(() => {
+    const handleUnhandledRejection = (event: PromiseRejectionEvent) => {
+      const error = event.reason;
+      if (
+        error &&
+        (error.name === 'InvalidStateError' ||
+         error.message?.includes('Transition was aborted') ||
+         error.message?.includes('transition was aborted'))
+      ) {
+        event.preventDefault();
+        console.warn('[View Transition] Handled and absorbed harmless view transition abortion:', error.message);
+      }
+    };
+
+    window.addEventListener('unhandledrejection', handleUnhandledRejection);
+    return () => {
+      window.removeEventListener('unhandledrejection', handleUnhandledRejection);
+    };
+  }, []);
+
   return (
     <>
       <Toast.Provider />

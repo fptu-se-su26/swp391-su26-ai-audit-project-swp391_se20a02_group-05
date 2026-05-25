@@ -865,6 +865,17 @@ public static class DbInitializer
         // created during database initialization, preventing System.NotSupportedException.
         Npgsql.NpgsqlConnection.ClearAllPools();
 
+        // Force Npgsql to reload database types globally for the current connection string.
+        var dbConnection = context.Database.GetDbConnection();
+        if (dbConnection is Npgsql.NpgsqlConnection npgsqlConnection)
+        {
+            if (npgsqlConnection.State != System.Data.ConnectionState.Open)
+            {
+                await npgsqlConnection.OpenAsync();
+            }
+            npgsqlConnection.ReloadTypes();
+        }
+
         // 3. Dynamic seed from permissions-registry.json
         var registryPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "resources", "permissions-registry.json");
         if (!File.Exists(registryPath))

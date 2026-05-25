@@ -85,7 +85,7 @@ function LoginContent() {
     emailTouched && email.length > 0 && !validateEmail(email);
 
   // Business state
-  const [selectedTab, setSelectedTab] = useState("overview");
+  const [selectedTab, setSelectedTab] = useState("engineer");
   const [businessUsername, setBusinessUsername] = useState("");
   const [businessPassword, setBusinessPassword] = useState("");
   const [isVisible, setIsVisible] = useState(false);

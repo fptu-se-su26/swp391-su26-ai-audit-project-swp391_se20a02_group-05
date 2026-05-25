@@ -2,7 +2,6 @@
 
 import React from 'react';
 import { useTranslation } from 'react-i18next';
-import { Typography } from '@heroui/react';
 import { 
   evaluatePasswordStrength, 
   passwordPoliciesRegistry,
@@ -66,9 +65,9 @@ export const PasswordStrengthMeter: React.FC<PasswordStrengthMeterProps> = ({
     <div className={`space-y-2 mt-2 px-1 select-none font-sans ${className}`} aria-live="polite">
       {/* Visual Header */}
       <div className="flex justify-between items-center text-xs">
-        <Typography className="text-muted text-[11px] font-medium font-sans">
+        <span className="text-muted text-[11px] font-medium font-sans">
           {t('auth:passwordStrength.label', { defaultValue: 'Security Strength' })}
-        </Typography>
+        </span>
         <span className={`font-bold text-[11px] transition-colors duration-200 ${textColorClass}`}>
           {strengthLabel}
         </span>
