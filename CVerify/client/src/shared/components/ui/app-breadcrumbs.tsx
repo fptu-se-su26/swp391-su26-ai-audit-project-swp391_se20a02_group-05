@@ -53,34 +53,22 @@ export const AppBreadcrumbs: React.FC = () => {
         }
         className="flex items-center"
       >
-        {/* Static Root Node */}
-        <BreadcrumbsItem
-          href="/user"
-          onClick={(e) => {
-            e.preventDefault();
-            router.push('/user');
-          }}
-          className="text-xs font-semibold text-muted hover:text-foreground transition-colors duration-150 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-focus rounded-lg px-1.5 py-0.5 cursor-pointer"
-        >
-          {t('common:dashboard.pages')}
-        </BreadcrumbsItem>
-
         {/* Dynamic Nodes */}
         {breadcrumbItems.map((item) => (
           <BreadcrumbsItem
             key={item.href}
-            href={item.isLast ? undefined : item.href}
-            onClick={
-              item.isLast
-                ? undefined
-                : (e) => {
-                    e.preventDefault();
-                    router.push(item.href);
-                  }
-            }
+            href={item.href}
+            onClick={(e) => {
+              e.preventDefault();
+              if (item.isLast) {
+                window.location.reload();
+              } else {
+                router.push(item.href);
+              }
+            }}
             className={
               item.isLast
-                ? "text-xs font-extrabold text-foreground tracking-tight select-text px-1.5 py-0.5"
+                ? "text-xs font-extrabold text-foreground tracking-tight px-1.5 py-0.5 cursor-pointer hover:opacity-80 transition-opacity duration-150"
                 : "text-xs font-semibold text-muted/80 hover:text-foreground transition-colors duration-150 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-focus rounded-lg px-1.5 py-0.5 cursor-pointer"
             }
           >

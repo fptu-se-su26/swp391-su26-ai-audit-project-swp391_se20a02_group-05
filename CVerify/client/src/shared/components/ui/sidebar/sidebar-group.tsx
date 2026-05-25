@@ -155,32 +155,34 @@ export const SidebarGroup: React.FC<SidebarGroupProps> = ({ group, collapsed, is
   return (
     <div className="w-full flex justify-center py-0.5 select-none">
       <Tooltip delay={0} isDisabled={isMobile}>
-        <button
-          onClick={handleToggle}
-          className={[
-            "relative flex items-center justify-center h-10 w-10 rounded-xl text-muted hover:text-foreground hover:bg-surface-secondary/40 transition-all duration-200 focus-visible:ring-2 focus-visible:ring-focus focus-visible:outline-hidden cursor-pointer",
-            hasActiveDescendant ? "bg-surface-secondary/20 text-accent font-bold" : ""
-          ].join(' ')}
-          aria-label={label}
-        >
-          {/* Active descendant indication dot on top-right of the icon */}
-          {hasActiveDescendant && (
-            <span className="absolute top-2 right-2 flex h-2 w-2">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-accent opacity-75"></span>
-              <span className="relative inline-flex rounded-full h-2 w-2 bg-accent"></span>
-            </span>
-          )}
+        <Tooltip.Trigger>
+          <button
+            onClick={handleToggle}
+            className={[
+              "relative flex items-center justify-center h-10 w-10 rounded-xl text-muted hover:text-foreground hover:bg-surface-secondary/40 transition-all duration-200 focus-visible:ring-2 focus-visible:ring-focus focus-visible:outline-hidden cursor-pointer",
+              hasActiveDescendant ? "bg-surface-secondary/20 text-accent font-bold" : ""
+            ].join(' ')}
+            aria-label={label}
+          >
+            {/* Active descendant indication dot on top-right of the icon */}
+            {hasActiveDescendant && (
+              <span className="absolute top-2 right-2 flex h-2 w-2">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-accent opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-accent"></span>
+              </span>
+            )}
 
-          {Icon && (
-            <Icon
-              size={18}
-              className={[
-                "shrink-0",
-                hasActiveDescendant ? "text-accent" : "text-muted"
-              ].join(' ')}
-            />
-          )}
-        </button>
+            {Icon && (
+              <Icon
+                size={18}
+                className={[
+                  "shrink-0",
+                  hasActiveDescendant ? "text-accent" : "text-muted"
+                ].join(' ')}
+              />
+            )}
+          </button>
+        </Tooltip.Trigger>
         <Tooltip.Content placement="right" className="flex flex-col gap-1.5 p-2 bg-surface border border-border shadow-lg rounded-xl min-w-44 select-none">
           {/* Header title inside the hover popover */}
           <div className="px-2.5 py-1 border-b border-separator mb-1">

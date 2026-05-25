@@ -9,11 +9,11 @@
   /* Theme Colors (Light Mode) */
   --accent: oklch(48.04% 0.0907 53.36);
   --accent-foreground: oklch(99.11% 0 0);
-  --background: oklch(97.02% 0.0015 53.36);
+  --background: lch(96.54% 0.01 296.81);
   --border: oklch(90.00% 0.0015 53.36);
   --danger: oklch(0.5507 0.2062 24);
   --danger-foreground: oklch(98% 0.0200 24.00);
-  --default: oklch(94.00% 0.0015 53.36);
+  --default: #ebebec;
   --default-foreground: oklch(21.03% 0.0059 53.36);
   --field-background: oklch(100.00% 0.0008 53.36);
   --field-border: transparent;
@@ -25,7 +25,7 @@
   --overlay: oklch(100.00% 0.0004 53.36);
   --overlay-foreground: oklch(21.03% 0.0015 53.36);
   --scrollbar: oklch(87.10% 0.0015 53.36);
-  --segment: oklch(100.00% 0.0015 53.36);
+  --segment: lch(99.98% 0.5 109.98);
   --segment-foreground: oklch(21.03% 0.0015 53.36);
   --separator: oklch(92.00% 0.0015 53.36);
   --success: oklch(0.6072 0.1647 149.02);
@@ -90,10 +90,40 @@
   --color-foreground: var(--foreground);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
+  --font-lato: var(--font-lato);
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
   font-family: var(--font-sans);
+}
+
+/* Premium Sleek Floating Scrollbar Design */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  
+  background: var(--separator);
+  border-radius: 9999px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+  transition: background 0.15s ease;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--muted);
+}
+
+/* Firefox scrollbar compatibility */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--separator) transparent;
 }

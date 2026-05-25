@@ -3,7 +3,7 @@
 import React from 'react';
 import { useAuth } from '@/features/auth/hooks/use-auth';
 import { useRouter } from 'next/navigation';
-import { Dropdown, Avatar, Label, Separator, Typography } from '@heroui/react';
+import { Dropdown, Avatar, Label, Separator, Typography, Button } from '@heroui/react';
 import { LogOut, LayoutDashboard, Settings, Check, Sun, Moon, Waves } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { setCookie } from '@/services/axios-client';
@@ -69,18 +69,27 @@ export function AuthAvatar() {
 
   return (
     <Dropdown>
-      <Dropdown.Trigger
-        aria-label={t('navbar:menu.userMenu')}
-        className="p-0 bg-transparent hover:bg-transparent border-none min-w-0 min-h-0 size-10 rounded-full outline-hidden focus-visible:ring-2 focus-visible:ring-focus select-none shrink-0 cursor-pointer flex items-center justify-center"
-      >
-        <Avatar className="cursor-pointer size-10 select-none hover:opacity-90 active:scale-95 transition-all bg-linear-to-tr from-indigo-500 to-emerald-500">
-          {user.avatarUrl && (
-            <Avatar.Image src={user.avatarUrl} alt={user.fullName} />
-          )}
-          <Avatar.Fallback className="text-background font-bold text-sm">
-            {initials}
-          </Avatar.Fallback>
-        </Avatar>
+      <Dropdown.Trigger>
+        <Button
+          variant="light"
+          aria-label={t('navbar:menu.userMenu')}
+          className="flex items-center gap-2.5 p-1 pr-3 h-11 bg-transparent hover:bg-surface-secondary/40 border-none rounded-xl outline-hidden focus-visible:ring-2 focus-visible:ring-focus select-none shrink-0 cursor-pointer transition-colors max-w-[200px]"
+        >
+          <Avatar className="cursor-pointer size-8 select-none hover:opacity-90 active:scale-95 transition-all bg-linear-to-tr from-indigo-500 to-emerald-500 shrink-0">
+            {user.avatarUrl && (
+              <Avatar.Image src={user.avatarUrl} alt={user.fullName} />
+            )}
+            <Avatar.Fallback className="font-bold text-xs">{initials}</Avatar.Fallback>
+          </Avatar>
+          <div className="hidden sm:flex flex-col items-start text-left min-w-0">
+            <span className="text-xs font-bold text-foreground font-outfit truncate w-full leading-none mb-1">
+              {user.fullName}
+            </span>
+            <span className="text-[10px] text-muted truncate w-full leading-none font-mono">
+              {user.email}
+            </span>
+          </div>
+        </Button>
       </Dropdown.Trigger>
 
       <Dropdown.Popover className="min-w-[240px] bg-overlay border border-border shadow-overlay rounded-xl p-1.5 z-50">

@@ -1,6 +1,6 @@
 {
   "branding": {
-    "title": "CVerify AI",
+    "title": "CVerify",
     "tagline": "Next-Gen Travel Companion",
     "description": "Plan, book, and explore custom itineraries designed in seconds by advanced intelligence. Experience travel re-imagined.",
     "journeyPrompt": "Your journey begins with a single prompt."
@@ -69,12 +69,21 @@
     "footerNote": "CVerify AI Auth Portal Integration. Verified for Next.js 16 + HeroUI v3 + Tailwind v4."
   },
   "dashboard": {
-    "travelerHub": "Traveler Hub",
+    "travelerHub": "Dashboard",
     "aiPlanner": "AI Planner Chat",
     "partnerConsole": "Partner Console",
     "systemAdmin": "System Admin",
     "sessionProtected": "Session Protected",
-    "pages": "Pages"
+    "pages": "Pages",
+    "sections": {
+      "general": "General",
+      "candidate": "Candidate",
+      "business": "Business"
+    },
+    "jobBoard": "Job Board",
+    "cv": "My CV",
+    "candidateDashboard": "Candidate Dashboard",
+    "businessDashboard": "Business Dashboard"
   },
   "admin": {
     "dashboard": "Admin",

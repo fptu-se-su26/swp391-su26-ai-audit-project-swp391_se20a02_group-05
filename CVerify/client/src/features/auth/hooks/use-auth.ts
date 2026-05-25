@@ -12,7 +12,7 @@ import {
   CompanyLoginPayload
 } from '../services/auth.service';
 import { User, UserRole, ResourceActionPermission } from '../../../types/auth.types';
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import { normalizeError } from '../../../services/axios-client';
 import { normalizeRole } from '../../../lib/utils/auth-utils';
 
@@ -185,34 +185,40 @@ export const useAuth = () => {
   };
 
   // Bootstraps local profile on app boot or token refresh, locking concurrent parallel calls
-  const initializeUserSession = async () => {
+  const initializeUserSession = useCallback(async () => {
+    const currentStore = useAuthStore.getState();
+
     // If already READY, return cached session
-    if (store.bootstrapState === 'READY') {
-      return { authenticated: store.isAuthenticated, user: store.user };
+    if (currentStore.bootstrapState === 'READY') {
+      return { authenticated: currentStore.isAuthenticated, user: currentStore.user };
     }
     
     // If already running (lock active), wait on the promise or return current state
-    if (store.bootstrapState === 'BOOTSTRAPPING' || store.bootstrapState === 'VALIDATING') {
+    if (currentStore.bootstrapState === 'BOOTSTRAPPING' || currentStore.bootstrapState === 'VALIDATING') {
       if (bootstrapPromise) {
         return bootstrapPromise;
       }
-      return { authenticated: store.isAuthenticated, user: store.user };
+      // If the state is stuck in BOOTSTRAPPING/VALIDATING but we don't have an active promise,
+      // we must have lost the promise reference (e.g. during module reloads or transitions).
+      // Let's print a warning and allow a new request to recover the state.
+      console.warn('[Auth System] Session bootstrap is in VALIDATING state but bootstrapPromise is null. Re-initializing session to recover.');
     }
 
     // Acquire lock and transition to bootstrapping
-    store.setBootstrapState('BOOTSTRAPPING');
+    currentStore.setBootstrapState('BOOTSTRAPPING');
 
     bootstrapPromise = (async () => {
-      store.setBootstrapState('VALIDATING');
-      store.setLoading(true);
+      const stateStore = useAuthStore.getState();
+      stateStore.setBootstrapState('VALIDATING');
+      stateStore.setLoading(true);
       console.log('[Auth System] Session bootstrap validation started.');
       try {
         const response = await authApi.fetchMe();
         
         if (response.status === 'EMAIL_VERIFY_PENDING' || response.nextStep === 'VERIFY_EMAIL') {
-          store.setPendingVerificationEmail(response.email);
-          store.setAuthStatusAndNextStep(response.status, response.nextStep);
-          store.logout(false);
+          stateStore.setPendingVerificationEmail(response.email);
+          stateStore.setAuthStatusAndNextStep(response.status, response.nextStep);
+          stateStore.logout(false);
           console.log('[Auth System] Session bootstrap complete. Status: EMAIL_VERIFY_PENDING');
           return { authenticated: false, user: null, isUnverified: true, nextStep: response.nextStep };
         }
@@ -227,8 +233,8 @@ export const useAuth = () => {
           isEmailVerified: response.isEmailVerified,
         };
 
-        store.login(user);
-        store.setAuthStatusAndNextStep(response.status, response.nextStep);
+        stateStore.login(user);
+        stateStore.setAuthStatusAndNextStep(response.status, response.nextStep);
         console.log(`[Auth System] Session bootstrap complete. User authenticated. Role: ${user.role}`);
         return { authenticated: true, user };
       } catch (err) {
@@ -243,18 +249,18 @@ export const useAuth = () => {
         } else {
           console.warn('[Auth System] Session bootstrap validation failed. Cleaning local session.', error);
         }
-        store.logout(false);
+        stateStore.logout(false);
         return { authenticated: false, user: null };
       } finally {
-        store.setInitialized(true);
-        store.setBootstrapState('READY');
-        store.setLoading(false);
+        stateStore.setInitialized(true);
+        stateStore.setBootstrapState('READY');
+        stateStore.setLoading(false);
         bootstrapPromise = null;
       }
     })();
 
     return bootstrapPromise;
-  };
+  }, []);
 
     // Send OTP
     const sendOtp = async (email: string, purpose: string) => {

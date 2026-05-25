@@ -105,7 +105,9 @@ export const SidebarLink: React.FC<SidebarLinkProps> = ({ item, collapsed, isMob
   if (collapsed && !isMobile) {
     return (
       <Tooltip delay={0}>
-        {linkContent}
+        <Tooltip.Trigger>
+          {linkContent}
+        </Tooltip.Trigger>
         <Tooltip.Content placement="right" className="font-outfit text-xs font-semibold px-2.5 py-1.5 shadow-md border border-border">
           <div className="flex items-center gap-2">
             <span>{label}</span>

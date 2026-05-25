@@ -1,39 +1,72 @@
 import { 
   LayoutDashboard, 
-  Sparkles, 
   Building2, 
   ShieldAlert, 
   Users, 
   Shield, 
-  FileText 
+  FileText,
+  Briefcase 
 } from 'lucide-react';
 import { NavigationNode } from '@/types/navigation.types';
 
 export const navigationConfig: NavigationNode[] = [
   {
-    id: 'user-hub',
-    type: 'item',
-    label: 'Traveler Hub',
-    translationKey: 'common:dashboard.travelerHub',
-    href: '/user',
-    icon: LayoutDashboard,
+    id: 'general-section',
+    type: 'section',
+    label: 'General',
+    translationKey: 'common:dashboard.sections.general',
+    children: [
+      {
+        id: 'job-board',
+        type: 'item',
+        label: 'Job Board',
+        translationKey: 'common:dashboard.jobBoard',
+        href: '/jobs',
+        icon: Briefcase,
+      },
+    ],
   },
   {
-    id: 'ai-planner',
-    type: 'item',
-    label: 'AI Chat',
-    translationKey: 'common:dashboard.aiPlanner',
-    href: '/chat',
-    icon: Sparkles,
+    id: 'candidate-section',
+    type: 'section',
+    label: 'Candidate',
+    translationKey: 'common:dashboard.sections.candidate',
+    requiredRoles: ['USER', 'ADMIN'],
+    children: [
+      {
+        id: 'candidate-dashboard',
+        type: 'item',
+        label: 'Dashboard',
+        translationKey: 'common:dashboard.candidateDashboard',
+        href: '/user',
+        icon: LayoutDashboard,
+      },
+      {
+        id: 'candidate-cv',
+        type: 'item',
+        label: 'My CV',
+        translationKey: 'common:dashboard.cv',
+        href: '/cv',
+        icon: FileText,
+      },
+    ],
   },
   {
-    id: 'partner-console',
-    type: 'item',
-    label: 'Partner Console',
-    translationKey: 'common:dashboard.partnerConsole',
-    href: '/business',
-    icon: Building2,
+    id: 'business-section',
+    type: 'section',
+    label: 'Business',
+    translationKey: 'common:dashboard.sections.business',
     requiredRoles: ['BUSINESS', 'ADMIN'],
+    children: [
+      {
+        id: 'business-dashboard',
+        type: 'item',
+        label: 'Dashboard',
+        translationKey: 'common:dashboard.businessDashboard',
+        href: '/business',
+        icon: Building2,
+      },
+    ],
   },
   {
     id: 'admin-section',
