@@ -82,6 +82,9 @@ public class ApplicationDbContext : DbContext
     public DbSet<OrganizationRecoveryClaim> OrganizationRecoveryClaims => Set<OrganizationRecoveryClaim>();
     public DbSet<ApprovedRecoverySession> ApprovedRecoverySessions => Set<ApprovedRecoverySession>();
     public DbSet<RecoveryToken> RecoveryTokens => Set<RecoveryToken>();
+    public DbSet<RepresentativeRotationRequest> RepresentativeRotationRequests => Set<RepresentativeRotationRequest>();
+    public DbSet<RepresentativeApprovalVote> RepresentativeApprovalVotes => Set<RepresentativeApprovalVote>();
+    public DbSet<RepresentativeAuthorityHistory> RepresentativeAuthorityHistories => Set<RepresentativeAuthorityHistory>();
 
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
@@ -114,6 +117,9 @@ public class ApplicationDbContext : DbContext
         modelBuilder.Entity<OrganizationRecoveryClaim>().Property(orc => orc.Id).ValueGeneratedNever();
         modelBuilder.Entity<ApprovedRecoverySession>().Property(ars => ars.Id).ValueGeneratedNever();
         modelBuilder.Entity<RecoveryToken>().Property(rt => rt.Id).ValueGeneratedNever();
+        modelBuilder.Entity<RepresentativeRotationRequest>().Property(r => r.Id).ValueGeneratedNever();
+        modelBuilder.Entity<RepresentativeApprovalVote>().Property(v => v.Id).ValueGeneratedNever();
+        modelBuilder.Entity<RepresentativeAuthorityHistory>().Property(h => h.Id).ValueGeneratedNever();
 
         // Enable PostgreSQL Extensions
         modelBuilder.HasPostgresExtension("citext");
@@ -498,6 +504,40 @@ public class ApplicationDbContext : DbContext
                   .OnDelete(DeleteBehavior.Cascade);
             entity.HasIndex(ov => ov.OrganizationId)
                   .HasDatabaseName("idx_organization_verifications_org_id");
+        });
+
+        // RepresentativeRotationRequest configurations
+        modelBuilder.Entity<RepresentativeRotationRequest>(entity =>
+        {
+            entity.ToTable("representative_rotation_requests");
+            entity.HasOne(r => r.Organization)
+                  .WithMany()
+                  .HasForeignKey(r => r.OrganizationId)
+                  .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        // RepresentativeApprovalVote configurations
+        modelBuilder.Entity<RepresentativeApprovalVote>(entity =>
+        {
+            entity.ToTable("representative_approval_votes");
+            entity.HasOne(v => v.Request)
+                  .WithMany(r => r.Votes)
+                  .HasForeignKey(v => v.RequestId)
+                  .OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(v => v.ApproverUser)
+                  .WithMany()
+                  .HasForeignKey(v => v.ApproverUserId)
+                  .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        // RepresentativeAuthorityHistory configurations
+        modelBuilder.Entity<RepresentativeAuthorityHistory>(entity =>
+        {
+            entity.ToTable("representative_authority_histories");
+            entity.HasOne(h => h.Organization)
+                  .WithMany()
+                  .HasForeignKey(h => h.OrganizationId)
+                  .OnDelete(DeleteBehavior.Cascade);
         });
     }
 }

@@ -38,6 +38,21 @@ public class Organization
 
     public int VerificationLevel { get; set; } = 0; // 0 = Unverified/Onboarding, 1 = Legal Verified, 2 = Domain Verified, 3 = Domain Ownership Verified
 
+    [MaxLength(255)]
+    public string? RepresentativeName { get; set; }
+
+    [MaxLength(255)]
+    public string? RepresentativeEmail { get; set; }
+
+    [MaxLength(50)]
+    public string? RepresentativePhone { get; set; }
+
+    [MaxLength(255)]
+    public string? RecoveryAuthority { get; set; }
+
+    [MaxLength(255)]
+    public string? RepresentativeIdentity { get; set; }
+
     public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
 
     public DateTimeOffset UpdatedAt { get; set; } = DateTimeOffset.UtcNow;

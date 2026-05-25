@@ -196,4 +196,70 @@ export const recoveryApi = {
     const response = await axiosClient.post<LoginResponseData>('/auth/recovery/organization/reset-password', payload);
     return response.data;
   },
+
+  /**
+   * Level 2 recovery check
+   */
+  level2Check: async (taxCode: string): Promise<{ isLevel2: boolean; legalBusinessName: string; taxCode: string; currentRepresentative: string | null; currentEmail: string | null }> => {
+    const response = await axiosClient.get<{ isLevel2: boolean; legalBusinessName: string; taxCode: string; currentRepresentative: string | null; currentEmail: string | null }>('/auth/recovery/level2/check', {
+      params: { taxCode },
+    });
+    return response.data;
+  },
+
+  /**
+   * Submit representative rotation change request for Level 2 organization
+   */
+  level2RequestRotation: async (payload: {
+    taxCode: string;
+    newRepresentativeFullName: string;
+    newRepresentativePosition: string;
+    newRepresentativeEmail: string;
+    newRepresentativePhone: string;
+    reasonForRepresentativeChange: string;
+    optionalSupportingMessage?: string;
+  }): Promise<any> => {
+    const response = await axiosClient.post<any>('/auth/recovery/level2/request-rotation', payload);
+    return response.data;
+  },
+
+  /**
+   * Get all rotation requests queue for manual Support review
+   */
+  level2GetRequests: async (): Promise<any[]> => {
+    const response = await axiosClient.get<any[]>('/auth/recovery/level2/requests');
+    return response.data;
+  },
+
+  /**
+   * Record reviewer verification call details
+   */
+  level2RecordVerificationCall: async (requestId: string, payload: { notes: string; status: string }): Promise<{ success: boolean }> => {
+    const response = await axiosClient.post<{ success: boolean }>(`/auth/recovery/level2/requests/${requestId}/verification-call`, payload);
+    return response.data;
+  },
+
+  /**
+   * CVerify support approval/rejection decision
+   */
+  level2SupportApproval: async (requestId: string, payload: { decision: string }): Promise<{ success: boolean }> => {
+    const response = await axiosClient.post<{ success: boolean }>(`/auth/recovery/level2/requests/${requestId}/support-approval`, payload);
+    return response.data;
+  },
+
+  /**
+   * Existing Admin vote submission
+   */
+  level2SubmitAdminVote: async (payload: { token: string; decision: string }): Promise<{ success: boolean }> => {
+    const response = await axiosClient.post<{ success: boolean }>('/auth/recovery/level2/vote', payload);
+    return response.data;
+  },
+
+  /**
+   * Retrieve representative changes history for auditing
+   */
+  level2GetHistory: async (organizationId: string): Promise<any[]> => {
+    const response = await axiosClient.get<any[]>(`/auth/recovery/level2/organization/${organizationId}/history`);
+    return response.data;
+  },
 };

@@ -75,6 +75,19 @@ public static class RecoveryTokenHelper
         }
     }
 
+    public static string GenerateLevel2VoteToken(Guid requestId, Guid approverUserId, string approverRole, string secretKey, int expiryHours = 48)
+    {
+        var payload = new Dictionary<string, string>
+        {
+            { "step", "LEVEL2_ADMIN_APPROVAL" },
+            { "requestId", requestId.ToString() },
+            { "approverUserId", approverUserId.ToString() },
+            { "approverRole", approverRole },
+            { "exp", DateTimeOffset.UtcNow.AddHours(expiryHours).ToUnixTimeSeconds().ToString() }
+        };
+        return SignPayload(payload, secretKey);
+    }
+
     private static string SignPayload(Dictionary<string, string> payload, string secretKey)
     {
         var json = JsonSerializer.Serialize(payload);

@@ -279,6 +279,7 @@ builder.Services.AddScoped<IRecoveryTokenService, RecoveryTokenService>();
 builder.Services.AddScoped<ICandidateRecoveryService, CandidateRecoveryService>();
 builder.Services.AddScoped<IOrganizationRecoveryService, OrganizationRecoveryService>();
 builder.Services.AddScoped<IOrganizationReclaimService, OrganizationReclaimService>();
+builder.Services.AddScoped<ILevel2RecoveryService, Level2RecoveryService>();
 builder.Services.AddScoped<IPasswordPolicyService, PasswordPolicyService>();
 builder.Services.AddScoped<IOtpPolicyService, OtpPolicyService>();
 

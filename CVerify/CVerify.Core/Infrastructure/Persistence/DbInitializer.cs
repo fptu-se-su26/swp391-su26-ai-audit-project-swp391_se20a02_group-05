@@ -29,6 +29,9 @@ public static class DbInitializer
         if (shouldReset)
         {
             const string dropSql = @"
+                DROP TABLE IF EXISTS representative_approval_votes CASCADE;
+                DROP TABLE IF EXISTS representative_rotation_requests CASCADE;
+                DROP TABLE IF EXISTS representative_authority_histories CASCADE;
                 DROP TABLE IF EXISTS recovery_execution_locks CASCADE;
                 DROP TABLE IF EXISTS workspace_archive_snapshots CASCADE;
                 DROP TABLE IF EXISTS recovery_claim_documents CASCADE;
@@ -163,6 +166,11 @@ public static class DbInitializer
                 username VARCHAR(100) NOT NULL,
                 is_verified BOOLEAN NOT NULL DEFAULT FALSE,
                 verification_level INTEGER NOT NULL DEFAULT 0,
+                representative_name VARCHAR(255),
+                representative_email VARCHAR(255),
+                representative_phone VARCHAR(50),
+                recovery_authority VARCHAR(255),
+                representative_identity VARCHAR(255),
                 created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
                 updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
                 deleted_at TIMESTAMP WITH TIME ZONE
@@ -302,6 +310,50 @@ public static class DbInitializer
                 acquired_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
                 completed_at TIMESTAMP WITH TIME ZONE,
                 CONSTRAINT fk_execution_locks_session FOREIGN KEY (recovery_session_id) REFERENCES approved_recovery_sessions(id) ON DELETE CASCADE
+            );
+
+            -- Stores representative rotation requests for Level 2 organizations
+            CREATE TABLE IF NOT EXISTS representative_rotation_requests (
+                id UUID PRIMARY KEY,
+                organization_id UUID NOT NULL,
+                current_representative VARCHAR(255),
+                requested_representative VARCHAR(255) NOT NULL,
+                requested_email VARCHAR(255) NOT NULL,
+                requested_phone VARCHAR(50) NOT NULL,
+                reason TEXT NOT NULL,
+                support_approval_status VARCHAR(50) NOT NULL DEFAULT 'pending_review',
+                admin_approval_status VARCHAR(50) NOT NULL DEFAULT 'pending_review',
+                final_decision VARCHAR(50) NOT NULL DEFAULT 'pending_review',
+                verification_call_status VARCHAR(50) NOT NULL DEFAULT 'not_started',
+                verification_call_notes TEXT,
+                optional_supporting_message TEXT,
+                created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+                expires_at TIMESTAMP WITH TIME ZONE NOT NULL,
+                CONSTRAINT fk_rotation_requests_organization FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE
+            );
+
+            -- Stores admin votes for representative rotation requests
+            CREATE TABLE IF NOT EXISTS representative_approval_votes (
+                id UUID PRIMARY KEY,
+                request_id UUID NOT NULL,
+                approver_user_id UUID NOT NULL,
+                approver_role VARCHAR(50) NOT NULL,
+                decision VARCHAR(50) NOT NULL,
+                timestamp TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+                CONSTRAINT fk_approval_votes_request FOREIGN KEY (request_id) REFERENCES representative_rotation_requests(id) ON DELETE CASCADE,
+                CONSTRAINT fk_approval_votes_user FOREIGN KEY (approver_user_id) REFERENCES users(id) ON DELETE CASCADE
+            );
+
+            -- Stores representative rotation history
+            CREATE TABLE IF NOT EXISTS representative_authority_histories (
+                id UUID PRIMARY KEY,
+                organization_id UUID NOT NULL,
+                previous_representative VARCHAR(255),
+                new_representative VARCHAR(255) NOT NULL,
+                rotated_by VARCHAR(255) NOT NULL,
+                support_reviewer VARCHAR(255) NOT NULL,
+                effective_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+                CONSTRAINT fk_authority_histories_organization FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE
             );
 
             -- Stores challenge-based OTP verifications
@@ -496,6 +548,19 @@ public static class DbInitializer
                     WHERE table_name = 'organizations' AND column_name = 'status'
                 ) THEN
                     ALTER TABLE organizations ADD COLUMN status VARCHAR(50) NOT NULL DEFAULT 'active';
+                END IF;
+
+                -- Safely provision representative columns to organizations if missing
+                IF NOT EXISTS (
+                    SELECT 1 
+                    FROM information_schema.columns 
+                    WHERE table_name = 'organizations' AND column_name = 'representative_name'
+                ) THEN
+                    ALTER TABLE organizations ADD COLUMN representative_name VARCHAR(255);
+                    ALTER TABLE organizations ADD COLUMN representative_email VARCHAR(255);
+                    ALTER TABLE organizations ADD COLUMN representative_phone VARCHAR(50);
+                    ALTER TABLE organizations ADD COLUMN recovery_authority VARCHAR(255);
+                    ALTER TABLE organizations ADD COLUMN representative_identity VARCHAR(255);
                 END IF;
 
                 -- Safely rename organization_members to organization_authorities if it exists

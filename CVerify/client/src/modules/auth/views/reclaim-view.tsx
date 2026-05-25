@@ -64,6 +64,19 @@ export function ReclaimView() {
   const [files, setFiles] = useState<File[]>([]);
   const [uploadError, setUploadError] = useState<string | null>(null);
 
+  // Level 2 Representative Rotation Flow States
+  const [isLevel2, setIsLevel2] = useState(false);
+  const [level2Loading, setLevel2Loading] = useState(true);
+  const [level2Step, setLevel2Step] = useState(1); // 1 = Form, 2 = Progress Dashboard
+  const [newRepName, setNewRepName] = useState("");
+  const [newRepPosition, setNewRepPosition] = useState("");
+  const [newRepEmail, setNewRepEmail] = useState("");
+  const [newRepPhone, setNewRepPhone] = useState("");
+  const [rotationReason, setRotationReason] = useState("representative resigned");
+  const [optionalMsg, setOptionalMsg] = useState("");
+  const [isSubmittingLevel2, setIsSubmittingLevel2] = useState(false);
+  const [level2Request, setLevel2Request] = useState<any>(null);
+
   // Recovery Receipt Data
   const [receipt, setReceipt] = useState<{
     claimId: string;
@@ -80,6 +93,81 @@ export function ReclaimView() {
 
   const isStep1Valid =
     isFullNameValid && isPositionValid && isPhoneValid && isEmailValid;
+
+  // Level 2 Validation formulas
+  const isNewRepNameValid = newRepName.trim().length >= 3;
+  const isNewRepPositionValid = newRepPosition.trim().length >= 2;
+  const isNewRepEmailValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(newRepEmail);
+  const isNewRepPhoneValid = /^[0-9+]{9,15}$/.test(newRepPhone);
+  const isLevel2FormValid = isNewRepNameValid && isNewRepPositionValid && isNewRepEmailValid && isNewRepPhoneValid;
+
+  const fetchLevel2Status = async () => {
+    if (!taxCode) {
+      setLevel2Loading(false);
+      return;
+    }
+    try {
+      const checkRes = await recoveryApi.level2Check(taxCode);
+      if (checkRes.isLevel2) {
+        setIsLevel2(true);
+        // Look up if an active rotation request already exists in system to resume tracking
+        const queue = await recoveryApi.level2GetRequests();
+        const activeReq = queue.find(
+          (r: any) =>
+            r.organizationId &&
+            r.finalDecision !== "rejected" &&
+            r.finalDecision !== "expired" &&
+            r.finalDecision !== "approved"
+        );
+        if (activeReq) {
+          setLevel2Request(activeReq);
+          setLevel2Step(2);
+        }
+      }
+    } catch (err) {
+      console.error("Failed to check organization Level 2 status", err);
+    } finally {
+      setLevel2Loading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchLevel2Status();
+  }, [taxCode]);
+
+  const handleSubmitLevel2 = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!isLevel2FormValid) return;
+
+    setIsSubmittingLevel2(true);
+    try {
+      const response = await recoveryApi.level2RequestRotation({
+        taxCode,
+        newRepresentativeFullName: newRepName,
+        newRepresentativePosition: newRepPosition,
+        newRepresentativeEmail: newRepEmail,
+        newRepresentativePhone: newRepPhone,
+        reasonForRepresentativeChange: rotationReason,
+        optionalSupportingMessage: optionalMsg,
+      });
+
+      setLevel2Request(response);
+      setLevel2Step(2); // Advance to tracking dashboard!
+      toast.success("Rotation Request Registered!", {
+        description: "Your governance rotation request has been enqueued for review and dual-approval.",
+      });
+    } catch (err) {
+      const errorMessage =
+        axios.isAxiosError(err) && err.response?.data?.message
+          ? err.response.data.message
+          : "Failed to initiate Representative Rotation. Please verify details.";
+      toast.danger("Initiation Failed", {
+        description: errorMessage,
+      });
+    } finally {
+      setIsSubmittingLevel2(false);
+    }
+  };
 
   // Timer cooldown ticking for OTP
   useEffect(() => {
@@ -297,6 +385,318 @@ export function ReclaimView() {
             </Typography>
           </div>
         </div>
+      </Card>
+    );
+  }
+
+  if (level2Loading) {
+    return (
+      <Card className="w-full p-12 flex flex-col items-center justify-center min-h-[300px]">
+        <Spinner size="lg" />
+        <Typography className="text-sm text-muted mt-4 select-none">
+          Securing cryptographic trust layer...
+        </Typography>
+      </Card>
+    );
+  }
+
+  if (isLevel2) {
+    return (
+      <Card className="w-full relative overflow-hidden max-h-[85vh] flex flex-col">
+        <div className="absolute top-0 left-0 w-full h-1.5 bg-accent shrink-0" />
+        
+        {/* Premium Wizard Header */}
+        <div className="w-full flex items-center justify-between px-6 py-4 border-b border-border shrink-0 select-none">
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-lg bg-accent/15 flex items-center justify-center border border-accent/20">
+              <Building2 className="size-4 text-accent" />
+            </div>
+            <div>
+              <Typography className="text-sm font-bold text-foreground leading-none">
+                Level 2 Access Recovery
+              </Typography>
+              <Typography className="text-[10px] text-muted font-medium mt-1 leading-none">
+                MST: {taxCode} | Governed Representative Rotation
+              </Typography>
+            </div>
+          </div>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="text-muted text-[11px]"
+            onPress={() => {
+              if (level2Step > 1 && !level2Request) {
+                setLevel2Step(1);
+              } else {
+                router.push("/company-verification");
+              }
+            }}
+          >
+            <ArrowLeft className="size-3.5 mr-1" />
+            Return
+          </Button>
+        </div>
+
+        {level2Step === 1 ? (
+          <Form
+            className="w-full flex flex-col flex-1 overflow-hidden"
+            onSubmit={handleSubmitLevel2}
+          >
+            <div className="flex-1 overflow-y-auto px-6 py-6 space-y-4">
+              <div className="p-4 rounded-xl bg-surface-secondary border border-border select-none text-center mb-2">
+                <Typography className="text-[11px] text-muted">
+                  Legal Identity Immutability Block
+                </Typography>
+                <Typography className="font-bold text-foreground mt-0.5">
+                  {companyName || "Verified Organization"}
+                </Typography>
+                <Typography className="text-[10px] text-muted/80 mt-1 leading-normal">
+                  All workspace databases, settings, memberships, integrations, and invoices remain strictly intact.
+                </Typography>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <TextField isRequired name="newRepName" isInvalid={newRepName.length > 0 && !isNewRepNameValid}>
+                  <Label>New Representative Full Name</Label>
+                  <Input
+                    placeholder="John Doe"
+                    value={newRepName}
+                    onChange={(e) => setNewRepName(e.target.value)}
+                    className="h-11 rounded-xl"
+                  />
+                  <FieldError>Must be at least 3 characters.</FieldError>
+                </TextField>
+
+                <TextField isRequired name="newRepPosition" isInvalid={newRepPosition.length > 0 && !isNewRepPositionValid}>
+                  <Label>Representative Position</Label>
+                  <Input
+                    placeholder="CEO / Managing Director"
+                    value={newRepPosition}
+                    onChange={(e) => setNewRepPosition(e.target.value)}
+                    className="h-11 rounded-xl"
+                  />
+                  <FieldError>Must be at least 2 characters.</FieldError>
+                </TextField>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <TextField isRequired name="newRepEmail" isInvalid={newRepEmail.length > 0 && !isNewRepEmailValid}>
+                  <Label>Corporate Email</Label>
+                  <Input
+                    placeholder="ceo@company.com"
+                    value={newRepEmail}
+                    onChange={(e) => setNewRepEmail(e.target.value)}
+                    className="h-11 rounded-xl"
+                  />
+                  <FieldError>Please enter a valid corporate email.</FieldError>
+                </TextField>
+
+                <TextField isRequired name="newRepPhone" isInvalid={newRepPhone.length > 0 && !isNewRepPhoneValid}>
+                  <Label>Corporate Phone</Label>
+                  <Input
+                    placeholder="+84901234567"
+                    value={newRepPhone}
+                    onChange={(e) => setNewRepPhone(e.target.value)}
+                    className="h-11 rounded-xl"
+                  />
+                  <FieldError>Please enter a valid phone number.</FieldError>
+                </TextField>
+              </div>
+
+              <div className="flex flex-col gap-1.5">
+                <Label>Reason for Representative Change</Label>
+                <select
+                  value={rotationReason}
+                  onChange={(e) => setRotationReason(e.target.value)}
+                  className="w-full h-11 bg-surface-secondary border border-border rounded-xl px-3 text-sm font-medium text-foreground focus:outline-none"
+                >
+                  <option value="representative resigned">Representative resigned</option>
+                  <option value="lost access">Lost access</option>
+                  <option value="representative replaced">Representative replaced</option>
+                  <option value="internal security incident">Internal security incident</option>
+                  <option value="organizational restructuring">Organizational restructuring</option>
+                </select>
+              </div>
+
+              <TextField name="optionalMsg">
+                <Label>Optional Supporting Message</Label>
+                <textarea
+                  placeholder="Provide any additional context or notes here..."
+                  value={optionalMsg}
+                  onChange={(e) => setOptionalMsg(e.target.value)}
+                  className="w-full min-h-[80px] p-3 rounded-xl bg-surface-secondary border border-border text-sm focus:outline-none text-foreground"
+                />
+              </TextField>
+            </div>
+
+            <div className="p-4 border-t border-border shrink-0 bg-surface">
+              <Button
+                type="submit"
+                fullWidth
+                className="h-12 bg-accent hover:bg-accent-hover text-accent-foreground font-bold"
+                isDisabled={!isLevel2FormValid || isSubmittingLevel2}
+                isPending={isSubmittingLevel2}
+              >
+                {isSubmittingLevel2 ? <Spinner color="current" size="sm" /> : <ShieldCheck className="size-4 mr-2" />}
+                Initiate Representative Rotation
+              </Button>
+            </div>
+          </Form>
+        ) : (
+          <div className="w-full flex flex-col flex-1 overflow-hidden">
+            <div className="flex-1 overflow-y-auto px-6 py-6 space-y-6">
+              <div className="text-center">
+                <Typography.Heading level={4} className="text-lg font-bold text-foreground">
+                  Governance Change Request Active
+                </Typography.Heading>
+                <Typography className="text-xs text-muted mt-1 select-none">
+                  Request Reference: <span className="font-mono font-bold text-foreground/80 select-all">{level2Request?.requestId}</span>
+                </Typography>
+              </div>
+
+              {/* STUNNING STEP LIFECYCLE PROGRESS DASHBOARD */}
+              <div className="w-full space-y-4 p-5 rounded-2xl bg-surface-secondary/40 border border-border">
+                {/* 1. SUBMITTED */}
+                <div className="flex items-start gap-3">
+                  <div className="w-6 h-6 rounded-full bg-success text-success-foreground flex items-center justify-center text-xs shrink-0 font-bold">
+                    ✓
+                  </div>
+                  <div>
+                    <Typography className="text-xs font-bold text-foreground">1. Rotation Request Registered</Typography>
+                    <Typography className="text-[10px] text-muted mt-0.5">Submitted by Nominee Successor {level2Request?.requestedRepresentative}</Typography>
+                  </div>
+                </div>
+
+                <div className="h-4 w-0.5 bg-success ml-3" />
+
+                {/* 2. LIVE CALL VERIFICATION */}
+                <div className="flex items-start gap-3">
+                  <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs shrink-0 font-bold ${
+                    level2Request?.verificationCallStatus === "verified"
+                      ? "bg-success text-success-foreground"
+                      : level2Request?.verificationCallStatus === "failed"
+                        ? "bg-danger text-danger-foreground"
+                        : "bg-warning/15 text-warning border border-warning/20"
+                  }`}>
+                    {level2Request?.verificationCallStatus === "verified" ? "✓" : "2"}
+                  </div>
+                  <div>
+                    <Typography className="text-xs font-bold text-foreground">2. Support Live Verification Process</Typography>
+                    <Typography className={`text-[10px] font-semibold mt-0.5 ${
+                      level2Request?.verificationCallStatus === "verified"
+                        ? "text-success"
+                        : level2Request?.verificationCallStatus === "failed"
+                          ? "text-danger"
+                          : "text-warning"
+                    }`}>
+                      {level2Request?.verificationCallStatus === "verified" && "✓ Completed Verification Call"}
+                      {level2Request?.verificationCallStatus === "failed" && "✗ Verification Call Failed"}
+                      {level2Request?.verificationCallStatus === "scheduled" && "⚡ Call Scheduled - Check your corporate calendar"}
+                      {level2Request?.verificationCallStatus === "not_started" && "⏱ Awaiting call scheduling by auditor..."}
+                    </Typography>
+                  </div>
+                </div>
+
+                <div className={`h-4 w-0.5 ml-3 ${level2Request?.verificationCallStatus === "verified" ? "bg-success" : "bg-border"}`} />
+
+                {/* 3. ADMIN GOVERNANCE VOTE */}
+                <div className="flex items-start gap-3">
+                  <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs shrink-0 font-bold ${
+                    level2Request?.adminApprovalStatus === "approved"
+                      ? "bg-success text-success-foreground"
+                      : level2Request?.adminApprovalStatus === "rejected"
+                        ? "bg-danger text-danger-foreground"
+                        : "bg-border text-muted border border-border"
+                  }`}>
+                    {level2Request?.adminApprovalStatus === "approved" ? "✓" : "3"}
+                  </div>
+                  <div>
+                    <Typography className="text-xs font-bold text-foreground">3. Existing Admin Governance Vote</Typography>
+                    <Typography className={`text-[10px] font-semibold mt-0.5 ${
+                      level2Request?.adminApprovalStatus === "approved"
+                        ? "text-success"
+                        : level2Request?.adminApprovalStatus === "rejected"
+                          ? "text-danger"
+                          : "text-muted"
+                    }`}>
+                      {level2Request?.adminApprovalStatus === "approved" && "✓ Approved by Predecessor Authority"}
+                      {level2Request?.adminApprovalStatus === "rejected" && "✗ Rejected by Predecessor Authority"}
+                      {level2Request?.adminApprovalStatus === "pending_review" && "⏱ Awaiting existing administrator vote..."}
+                    </Typography>
+                  </div>
+                </div>
+
+                <div className={`h-4 w-0.5 ml-3 ${level2Request?.adminApprovalStatus === "approved" ? "bg-success" : "bg-border"}`} />
+
+                {/* 4. SUPPORT AUDITOR REVIEW */}
+                <div className="flex items-start gap-3">
+                  <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs shrink-0 font-bold ${
+                    level2Request?.supportApprovalStatus === "approved"
+                      ? "bg-success text-success-foreground"
+                      : level2Request?.supportApprovalStatus === "rejected"
+                        ? "bg-danger text-danger-foreground"
+                        : "bg-border text-muted border border-border"
+                  }`}>
+                    {level2Request?.supportApprovalStatus === "approved" ? "✓" : "4"}
+                  </div>
+                  <div>
+                    <Typography className="text-xs font-bold text-foreground">4. CVerify Support Sign-off</Typography>
+                    <Typography className={`text-[10px] font-semibold mt-0.5 ${
+                      level2Request?.supportApprovalStatus === "approved"
+                        ? "text-success"
+                        : level2Request?.supportApprovalStatus === "rejected"
+                          ? "text-danger"
+                          : "text-muted"
+                    }`}>
+                      {level2Request?.supportApprovalStatus === "approved" && "✓ Support Review Completed"}
+                      {level2Request?.supportApprovalStatus === "rejected" && "✗ Rejected by Support Auditor"}
+                      {level2Request?.supportApprovalStatus === "pending_review" && "⏱ Awaiting Auditor final review..."}
+                    </Typography>
+                  </div>
+                </div>
+
+                <div className={`h-4 w-0.5 ml-3 ${level2Request?.finalDecision === "approved" ? "bg-success" : "bg-border"}`} />
+
+                {/* 5. EXECUTION */}
+                <div className="flex items-start gap-3">
+                  <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs shrink-0 font-bold ${
+                    level2Request?.finalDecision === "approved"
+                      ? "bg-success text-success-foreground"
+                      : level2Request?.finalDecision === "rejected"
+                        ? "bg-danger text-danger-foreground"
+                        : "bg-border text-muted border border-border"
+                  }`}>
+                    {level2Request?.finalDecision === "approved" ? "✓" : "5"}
+                  </div>
+                  <div>
+                    <Typography className="text-xs font-bold text-foreground">5. Representative Rotation Execution</Typography>
+                    <Typography className="text-[10px] text-muted mt-0.5">
+                      {level2Request?.finalDecision === "approved" && "✓ Complete! Credentials enabled for new representative"}
+                      {level2Request?.finalDecision === "rejected" && "✗ Request Rejected. Change aborted."}
+                      {level2Request?.finalDecision === "pending_review" && "⏱ Awaiting final execution conditions..."}
+                    </Typography>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="p-4 border-t border-border shrink-0 bg-surface flex gap-3 w-full">
+              <Button
+                variant="secondary"
+                className="flex-1 h-12 rounded-xl border border-border"
+                onPress={() => router.push("/login")}
+              >
+                Return to Login
+              </Button>
+              <Button
+                className="flex-1 h-12 rounded-xl bg-foreground text-background font-bold"
+                onPress={fetchLevel2Status}
+              >
+                Refresh Status
+              </Button>
+            </div>
+          </div>
+        )}
       </Card>
     );
   }
