@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useForm, useWatch } from "react-hook-form";
-import FormOtpField from "@/shared/components/security/form-otp-field";
+import FormOtpField from "@/components/forms/form-otp-field";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { recoveryApi } from "@/features/auth/services/recovery.service";
@@ -29,8 +29,8 @@ import {
   Building2,
 } from "lucide-react";
 import axios from "axios";
-import PasswordStrengthMeter from "@/shared/components/security/password-strength-meter";
-import { evaluatePasswordStrength } from "@/shared/security/password-policy";
+import PasswordStrengthMeter from "../components/password-strength-meter";
+import { evaluatePasswordStrength } from "../security/password-policy";
 
 // Step 1 Schema: Tax Code validation
 const step1Schema = z.object({

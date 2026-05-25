@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import OtpInput from "@/shared/components/security/otp-input";
+import OtpInput from "@/components/ui/otp-input";
 import { recoveryApi } from "@/features/auth/services/recovery.service";
 import {
   Card,

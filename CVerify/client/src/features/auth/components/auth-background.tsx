@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import dynamic from 'next/dynamic';
-import { useThemeStore } from '@/hooks/use-theme-store';
+import { useThemeStore } from '@/stores/use-theme-store';
 
 // Dynamically import ShapeGrid with SSR disabled to prevent hydration/SSR mismatches
 const ShapeGrid = dynamic(() => import('../../../components/reactbits/ShapeGrid'), {

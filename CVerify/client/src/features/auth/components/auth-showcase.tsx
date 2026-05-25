@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { Typography, Link } from "@heroui/react";
-import { useThemeStore } from "@/hooks/use-theme-store";
+import { useThemeStore } from "@/stores/use-theme-store";
 
 export const AuthShowcase: React.FC = () => {
   const theme = useThemeStore((state) => state.theme);

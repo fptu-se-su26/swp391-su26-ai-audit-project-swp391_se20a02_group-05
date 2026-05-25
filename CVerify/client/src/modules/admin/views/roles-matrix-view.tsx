@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { adminService } from '@/services/admin.service';
 import { RoleListItem } from '@/types/admin.types';
-import { getPermissionsByModule } from '@/shared/permissions/permission.metadata';
+import { getPermissionsByModule } from '@/features/auth/permissions/permission.metadata';
 import { Spinner, Checkbox, Label, Typography } from '@heroui/react';
 import { Shield, Plus, RotateCw, AlertTriangle, Edit, Trash2 } from 'lucide-react';
 import { DialogModal } from '@/components/ui/dialog-modal';

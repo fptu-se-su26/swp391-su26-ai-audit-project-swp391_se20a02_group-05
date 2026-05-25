@@ -19,7 +19,7 @@ import {
   Description,
   Chip,
 } from "@heroui/react";
-import OtpInput from "@/shared/components/security/otp-input";
+import OtpInput from "@/components/ui/otp-input";
 import {
   Eye,
   EyeOff,
@@ -38,8 +38,8 @@ import {
   RefreshCw,
   UserCheck,
 } from "lucide-react";
-import PasswordStrengthMeter from "@/shared/components/security/password-strength-meter";
-import { evaluatePasswordStrength } from "@/shared/security/password-policy";
+import PasswordStrengthMeter from "../components/password-strength-meter";
+import { evaluatePasswordStrength } from "../security/password-policy";
 
 const RESERVED_SLUGS = [
   "admin",

@@ -15,11 +15,11 @@ import {
   toast,
   Spinner,
 } from "@heroui/react";
-import OtpInput from "@/shared/components/security/otp-input";
+import OtpInput from "@/components/ui/otp-input";
 import { Eye, EyeOff, ShieldCheck, Mail } from "lucide-react";
 import { Suspense } from "react";
-import PasswordStrengthMeter from "@/shared/components/security/password-strength-meter";
-import { evaluatePasswordStrength } from "@/shared/security/password-policy";
+import PasswordStrengthMeter from "../components/password-strength-meter";
+import { evaluatePasswordStrength } from "../security/password-policy";
 
 
 

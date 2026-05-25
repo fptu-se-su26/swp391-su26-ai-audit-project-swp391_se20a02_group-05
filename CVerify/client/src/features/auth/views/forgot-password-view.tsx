@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import OtpInput from "@/shared/components/security/otp-input";
+import OtpInput from "@/components/ui/otp-input";
 import { useAuth } from "@/features/auth/hooks/use-auth";
 import {
   Card,

@@ -5,7 +5,7 @@ import { useAuth } from '../features/auth/hooks/use-auth';
 import { usePathname } from 'next/navigation';
 import { Toast } from '@heroui/react';
 import i18n from '../lib/i18n';
-import { useThemeStore } from '../hooks/use-theme-store';
+import { useThemeStore } from '../stores/use-theme-store';
 import { useSidebarStore } from '../stores/use-sidebar-store';
 import { AuthOrchestrator } from '../features/auth/components/auth-orchestrator';
 import { NotificationHub } from '../infrastructure/notifications/orchestrator';

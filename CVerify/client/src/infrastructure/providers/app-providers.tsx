@@ -5,9 +5,8 @@ import { useAuth } from '@/features/auth/hooks/use-auth';
 import { usePathname } from 'next/navigation';
 import { Toast, toast } from '@heroui/react';
 import i18n from '@/lib/i18n';
-import { useThemeStore } from '@/hooks/use-theme-store';
+import { useThemeStore } from '@/stores/use-theme-store';
 import { useSidebarStore } from '@/stores/use-sidebar-store';
-
 import { AuthOrchestrator } from '@/features/auth/components/auth-orchestrator';
 
 export function Providers({ children, locale }: { children: React.ReactNode; locale: string }) {

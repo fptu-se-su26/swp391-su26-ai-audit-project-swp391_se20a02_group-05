@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { useWatch, Control, FieldValues, Path } from 'react-hook-form';
-import CentralPasswordStrengthMeter from '@/shared/components/security/password-strength-meter';
+import CentralPasswordStrengthMeter from '@/features/auth/components/password-strength-meter';
 
 interface PasswordStrengthMeterProps<TFieldValues extends FieldValues = FieldValues> {
   control: Control<TFieldValues>;

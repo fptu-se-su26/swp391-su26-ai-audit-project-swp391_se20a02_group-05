@@ -3,7 +3,7 @@
 import React from 'react';
 import { Controller, Control, FieldValues, Path } from 'react-hook-form';
 import { TextField, Label, FieldError } from '@heroui/react';
-import OtpInput from './otp-input';
+import OtpInput from '../ui/otp-input';
 
 interface FormOtpFieldProps<TFieldValues extends FieldValues = FieldValues> {
   name: Path<TFieldValues>;

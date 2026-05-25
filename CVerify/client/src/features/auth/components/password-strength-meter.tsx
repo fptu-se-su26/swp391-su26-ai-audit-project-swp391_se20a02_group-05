@@ -6,7 +6,7 @@ import {
   evaluatePasswordStrength, 
   passwordPoliciesRegistry,
   PasswordRule
-} from '../../security/password-policy';
+} from '../security/password-policy';
 
 interface PasswordStrengthMeterProps {
   value: string;

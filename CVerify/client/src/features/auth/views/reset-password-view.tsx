@@ -9,8 +9,8 @@ import {
 } from "@heroui/react";
 import { KeyRound, ShieldCheck, Eye, EyeOff } from 'lucide-react';
 import { Suspense } from 'react';
-import PasswordStrengthMeter from '@/shared/components/security/password-strength-meter';
-import { evaluatePasswordStrength } from '@/shared/security/password-policy';
+import PasswordStrengthMeter from '../components/password-strength-meter';
+import { evaluatePasswordStrength } from '../security/password-policy';
 
 function ResetPasswordContent() {
   const searchParams = useSearchParams();

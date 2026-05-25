@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { Typography } from "@heroui/react";
-import { useThemeStore } from "../../../hooks/use-theme-store";
+import { useThemeStore } from "../../../stores/use-theme-store";
 
 interface SidebarBrandProps {
   collapsed: boolean;

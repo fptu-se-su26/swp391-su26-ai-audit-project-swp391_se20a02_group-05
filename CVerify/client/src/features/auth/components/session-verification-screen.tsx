@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { useVerificationStages } from '../hooks/use-verification-stages';
 import { useTranslation } from 'react-i18next';
-import { useThemeStore } from '../../../hooks/use-theme-store';
+import { useThemeStore } from '../../../stores/use-theme-store';
 import { Shield } from 'lucide-react';
 
 /**
