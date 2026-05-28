@@ -13,7 +13,7 @@
 | MSSV / Danh sách MSSV | DE200147, DE200523, DE190105, DE200160, DE201043 |
 | Giảng viên hướng dẫn | QuangLTN3 |
 | Ngày bắt đầu | 2026-05-13T07:28:07.404Z |
-| Ngày cập nhật gần nhất | 2026-05-24 |
+| Ngày cập nhật gần nhất | 2026-05-28 |
 
 ---
 
@@ -45,6 +45,7 @@ File này dùng để ghi lại các prompt quan trọng đã sử dụng trong 
 | 2 | 2026-05-19 | GitHub Copilot | Checking and update feature for tool. | Check ExportCenter.tsx in the ... | Files modified: tools/AI Log/s... | Có |   |
 | 3 | 2026-05-24 | Claude | Thiết kế PostgreSQL database schema cho CVerify | Thiết kế PostgreSQL database s... | ChatGPT trả về DDL đầy đủ cho ... | Có |   |
 | 4 | 2026-05-24 | Gemini | Fix lỗi 401 Unauthorized khi gọi API | Tôi đang bị lỗi 401 Unauthoriz... | Claude phân tích 3 nguyên nhân... | Có |   |
+| 5 | 2026-05-28 | Claude | Used Claude Code (claude-sonnet-4-6) to generate the full test suite. | Implements the full multi-laye... | Test results: Jest 44 passing ... | Không |   |
 
 ---
 
@@ -464,6 +465,106 @@ Sau khi fix bug, nhóm thêm integration test để verify authentication pipeli
 
 ---
 
+### Prompt số 5
+
+| Nội dung | Thông tin |
+|---|---|
+| Ngày sử dụng | 2026-05-28 |
+| Công cụ AI | Claude |
+| Mục đích | Used Claude Code (claude-sonnet-4-6) to generate the full test suite. |
+| Phần việc liên quan | Testing |
+| Mức độ sử dụng | Hỏi review |
+
+#### 5.1. Prompt nguyên văn
+
+```text
+Implements the full multi-layer testing strategy for CVerify as defined in the
+project testing specification. This PR introduces all test infrastructure and
+test suites across three levels:
+
+**Frontend (client/)**
+- Jest + React Testing Library (white-box): unit tests for AuthContent component
+  (logo/theme rendering, SSR hydration safety), password policy evaluator
+  (boundary/branch coverage), workspace slug validator, and API error normalizer
+- Mocha + Chai (black-box): behavioral tests for password policy, workspace slug
+  validation, and error normalization — testing public contracts without accessing
+  internals
+- Cypress (black-box E2E): auth gateway page routing and login UI, company
+  verification 3-step wizard (tax code format, company name validation, step
+  navigation, already-registered recovery flow, owner identity step)
+- Test infrastructure: jest.config.mjs, jest.setup.ts, .mocharc.json,
+  cypress.config.ts, HeroUI component mock, TESTING.md guide
+
+**Backend (CVerify.Core/)**
+- xUnit + FluentAssertions (white-box): PasswordPolicyServiceTests covering
+  Default and Enterprise policies (empty, whitespace, boundary lengths, invalid
+  variants, unknown policy fallback); OtpPolicyServiceTests covering valid/invalid
+  OTP formats and policy violation exceptions
+
+**Source refactors required by testability**
+- Extracted workspace slug logic into a dedicated
+  `src/features/auth/security/workspace-slug.ts` module (was inline in the view)
+- Minor auth-content.tsx cleanup to support RTL rendering in JSDOM
+- company-verification-view.tsx imports updated to use the new slug module
+```
+
+#### 5.2. Bối cảnh khi viết prompt
+
+```text
+- Reading the Google Docs specification and mapping it to the existing codebase
+- Identifying the test gap (Mocha black-box tests entirely missing, Cypress E2E
+  minimal with only 2–4 tests each)
+- Generating all three Mocha test files with boundary/edge-case coverage
+- Expanding Cypress E2E tests from 6 total to 27 total, including cy.intercept
+  mocking for the backend-dependent company verification step
+- Adding the SSR hydration-safety test to auth-content (pre-mount logo invariant)
+- Diagnosing and fixing a failed Jest test (attempted jest.spyOn on a module-level
+  mock — replaced with a more reliable invariant test)
+- Running all suites and confirming green across Jest, Mocha, and xUnit
+```
+
+#### 5.3. Kết quả AI trả về
+
+```text
+Test results: Jest 44 passing · Mocha 72 passing · xUnit 71 passing
+```
+
+#### 5.4. Kết quả đã áp dụng vào bài
+
+```text
+ 
+```
+
+#### 5.5. Phần sinh viên/nhóm đã chỉnh sửa hoặc cải tiến
+
+```text
+ 
+```
+
+#### 5.6. Đánh giá chất lượng prompt
+
+- [x] Prompt rõ ràng
+- [x] Prompt có đủ bối cảnh
+- [ ] Prompt còn thiếu thông tin
+- [x] Prompt tạo ra kết quả tốt
+- [ ] Prompt tạo ra kết quả chưa phù hợp
+- [ ] Cần hỏi lại AI nhiều lần
+- [ ] Cần tự kiểm tra và chỉnh sửa nhiều
+
+#### 5.7. Minh chứng liên quan
+
+| Loại minh chứng | Nội dung |
+|---|---|
+| File/Link |   |
+
+#### 5.8. Ghi chú thêm
+
+```text
+ 
+```
+
+---
+
 ## 6. Prompt quan trọng nhất
 
 ### 6.1. Prompt được chọn
@@ -661,6 +762,7 @@ Bài học quan trọng nhất: AI không đọc được tâm trí. Mọi thôn
 | Prompt Coding | 1 |  |
 | Prompt Other | 1 |  |
 | Prompt Debug | 1 |  |
+| Prompt Testing | 1 |  |
 
 ---
 
@@ -678,4 +780,4 @@ Bài học quan trọng nhất: AI không đọc được tâm trí. Mọi thôn
 
 | Đại diện sinh viên/nhóm | Ngày xác nhận |
 |---|---|
-| Nguyễn Hoàng Ngọc Ánh | 24/5/2026 |
+| Nguyễn Hoàng Ngọc Ánh | 28/5/2026 |

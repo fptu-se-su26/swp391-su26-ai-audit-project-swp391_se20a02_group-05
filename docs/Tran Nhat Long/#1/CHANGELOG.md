@@ -37,10 +37,11 @@ Nguyên tắc ghi changelog:
 
 | Phiên bản/Giai đoạn | Thời gian | Nội dung chính | Trạng thái |
 |---|---|---|---|
-| Phase 01 - Planning & Requirement Analysis | 2026-05-14 ~ 2026-05-14 | Planning and Generation project requirements, analize SRS (Software Requirement Specification) | In Progress |
+| Phase 01 - Planning & Requirement Analysis | 2026-05-14 | Integrating External APIs into AI Agents, a Technical Research Report for an AI intergrated webapp. Update feature for AI Logger, a tool help students can easily write their markdown reports.
+ | In Progress |
 | Phase 02 |  |  | Not Started |
 | Phase 03 |  |  | Not Started |
-| Phase 04 |  |  | Not Started |
+| Phase 04 - Testing & Quality Assurance (QA) | 2026-05-28 | Phase 04 - Testing & Quality Assurance (QA) | In Progress |
 | Phase 05 |  |  | Not Started |
 | Phase 06 |  |  | Not Started |
 
@@ -48,11 +49,11 @@ Nguyên tắc ghi changelog:
 
 # [Phase 01 - Planning & Requirement Analysis] 
 
-## Thông tin giai đoạn
+## Ngày thực hiện
 
-- **Thời gian thực hiện:** 2026-05-14 ~ 2026-05-14
-- **Mô tả giai đoạn:** Planning and Generation project requirements, analize SRS (Software Requirement Specification)
-- **Trạng thái hiện tại:** In Progress
+```text
+2026-05-14
+```
 
 ## Thay đổi chi tiết
 
@@ -66,17 +67,56 @@ Nguyên tắc ghi changelog:
 - [ ] Có
 - [x] Không
 
-## Minh chứng liên quan
+## Commit/Screenshot minh chứng
 
-| Loại minh chứng | Nhãn | Nội dung |
-|---|---|---|
-| Commit/PR | Migrated | https://docs.google.com/document/d/1NTzS0vvw8O6rIZAKrxMkTV2l-dVRa2EA/edit?usp=sharing&ouid=104864543920688382356&rtpof=true&sd=true |
+```text
+https://docs.google.com/document/d/1NTzS0vvw8O6rIZAKrxMkTV2l-dVRa2EA/edit?usp=sharing&ouid=104864543920688382356&rtpof=true&sd=true
+```
 
 ## Ghi chú
 
 ```text
 Integrating External APIs into AI Agents, a Technical Research Report for an AI intergrated webapp. Update feature for AI Logger, a tool help students can easily write their markdown reports.
 
+```
+
+---
+
+# [Phase 04 - Testing & Quality Assurance (QA)] 
+
+## Ngày thực hiện
+
+```text
+2026-05-28
+```
+
+## Thay đổi chi tiết
+
+| STT | Nội dung thay đổi | Người thực hiện | File/Module liên quan | Minh chứng |
+|---:|---|---|---|---|
+| 1 | Implements the full multi-layer testing strategy for CVerify as defined in the project testing specification. This PR introduces all test infrastructure and test suites across three levels: | Tran Nhat Long |   |   |
+
+## AI có hỗ trợ không?
+
+- [x] Có
+- [ ] Không
+
+Nếu có, mô tả AI đã hỗ trợ phần nào:
+
+```text
+Used Claude Code (claude-sonnet-4-6) to generate the full test suite.
+```
+
+## Commit/Screenshot minh chứng
+
+```text
+ 
+```
+
+## Ghi chú
+
+```text
+ 
 ```
 
 ---
@@ -129,4 +169,4 @@ Sinh viên/nhóm cam kết rằng nội dung changelog phản ánh đúng các t
 
 | Đại diện sinh viên/nhóm | Ngày xác nhận |
 |---|---|
-| Nguyễn Hoàng Ngọc Ánh | 24/5/2026 |
+| Nguyễn Hoàng Ngọc Ánh | 28/5/2026 |
