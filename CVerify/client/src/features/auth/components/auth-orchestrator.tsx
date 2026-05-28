@@ -14,15 +14,16 @@ export const AuthOrchestrator: React.FC = () => {
     // Auth orchestration only triggers once bootstrapping state is resolved
     if (bootstrapState !== 'READY') return;
 
-    const isProtectedRoute = ['/admin', '/business', '/user'].some((p) => pathname.startsWith(p));
+    const isProtectedRoute = ['/admin', '/business', '/user', '/chat', '/jobs', '/cv'].some((p) => pathname.startsWith(p));
     const isAuthRoute = ['/login', '/register', '/forgot-password', '/reset-password'].some((p) => pathname === p);
     
     // Parse callback URL safely on the client
     const params = new URLSearchParams(typeof window !== 'undefined' ? window.location.search : '');
     const rawCallbackUrl = params.get('callbackUrl');
     
-    // Clean and validate callback URL to prevent open redirect vulnerabilities
-    const callbackUrl = isValidInternalPath(rawCallbackUrl) ? rawCallbackUrl : null;
+    // Clean and validate callback URL to prevent open redirect vulnerabilities.
+    // If the callback URL is '/' (landing page), treat it as null so that post-login redirect goes to dashboard.
+    const callbackUrl = (isValidInternalPath(rawCallbackUrl) && rawCallbackUrl !== '/') ? rawCallbackUrl : null;
 
     if (!isAuthenticated) {
       // 1. Unauthenticated users accessing protected dashboard pages

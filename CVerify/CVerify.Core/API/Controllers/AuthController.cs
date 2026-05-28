@@ -35,7 +35,7 @@ public class AuthController : ControllerBase
         var response = await _authService.LoginAsync(request);
         if (response == null)
         {
-            return Unauthorized(new { code = AuthErrorCodes.InvalidCredentials, message = "Invalid email or password" });
+            throw new AuthenticationException(AuthErrorCodes.InvalidCredentials);
         }
 
         return Ok(response);
@@ -48,20 +48,13 @@ public class AuthController : ControllerBase
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     public async Task<IActionResult> LoginWithGoogle([FromBody] GoogleLoginRequest request)
     {
-        try
+        var response = await _authService.LoginWithGoogleAsync(request);
+        if (response == null)
         {
-            var response = await _authService.LoginWithGoogleAsync(request);
-            if (response == null)
-            {
-                return Unauthorized(new { code = AuthErrorCodes.InvalidCredentials, message = "Google authentication failed" });
-            }
+            throw new AuthenticationException(AuthErrorCodes.InvalidCredentials, "Google authentication failed");
+        }
 
-            return Ok(response);
-        }
-        catch (UnauthorizedAccessException ex)
-        {
-            return Unauthorized(new { code = AuthErrorCodes.InvalidCredentials, message = ex.Message });
-        }
+        return Ok(response);
     }
 
     [HttpPost("logout")]
@@ -82,7 +75,7 @@ public class AuthController : ControllerBase
         var response = await _authService.RefreshTokenAsync();
         if (response == null)
         {
-            return Unauthorized(new { code = AuthErrorCodes.Unauthorized, message = "Invalid refresh token" });
+            throw new AuthenticationException(AuthErrorCodes.Unauthorized, "Invalid refresh token");
         }
 
         return Ok(response);
@@ -97,7 +90,7 @@ public class AuthController : ControllerBase
         var response = await _authService.GetMeAsync();
         if (response == null)
         {
-            return NotFound(new { message = "User not found" });
+            throw new ResourceNotFoundException("USER_NOT_FOUND", "User not found");
         }
 
         return Ok(response);
@@ -129,7 +122,7 @@ public class AuthController : ControllerBase
             return Ok(result);
         }
 
-        return BadRequest(new { message = "Email verification failed." });
+        throw new AuthenticationException(AuthErrorCodes.InvalidToken, "Email verification failed.");
     }
 
     [HttpPost("resend-verification")]
@@ -145,7 +138,7 @@ public class AuthController : ControllerBase
             return Ok(new { message = "If the email is eligible, a new verification link has been sent." });
         }
 
-        return BadRequest(new { message = "Failed to resend verification email." });
+        throw new BusinessRuleException("EMAIL_RESEND_FAILED", "Failed to resend verification email.");
     }
 
     [HttpPost("forgot-password")]
@@ -161,7 +154,7 @@ public class AuthController : ControllerBase
             return Ok(new { message = "If the email is registered, a password reset link has been sent." });
         }
 
-        return BadRequest(new { message = "Forgot password request failed." });
+        throw new BusinessRuleException("FORGOT_PASSWORD_FAILED", "Forgot password request failed.");
     }
 
     [HttpPost("reset-password")]
@@ -177,7 +170,7 @@ public class AuthController : ControllerBase
             return Ok(result);
         }
 
-        return BadRequest(new { message = "Password reset failed." });
+        throw new AuthenticationException(AuthErrorCodes.InvalidToken, "Password reset failed.");
     }
 
     [HttpDelete("/api/users/me")]
@@ -193,7 +186,7 @@ public class AuthController : ControllerBase
         {
             return Ok(new { message = "Account successfully deleted." });
         }
-        return BadRequest(new { message = "Account deletion failed." });
+        throw new BusinessRuleException("ACCOUNT_DELETION_FAILED", "Account deletion failed.");
     }
 
     [HttpPost("send-otp")]
@@ -338,6 +331,86 @@ public class AuthController : ControllerBase
         }
 
         return Ok(response);
+    }
+
+    [HttpPost("onboarding/verify-company")]
+    [AllowAnonymous]
+    [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(VerifyCompanyOnboardingResponse))]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<IActionResult> VerifyCompanyOnboarding(
+        [FromBody] VerifyCompanyOnboardingRequest request,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            var result = await _authService.VerifyCompanyOnboardingAsync(request, cancellationToken);
+            return Ok(result);
+        }
+        catch (AuthException ex)
+        {
+            return BadRequest(new { code = ex.Code, message = ex.Message });
+        }
+    }
+
+    [HttpPost("onboarding/verify-otp")]
+    [AllowAnonymous]
+    [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(VerifyOtpResponse))]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<IActionResult> VerifyOnboardingOtp(
+        [FromBody] VerifyOtpRequest request,
+        [FromHeader(Name = "X-Step1-Token")] string step1Token,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            var result = await _authService.VerifyOnboardingOtpAsync(request, step1Token, cancellationToken);
+            return Ok(result);
+        }
+        catch (AuthException ex)
+        {
+            return BadRequest(new { code = ex.Code, message = ex.Message });
+        }
+    }
+
+    [HttpPost("onboarding/verify-google")]
+    [AllowAnonymous]
+    [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(VerifyOtpResponse))]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<IActionResult> VerifyOnboardingGoogle(
+        [FromBody] GoogleOnboardingLinkRequest request,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            var result = await _authService.VerifyOnboardingGoogleAsync(request, cancellationToken);
+            return Ok(result);
+        }
+        catch (AuthException ex)
+        {
+            return BadRequest(new { code = ex.Code, message = ex.Message });
+        }
+    }
+
+    [HttpPost("onboarding/complete")]
+    [AllowAnonymous]
+    [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(AuthResponse))]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<IActionResult> CompleteOnboarding(
+        [FromBody] CompleteOnboardingRequest request,
+        CancellationToken cancellationToken)
+    {
+        var userAgent = Request.Headers["User-Agent"].ToString();
+        var ipAddress = HttpContext.Connection.RemoteIpAddress?.ToString() ?? "127.0.0.1";
+
+        try
+        {
+            var result = await _authService.CompleteOnboardingAsync(request, userAgent, ipAddress, cancellationToken);
+            return Ok(result);
+        }
+        catch (AuthException ex)
+        {
+            return BadRequest(new { code = ex.Code, message = ex.Message });
+        }
     }
 
     [HttpGet("sessions")]

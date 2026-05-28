@@ -11,14 +11,22 @@ interface SidebarState {
   toggleGroup: (id: string) => void;
   setGroupExpanded: (id: string, expanded: boolean) => void;
   resetMobile: () => void;
+  initializeCollapsed: () => void;
 }
 
-export const useSidebarStore = create<SidebarState>((set) => ({
+export const useSidebarStore = create<SidebarState>((set, get) => ({
   isCollapsed: false,
   isMobileOpen: false,
   expandedGroups: {},
   
-  toggleCollapsed: () => set((state) => ({ isCollapsed: !state.isCollapsed })),
+  toggleCollapsed: () =>
+    set((state) => {
+      const nextCollapsed = !state.isCollapsed;
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('sidebar_collapsed', String(nextCollapsed));
+      }
+      return { isCollapsed: nextCollapsed };
+    }),
   
   setMobileOpen: (open) => set({ isMobileOpen: open }),
   
@@ -39,4 +47,12 @@ export const useSidebarStore = create<SidebarState>((set) => ({
     })),
     
   resetMobile: () => set({ isMobileOpen: false }),
+
+  initializeCollapsed: () => {
+    if (typeof window === 'undefined') return;
+    const stored = localStorage.getItem('sidebar_collapsed');
+    if (stored !== null) {
+      set({ isCollapsed: stored === 'true' });
+    }
+  },
 }));

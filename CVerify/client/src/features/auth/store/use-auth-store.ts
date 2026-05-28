@@ -103,8 +103,6 @@ export const useAuthStore = create<AuthState>((set, get) => {
         isLoading: false,
         isInitialized: true,
         bootstrapState: 'READY',
-        status: 'ACTIVE',
-        nextStep: 'DASHBOARD',
       });
 
       // Broadcast login to all other tabs

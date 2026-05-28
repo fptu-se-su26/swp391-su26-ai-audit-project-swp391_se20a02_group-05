@@ -70,9 +70,21 @@ public class ApplicationDbContext : DbContext
     public DbSet<AuthProvider> AuthProviders => Set<AuthProvider>();
     public DbSet<PasswordCredential> PasswordCredentials => Set<PasswordCredential>();
     public DbSet<Organization> Organizations => Set<Organization>();
-    public DbSet<OrganizationMember> OrganizationMembers => Set<OrganizationMember>();
+    public DbSet<OrganizationAuthority> OrganizationAuthorities => Set<OrganizationAuthority>();
     public DbSet<OtpVerification> OtpVerifications => Set<OtpVerification>();
     public DbSet<VerificationLink> VerificationLinks => Set<VerificationLink>();
+    public DbSet<OrganizationVerification> OrganizationVerifications => Set<OrganizationVerification>();
+    public DbSet<Workspace> Workspaces => Set<Workspace>();
+    public DbSet<WorkspaceMember> WorkspaceMembers => Set<WorkspaceMember>();
+    public DbSet<RecoveryClaimDocument> RecoveryClaimDocuments => Set<RecoveryClaimDocument>();
+    public DbSet<WorkspaceArchiveSnapshot> WorkspaceArchiveSnapshots => Set<WorkspaceArchiveSnapshot>();
+    public DbSet<RecoveryExecutionLock> RecoveryExecutionLocks => Set<RecoveryExecutionLock>();
+    public DbSet<OrganizationRecoveryClaim> OrganizationRecoveryClaims => Set<OrganizationRecoveryClaim>();
+    public DbSet<ApprovedRecoverySession> ApprovedRecoverySessions => Set<ApprovedRecoverySession>();
+    public DbSet<RecoveryToken> RecoveryTokens => Set<RecoveryToken>();
+    public DbSet<RepresentativeRotationRequest> RepresentativeRotationRequests => Set<RepresentativeRotationRequest>();
+    public DbSet<RepresentativeApprovalVote> RepresentativeApprovalVotes => Set<RepresentativeApprovalVote>();
+    public DbSet<RepresentativeAuthorityHistory> RepresentativeAuthorityHistories => Set<RepresentativeAuthorityHistory>();
 
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
@@ -93,9 +105,21 @@ public class ApplicationDbContext : DbContext
         modelBuilder.Entity<AuthProvider>().Property(ap => ap.Id).ValueGeneratedNever();
         modelBuilder.Entity<PasswordCredential>().Property(pc => pc.Id).ValueGeneratedNever();
         modelBuilder.Entity<Organization>().Property(o => o.Id).ValueGeneratedNever();
-        modelBuilder.Entity<OrganizationMember>().Property(om => om.Id).ValueGeneratedNever();
+        modelBuilder.Entity<OrganizationAuthority>().Property(oa => oa.Id).ValueGeneratedNever();
         modelBuilder.Entity<OtpVerification>().Property(ov => ov.Id).ValueGeneratedNever();
         modelBuilder.Entity<VerificationLink>().Property(vl => vl.Id).ValueGeneratedNever();
+        modelBuilder.Entity<OrganizationVerification>().Property(ov => ov.Id).ValueGeneratedNever();
+        modelBuilder.Entity<Workspace>().Property(w => w.Id).ValueGeneratedNever();
+        modelBuilder.Entity<WorkspaceMember>().Property(wm => wm.Id).ValueGeneratedNever();
+        modelBuilder.Entity<RecoveryClaimDocument>().Property(rcd => rcd.Id).ValueGeneratedNever();
+        modelBuilder.Entity<WorkspaceArchiveSnapshot>().Property(was => was.Id).ValueGeneratedNever();
+        modelBuilder.Entity<RecoveryExecutionLock>().Property(rel => rel.Id).ValueGeneratedNever();
+        modelBuilder.Entity<OrganizationRecoveryClaim>().Property(orc => orc.Id).ValueGeneratedNever();
+        modelBuilder.Entity<ApprovedRecoverySession>().Property(ars => ars.Id).ValueGeneratedNever();
+        modelBuilder.Entity<RecoveryToken>().Property(rt => rt.Id).ValueGeneratedNever();
+        modelBuilder.Entity<RepresentativeRotationRequest>().Property(r => r.Id).ValueGeneratedNever();
+        modelBuilder.Entity<RepresentativeApprovalVote>().Property(v => v.Id).ValueGeneratedNever();
+        modelBuilder.Entity<RepresentativeAuthorityHistory>().Property(h => h.Id).ValueGeneratedNever();
 
         // Enable PostgreSQL Extensions
         modelBuilder.HasPostgresExtension("citext");
@@ -144,6 +168,20 @@ public class ApplicationDbContext : DbContext
             .HasForeignKey(rt => rt.UserId)
             .OnDelete(DeleteBehavior.Cascade);
 
+        // Configure RecoveryToken -> User (Many-to-One Cascade)
+        modelBuilder.Entity<RecoveryToken>()
+            .HasOne(rt => rt.User)
+            .WithMany()
+            .HasForeignKey(rt => rt.UserId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        // Configure RecoveryToken -> Organization (Many-to-One Cascade)
+        modelBuilder.Entity<RecoveryToken>()
+            .HasOne(rt => rt.Organization)
+            .WithMany()
+            .HasForeignKey(rt => rt.OrganizationId)
+            .OnDelete(DeleteBehavior.Cascade);
+
         // Configure AuditLog -> User (Many-to-One SetNull)
         modelBuilder.Entity<AuditLog>()
             .HasOne(al => al.User)
@@ -187,6 +225,13 @@ public class ApplicationDbContext : DbContext
             .ValueGeneratedOnAddOrUpdate()
             .IsConcurrencyToken();
 
+        modelBuilder.Entity<RecoveryToken>()
+            .Property(rt => rt.Version)
+            .HasColumnName("xmin")
+            .HasColumnType("xid")
+            .ValueGeneratedOnAddOrUpdate()
+            .IsConcurrencyToken();
+
         // Indexes
         modelBuilder.Entity<User>().HasIndex(u => u.Email).IsUnique().HasFilter("deleted_at IS NULL");
         modelBuilder.Entity<Role>().HasIndex(r => r.Name).IsUnique();
@@ -215,6 +260,11 @@ public class ApplicationDbContext : DbContext
             .HasFilter("consumed_at IS NULL")
             .HasDatabaseName("idx_reset_password_tokens_active");
 
+        modelBuilder.Entity<RecoveryToken>()
+            .HasIndex(rt => rt.TokenHash)
+            .HasFilter("consumed_at IS NULL AND revoked_at IS NULL")
+            .HasDatabaseName("idx_recovery_tokens_active");
+
         modelBuilder.Entity<OutboxMessage>()
             .HasIndex(om => om.CreatedAt)
             .HasFilter("processed_at IS NULL")
@@ -228,6 +278,14 @@ public class ApplicationDbContext : DbContext
         modelBuilder.Entity<ResetPasswordToken>()
             .HasIndex(rt => rt.UserId)
             .HasDatabaseName("idx_reset_password_tokens_user_id");
+
+        modelBuilder.Entity<RecoveryToken>()
+            .HasIndex(rt => rt.UserId)
+            .HasDatabaseName("idx_recovery_tokens_user_id");
+
+        modelBuilder.Entity<RecoveryToken>()
+            .HasIndex(rt => rt.OrganizationId)
+            .HasDatabaseName("idx_recovery_tokens_organization_id");
 
         modelBuilder.Entity<AuditLog>()
             .HasIndex(al => al.UserId)
@@ -320,19 +378,100 @@ public class ApplicationDbContext : DbContext
                   .HasDatabaseName("idx_organizations_tax_code_active");
         });
 
-        // OrganizationMember configurations
-        modelBuilder.Entity<OrganizationMember>(entity =>
+        // OrganizationAuthority configurations
+        modelBuilder.Entity<OrganizationAuthority>(entity =>
         {
-            entity.ToTable("organization_members");
-            entity.HasQueryFilter(om => om.Organization.DeletedAt == null);
-            entity.HasOne(om => om.Organization)
+            entity.ToTable("organization_authorities");
+            entity.HasQueryFilter(oa => oa.Organization.DeletedAt == null);
+            entity.HasOne(oa => oa.Organization)
                   .WithMany(o => o.Members)
-                  .HasForeignKey(om => om.OrganizationId)
+                  .HasForeignKey(oa => oa.OrganizationId)
                   .OnDelete(DeleteBehavior.Cascade);
-            entity.HasOne(om => om.User)
+            entity.HasOne(oa => oa.User)
                   .WithMany()
-                  .HasForeignKey(om => om.UserId)
+                  .HasForeignKey(oa => oa.UserId)
                   .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        // Workspace configurations
+        modelBuilder.Entity<Workspace>(entity =>
+        {
+            entity.ToTable("workspaces");
+            entity.HasQueryFilter(w => w.DeletedAt == null);
+            entity.HasOne(w => w.Organization)
+                  .WithMany()
+                  .HasForeignKey(w => w.OrganizationId)
+                  .OnDelete(DeleteBehavior.Cascade);
+            entity.HasIndex(w => w.Slug)
+                  .IsUnique()
+                  .HasFilter("deleted_at IS NULL")
+                  .HasDatabaseName("idx_workspaces_slug_active");
+        });
+
+        // WorkspaceMember configurations
+        modelBuilder.Entity<WorkspaceMember>(entity =>
+        {
+            entity.ToTable("workspace_members");
+            entity.HasOne(wm => wm.Workspace)
+                  .WithMany()
+                  .HasForeignKey(wm => wm.WorkspaceId)
+                  .OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(wm => wm.User)
+                  .WithMany()
+                  .HasForeignKey(wm => wm.UserId)
+                  .OnDelete(DeleteBehavior.Cascade);
+            entity.HasIndex(wm => new { wm.WorkspaceId, wm.UserId }).IsUnique();
+        });
+
+        // RecoveryClaimDocument configurations
+        modelBuilder.Entity<RecoveryClaimDocument>(entity =>
+        {
+            entity.ToTable("recovery_claim_documents");
+            entity.HasOne<OrganizationRecoveryClaim>()
+                  .WithMany(orc => orc.Documents)
+                  .HasForeignKey(rcd => rcd.RecoveryClaimId)
+                  .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        // WorkspaceArchiveSnapshot configurations
+        modelBuilder.Entity<WorkspaceArchiveSnapshot>(entity =>
+        {
+            entity.ToTable("workspace_archive_snapshots");
+            entity.HasOne<Workspace>()
+                  .WithMany()
+                  .HasForeignKey(was => was.WorkspaceId)
+                  .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        // RecoveryExecutionLock configurations
+        modelBuilder.Entity<RecoveryExecutionLock>(entity =>
+        {
+            entity.ToTable("recovery_execution_locks");
+            entity.HasOne<ApprovedRecoverySession>()
+                  .WithMany()
+                  .HasForeignKey(rel => rel.RecoverySessionId)
+                  .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        // OrganizationRecoveryClaim configurations
+        modelBuilder.Entity<OrganizationRecoveryClaim>(entity =>
+        {
+            entity.ToTable("organization_recovery_claims");
+            entity.HasOne(orc => orc.Organization)
+                  .WithMany()
+                  .HasForeignKey(orc => orc.OrganizationId)
+                  .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        // ApprovedRecoverySession configurations
+        modelBuilder.Entity<ApprovedRecoverySession>(entity =>
+        {
+            entity.ToTable("approved_recovery_sessions");
+            entity.HasOne(ars => ars.Organization)
+                  .WithMany()
+                  .HasForeignKey(ars => ars.OrganizationId)
+                  .OnDelete(DeleteBehavior.Cascade);
+            entity.HasIndex(ars => ars.RecoveryTokenHash).IsUnique();
         });
 
         // OtpVerification configurations
@@ -353,6 +492,52 @@ public class ApplicationDbContext : DbContext
             entity.HasIndex(vl => vl.TokenHash)
                   .HasFilter("deleted_at IS NULL AND consumed_at IS NULL")
                   .HasDatabaseName("idx_verification_links_active");
+        });
+
+        // OrganizationVerification configurations
+        modelBuilder.Entity<OrganizationVerification>(entity =>
+        {
+            entity.ToTable("organization_verifications");
+            entity.HasOne(ov => ov.Organization)
+                  .WithMany()
+                  .HasForeignKey(ov => ov.OrganizationId)
+                  .OnDelete(DeleteBehavior.Cascade);
+            entity.HasIndex(ov => ov.OrganizationId)
+                  .HasDatabaseName("idx_organization_verifications_org_id");
+        });
+
+        // RepresentativeRotationRequest configurations
+        modelBuilder.Entity<RepresentativeRotationRequest>(entity =>
+        {
+            entity.ToTable("representative_rotation_requests");
+            entity.HasOne(r => r.Organization)
+                  .WithMany()
+                  .HasForeignKey(r => r.OrganizationId)
+                  .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        // RepresentativeApprovalVote configurations
+        modelBuilder.Entity<RepresentativeApprovalVote>(entity =>
+        {
+            entity.ToTable("representative_approval_votes");
+            entity.HasOne(v => v.Request)
+                  .WithMany(r => r.Votes)
+                  .HasForeignKey(v => v.RequestId)
+                  .OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(v => v.ApproverUser)
+                  .WithMany()
+                  .HasForeignKey(v => v.ApproverUserId)
+                  .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        // RepresentativeAuthorityHistory configurations
+        modelBuilder.Entity<RepresentativeAuthorityHistory>(entity =>
+        {
+            entity.ToTable("representative_authority_histories");
+            entity.HasOne(h => h.Organization)
+                  .WithMany()
+                  .HasForeignKey(h => h.OrganizationId)
+                  .OnDelete(DeleteBehavior.Cascade);
         });
     }
 }

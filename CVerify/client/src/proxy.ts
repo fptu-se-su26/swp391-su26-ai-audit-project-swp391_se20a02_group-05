@@ -1,9 +1,6 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
-import { jwtVerify } from 'jose';
 import { ROUTES } from './lib/constants/auth.constants';
-import { UserRole } from './types/auth.types';
-import { normalizeRole } from './lib/utils/auth-utils';
 
 const SUPPORTED_LANGS = ['vi', 'en'];
 const DEFAULT_LANG = 'vi';
@@ -48,7 +45,7 @@ export async function proxy(request: NextRequest) {
   const accessToken = request.cookies.get('access_token')?.value;
 
   // Define route classifications
-  const isDashboardRoute = ['/admin', '/business', '/user'].some(p => pathname.startsWith(p));
+  const isDashboardRoute = ['/admin', '/business', '/user', '/chat'].some(p => pathname.startsWith(p));
 
   // Development environment gated edge logging to prevent production data leakage
   if (isDev) {
@@ -59,12 +56,13 @@ export async function proxy(request: NextRequest) {
 
   // 1. Protecting Dashboard Sub-Routes (Coarse Gating)
   if (isDashboardRoute) {
-    if (!accessToken) {
+    const refreshToken = request.cookies.get('refresh_token')?.value;
+    if (!accessToken && !refreshToken) {
       const callbackUrl = encodeURIComponent(pathname + request.nextUrl.search);
       const redirectUrl = new URL(`${ROUTES.LOGIN}?callbackUrl=${callbackUrl}`, request.url);
       
       if (isDev) {
-        console.log(`[Security Proxy] Access token cookie missing. Redirecting to login: ${redirectUrl.toString()}`);
+        console.log(`[Security Proxy] Both access and refresh tokens missing. Redirecting to login: ${redirectUrl.toString()}`);
       }
 
       // Clean cookies on redirect to clear potentially broken sessions

@@ -1,15 +1,20 @@
-﻿using Microsoft.AspNetCore.Diagnostics;
+using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.AspNetCore.Http;
-using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
 using System;
+using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
+using CVerify.API.Application.DTOs;
 using CVerify.API.Application.Exceptions;
+using CVerify.API.Application.Exceptions.Catalogs;
 using CVerify.API.Infrastructure.Diagnostics;
 
 namespace CVerify.API.API.Extensions;
 
+/// <summary>
+/// Intercepts all system and domain exceptions, sanitizes sensitive diagnostics, and serializes versioned ApiErrorResponse contracts.
+/// </summary>
 public class GlobalExceptionHandler : IExceptionHandler
 {
     private readonly IAppLogger _logger;
@@ -24,54 +29,132 @@ public class GlobalExceptionHandler : IExceptionHandler
         Exception exception,
         CancellationToken cancellationToken)
     {
-        var problemDetails = new ProblemDetails
+        // 1. Establish the correlation context ID
+        var correlationId = AsyncLocalCorrelationScope.CurrentCorrelationId ?? httpContext.TraceIdentifier;
+
+        var responsePayload = new ApiErrorResponse
         {
-            Status = StatusCodes.Status500InternalServerError,
-            Title = "Server Error",
-            Type = "https://tools.ietf.org/html/rfc7231#section-6.6.1",
-            Detail = exception.Message
+            CorrelationId = correlationId,
+            Timestamp = DateTime.UtcNow
         };
 
-        bool isHandled = false;
+        bool isHandledDomainException = false;
 
-        if (exception is DuplicateEmailException dupEx)
+        // 2. Map domain-driven custom exceptions
+        if (exception is CVerifyBaseException domainEx)
         {
-            isHandled = true;
-            problemDetails.Status = StatusCodes.Status409Conflict;
-            problemDetails.Title = "Duplicate Email Conflict";
-            problemDetails.Type = "https://tools.ietf.org/html/rfc7231#section-6.5.8";
-            problemDetails.Extensions.Add("code", dupEx.Code);
+            isHandledDomainException = true;
+            responsePayload.Status = domainEx.Category switch
+            {
+                ErrorCategory.VALIDATION => StatusCodes.Status400BadRequest,
+                ErrorCategory.AUTHENTICATION => StatusCodes.Status401Unauthorized,
+                ErrorCategory.AUTHORIZATION => StatusCodes.Status403Forbidden,
+                ErrorCategory.BUSINESS => StatusCodes.Status409Conflict,
+                ErrorCategory.INFRASTRUCTURE => StatusCodes.Status500InternalServerError,
+                ErrorCategory.NETWORK => StatusCodes.Status503ServiceUnavailable,
+                ErrorCategory.EXTERNAL_SERVICE => StatusCodes.Status502BadGateway,
+                _ => StatusCodes.Status500InternalServerError
+            };
+
+            // Respect specific HTTP status codes if already configured in details
+            if (domainEx is RateLimitExceededException)
+            {
+                responsePayload.Status = StatusCodes.Status429TooManyRequests;
+            }
+            else if (domainEx is ResourceNotFoundException)
+            {
+                responsePayload.Status = StatusCodes.Status404NotFound;
+            }
+
+            responsePayload.Code = domainEx.ErrorCode;
+            responsePayload.Category = domainEx.Category.ToString();
+            responsePayload.Severity = domainEx.Severity;
+            responsePayload.MessageKey = domainEx.MessageKey;
+            responsePayload.Message = domainEx.Message; // Safe default, frontend will prioritize messageKey
+            responsePayload.Retryable = domainEx.Retryable;
+            responsePayload.Errors = domainEx.ValidationErrors;
+            responsePayload.UxSemantics = new UxSemantics(
+                domainEx.DisplayMode,
+                domainEx.ResolutionStrategy,
+                domainEx.UserAction,
+                domainEx.TargetPath
+            );
+
+            // Copy dynamic safe attributes (cooldowns, attempts)
+            foreach (var (key, value) in domainEx.Details)
+            {
+                responsePayload.Details.Add(key, value);
+            }
         }
-        else if (exception is AuthException authEx)
+        // 3. Map standard C# exceptions
+        else if (exception is UnauthorizedAccessException unauthEx)
         {
-            isHandled = true;
-            problemDetails.Status = StatusCodes.Status400BadRequest;
-            problemDetails.Title = "Authentication Error";
-            problemDetails.Type = "https://tools.ietf.org/html/rfc7231#section-6.5.1";
-            problemDetails.Extensions.Add("code", authEx.Code);
+            isHandledDomainException = true;
+            var def = ErrorRegistryCompiler.Get(AuthErrorCodes.Unauthorized);
+            responsePayload.Status = StatusCodes.Status403Forbidden;
+            responsePayload.Code = def.Code;
+            responsePayload.Category = ErrorCategory.AUTHORIZATION.ToString();
+            responsePayload.Severity = def.DefaultSeverity;
+            responsePayload.MessageKey = def.MessageKey;
+            responsePayload.Message = unauthEx.Message;
+            responsePayload.Retryable = def.DefaultRetryable;
+            responsePayload.UxSemantics = new UxSemantics("Banner", "Redirect", "auth.actions.login", "/login?session_expired=true");
         }
-        else if (exception is UnauthorizedAccessException)
+        else if (exception is TimeoutException timeoutEx)
         {
-            isHandled = true;
-            problemDetails.Status = StatusCodes.Status401Unauthorized;
-            problemDetails.Title = "Unauthorized";
-            problemDetails.Type = "https://tools.ietf.org/html/rfc7235#section-3.1";
+            var def = ErrorRegistryCompiler.Get(SystemErrorCatalog.NetworkTimeout);
+            responsePayload.Status = StatusCodes.Status408RequestTimeout;
+            responsePayload.Code = def.Code;
+            responsePayload.Category = ErrorCategory.NETWORK.ToString();
+            responsePayload.Severity = def.DefaultSeverity;
+            responsePayload.MessageKey = def.MessageKey;
+            responsePayload.Message = "Fallback: Connection timed out.";
+            responsePayload.Retryable = true;
+            responsePayload.UxSemantics = new UxSemantics("Toast", "Retry", string.Empty, string.Empty);
+        }
+        // 4. Default: Sanitized UNKNOWN fallback (Anti-leakage barrier)
+        else
+        {
+            var def = ErrorRegistryCompiler.Get(SystemErrorCatalog.UnexpectedError);
+            responsePayload.Status = StatusCodes.Status500InternalServerError;
+            responsePayload.Code = def.Code;
+            responsePayload.Category = ErrorCategory.UNKNOWN.ToString();
+            responsePayload.Severity = def.DefaultSeverity;
+            responsePayload.MessageKey = def.MessageKey;
+            responsePayload.Message = "An unexpected error occurred. Developer context has been logged securely.";
+            responsePayload.Retryable = false;
+            responsePayload.UxSemantics = new UxSemantics("Toast", "None", string.Empty, string.Empty);
         }
 
-        // Centralized Exception Log routing
-        if (isHandled)
+        // 5. Centralized log routing
+        var logCategory = isHandledDomainException ? "DOMAIN" : "CRITICAL_SYSTEM";
+        if (isHandledDomainException)
         {
-            _logger.Log(LogLevel.Warning, "SYSTEM", $"Handled exception: {exception.GetType().Name} - {exception.Message}");
+            _logger.Log(
+                LogLevel.Warning, 
+                logCategory, 
+                $"Handled request error code: {responsePayload.Code} - {exception.Message} [Ref: {correlationId}]",
+                null,
+                new Dictionary<string, object> { { "correlationId", correlationId } }
+            );
         }
         else
         {
-            _logger.Log(LogLevel.Error, "SYSTEM", $"An unhandled exception occurred: {exception.Message}", exception);
+            // Log full exception object (stack traces are preserved only in developer logs)
+            _logger.Log(
+                LogLevel.Error, 
+                logCategory, 
+                $"Unhandled System Exception intercepted: {exception.Message} [Ref: {correlationId}]",
+                exception,
+                new Dictionary<string, object> { { "correlationId", correlationId } }
+            );
         }
 
-        httpContext.Response.StatusCode = problemDetails.Status.Value;
-        httpContext.Response.ContentType = "application/problem+json";
+        // 6. Write sanitized response
+        httpContext.Response.StatusCode = responsePayload.Status;
+        httpContext.Response.ContentType = "application/json";
 
-        await httpContext.Response.WriteAsJsonAsync(problemDetails, cancellationToken);
+        await httpContext.Response.WriteAsJsonAsync(responsePayload, cancellationToken);
 
         return true;
     }

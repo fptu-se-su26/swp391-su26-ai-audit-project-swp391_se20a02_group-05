@@ -17,5 +17,7 @@
     "activeBanner": "Phiên làm việc đang hoạt động",
     "timeoutWarn": "Cảnh báo hết hạn phiên",
     "roleGated": "Quyền hạn được kiểm soát"
-  }
+  },
+  "expand": "Mở rộng thanh bên",
+  "collapse": "Thu gọn thanh bên"
 }

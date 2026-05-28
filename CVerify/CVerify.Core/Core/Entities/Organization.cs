@@ -27,7 +27,31 @@ public class Organization
     [MaxLength(100)]
     public string Username { get; set; } = null!;
 
+    [MaxLength(50)]
+    public string? RegistrationNumber { get; set; }
+
+    [Required]
+    [MaxLength(50)]
+    public string Status { get; set; } = "active"; // "active", "disputed", "archived", "superseded", "fraudulent"
+
     public bool IsVerified { get; set; } = false;
+
+    public int VerificationLevel { get; set; } = 0; // 0 = Unverified/Onboarding, 1 = Legal Verified, 2 = Domain Verified, 3 = Domain Ownership Verified
+
+    [MaxLength(255)]
+    public string? RepresentativeName { get; set; }
+
+    [MaxLength(255)]
+    public string? RepresentativeEmail { get; set; }
+
+    [MaxLength(50)]
+    public string? RepresentativePhone { get; set; }
+
+    [MaxLength(255)]
+    public string? RecoveryAuthority { get; set; }
+
+    [MaxLength(255)]
+    public string? RepresentativeIdentity { get; set; }
 
     public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
 
@@ -35,5 +59,5 @@ public class Organization
 
     public DateTimeOffset? DeletedAt { get; set; }
 
-    public virtual ICollection<OrganizationMember> Members { get; set; } = new List<OrganizationMember>();
+    public virtual ICollection<OrganizationAuthority> Members { get; set; } = new List<OrganizationAuthority>();
 }

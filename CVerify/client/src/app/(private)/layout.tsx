@@ -1,13 +1,12 @@
 "use client";
 
-import React from 'react';
-import { useAuth } from '../../features/auth/hooks/use-auth';
-import { useSessionTimeout } from '../../hooks/use-session-timeout';
-import { SessionTimeoutModal } from '../../components/ui/session-timeout-modal';
-import { AppBreadcrumbs } from '../../components/ui/app-breadcrumbs';
-import { Sidebar } from '../../components/ui/sidebar';
-import { Header } from '../../components/ui/header';
-import { AuthGuard } from '../../features/auth/guards/auth-guard';
+import React from "react";
+import { useAuth } from "../../features/auth/hooks/use-auth";
+import { useSessionTimeout } from "../../hooks/use-session-timeout";
+import { SessionTimeoutModal } from "../../components/ui/session-timeout-modal";
+import { Sidebar } from "../../components/ui/sidebar";
+import { Header } from "../../components/ui/header";
+import { AuthGuard } from "../../features/auth/guards/auth-guard";
 
 export default function DashboardLayout({
   children,
@@ -24,8 +23,7 @@ export default function DashboardLayout({
 
   return (
     <AuthGuard>
-      <div className="grid min-h-screen w-full grid-cols-1 md:grid-cols-[auto_1fr] bg-background text-foreground transition-colors duration-300">
-
+      <div className="grid min-h-screen w-full grid-cols-1 md:grid-cols-[auto_1fr] bg-[#ffffff] dark:bg-[#000000] text-foreground transition-colors duration-300">
         {/* 1. Dynamic Recursive Sidebar (Desktop + Mobile overlay drawer) */}
         <Sidebar />
 
@@ -35,11 +33,7 @@ export default function DashboardLayout({
           <Header />
 
           {/* Dynamic page contents wrapper */}
-          <main className="flex-1 p-6 md:p-8 overflow-y-auto max-w-7xl w-full mx-auto">
-            {/* Shifted page-level Breadcrumbs */}
-            <div className="mb-6">
-              <AppBreadcrumbs />
-            </div>
+          <main className="flex-1 overflow-y-auto mr-3 mb-3 bg-background border-2 rounded-2xl p-6">
             {children}
           </main>
         </div>
@@ -55,4 +49,3 @@ export default function DashboardLayout({
     </AuthGuard>
   );
 }
-

@@ -1,4 +1,4 @@
-﻿# CVerify Frontend Client Layer
+# CVerify Frontend Client Layer
 
 Welcome to the **CVerify AI Client Layer**. This is a state-of-the-art, premium frontend application built with React 19 and Next.js 16 (App Router). The UI features responsive glassmorphic interfaces, smooth animations, dynamic states, and robust edge-level security protections. It serves as the primary collaboration and itinerary planning interface for CVerify travelers and business partners.
 
@@ -9,7 +9,7 @@ Welcome to the **CVerify AI Client Layer**. This is a state-of-the-art, premium 
 The client layer is built utilizing a curated, professional technology stack ensuring maximum performance, visual excellence, and secure routing:
 
 *   **Core Engine**: [Next.js 16 (App Router)](https://nextjs.org/) using Server Components for speed, SEO, and optimal bundle size.
-*   **UI Library**: [HeroUI v3 (Beta)](https://v3.heroui.com/) — Next-generation React Aria-based components ensuring AAA accessibility, keyboard navigation, and micro-interactions.
+*   **UI Library**: [HeroUI v3](https://v3.heroui.com/) — Next-generation React Aria-based components ensuring AAA accessibility, keyboard navigation, and micro-interactions.
 *   **Styling Engine**: [Tailwind CSS v4](https://tailwindcss.com/) — Utilizes modern Oklch color formats, instant compilation, and zero-runtime CSS footprint.
 *   **State Management**: [Zustand 5.x](https://github.com/pmndrs/zustand) — Lightweight, fast, and robust global state store.
 *   **Form Architecture**: [React Hook Form 7.x](https://react-hook-form.com/) combined with [Zod 4.x](https://zod.dev/) for type-safe validation schemas.
@@ -18,9 +18,9 @@ The client layer is built utilizing a curated, professional technology stack ens
 
 ---
 
-## 📂 Folder Structure
+## 📂 Folder Structure & Architectural Design
 
-The frontend application follows an enterprise feature-and-concern directory split within the `/src` folder:
+The frontend application follows a strict, feature-and-concern directory split within the `/src` folder, enforcing a **Zero-Duplication, Anti-Shared Dumping Ground** policy:
 
 ```
 client/
@@ -39,21 +39,44 @@ client/
 │   │   ├── globals.css     # Global Tailwind CSS and HeroUI variable injection
 │   │   ├── layout.tsx      # Main wrapper with typography and theme initializers
 │   │   └── providers.tsx   # React context injections (HeroUI, Query, Toast providers)
-│   ├── components/         # Shared, reusable atomic UI components (Buttons, Modals, Cards)
-│   ├── features/           # Dynamic, feature-specific modules (ActivityBlocks, Collaborative editors)
-│   ├── hooks/              # Custom React hooks (e.g. SSE streaming handlers)
+│   ├── components/         # Core generic UI elements and global controls
+│   │   ├── ui/             # Primitive, highly-accessible UI components (OtpInput, Buttons, Cards)
+│   │   └── forms/          # Standardized form controller wrappers (FormOtpField, FormInput)
+│   ├── features/           # Gated, domain-specific modules with encapsulated logic
+│   │   └── auth/           # Complete Authentication domain boundary
+│   │       ├── components/ # Auth-specific components (PasswordStrengthMeter, Showcase layouts)
+│   │       ├── security/   # Cryptographic / complexity validation logic (PasswordPolicy)
+│   │       ├── permissions/# RBAC seed database registry, schema types, and metadata checkers
+│   │       ├── services/   # Auth API request wrappers (RecoveryService, TokenHub)
+│   │       ├── store/      # Encapsulated auth Zustand slice (useAuthStore)
+│   │       └── views/      # Dedicated full-page auth controllers (CompanyVerificationView, ReclaimView)
+│   ├── hooks/              # Custom global React hooks (e.g. SSE streaming handlers, useSessionTimeout)
 │   ├── lib/                # Technical integrations, constants, and utilities
 │   │   ├── api/            # Axios HTTP client, end-to-end endpoints, and telemetry service
 │   │   ├── constants/      # Immutable configurations, application route names, cookie keys
 │   │   ├── utils/          # Pure helpers (date formatters, token parsers, claims helpers)
 │   │   └── validators/     # Zod schemas matched strictly against C# class validations
-│   ├── store/              # Global Zustand state models (use-auth-store.ts)
-│   ├── types/              # TypeScript typings and schema models
+│   ├── stores/             # Consolidated global Zustand state models (useThemeStore)
+│   ├── types/              # Global TypeScript typings and standardized API response contracts (api.types)
 │   └── proxy.ts            # Security Proxy - Edge middleware checking cryptographic tokens and claims
 ├── .env.example            # Baseline environment variables template
 ├── tsconfig.json           # Type configurations for React 19/TypeScript 5
 └── next.config.ts          # Turbopack, React compiler, and static optimizations configuration
 ```
+
+---
+
+## 🏛️ Codebase Refactoring & Consolidations (Strict Code Policies)
+
+To maintain a clean, maintainable clean-architecture flow and prevent the creation of unorganized dumping grounds:
+
+1.  **Anti-Shared Layer Policy**: The global `src/shared` directory is completely forbidden and deleted. All active utilities, UI components, and domain types have strict owners:
+    *   *Core UI Primitives* (e.g. `OtpInput`) live inside `src/components/ui/`.
+    *   *Generic Form Wrappers* (e.g. `FormOtpField`) live inside `src/components/forms/`.
+    *   *Domain-Specific Logic* (e.g. `PasswordPolicy`, `PasswordStrengthMeter`, and RBAC matrix `permissions`) are fully colocated inside `src/features/auth/`.
+    *   *Global Response Contracts* live in `src/types/`.
+2.  **Zustand Consolidation**: Redundant hook wrappers (like `hooks/use-theme-store.ts`) are eliminated in favor of a single, centralized global store (`stores/use-theme-store.ts`) to avoid hydration discrepancies or state duplication.
+3.  **Strict Path Restrictions**: Path aliases are restricted to the root module mapping (`@/*` to `./src/*`), and legacy `@shared/*` mappings in `tsconfig.json` are permanently deprecated to enforce neat import structures.
 
 ---
 

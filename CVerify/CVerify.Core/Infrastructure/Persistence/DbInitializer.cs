@@ -29,10 +29,21 @@ public static class DbInitializer
         if (shouldReset)
         {
             const string dropSql = @"
+                DROP TABLE IF EXISTS representative_approval_votes CASCADE;
+                DROP TABLE IF EXISTS representative_rotation_requests CASCADE;
+                DROP TABLE IF EXISTS representative_authority_histories CASCADE;
+                DROP TABLE IF EXISTS recovery_execution_locks CASCADE;
+                DROP TABLE IF EXISTS workspace_archive_snapshots CASCADE;
+                DROP TABLE IF EXISTS recovery_claim_documents CASCADE;
+                DROP TABLE IF EXISTS organization_recovery_claims CASCADE;
+                DROP TABLE IF EXISTS approved_recovery_sessions CASCADE;
+                DROP TABLE IF EXISTS workspace_members CASCADE;
+                DROP TABLE IF EXISTS workspaces CASCADE;
                 DROP TABLE IF EXISTS messages CASCADE;
                 DROP TABLE IF EXISTS conversations CASCADE;
                 DROP TABLE IF EXISTS audit_logs CASCADE;
                 DROP TABLE IF EXISTS outbox_messages CASCADE;
+                DROP TABLE IF EXISTS recovery_tokens CASCADE;
                 DROP TABLE IF EXISTS reset_password_tokens CASCADE;
                 DROP TABLE IF EXISTS verification_tokens CASCADE;
                 DROP TABLE IF EXISTS refresh_tokens CASCADE;
@@ -41,6 +52,8 @@ public static class DbInitializer
                 DROP TABLE IF EXISTS user_roles CASCADE;
                 DROP TABLE IF EXISTS verification_links CASCADE;
                 DROP TABLE IF EXISTS otp_verifications CASCADE;
+                DROP TABLE IF EXISTS organization_verifications CASCADE;
+                DROP TABLE IF EXISTS organization_authorities CASCADE;
                 DROP TABLE IF EXISTS organization_members CASCADE;
                 DROP TABLE IF EXISTS organizations CASCADE;
                 DROP TABLE IF EXISTS password_credentials CASCADE;
@@ -152,6 +165,12 @@ public static class DbInitializer
                 email VARCHAR(255) NOT NULL,
                 username VARCHAR(100) NOT NULL,
                 is_verified BOOLEAN NOT NULL DEFAULT FALSE,
+                verification_level INTEGER NOT NULL DEFAULT 0,
+                representative_name VARCHAR(255),
+                representative_email VARCHAR(255),
+                representative_phone VARCHAR(50),
+                recovery_authority VARCHAR(255),
+                representative_identity VARCHAR(255),
                 created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
                 updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
                 deleted_at TIMESTAMP WITH TIME ZONE
@@ -159,15 +178,182 @@ public static class DbInitializer
             CREATE UNIQUE INDEX IF NOT EXISTS idx_organizations_username_active ON organizations(username) WHERE deleted_at IS NULL;
             CREATE UNIQUE INDEX IF NOT EXISTS idx_organizations_tax_code_active ON organizations(tax_code) WHERE deleted_at IS NULL;
 
-            -- Stores organization workspace membership records
-            CREATE TABLE IF NOT EXISTS organization_members (
+            -- Stores organization verification records
+            CREATE TABLE IF NOT EXISTS organization_verifications (
+                id UUID PRIMARY KEY,
+                organization_id UUID NOT NULL,
+                verification_type VARCHAR(50) NOT NULL,
+                is_verified BOOLEAN NOT NULL DEFAULT FALSE,
+                verified_value VARCHAR(255),
+                verified_at TIMESTAMP WITH TIME ZONE,
+                verified_by VARCHAR(100),
+                metadata TEXT,
+                CONSTRAINT fk_organization_verifications_organization FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE
+            );
+            CREATE INDEX IF NOT EXISTS idx_organization_verifications_org_id ON organization_verifications(organization_id);
+
+            -- Stores organization workspace authority records (Legal ownership/control layer)
+            CREATE TABLE IF NOT EXISTS organization_authorities (
                 id UUID PRIMARY KEY,
                 organization_id UUID NOT NULL,
                 user_id UUID NOT NULL,
                 role VARCHAR(50) NOT NULL,
                 joined_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
-                CONSTRAINT fk_organization_members_organization FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE,
-                CONSTRAINT fk_organization_members_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+                CONSTRAINT fk_organization_authorities_organization FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE,
+                CONSTRAINT fk_organization_authorities_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+            );
+
+            -- Stores workspaces (Workspace Identity Layer)
+            CREATE TABLE IF NOT EXISTS workspaces (
+                id UUID PRIMARY KEY,
+                organization_id UUID NOT NULL,
+                display_name VARCHAR(255) NOT NULL,
+                slug VARCHAR(100) NOT NULL,
+                branding TEXT,
+                status VARCHAR(50) NOT NULL DEFAULT 'active',
+                created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+                updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+                deleted_at TIMESTAMP WITH TIME ZONE,
+                CONSTRAINT fk_workspaces_organization FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE
+            );
+            CREATE UNIQUE INDEX IF NOT EXISTS idx_workspaces_slug_active ON workspaces(slug) WHERE deleted_at IS NULL;
+
+            -- Stores workspace memberships (Workspace Membership Layer)
+            CREATE TABLE IF NOT EXISTS workspace_members (
+                id UUID PRIMARY KEY,
+                workspace_id UUID NOT NULL,
+                user_id UUID NOT NULL,
+                role VARCHAR(50) NOT NULL,
+                joined_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+                CONSTRAINT fk_workspace_members_workspace FOREIGN KEY (workspace_id) REFERENCES workspaces(id) ON DELETE CASCADE,
+                CONSTRAINT fk_workspace_members_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+            );
+            CREATE UNIQUE INDEX IF NOT EXISTS idx_workspace_members_workspace_user ON workspace_members(workspace_id, user_id);
+
+            -- Stores organization recovery claims
+            CREATE TABLE IF NOT EXISTS organization_recovery_claims (
+                id UUID PRIMARY KEY,
+                organization_id UUID NOT NULL,
+                representative_full_name VARCHAR(255) NOT NULL,
+                representative_position VARCHAR(255) NOT NULL,
+                phone_number VARCHAR(50) NOT NULL,
+                recovery_email VARCHAR(255) NOT NULL,
+                risk_score INTEGER NOT NULL,
+                risk_level VARCHAR(50) NOT NULL,
+                suggested_recovery_strategy VARCHAR(50) NOT NULL,
+                status VARCHAR(50) NOT NULL DEFAULT 'Pending',
+                rejection_reason TEXT,
+                reviewed_by VARCHAR(100),
+                second_reviewer_by VARCHAR(100),
+                reviewed_at TIMESTAMP WITH TIME ZONE,
+                created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+                updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+                document_ocr_metadata TEXT,
+                document_suspicious_metadata TEXT,
+                workspace_activity_flags TEXT,
+                ip_device_flags TEXT,
+                historical_claim_flags TEXT,
+                CONSTRAINT fk_recovery_claims_organization FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE
+            );
+
+            -- Stores recovery claim documents (Relational files entity)
+            CREATE TABLE IF NOT EXISTS recovery_claim_documents (
+                id UUID PRIMARY KEY,
+                recovery_claim_id UUID NOT NULL,
+                storage_path VARCHAR(500) NOT NULL,
+                file_name VARCHAR(255) NOT NULL,
+                content_type VARCHAR(100) NOT NULL,
+                encryption_iv VARCHAR(100) NOT NULL,
+                ocr_result_text TEXT,
+                virus_scan_status VARCHAR(50) NOT NULL DEFAULT 'Pending',
+                retention_expiry_date TIMESTAMP WITH TIME ZONE NOT NULL,
+                created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+                CONSTRAINT fk_claim_documents_claim FOREIGN KEY (recovery_claim_id) REFERENCES organization_recovery_claims(id) ON DELETE CASCADE
+            );
+
+            -- Stores approved recovery sessions
+            CREATE TABLE IF NOT EXISTS approved_recovery_sessions (
+                id UUID PRIMARY KEY,
+                organization_id UUID NOT NULL,
+                approved_representative VARCHAR(255) NOT NULL,
+                verified_recovery_email VARCHAR(255) NOT NULL,
+                recovery_token_hash VARCHAR(255) NOT NULL,
+                expires_at TIMESTAMP WITH TIME ZONE NOT NULL,
+                approved_by VARCHAR(100) NOT NULL,
+                suggested_strategy VARCHAR(50) NOT NULL,
+                is_consumed BOOLEAN NOT NULL DEFAULT FALSE,
+                used_at TIMESTAMP WITH TIME ZONE,
+                used_by_ip VARCHAR(45),
+                used_by_device VARCHAR(500),
+                revoked_at TIMESTAMP WITH TIME ZONE,
+                created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+                CONSTRAINT fk_recovery_sessions_organization FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE
+            );
+            CREATE UNIQUE INDEX IF NOT EXISTS idx_approved_recovery_sessions_token_hash ON approved_recovery_sessions(recovery_token_hash);
+
+            -- Stores workspace archive snapshots before rebuilt strategy
+            CREATE TABLE IF NOT EXISTS workspace_archive_snapshots (
+                id UUID PRIMARY KEY,
+                workspace_id UUID NOT NULL,
+                organization_id UUID NOT NULL,
+                snapshot_data_json TEXT NOT NULL,
+                archived_by VARCHAR(100) NOT NULL,
+                created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+                CONSTRAINT fk_archive_snapshots_organization FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE
+            );
+
+            -- Stores recovery execution locks for idempotency
+            CREATE TABLE IF NOT EXISTS recovery_execution_locks (
+                id UUID PRIMARY KEY,
+                recovery_session_id UUID NOT NULL,
+                status VARCHAR(50) NOT NULL DEFAULT 'Locked',
+                acquired_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+                completed_at TIMESTAMP WITH TIME ZONE,
+                CONSTRAINT fk_execution_locks_session FOREIGN KEY (recovery_session_id) REFERENCES approved_recovery_sessions(id) ON DELETE CASCADE
+            );
+
+            -- Stores representative rotation requests for Level 2 organizations
+            CREATE TABLE IF NOT EXISTS representative_rotation_requests (
+                id UUID PRIMARY KEY,
+                organization_id UUID NOT NULL,
+                current_representative VARCHAR(255),
+                requested_representative VARCHAR(255) NOT NULL,
+                requested_email VARCHAR(255) NOT NULL,
+                requested_phone VARCHAR(50) NOT NULL,
+                reason TEXT NOT NULL,
+                support_approval_status VARCHAR(50) NOT NULL DEFAULT 'pending_review',
+                admin_approval_status VARCHAR(50) NOT NULL DEFAULT 'pending_review',
+                final_decision VARCHAR(50) NOT NULL DEFAULT 'pending_review',
+                verification_call_status VARCHAR(50) NOT NULL DEFAULT 'not_started',
+                verification_call_notes TEXT,
+                optional_supporting_message TEXT,
+                created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+                expires_at TIMESTAMP WITH TIME ZONE NOT NULL,
+                CONSTRAINT fk_rotation_requests_organization FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE
+            );
+
+            -- Stores admin votes for representative rotation requests
+            CREATE TABLE IF NOT EXISTS representative_approval_votes (
+                id UUID PRIMARY KEY,
+                request_id UUID NOT NULL,
+                approver_user_id UUID NOT NULL,
+                approver_role VARCHAR(50) NOT NULL,
+                decision VARCHAR(50) NOT NULL,
+                timestamp TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+                CONSTRAINT fk_approval_votes_request FOREIGN KEY (request_id) REFERENCES representative_rotation_requests(id) ON DELETE CASCADE,
+                CONSTRAINT fk_approval_votes_user FOREIGN KEY (approver_user_id) REFERENCES users(id) ON DELETE CASCADE
+            );
+
+            -- Stores representative rotation history
+            CREATE TABLE IF NOT EXISTS representative_authority_histories (
+                id UUID PRIMARY KEY,
+                organization_id UUID NOT NULL,
+                previous_representative VARCHAR(255),
+                new_representative VARCHAR(255) NOT NULL,
+                rotated_by VARCHAR(255) NOT NULL,
+                support_reviewer VARCHAR(255) NOT NULL,
+                effective_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+                CONSTRAINT fk_authority_histories_organization FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE
             );
 
             -- Stores challenge-based OTP verifications
@@ -336,6 +522,59 @@ public static class DbInitializer
                 ) THEN
                     ALTER TABLE user_roles ADD COLUMN assigned_at TIMESTAMP WITH TIME ZONE DEFAULT NOW();
                 END IF;
+
+                -- Safely provision verification_level column to organizations if missing
+                IF NOT EXISTS (
+                    SELECT 1 
+                    FROM information_schema.columns 
+                    WHERE table_name = 'organizations' AND column_name = 'verification_level'
+                ) THEN
+                    ALTER TABLE organizations ADD COLUMN verification_level INTEGER NOT NULL DEFAULT 0;
+                END IF;
+
+                -- Safely provision registration_number column to organizations if missing
+                IF NOT EXISTS (
+                    SELECT 1 
+                    FROM information_schema.columns 
+                    WHERE table_name = 'organizations' AND column_name = 'registration_number'
+                ) THEN
+                    ALTER TABLE organizations ADD COLUMN registration_number VARCHAR(50);
+                END IF;
+
+                -- Safely provision status column to organizations if missing
+                IF NOT EXISTS (
+                    SELECT 1 
+                    FROM information_schema.columns 
+                    WHERE table_name = 'organizations' AND column_name = 'status'
+                ) THEN
+                    ALTER TABLE organizations ADD COLUMN status VARCHAR(50) NOT NULL DEFAULT 'active';
+                END IF;
+
+                -- Safely provision representative columns to organizations if missing
+                IF NOT EXISTS (
+                    SELECT 1 
+                    FROM information_schema.columns 
+                    WHERE table_name = 'organizations' AND column_name = 'representative_name'
+                ) THEN
+                    ALTER TABLE organizations ADD COLUMN representative_name VARCHAR(255);
+                    ALTER TABLE organizations ADD COLUMN representative_email VARCHAR(255);
+                    ALTER TABLE organizations ADD COLUMN representative_phone VARCHAR(50);
+                    ALTER TABLE organizations ADD COLUMN recovery_authority VARCHAR(255);
+                    ALTER TABLE organizations ADD COLUMN representative_identity VARCHAR(255);
+                END IF;
+
+                -- Safely rename organization_members to organization_authorities if it exists
+                IF EXISTS (
+                    SELECT 1 
+                    FROM information_schema.tables 
+                    WHERE table_name = 'organization_members'
+                ) AND NOT EXISTS (
+                    SELECT 1 
+                    FROM information_schema.tables 
+                    WHERE table_name = 'organization_authorities'
+                ) THEN
+                    ALTER TABLE organization_members RENAME TO organization_authorities;
+                END IF;
             END $$;
 
             -- Granular permissions using a hierarchical naming convention
@@ -463,6 +702,26 @@ public static class DbInitializer
                 consumed_at TIMESTAMP WITH TIME ZONE,
                 CONSTRAINT fk_reset_password_tokens_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
             );
+
+            -- Unified Recovery Tokens table for Candidate, Organization OTP, reset, and Reclaim bootstrap
+            CREATE TABLE IF NOT EXISTS recovery_tokens (
+                id UUID PRIMARY KEY,
+                user_id UUID,
+                organization_id UUID,
+                token_hash VARCHAR(255) NOT NULL,
+                token_type INTEGER NOT NULL,
+                purpose VARCHAR(100) NOT NULL,
+                metadata_json TEXT,
+                expires_at TIMESTAMP WITH TIME ZONE NOT NULL,
+                consumed_at TIMESTAMP WITH TIME ZONE,
+                revoked_at TIMESTAMP WITH TIME ZONE,
+                created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+                CONSTRAINT fk_recovery_tokens_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+                CONSTRAINT fk_recovery_tokens_organization FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE
+            );
+            CREATE INDEX IF NOT EXISTS idx_recovery_tokens_active ON recovery_tokens(token_hash) WHERE consumed_at IS NULL AND revoked_at IS NULL;
+            CREATE INDEX IF NOT EXISTS idx_recovery_tokens_user_id ON recovery_tokens(user_id);
+            CREATE INDEX IF NOT EXISTS idx_recovery_tokens_organization_id ON recovery_tokens(organization_id);
 
             -- Outbox Pattern Table for reliable asynchronous email delivery
             CREATE TABLE IF NOT EXISTS outbox_messages (
@@ -594,6 +853,70 @@ public static class DbInitializer
                 (SELECT id FROM users WHERE email = @adminEmail),
                 (SELECT id FROM roles WHERE name = 'SUPER_ADMIN')
             ON CONFLICT DO NOTHING;
+
+            -- =========================================================
+            -- Seed Test Business Accounts (Tier 1 and Tier 2)
+            -- =========================================================
+
+            -- Seed Tier 1 Organization
+            INSERT INTO organizations (id, name, tax_code, email, username, is_verified, verification_level, status)
+            SELECT '01900000-0000-0000-0000-000000000001'::uuid, 'FPT Software Tier 1 Test', '1111111111', 'tier1@testbusiness.com', 'tier1-business', TRUE, 1, 'active'
+            WHERE NOT EXISTS (SELECT 1 FROM organizations WHERE tax_code = '1111111111');
+
+            -- Seed Tier 1 Owner User
+            INSERT INTO users (id, email, password_hash, full_name, status, email_verified_at)
+            SELECT '01900000-0000-0000-0000-000000000002'::uuid, 'owner1@testbusiness.com', crypt('TestPassword123', gen_salt('bf', 10)), 'Tier 1 Business Owner', 'ACTIVE', NOW()
+            WHERE NOT EXISTS (SELECT 1 FROM users WHERE email = 'owner1@testbusiness.com');
+
+            -- Seed Tier 1 User-Role
+            INSERT INTO user_roles (user_id, role_id)
+            SELECT '01900000-0000-0000-0000-000000000002'::uuid, '018fc35b-1c5d-7b8a-9a2d-3e4f5a6b7c8d'::uuid
+            WHERE NOT EXISTS (SELECT 1 FROM user_roles WHERE user_id = '01900000-0000-0000-0000-000000000002'::uuid AND role_id = '018fc35b-1c5d-7b8a-9a2d-3e4f5a6b7c8d'::uuid);
+
+            -- Seed Tier 1 Organization Authority
+            INSERT INTO organization_authorities (id, organization_id, user_id, role)
+            SELECT '01900000-0000-0000-0000-000000000003'::uuid, '01900000-0000-0000-0000-000000000001'::uuid, '01900000-0000-0000-0000-000000000002'::uuid, 'organization_owner'
+            WHERE NOT EXISTS (SELECT 1 FROM organization_authorities WHERE organization_id = '01900000-0000-0000-0000-000000000001'::uuid AND user_id = '01900000-0000-0000-0000-000000000002'::uuid);
+
+            -- Seed Tier 1 Workspace
+            INSERT INTO workspaces (id, organization_id, display_name, slug, status)
+            SELECT '01900000-0000-0000-0000-000000000004'::uuid, '01900000-0000-0000-0000-000000000001'::uuid, 'Tier 1 Default Workspace', 'tier1-workspace', 'active'
+            WHERE NOT EXISTS (SELECT 1 FROM workspaces WHERE slug = 'tier1-workspace');
+
+            -- Seed Tier 1 Workspace Member
+            INSERT INTO workspace_members (id, workspace_id, user_id, role)
+            SELECT '01900000-0000-0000-0000-000000000005'::uuid, '01900000-0000-0000-0000-000000000004'::uuid, '01900000-0000-0000-0000-000000000002'::uuid, 'workspace_admin'
+            WHERE NOT EXISTS (SELECT 1 FROM workspace_members WHERE workspace_id = '01900000-0000-0000-0000-000000000004'::uuid AND user_id = '01900000-0000-0000-0000-000000000002'::uuid);
+
+            -- Seed Tier 2 Organization
+            INSERT INTO organizations (id, name, tax_code, email, username, is_verified, verification_level, status)
+            SELECT '01900000-0000-0000-0000-000000000011'::uuid, 'FPT Software Tier 2 Test', '2222222222', 'tier2@testbusiness.com', 'tier2-business', TRUE, 2, 'active'
+            WHERE NOT EXISTS (SELECT 1 FROM organizations WHERE tax_code = '2222222222');
+
+            -- Seed Tier 2 Owner User
+            INSERT INTO users (id, email, password_hash, full_name, status, email_verified_at)
+            SELECT '01900000-0000-0000-0000-000000000012'::uuid, 'owner2@testbusiness.com', crypt('TestPassword123', gen_salt('bf', 10)), 'Tier 2 Business Owner', 'ACTIVE', NOW()
+            WHERE NOT EXISTS (SELECT 1 FROM users WHERE email = 'owner2@testbusiness.com');
+
+            -- Seed Tier 2 User-Role
+            INSERT INTO user_roles (user_id, role_id)
+            SELECT '01900000-0000-0000-0000-000000000012'::uuid, '018fc35b-1c5d-7b8a-9a2d-3e4f5a6b7c8d'::uuid
+            WHERE NOT EXISTS (SELECT 1 FROM user_roles WHERE user_id = '01900000-0000-0000-0000-000000000012'::uuid AND role_id = '018fc35b-1c5d-7b8a-9a2d-3e4f5a6b7c8d'::uuid);
+
+            -- Seed Tier 2 Organization Authority
+            INSERT INTO organization_authorities (id, organization_id, user_id, role)
+            SELECT '01900000-0000-0000-0000-000000000013'::uuid, '01900000-0000-0000-0000-000000000011'::uuid, '01900000-0000-0000-0000-000000000012'::uuid, 'organization_owner'
+            WHERE NOT EXISTS (SELECT 1 FROM organization_authorities WHERE organization_id = '01900000-0000-0000-0000-000000000011'::uuid AND user_id = '01900000-0000-0000-0000-000000000012'::uuid);
+
+            -- Seed Tier 2 Workspace
+            INSERT INTO workspaces (id, organization_id, display_name, slug, status)
+            SELECT '01900000-0000-0000-0000-000000000014'::uuid, '01900000-0000-0000-0000-000000000011'::uuid, 'Tier 2 Default Workspace', 'tier2-workspace', 'active'
+            WHERE NOT EXISTS (SELECT 1 FROM workspaces WHERE slug = 'tier2-workspace');
+
+            -- Seed Tier 2 Workspace Member
+            INSERT INTO workspace_members (id, workspace_id, user_id, role)
+            SELECT '01900000-0000-0000-0000-000000000015'::uuid, '01900000-0000-0000-0000-000000000014'::uuid, '01900000-0000-0000-0000-000000000012'::uuid, 'workspace_admin'
+            WHERE NOT EXISTS (SELECT 1 FROM workspace_members WHERE workspace_id = '01900000-0000-0000-0000-000000000014'::uuid AND user_id = '01900000-0000-0000-0000-000000000012'::uuid);
         ";
 
         var superAdminEmail = Environment.GetEnvironmentVariable("SUPER_ADMIN_EMAIL")?.Trim().ToLowerInvariant() ?? "admin@system.com";
@@ -606,6 +929,17 @@ public static class DbInitializer
         // Clear Npgsql connection pools to force reload of system types (like citext and user_status enum) 
         // created during database initialization, preventing System.NotSupportedException.
         Npgsql.NpgsqlConnection.ClearAllPools();
+
+        // Force Npgsql to reload database types globally for the current connection string.
+        var dbConnection = context.Database.GetDbConnection();
+        if (dbConnection is Npgsql.NpgsqlConnection npgsqlConnection)
+        {
+            if (npgsqlConnection.State != System.Data.ConnectionState.Open)
+            {
+                await npgsqlConnection.OpenAsync();
+            }
+            npgsqlConnection.ReloadTypes();
+        }
 
         // 3. Dynamic seed from permissions-registry.json
         var registryPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "resources", "permissions-registry.json");

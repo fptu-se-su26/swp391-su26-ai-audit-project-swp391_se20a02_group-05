@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { useVerificationStages } from '../hooks/use-verification-stages';
 import { useTranslation } from 'react-i18next';
-import { useThemeStore } from '../../../hooks/use-theme-store';
+import { useThemeStore } from '../../../stores/use-theme-store';
 import { Shield } from 'lucide-react';
 
 /**
@@ -32,7 +32,10 @@ export const SessionVerificationScreen: React.FC<SessionVerificationScreenProps>
   // SSR hydration safeguard: only render theme-dependent assets after client mount
   const [isMounted, setIsMounted] = useState(false);
   useEffect(() => {
-    setIsMounted(true);
+    const timer = setTimeout(() => {
+      setIsMounted(true);
+    }, 0);
+    return () => clearTimeout(timer);
   }, []);
 
   // Resolve theme-adaptive logo source

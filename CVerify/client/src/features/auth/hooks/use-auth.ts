@@ -12,7 +12,7 @@ import {
   CompanyLoginPayload
 } from '../services/auth.service';
 import { User, UserRole, ResourceActionPermission } from '../../../types/auth.types';
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import { normalizeError } from '../../../services/axios-client';
 import { normalizeRole } from '../../../lib/utils/auth-utils';
 
@@ -185,34 +185,40 @@ export const useAuth = () => {
   };
 
   // Bootstraps local profile on app boot or token refresh, locking concurrent parallel calls
-  const initializeUserSession = async () => {
+  const initializeUserSession = useCallback(async () => {
+    const currentStore = useAuthStore.getState();
+
     // If already READY, return cached session
-    if (store.bootstrapState === 'READY') {
-      return { authenticated: store.isAuthenticated, user: store.user };
+    if (currentStore.bootstrapState === 'READY') {
+      return { authenticated: currentStore.isAuthenticated, user: currentStore.user };
     }
     
     // If already running (lock active), wait on the promise or return current state
-    if (store.bootstrapState === 'BOOTSTRAPPING' || store.bootstrapState === 'VALIDATING') {
+    if (currentStore.bootstrapState === 'BOOTSTRAPPING' || currentStore.bootstrapState === 'VALIDATING') {
       if (bootstrapPromise) {
         return bootstrapPromise;
       }
-      return { authenticated: store.isAuthenticated, user: store.user };
+      // If the state is stuck in BOOTSTRAPPING/VALIDATING but we don't have an active promise,
+      // we must have lost the promise reference (e.g. during module reloads or transitions).
+      // Let's print a warning and allow a new request to recover the state.
+      console.warn('[Auth System] Session bootstrap is in VALIDATING state but bootstrapPromise is null. Re-initializing session to recover.');
     }
 
     // Acquire lock and transition to bootstrapping
-    store.setBootstrapState('BOOTSTRAPPING');
+    currentStore.setBootstrapState('BOOTSTRAPPING');
 
     bootstrapPromise = (async () => {
-      store.setBootstrapState('VALIDATING');
-      store.setLoading(true);
+      const stateStore = useAuthStore.getState();
+      stateStore.setBootstrapState('VALIDATING');
+      stateStore.setLoading(true);
       console.log('[Auth System] Session bootstrap validation started.');
       try {
         const response = await authApi.fetchMe();
         
         if (response.status === 'EMAIL_VERIFY_PENDING' || response.nextStep === 'VERIFY_EMAIL') {
-          store.setPendingVerificationEmail(response.email);
-          store.setAuthStatusAndNextStep(response.status, response.nextStep);
-          store.logout(false);
+          stateStore.setPendingVerificationEmail(response.email);
+          stateStore.setAuthStatusAndNextStep(response.status, response.nextStep);
+          stateStore.logout(false);
           console.log('[Auth System] Session bootstrap complete. Status: EMAIL_VERIFY_PENDING');
           return { authenticated: false, user: null, isUnverified: true, nextStep: response.nextStep };
         }
@@ -227,29 +233,34 @@ export const useAuth = () => {
           isEmailVerified: response.isEmailVerified,
         };
 
-        store.login(user);
-        store.setAuthStatusAndNextStep(response.status, response.nextStep);
+        stateStore.login(user);
+        stateStore.setAuthStatusAndNextStep(response.status, response.nextStep);
         console.log(`[Auth System] Session bootstrap complete. User authenticated. Role: ${user.role}`);
         return { authenticated: true, user };
-      } catch (err: any) {
-        const status = err?.response?.status || err?.status;
+      } catch (err) {
+        interface AxiosErrorLike {
+          response?: { status?: number };
+          status?: number;
+        }
+        const error = err as AxiosErrorLike;
+        const status = error?.response?.status || error?.status;
         if (status === 401) {
           console.log('[Auth System] Session bootstrap: No active session (unauthenticated guest).');
         } else {
-          console.warn('[Auth System] Session bootstrap validation failed. Cleaning local session.', err);
+          console.warn('[Auth System] Session bootstrap validation failed. Cleaning local session.', error);
         }
-        store.logout(false);
+        stateStore.logout(false);
         return { authenticated: false, user: null };
       } finally {
-        store.setInitialized(true);
-        store.setBootstrapState('READY');
-        store.setLoading(false);
+        stateStore.setInitialized(true);
+        stateStore.setBootstrapState('READY');
+        stateStore.setLoading(false);
         bootstrapPromise = null;
       }
     })();
 
     return bootstrapPromise;
-  };
+  }, []);
 
     // Send OTP
     const sendOtp = async (email: string, purpose: string) => {
@@ -427,6 +438,90 @@ export const useAuth = () => {
       }
     };
 
+    // Verify Company Onboarding (Step 1)
+    const verifyCompanyOnboarding = async (companyName: string, taxCode: string) => {
+      store.setLoading(true);
+      setAuthError(null);
+      try {
+        const response = await authApi.verifyCompanyOnboarding(companyName, taxCode);
+        store.setLoading(false);
+        return { success: true, data: response };
+      } catch (err: unknown) {
+        const parsedError = normalizeError(err);
+        setAuthError(parsedError.message);
+        store.setLoading(false);
+        return { success: false, error: parsedError };
+      }
+    };
+
+    // Verify Onboarding OTP (Step 2)
+    const verifyOnboardingOtp = async (challengeId: string, email: string, code: string, step1Token: string) => {
+      store.setLoading(true);
+      setAuthError(null);
+      try {
+        const response = await authApi.verifyOnboardingOtp(challengeId, email, code, step1Token);
+        store.setLoading(false);
+        return { success: true, data: response };
+      } catch (err: unknown) {
+        const parsedError = normalizeError(err);
+        setAuthError(parsedError.message);
+        store.setLoading(false);
+        return { success: false, error: parsedError };
+      }
+    };
+
+    // Verify Onboarding Google (Step 2)
+    const verifyOnboardingGoogle = async (idToken: string, step1Token: string) => {
+      store.setLoading(true);
+      setAuthError(null);
+      try {
+        const response = await authApi.verifyOnboardingGoogle(idToken, step1Token);
+        store.setLoading(false);
+        return { success: true, data: response };
+      } catch (err: unknown) {
+        const parsedError = normalizeError(err);
+        setAuthError(parsedError.message);
+        store.setLoading(false);
+        return { success: false, error: parsedError };
+      }
+    };
+
+    // Complete Onboarding Workspace Provisioning (Step 3)
+    const completeOnboarding = async (
+      payload: {
+        step2Token: string;
+        organizationUsername: string;
+        password: string;
+        confirmPassword: string;
+        companyDisplayName: string;
+      },
+      idempotencyKey: string
+    ) => {
+      store.setLoading(true);
+      setAuthError(null);
+      try {
+        const response = await authApi.completeOnboarding(payload, idempotencyKey);
+        const user: User = {
+          id: response.id,
+          email: response.email,
+          fullName: response.fullName,
+          avatarUrl: response.avatarUrl,
+          role: normalizeRole(response.roles),
+          permissions: response.permissions,
+          isEmailVerified: response.isEmailVerified,
+        };
+        store.login(user);
+        store.setAuthStatusAndNextStep(response.status, response.nextStep);
+        store.setLoading(false);
+        return { success: true, user, nextStep: response.nextStep };
+      } catch (err: unknown) {
+        const parsedError = normalizeError(err);
+        setAuthError(parsedError.message);
+        store.setLoading(false);
+        return { success: false, error: parsedError };
+      }
+    };
+
   return {
     // Zustand States
     user: store.user,
@@ -457,6 +552,12 @@ export const useAuth = () => {
     companyLogin,
     fetchSessions,
     revokeSession,
+    
+    // Unified Onboarding flow
+    verifyCompanyOnboarding,
+    verifyOnboardingOtp,
+    verifyOnboardingGoogle,
+    completeOnboarding,
 
     // Guards Facades
     hasRole: (role: UserRole) => store.hasRole(role),

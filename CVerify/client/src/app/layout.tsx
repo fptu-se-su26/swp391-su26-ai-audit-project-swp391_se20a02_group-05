@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Plus_Jakarta_Sans, Inter } from "next/font/google";
+import { Plus_Jakarta_Sans, Inter, Lato } from "next/font/google";
 import "./globals.css";
 import { Providers } from "./providers";
 import { cookies } from "next/headers";
@@ -15,6 +15,12 @@ const inter = Inter({
   variable: "--font-inter",
   subsets: ["latin", "vietnamese"],
   weight: ["300", "400", "500", "600", "700", "800"],
+});
+
+const lato = Lato({
+  variable: "--font-lato",
+  subsets: ["latin"],
+  weight: ["300", "400", "700", "900"],
 });
 
 export const metadata: Metadata = {
@@ -45,7 +51,7 @@ export default async function RootLayout({
     <html
       lang={locale}
       dir={dir}
-      className={`${outfit.variable} ${inter.variable} h-full antialiased ${theme}`}
+      className={`${outfit.variable} ${inter.variable} ${lato.variable} h-full antialiased ${theme}`}
       data-theme={theme}
       suppressHydrationWarning
     >

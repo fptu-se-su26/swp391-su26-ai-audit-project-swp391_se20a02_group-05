@@ -2,17 +2,19 @@
 
 import React, { useEffect } from 'react';
 import { useAuth } from '../features/auth/hooks/use-auth';
-import { Compass } from 'lucide-react';
 import { usePathname } from 'next/navigation';
-import { Toast, toast, Typography } from '@heroui/react';
+import { Toast } from '@heroui/react';
 import i18n from '../lib/i18n';
-import { useThemeStore } from '../hooks/use-theme-store';
-
+import { useThemeStore } from '../stores/use-theme-store';
+import { useSidebarStore } from '../stores/use-sidebar-store';
 import { AuthOrchestrator } from '../features/auth/components/auth-orchestrator';
+import { NotificationHub } from '../infrastructure/notifications/orchestrator';
+import { HeroUIToastRenderer } from '../infrastructure/notifications/renderers/heroui-toast-renderer';
 
 export function Providers({ children, locale }: { children: React.ReactNode; locale: string }) {
   const { initializeSession } = useAuth();
   const initializeTheme = useThemeStore(state => state.initializeTheme);
+  const initializeCollapsed = useSidebarStore(state => state.initializeCollapsed);
   const pathname = usePathname();
 
   // Synchronize server-resolved locale to client i18n instance before hydration (Server only)
@@ -22,10 +24,11 @@ export function Providers({ children, locale }: { children: React.ReactNode; loc
     }
   }
 
-  // Initialize theme on client-side boot to align storage and cookies
+  // Initialize theme and sidebar collapse state on client-side boot
   useEffect(() => {
     initializeTheme();
-  }, [initializeTheme]);
+    initializeCollapsed();
+  }, [initializeTheme, initializeCollapsed]);
 
   // Handle client-side changes post-hydration cleanly to satisfy React Compiler constraints
   useEffect(() => {
@@ -39,12 +42,40 @@ export function Providers({ children, locale }: { children: React.ReactNode; loc
     initializeSession();
   }, [initializeSession]);
 
+  // Register decoupled HeroUI renderer to the abstract system NotificationHub
+  useEffect(() => {
+    const renderer = new HeroUIToastRenderer();
+    const unbind = NotificationHub.registerRenderer(renderer);
+    return () => {
+      unbind();
+    };
+  }, []);
+
   // Clear toasts on navigation to decouple page contexts
   useEffect(() => {
-    if (toast && typeof toast.clear === 'function') {
-      toast.clear();
-    }
+    NotificationHub.clearAll();
   }, [pathname]);
+
+  // Swallow harmless View Transition abort errors (InvalidStateError) to prevent annoying Next.js dev overlays in development
+  useEffect(() => {
+    const handleUnhandledRejection = (event: PromiseRejectionEvent) => {
+      const error = event.reason;
+      if (
+        error &&
+        (error.name === 'InvalidStateError' ||
+         error.message?.includes('Transition was aborted') ||
+         error.message?.includes('transition was aborted'))
+      ) {
+        event.preventDefault();
+        console.warn('[View Transition] Handled and absorbed harmless view transition abortion:', error.message);
+      }
+    };
+
+    window.addEventListener('unhandledrejection', handleUnhandledRejection);
+    return () => {
+      window.removeEventListener('unhandledrejection', handleUnhandledRejection);
+    };
+  }, []);
 
   return (
     <>

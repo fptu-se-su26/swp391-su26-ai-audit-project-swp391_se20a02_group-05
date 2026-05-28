@@ -2,6 +2,8 @@ using Microsoft.EntityFrameworkCore;
 using CVerify.API.Infrastructure.Persistence;
 using CVerify.API.Application.Interfaces;
 using CVerify.API.Application.Services;
+using CVerify.API.Application.Security.PasswordPolicies;
+using CVerify.API.Application.Security.OtpPolicies;
 using CVerify.API.Infrastructure.Services;
 using CVerify.API.Infrastructure.Configuration;
 using CVerify.API.Core.Entities;
@@ -112,6 +114,47 @@ builder.Services.AddOpenApi(options =>
     });
 });
 builder.Services.AddControllers()
+    .ConfigureApiBehaviorOptions(options =>
+    {
+        options.InvalidModelStateResponseFactory = context =>
+        {
+            var errors = new Dictionary<string, string[]>();
+            foreach (var (key, value) in context.ModelState)
+            {
+                if (value.Errors.Count > 0)
+                {
+                    var messages = new List<string>();
+                    foreach (var error in value.Errors)
+                    {
+                        messages.Add(error.ErrorMessage);
+                    }
+                    errors.Add(key, messages.ToArray());
+                }
+            }
+
+            var correlationId = CVerify.API.Infrastructure.Diagnostics.AsyncLocalCorrelationScope.CurrentCorrelationId 
+                                ?? context.HttpContext.TraceIdentifier;
+
+            var responsePayload = new CVerify.API.Application.DTOs.ApiErrorResponse
+            {
+                Status = Microsoft.AspNetCore.Http.StatusCodes.Status400BadRequest,
+                Code = CVerify.API.Application.Exceptions.Catalogs.SystemErrorCatalog.ValidationError,
+                Category = CVerify.API.Application.Exceptions.ErrorCategory.VALIDATION.ToString(),
+                Severity = "Error",
+                MessageKey = "system.toast.error.validation",
+                Message = "Please check the form fields for errors.",
+                Retryable = false,
+                Errors = errors,
+                CorrelationId = correlationId,
+                UxSemantics = new CVerify.API.Application.DTOs.UxSemantics("Inline", "None", string.Empty, string.Empty)
+            };
+
+            return new Microsoft.AspNetCore.Mvc.BadRequestObjectResult(responsePayload)
+            {
+                ContentTypes = { "application/json" }
+            };
+        };
+    })
     .AddJsonOptions(options =>
     {
         options.JsonSerializerOptions.Converters.Add(
@@ -224,12 +267,21 @@ builder.Services.AddScoped<IIdentityRepository, IdentityRepository>();
 builder.Services.AddScoped<ISystemService, SystemService>();
 builder.Services.AddScoped<ICacheService, CacheService>();
 builder.Services.AddScoped<ITokenService, TokenService>();
+builder.Services.AddScoped<IEncryptedFileStorageService, EncryptedFileStorageService>();
 
 // Register Application Services
 builder.Services.AddScoped<IAccountService, AccountService>();
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IPermissionService, PermissionService>();
 builder.Services.AddScoped<IIdentityStateResolver, IdentityStateResolver>();
+builder.Services.AddScoped<IRecoveryExecutionEngine, RecoveryExecutionEngine>();
+builder.Services.AddScoped<IRecoveryTokenService, RecoveryTokenService>();
+builder.Services.AddScoped<ICandidateRecoveryService, CandidateRecoveryService>();
+builder.Services.AddScoped<IOrganizationRecoveryService, OrganizationRecoveryService>();
+builder.Services.AddScoped<IOrganizationReclaimService, OrganizationReclaimService>();
+builder.Services.AddScoped<ILevel2RecoveryService, Level2RecoveryService>();
+builder.Services.AddScoped<IPasswordPolicyService, PasswordPolicyService>();
+builder.Services.AddScoped<IOtpPolicyService, OtpPolicyService>();
 
 // Register AI Service
 builder.Services.AddScoped<IHmacSignatureService, HmacSignatureService>();
@@ -245,6 +297,7 @@ builder.Services.AddEmailInfrastructure(builder.Configuration);
 // Register Background Outbox Processor and Token Sweeper Job
 builder.Services.AddHostedService<EmailOutboxBackgroundProcessor>();
 builder.Services.AddHostedService<TokenCleanupBackgroundJob>();
+builder.Services.AddHostedService<RecoveryClaimBackgroundWorker>();
 
 
 // Configure JWT Authentication
