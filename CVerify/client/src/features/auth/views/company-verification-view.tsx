@@ -40,61 +40,11 @@ import {
 } from "lucide-react";
 import PasswordStrengthMeter from "../components/password-strength-meter";
 import { evaluatePasswordStrength } from "../security/password-policy";
-
-const RESERVED_SLUGS = [
-  "admin",
-  "root",
-  "support",
-  "system",
-  "api",
-  "cverify",
-  "help",
-  "billing",
-  "status",
-  "security",
-];
-
-// Lookalike brand checkers (typosquatting prevention)
-const isLookalikeSlug = (slug: string): boolean => {
-  const normalized = slug
-    .replace(/0/g, "o")
-    .replace(/1/g, "i")
-    .replace(/3/g, "e")
-    .replace(/vv/g, "w")
-    .replace(/l1/g, "ll");
-
-  const criticalBrands = [
-    "google",
-    "facebook",
-    "linkedin",
-    "cverify",
-    "admin",
-    "microsoft",
-    "github",
-    "stripe",
-  ];
-  return criticalBrands.some(
-    (brand) => normalized.includes(brand) && slug !== brand,
-  );
-};
-
-// Normalized Suggested Slugs Generator based on Vietnamese accents removal
-const generateSuggestedSlug = (name: string): string => {
-  let slug = name
-    .toLowerCase()
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "") // Strip accents
-    .replace(/đ/g, "d")
-    .replace(/[^a-z0-9\s-]/g, "") // Strip punctuation
-    .trim()
-    .replace(/\s+/g, "-") // Replace space with dash
-    .replace(/-+/g, "-"); // Deduplicate dashes
-
-  if (slug.length < 4) {
-    slug = slug.padEnd(4, "0");
-  }
-  return slug.substring(0, 32);
-};
+import {
+  generateSuggestedSlug,
+  isLookalikeSlug,
+  isReservedSlug,
+} from "../security/workspace-slug";
 
 export function CompanyVerificationView() {
   const router = useRouter();
@@ -399,13 +349,13 @@ export function CompanyVerificationView() {
 
   const slugRegex = /^[a-z0-9-]{4,32}$/;
   const isSlugValid = slugRegex.test(organizationUsername);
-  const isReservedSlug = RESERVED_SLUGS.includes(organizationUsername);
+  const slugIsReserved = isReservedSlug(organizationUsername);
   const isImpersonating = isLookalikeSlug(organizationUsername);
 
   const isStep3Valid =
     companyDisplayName.trim().length >= 2 &&
     isSlugValid &&
-    !isReservedSlug &&
+    !slugIsReserved &&
     isPasswordValid &&
     password === confirmPassword;
 
@@ -1129,7 +1079,7 @@ export function CompanyVerificationView() {
                   </InputGroup>
 
                   {/* Slug suggestions or validation blocks */}
-                  {isSlugValid && !isReservedSlug && !isImpersonating && (
+                  {isSlugValid && !slugIsReserved && !isImpersonating && (
                     <div className="text-[10px] text-muted mt-1.5 font-medium flex items-center gap-1 select-none">
                       <Check className="size-3 text-success" />
                       Slug handle available:{" "}
@@ -1139,7 +1089,7 @@ export function CompanyVerificationView() {
                     </div>
                   )}
 
-                  {isReservedSlug && (
+                  {slugIsReserved && (
                     <div className="text-danger text-[10px] mt-1.5 font-bold flex items-center gap-1">
                       <AlertCircle className="size-3 text-danger shrink-0" />
                       This namespace handle is reserved and cannot be requested.
