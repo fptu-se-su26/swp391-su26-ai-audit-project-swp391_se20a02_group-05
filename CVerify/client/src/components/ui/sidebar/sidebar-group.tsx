@@ -9,8 +9,8 @@ import { ChevronDown } from "lucide-react";
 import { useSidebarStore } from "../../../stores/use-sidebar-store";
 import { isActiveRoute } from "../../../lib/navigation-utils";
 import {
-  NavigationGroupItem,
-  NavigationNode,
+  type NavigationGroupItem,
+  type NavigationNode,
 } from "../../../types/navigation.types";
 import SidebarLink from "./sidebar-link";
 
@@ -106,7 +106,7 @@ export const SidebarGroup: React.FC<SidebarGroupProps> = ({
                   isMobile ? "h-12 px-3.5 text-base" : "h-10 px-4 text-sm",
                 ].join(" ")}
               >
-                <div className="flex items-center gap-3 min-w-0">
+                <div className="flex items-center gap-2 min-w-0">
                   {Icon && (
                     <Icon
                       size={isMobile ? 20 : 18}
@@ -143,7 +143,7 @@ export const SidebarGroup: React.FC<SidebarGroupProps> = ({
                     "border-l border-border/70 flex flex-col",
                     isMobile
                       ? "ml-4 pl-1.5 gap-2 my-2"
-                      : "ml-4.5 pl-3 gap-1.5 my-1.5",
+                      : "ml-4.5 pl-3 gap-1 my-1",
                   ].join(" ")}
                 >
                   {group.children.map((child) => {
@@ -198,8 +198,8 @@ export const SidebarGroup: React.FC<SidebarGroupProps> = ({
             {/* Active descendant indication dot on top-right of the icon */}
             {hasActiveDescendant && (
               <span className="absolute top-2 right-2 flex h-2 w-2">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-accent opacity-75"></span>
-                <span className="relative inline-flex rounded-full h-2 w-2 bg-accent"></span>
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-accent opacity-75" />
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-accent" />
               </span>
             )}
 

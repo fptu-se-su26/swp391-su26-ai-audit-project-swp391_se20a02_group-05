@@ -1,24 +1,49 @@
-using Microsoft.EntityFrameworkCore;
-using CVerify.API.Infrastructure.Persistence;
-using CVerify.API.Application.Interfaces;
-using CVerify.API.Application.Services;
-using CVerify.API.Application.Security.PasswordPolicies;
-using CVerify.API.Application.Security.OtpPolicies;
-using CVerify.API.Infrastructure.Services;
-using CVerify.API.Infrastructure.Configuration;
-using CVerify.API.Core.Entities;
-using CVerify.API.API.Extensions;
-using Microsoft.AspNetCore.Authentication.JwtBearer;
-using Microsoft.IdentityModel.Tokens;
 using System.Text;
-using StackExchange.Redis;
-using Microsoft.OpenApi;
-using Npgsql;
 using System.Threading.RateLimiting;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.RateLimiting;
-using CVerify.API.Infrastructure.Diagnostics;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.IdentityModel.Tokens;
+using Microsoft.OpenApi;
+using Amazon.S3;
+using Npgsql;
+using StackExchange.Redis;
+using CVerify.API.Modules.Admin.Hubs;
+using CVerify.API.Modules.Admin.Services;
+using CVerify.API.Modules.AiChat.Entities;
+using CVerify.API.Modules.Auth.BackgroundWorkers;
+using CVerify.API.Modules.Auth.Middleware;
+using CVerify.API.Modules.Auth.Services;
+using CVerify.API.Modules.Auth.Services.OtpPolicies;
+using CVerify.API.Modules.Auth.Services.PasswordPolicies;
+using CVerify.API.Modules.Profiles.Services;
+using CVerify.API.Modules.Recovery.BackgroundWorkers;
+using CVerify.API.Modules.Recovery.Services;
+using CVerify.API.Modules.Shared.Configuration;
+using CVerify.API.Modules.Shared.Diagnostics;
+using CVerify.API.Modules.Shared.Domain.Entities;
+using CVerify.API.Modules.Shared.Domain.Enums;
+using CVerify.API.Modules.Shared.Email.BackgroundWorkers;
+using CVerify.API.Modules.Shared.Exceptions;
+using CVerify.API.Modules.Shared.Exceptions.Catalogs;
+using CVerify.API.Modules.Shared.Persistence;
+using CVerify.API.Modules.Shared.Security;
+using CVerify.API.Modules.Shared.Storage.Interfaces;
+using CVerify.API.Modules.Shared.Storage.Services;
+using CVerify.API.Modules.Shared.System.DTOs;
+using CVerify.API.Modules.Shared.System.Services;
+using CVerify.API.Modules.Shared.Email;
+using CVerify.API.Modules.Shared.Security.Authorization;
+using CVerify.API.Modules.Shared.System.BackgroundWorkers;
+
 
 var builder = WebApplication.CreateBuilder(args);
+
+builder.Host.UseDefaultServiceProvider((context, options) =>
+{
+    options.ValidateOnBuild = true;
+    options.ValidateScopes = true;
+});
 
 // 1. Load .env file (Development only or based on preference)
 string? envPath = null;
@@ -60,7 +85,21 @@ if (envPath != null) {
 
 // 2. Validate & Resolve Configuration (Enterprise Clean Code: Fail Fast)
 var envConfig = EnvValidator.Validate(builder.Configuration);
+if (builder.Environment.IsProduction())
+{
+    if (envConfig.Security.DisableRateLimits)
+    {
+        throw new InvalidOperationException("Fatal: Rate limits cannot be disabled in the Production environment.");
+    }
+    if (string.IsNullOrWhiteSpace(envConfig.Security.TokenEncryptionKey) ||
+        envConfig.Security.TokenEncryptionKey == "DEVELOPMENT_TOKEN_ENCRYPTION_KEY" ||
+        envConfig.Security.TokenEncryptionKey == "your_32_byte_token_encryption_key_here")
+    {
+        throw new InvalidOperationException("Fatal: TokenEncryptionKey is missing or is a default fallback key in the Production environment.");
+    }
+}
 builder.Services.AddSingleton(envConfig);
+
 
 // Clear default loggers to prevent duplicate output and console noise
 builder.Logging.ClearProviders();
@@ -132,21 +171,21 @@ builder.Services.AddControllers()
                 }
             }
 
-            var correlationId = CVerify.API.Infrastructure.Diagnostics.AsyncLocalCorrelationScope.CurrentCorrelationId 
+            var correlationId = AsyncLocalCorrelationScope.CurrentCorrelationId 
                                 ?? context.HttpContext.TraceIdentifier;
 
-            var responsePayload = new CVerify.API.Application.DTOs.ApiErrorResponse
+            var responsePayload = new ApiErrorResponse
             {
                 Status = Microsoft.AspNetCore.Http.StatusCodes.Status400BadRequest,
-                Code = CVerify.API.Application.Exceptions.Catalogs.SystemErrorCatalog.ValidationError,
-                Category = CVerify.API.Application.Exceptions.ErrorCategory.VALIDATION.ToString(),
+                Code = SystemErrorCatalog.ValidationError,
+                Category = ErrorCategory.VALIDATION.ToString(),
                 Severity = "Error",
                 MessageKey = "system.toast.error.validation",
                 Message = "Please check the form fields for errors.",
                 Retryable = false,
                 Errors = errors,
                 CorrelationId = correlationId,
-                UxSemantics = new CVerify.API.Application.DTOs.UxSemantics("Inline", "None", string.Empty, string.Empty)
+                UxSemantics = new UxSemantics("Inline", "None", string.Empty, string.Empty)
             };
 
             return new Microsoft.AspNetCore.Mvc.BadRequestObjectResult(responsePayload)
@@ -172,67 +211,92 @@ builder.Services.AddRateLimiter(options =>
     options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
 
     options.AddPolicy("ForgotPasswordLimit", context =>
-        RateLimitPartition.GetFixedWindowLimiter(
+    {
+        var config = context.RequestServices.GetRequiredService<EnvConfiguration>();
+        var limit = config.Security.DisableRateLimits ? 99999 : config.RateLimit.ForgotPasswordPermitLimit;
+        return RateLimitPartition.GetFixedWindowLimiter(
             partitionKey: context.Connection.RemoteIpAddress?.ToString() ?? context.Request.Headers["X-Forwarded-For"].ToString() ?? "unknown",
             factory: _ => new FixedWindowRateLimiterOptions
             {
-                PermitLimit = envConfig.RateLimit.ForgotPasswordPermitLimit,
-                Window = TimeSpan.FromMinutes(envConfig.RateLimit.ForgotPasswordWindowMinutes),
+                PermitLimit = limit,
+                Window = TimeSpan.FromMinutes(config.RateLimit.ForgotPasswordWindowMinutes),
                 QueueLimit = 0
-            }));
+            });
+    });
 
     options.AddPolicy("ResetPasswordLimit", context =>
-        RateLimitPartition.GetFixedWindowLimiter(
+    {
+        var config = context.RequestServices.GetRequiredService<EnvConfiguration>();
+        var limit = config.Security.DisableRateLimits ? 99999 : config.RateLimit.ResetPasswordPermitLimit;
+        return RateLimitPartition.GetFixedWindowLimiter(
             partitionKey: context.Connection.RemoteIpAddress?.ToString() ?? context.Request.Headers["X-Forwarded-For"].ToString() ?? "unknown",
             factory: _ => new FixedWindowRateLimiterOptions
             {
-                PermitLimit = envConfig.RateLimit.ResetPasswordPermitLimit,
-                Window = TimeSpan.FromMinutes(envConfig.RateLimit.ResetPasswordWindowMinutes),
+                PermitLimit = limit,
+                Window = TimeSpan.FromMinutes(config.RateLimit.ResetPasswordWindowMinutes),
                 QueueLimit = 0
-            }));
+            });
+    });
 
     options.AddPolicy("ResendVerificationLimit", context =>
-        RateLimitPartition.GetFixedWindowLimiter(
+    {
+        var config = context.RequestServices.GetRequiredService<EnvConfiguration>();
+        var limit = config.Security.DisableRateLimits ? 99999 : config.RateLimit.ResendVerificationPermitLimit;
+        return RateLimitPartition.GetFixedWindowLimiter(
             partitionKey: context.Connection.RemoteIpAddress?.ToString() ?? context.Request.Headers["X-Forwarded-For"].ToString() ?? "unknown",
             factory: _ => new FixedWindowRateLimiterOptions
             {
-                PermitLimit = envConfig.RateLimit.ResendVerificationPermitLimit,
-                Window = TimeSpan.FromMinutes(envConfig.RateLimit.ResendVerificationWindowMinutes),
+                PermitLimit = limit,
+                Window = TimeSpan.FromMinutes(config.RateLimit.ResendVerificationWindowMinutes),
                 QueueLimit = 0
-            }));
+            });
+    });
 
     options.AddPolicy("VerifyEmailLimit", context =>
-        RateLimitPartition.GetFixedWindowLimiter(
+    {
+        var config = context.RequestServices.GetRequiredService<EnvConfiguration>();
+        var limit = config.Security.DisableRateLimits ? 99999 : config.RateLimit.VerifyEmailPermitLimit;
+        return RateLimitPartition.GetFixedWindowLimiter(
             partitionKey: context.Connection.RemoteIpAddress?.ToString() ?? context.Request.Headers["X-Forwarded-For"].ToString() ?? "unknown",
             factory: _ => new FixedWindowRateLimiterOptions
             {
-                PermitLimit = envConfig.RateLimit.VerifyEmailPermitLimit,
-                Window = TimeSpan.FromMinutes(envConfig.RateLimit.VerifyEmailWindowMinutes),
+                PermitLimit = limit,
+                Window = TimeSpan.FromMinutes(config.RateLimit.VerifyEmailWindowMinutes),
                 QueueLimit = 0
-            }));
+            });
+    });
 
     options.AddPolicy("RegisterLimit", context =>
-        RateLimitPartition.GetFixedWindowLimiter(
+    {
+        var config = context.RequestServices.GetRequiredService<EnvConfiguration>();
+        var limit = config.Security.DisableRateLimits ? 99999 : config.RateLimit.RegisterPermitLimit;
+        return RateLimitPartition.GetFixedWindowLimiter(
             partitionKey: context.Connection.RemoteIpAddress?.ToString() ?? context.Request.Headers["X-Forwarded-For"].ToString() ?? "unknown",
             factory: _ => new FixedWindowRateLimiterOptions
             {
-                PermitLimit = envConfig.RateLimit.RegisterPermitLimit,
-                Window = TimeSpan.FromMinutes(envConfig.RateLimit.RegisterWindowMinutes),
+                PermitLimit = limit,
+                Window = TimeSpan.FromMinutes(config.RateLimit.RegisterWindowMinutes),
                 QueueLimit = 0
-            }));
+            });
+    });
 
     options.AddPolicy("AiChatLimit", context =>
-        RateLimitPartition.GetFixedWindowLimiter(
+    {
+        var config = context.RequestServices.GetRequiredService<EnvConfiguration>();
+        var limit = config.Security.DisableRateLimits ? 99999 : 10;
+        return RateLimitPartition.GetFixedWindowLimiter(
             partitionKey: context.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value 
                           ?? context.Connection.RemoteIpAddress?.ToString() 
                           ?? "unknown",
             factory: _ => new FixedWindowRateLimiterOptions
             {
-                PermitLimit = 10,
+                PermitLimit = limit,
                 Window = TimeSpan.FromMinutes(1),
                 QueueLimit = 0
-            }));
+            });
+    });
 });
+
 
 // Configure EF Core with PostgreSQL (MapEnum inside UseNpgsql handles both EF Core + ADO.NET layers)
 builder.Services.AddDbContext<ApplicationDbContext>((sp, options) =>
@@ -263,15 +327,34 @@ builder.Services.AddSingleton<ILoggerProvider, AppLoggingProvider>();
 builder.Services.AddHostedService<AppLoggingBackgroundWorker>();
 
 // Register Infrastructure & Data Services
+builder.Services.AddSingleton<IRateLimitPolicyService, RateLimitPolicyService>();
 builder.Services.AddScoped<IIdentityRepository, IdentityRepository>();
 builder.Services.AddScoped<ISystemService, SystemService>();
 builder.Services.AddScoped<ICacheService, CacheService>();
 builder.Services.AddScoped<ITokenService, TokenService>();
 builder.Services.AddScoped<IEncryptedFileStorageService, EncryptedFileStorageService>();
+builder.Services.AddScoped<IGoogleTokenValidator, GoogleTokenValidator>();
+
+
+// Register Cloudflare R2 Object Storage Stack (IAmazonS3 + IStorageService)
+builder.Services.AddSingleton<IAmazonS3>(sp =>
+{
+    Amazon.AWSConfigsS3.UseSignatureVersion4 = true;
+    var config = sp.GetRequiredService<EnvConfiguration>();
+    var s3Config = new AmazonS3Config
+    {
+        ServiceURL = config.R2.Endpoint,
+        ForcePathStyle = true, // Standard S3-compatible path resolution for Cloudflare R2
+        AuthenticationRegion = "us-east-1" // Force AWS Signature Version 4 for Cloudflare R2 compatibility
+    };
+    return new AmazonS3Client(config.R2.AccessKeyId, config.R2.SecretAccessKey, s3Config);
+});
+builder.Services.AddScoped<IStorageService, R2StorageService>();
 
 // Register Application Services
 builder.Services.AddScoped<IAccountService, AccountService>();
 builder.Services.AddScoped<IAuthService, AuthService>();
+builder.Services.AddScoped<IPasswordRecoveryService, PasswordRecoveryService>();
 builder.Services.AddScoped<IPermissionService, PermissionService>();
 builder.Services.AddScoped<IIdentityStateResolver, IdentityStateResolver>();
 builder.Services.AddScoped<IRecoveryExecutionEngine, RecoveryExecutionEngine>();
@@ -282,6 +365,13 @@ builder.Services.AddScoped<IOrganizationReclaimService, OrganizationReclaimServi
 builder.Services.AddScoped<ILevel2RecoveryService, Level2RecoveryService>();
 builder.Services.AddScoped<IPasswordPolicyService, PasswordPolicyService>();
 builder.Services.AddScoped<IOtpPolicyService, OtpPolicyService>();
+
+// Register Profile Settings Services
+builder.Services.AddScoped<IProfileService, ProfileService>();
+builder.Services.AddScoped<IEducationService, EducationService>();
+builder.Services.AddScoped<IAchievementService, AchievementService>();
+builder.Services.AddScoped<ICareerService, CareerService>();
+builder.Services.AddScoped<IAttachmentService, AttachmentService>();
 
 // Register AI Service
 builder.Services.AddScoped<IHmacSignatureService, HmacSignatureService>();
@@ -298,6 +388,8 @@ builder.Services.AddEmailInfrastructure(builder.Configuration);
 builder.Services.AddHostedService<EmailOutboxBackgroundProcessor>();
 builder.Services.AddHostedService<TokenCleanupBackgroundJob>();
 builder.Services.AddHostedService<RecoveryClaimBackgroundWorker>();
+builder.Services.AddHostedService<OtpCleanupBackgroundWorker>();
+builder.Services.AddHostedService<PendingLinkCleanupService>();
 
 
 // Configure JWT Authentication
@@ -370,12 +462,12 @@ app.UseCors("AllowFrontend");
 app.UseMiddleware<SecurityHeadersMiddleware>();
 app.UseRateLimiter();
 app.UseAuthentication();
-app.UseMiddleware<CVerify.API.API.Middleware.SessionValidationMiddleware>();
+app.UseMiddleware<CVerify.API.Modules.Auth.Middleware.SessionValidationMiddleware>();
 app.UseAuthorization();
 
 
 app.MapHealthChecks("/health");
 app.MapControllers();
-app.MapHub<CVerify.API.API.Hubs.AdminHub>("/hubs/admin");
+app.MapHub<CVerify.API.Modules.Admin.Hubs.AdminHub>("/hubs/admin");
 
 app.Run();
