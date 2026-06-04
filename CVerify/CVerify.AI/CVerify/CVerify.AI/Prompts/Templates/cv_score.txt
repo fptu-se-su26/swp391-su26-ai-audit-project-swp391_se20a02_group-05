@@ -1,1 +1,0 @@
-Score CV across dimensions: completeness (20%), skill depth (25%), experience relevance (25%), education (15%), formatting (15%). Output JSON with total and breakdown.

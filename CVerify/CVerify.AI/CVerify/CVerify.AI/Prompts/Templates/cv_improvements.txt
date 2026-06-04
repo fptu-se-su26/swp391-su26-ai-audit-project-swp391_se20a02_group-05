@@ -1,1 +1,0 @@
-Generate specific, actionable CV improvement suggestions. Be direct and prioritize by impact. Output JSON with improvements array.

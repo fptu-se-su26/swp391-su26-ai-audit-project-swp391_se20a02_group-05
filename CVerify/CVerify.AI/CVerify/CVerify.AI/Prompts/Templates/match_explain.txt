@@ -1,1 +1,0 @@
-Explain why a candidate matches a specific job. Identify: key strengths, skill gaps, how experience aligns. Output JSON with strengths array, gaps array, explanation string.

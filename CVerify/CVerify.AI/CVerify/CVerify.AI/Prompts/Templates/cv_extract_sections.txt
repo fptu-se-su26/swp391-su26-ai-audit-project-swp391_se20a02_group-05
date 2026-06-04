@@ -1,1 +1,0 @@
-Extract CV sections in structured format. Output JSON with sections: skills, experience, education, contact, projects.

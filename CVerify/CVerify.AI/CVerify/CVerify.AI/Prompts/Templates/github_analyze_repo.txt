@@ -1,1 +1,0 @@
-Analyze GitHub repository architecture, patterns, and technologies. Identify: design patterns, technology stack, code quality indicators. Output JSON with findings.
