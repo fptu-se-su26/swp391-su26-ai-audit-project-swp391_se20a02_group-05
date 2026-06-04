@@ -6,6 +6,8 @@ using Microsoft.EntityFrameworkCore.Storage;
 using CVerify.API.Modules.AiChat.Entities;
 using CVerify.API.Modules.Shared.Domain.Entities;
 using CVerify.API.Modules.Shared.Exceptions.Catalogs;
+using CVerify.API.Modules.Shared.Security;
+using CVerify.API.Modules.Profiles.Entities;
 
 namespace CVerify.API.Modules.Shared.Persistence;
 
@@ -15,7 +17,7 @@ namespace CVerify.API.Modules.Shared.Persistence;
 /// </summary>
 public static class DbInitializer
 {
-    public static async Task InitializeAsync(ApplicationDbContext context)
+    public static async Task InitializeAsync(ApplicationDbContext context, IUsernameService? usernameService = null)
     {
         if (context == null)
         {
@@ -110,6 +112,36 @@ public static class DbInitializer
                 END IF;
             END $$;
 
+            -- Safely provision columns to existing tables for backward-compatibility prior to table/index definition
+            DO $$
+            BEGIN
+                -- If users exists but lacks username/last_username_change_at, add them
+                IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'users') THEN
+                    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'users' AND column_name = 'username') THEN
+                        ALTER TABLE users ADD COLUMN username CITEXT;
+                    END IF;
+                    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'users' AND column_name = 'last_username_change_at') THEN
+                        ALTER TABLE users ADD COLUMN last_username_change_at TIMESTAMP WITH TIME ZONE;
+                    END IF;
+                END IF;
+
+                -- If organizations exists but lacks username, add it with a non-null default
+                IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'organizations') THEN
+                    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'organizations' AND column_name = 'username') THEN
+                        ALTER TABLE organizations ADD COLUMN username VARCHAR(100);
+                        UPDATE organizations SET username = 'org-' || substring(id::text, 1, 8) WHERE username IS NULL;
+                        ALTER TABLE organizations ALTER COLUMN username SET NOT NULL;
+                    END IF;
+                END IF;
+
+                -- If user_profiles exists but lacks username, add it
+                IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'user_profiles') THEN
+                    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'user_profiles' AND column_name = 'username') THEN
+                        ALTER TABLE user_profiles ADD COLUMN username CITEXT;
+                    END IF;
+                END IF;
+            END $$;
+
             -- Stores user roles for the Role-Based Access Control (RBAC) system
             CREATE TABLE IF NOT EXISTS roles (
                 id UUID PRIMARY KEY,
@@ -127,9 +159,12 @@ public static class DbInitializer
             CREATE TABLE IF NOT EXISTS users (
                 id UUID PRIMARY KEY,
                 email CITEXT NOT NULL,
+                username CITEXT,
+                last_username_change_at TIMESTAMP WITH TIME ZONE,
                 password_hash TEXT,
                 full_name VARCHAR(255) NOT NULL,
                 avatar_url TEXT,
+                avatar_source INTEGER NOT NULL DEFAULT 0,
                 status user_status NOT NULL DEFAULT 'EMAIL_VERIFY_PENDING',
                 email_verified_at TIMESTAMP WITH TIME ZONE,
                 last_login_at TIMESTAMP WITH TIME ZONE,
@@ -144,6 +179,7 @@ public static class DbInitializer
                 deleted_at TIMESTAMP WITH TIME ZONE
             );
             CREATE UNIQUE INDEX IF NOT EXISTS idx_users_email_active ON users(email) WHERE (deleted_at IS NULL OR status = 'DELETION_PENDING');
+            CREATE UNIQUE INDEX IF NOT EXISTS idx_users_username_active ON users(username) WHERE (deleted_at IS NULL OR status = 'DELETION_PENDING');
 
             -- Stores linked secondary emails
             CREATE TABLE IF NOT EXISTS user_emails (
@@ -711,6 +747,26 @@ public static class DbInitializer
                     END IF;
                 END IF;
 
+                 -- Safely provision username column to users if missing
+                 IF NOT EXISTS (
+                     SELECT 1 
+                     FROM information_schema.columns 
+                     WHERE table_name = 'users' AND column_name = 'username'
+                 ) THEN
+                     ALTER TABLE users ADD COLUMN username CITEXT;
+                 END IF;
+
+                 -- Safely provision last_username_change_at column to users if missing
+                 IF NOT EXISTS (
+                     SELECT 1 
+                     FROM information_schema.columns 
+                     WHERE table_name = 'users' AND column_name = 'last_username_change_at'
+                 ) THEN
+                     ALTER TABLE users ADD COLUMN last_username_change_at TIMESTAMP WITH TIME ZONE;
+                 END IF;
+
+                 CREATE UNIQUE INDEX IF NOT EXISTS idx_users_username_active ON users(username) WHERE (deleted_at IS NULL OR status = 'DELETION_PENDING');
+
                 -- Safely provision provider_account_id column to auth_providers if missing
                 IF NOT EXISTS (
                     SELECT 1 
@@ -810,6 +866,68 @@ public static class DbInitializer
                     ALTER TABLE auth_providers ADD COLUMN provider_profile_url VARCHAR(500);
                 END IF;
 
+            END $$;
+
+            -- Safely provision avatar_source column and perform backfills
+            DO $$
+            BEGIN
+                IF NOT EXISTS (
+                    SELECT 1 
+                    FROM information_schema.columns 
+                    WHERE table_name = 'users' AND column_name = 'avatar_source'
+                ) THEN
+                    ALTER TABLE users ADD COLUMN avatar_source INTEGER NOT NULL DEFAULT 0;
+                END IF;
+
+                -- Backfill Step 1: If avatar_url is null or empty, it is Default (0)
+                UPDATE users 
+                SET avatar_source = 0 
+                WHERE avatar_url IS NULL OR avatar_url = '';
+
+                -- Backfill Step 2: If avatar_url is a local key (no http prefix), it is Uploaded (1)
+                UPDATE users 
+                SET avatar_source = 1 
+                WHERE avatar_url IS NOT NULL 
+                  AND avatar_url <> '' 
+                  AND avatar_url NOT LIKE 'http://%' 
+                  AND avatar_url NOT LIKE 'https://%';
+
+                -- Backfill Step 3: Match http URLs against active linked provider keys (Google = 2)
+                UPDATE users u
+                SET avatar_source = 2
+                FROM auth_providers ap
+                WHERE u.id = ap.user_id 
+                  AND ap.provider_name = 'google'
+                  AND ap.deleted_at IS NULL
+                  AND u.avatar_url LIKE 'https://%.googleusercontent.com/%'
+                  AND u.avatar_source = 0;
+
+                -- Backfill Step 4: Match http URLs against active linked provider keys (GitHub = 3)
+                UPDATE users u
+                SET avatar_source = 3
+                FROM auth_providers ap
+                WHERE u.id = ap.user_id 
+                  AND ap.provider_name = 'github'
+                  AND ap.deleted_at IS NULL
+                  AND u.avatar_url LIKE 'https://avatars.githubusercontent.com/%'
+                  AND u.avatar_source = 0;
+
+                -- Backfill Step 5: Fallback remaining http avatar URLs to Uploaded (1)
+                UPDATE users 
+                SET avatar_source = 1 
+                WHERE avatar_url IS NOT NULL 
+                  AND avatar_url <> '' 
+                  AND avatar_url LIKE 'http%' 
+                  AND avatar_source = 0;
+
+                -- Backfill legacy Google Provider avatar URLs from users if null
+                UPDATE auth_providers ap
+                SET provider_avatar_url = u.avatar_url
+                FROM users u
+                WHERE ap.user_id = u.id 
+                  AND ap.provider_name = 'google' 
+                  AND ap.provider_avatar_url IS NULL 
+                  AND u.avatar_url LIKE 'https://%.googleusercontent.com/%';
             END $$;
 
             -- Granular permissions using a hierarchical naming convention
@@ -1122,6 +1240,57 @@ public static class DbInitializer
             );
             CREATE INDEX IF NOT EXISTS idx_academic_achievements_user_id ON academic_achievements(user_id);
 
+            -- Work Experience & Achievements normalized tables
+            CREATE TABLE IF NOT EXISTS work_experience_entries (
+                id UUID PRIMARY KEY,
+                user_id UUID NOT NULL,
+                job_title VARCHAR(255) NOT NULL,
+                company VARCHAR(255) NOT NULL,
+                experience_category INTEGER NOT NULL,
+                employment_type INTEGER NOT NULL,
+                location VARCHAR(255),
+                start_date TIMESTAMP WITH TIME ZONE NOT NULL,
+                end_date TIMESTAMP WITH TIME ZONE,
+                is_currently_working BOOLEAN NOT NULL DEFAULT FALSE,
+                description TEXT NOT NULL,
+                display_order INTEGER NOT NULL DEFAULT 0,
+                created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+                updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+                deleted_at TIMESTAMP WITH TIME ZONE,
+                CONSTRAINT fk_work_experience_entries_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+            );
+            CREATE INDEX IF NOT EXISTS idx_work_experience_entries_user_id ON work_experience_entries(user_id);
+
+            CREATE TABLE IF NOT EXISTS work_experience_achievements (
+                id UUID PRIMARY KEY,
+                work_experience_id UUID NOT NULL,
+                title VARCHAR(255) NOT NULL,
+                description TEXT NOT NULL,
+                created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+                updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+                CONSTRAINT fk_work_experience_achievements_entry FOREIGN KEY (work_experience_id) REFERENCES work_experience_entries(id) ON DELETE CASCADE
+            );
+            CREATE INDEX IF NOT EXISTS idx_work_experience_achievements_entry ON work_experience_achievements(work_experience_id);
+
+            CREATE TABLE IF NOT EXISTS work_experience_technologies (
+                id UUID PRIMARY KEY,
+                work_experience_id UUID NOT NULL,
+                name VARCHAR(100) NOT NULL,
+                created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+                CONSTRAINT fk_work_experience_technologies_entry FOREIGN KEY (work_experience_id) REFERENCES work_experience_entries(id) ON DELETE CASCADE
+            );
+            CREATE INDEX IF NOT EXISTS idx_work_experience_technologies_entry ON work_experience_technologies(work_experience_id);
+
+            CREATE TABLE IF NOT EXISTS work_experience_links (
+                id UUID PRIMARY KEY,
+                work_experience_id UUID NOT NULL,
+                link_type INTEGER NOT NULL,
+                url VARCHAR(500) NOT NULL,
+                created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+                CONSTRAINT fk_work_experience_links_entry FOREIGN KEY (work_experience_id) REFERENCES work_experience_entries(id) ON DELETE CASCADE
+            );
+            CREATE INDEX IF NOT EXISTS idx_work_experience_links_entry ON work_experience_links(work_experience_id);
+
             -- Generic polymorphic uploads/attachments
             CREATE TABLE IF NOT EXISTS profile_attachments (
                 id UUID PRIMARY KEY,
@@ -1242,6 +1411,22 @@ public static class DbInitializer
             BEGIN
                 IF NOT EXISTS (SELECT 1 FROM pg_trigger WHERE tgname = 'tr_profile_attachments_timestamp') THEN
                     CREATE TRIGGER tr_profile_attachments_timestamp BEFORE UPDATE ON profile_attachments 
+                        FOR EACH ROW EXECUTE PROCEDURE fn_update_timestamp();
+                END IF;
+            END $$;
+
+            DO $$
+            BEGIN
+                IF NOT EXISTS (SELECT 1 FROM pg_trigger WHERE tgname = 'tr_work_experience_entries_timestamp') THEN
+                    CREATE TRIGGER tr_work_experience_entries_timestamp BEFORE UPDATE ON work_experience_entries 
+                        FOR EACH ROW EXECUTE PROCEDURE fn_update_timestamp();
+                END IF;
+            END $$;
+
+            DO $$
+            BEGIN
+                IF NOT EXISTS (SELECT 1 FROM pg_trigger WHERE tgname = 'tr_work_experience_achievements_timestamp') THEN
+                    CREATE TRIGGER tr_work_experience_achievements_timestamp BEFORE UPDATE ON work_experience_achievements 
                         FOR EACH ROW EXECUTE PROCEDURE fn_update_timestamp();
                 END IF;
             END $$;
@@ -1508,6 +1693,10 @@ public static class DbInitializer
 
         // One-time compatibility migration for Google OAuth users created under the old normalization rules
         await MigrateLegacyGoogleEmailsAsync(context);
+
+        // One-time compatibility migration to generate unique usernames for legacy users
+        var serviceToUse = usernameService ?? new UsernameService(context, TimeProvider.System, Microsoft.Extensions.Logging.Abstractions.NullLogger<UsernameService>.Instance, new DbInitializerRateLimitPolicyService());
+        await MigrateLegacyUsernamesAsync(context, serviceToUse);
     }
 
     private static async Task MigrateLegacyGoogleEmailsAsync(ApplicationDbContext context)
@@ -1543,5 +1732,68 @@ public static class DbInitializer
         {
             await context.SaveChangesAsync();
         }
+    }
+
+    private static async Task MigrateLegacyUsernamesAsync(ApplicationDbContext context, IUsernameService usernameService)
+    {
+        var usersToMigrate = await context.Users
+            .Where(u => u.Username == null || u.Username == "")
+            .ToListAsync();
+
+        if (!usersToMigrate.Any())
+        {
+            return;
+        }
+
+        foreach (var user in usersToMigrate)
+        {
+            // First check if there is a legacy username in user_profiles
+            var legacyProfileUsername = await context.UserProfiles
+                .Where(up => up.UserId == user.Id && up.Username != null && up.Username != "")
+                .Select(up => up.Username)
+                .FirstOrDefaultAsync();
+
+            string baseCandidate = !string.IsNullOrEmpty(legacyProfileUsername)
+                ? usernameService.Normalize(legacyProfileUsername)
+                : usernameService.GenerateBaseUsername(user.Email);
+
+            // Generate unique username using standard sequential suffix check
+            var uniqueUsername = await usernameService.GenerateUniqueUsernameAsync(baseCandidate);
+
+            user.Username = uniqueUsername;
+            user.UpdatedAt = DateTime.UtcNow;
+
+            // Sync with profile
+            var profile = await context.UserProfiles.FirstOrDefaultAsync(up => up.UserId == user.Id);
+            if (profile != null)
+            {
+                profile.Username = uniqueUsername;
+                profile.UpdatedAt = DateTime.UtcNow;
+            }
+            else
+            {
+                // Auto-provision profile if missing
+                profile = new UserProfile
+                {
+                    UserId = user.Id,
+                    Username = uniqueUsername,
+                    ProfileVisibility = "public",
+                    RecruiterVisibility = true,
+                    AiTalentDiscovery = "disabled",
+                    CreatedAt = DateTimeOffset.UtcNow,
+                    UpdatedAt = DateTimeOffset.UtcNow
+                };
+                context.UserProfiles.Add(profile);
+            }
+        }
+
+        await context.SaveChangesAsync();
+    }
+
+    private class DbInitializerRateLimitPolicyService : CVerify.API.Modules.Shared.System.Services.IRateLimitPolicyService
+    {
+        public bool DisableRateLimits => false;
+        public bool ShouldEnforceCooldowns() => true;
+        public void LogBypass(string actionName, string? endpoint = null, string? identifier = null) { }
     }
 }

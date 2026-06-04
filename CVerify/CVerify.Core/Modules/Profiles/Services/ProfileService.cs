@@ -11,8 +11,10 @@ using CVerify.API.Modules.Profiles.DTOs;
 using CVerify.API.Modules.Profiles.Entities;
 using CVerify.API.Modules.Shared.Diagnostics;
 using CVerify.API.Modules.Shared.Domain.Entities;
+using CVerify.API.Modules.Shared.Domain.Enums;
 using CVerify.API.Modules.Shared.Exceptions;
 using CVerify.API.Modules.Shared.Persistence;
+using CVerify.API.Modules.Shared.Security;
 using CVerify.API.Modules.Shared.Storage.Enums;
 using CVerify.API.Modules.Shared.Storage.Interfaces;
 using CVerify.API.Modules.Shared.System.Services;
@@ -24,17 +26,23 @@ public class ProfileService : IProfileService
     private readonly ApplicationDbContext _context;
     private readonly ICacheService _cacheService;
     private readonly IStorageService _storageService;
+    private readonly IUsernameService _usernameService;
+    private readonly TimeProvider _timeProvider;
     private readonly IAppLogger _logger;
 
     public ProfileService(
         ApplicationDbContext context,
         ICacheService cacheService,
         IStorageService storageService,
+        IUsernameService usernameService,
+        TimeProvider timeProvider,
         IAppLogger logger)
     {
         _context = context;
         _cacheService = cacheService;
         _storageService = storageService;
+        _usernameService = usernameService;
+        _timeProvider = timeProvider;
         _logger = logger;
     }
 
@@ -47,8 +55,8 @@ public class ProfileService : IProfileService
         if (profile == null)
         {
             // Auto-provision if user exists but profile is missing
-            var userExists = await _context.Users.AnyAsync(u => u.Id == userId, cancellationToken);
-            if (!userExists)
+            var user = await _context.Users.FirstOrDefaultAsync(u => u.Id == userId, cancellationToken);
+            if (user == null)
             {
                 throw new ResourceNotFoundException(ProfileErrorCodes.ProfileNotFound, "User not found.");
             }
@@ -56,6 +64,7 @@ public class ProfileService : IProfileService
             profile = new UserProfile
             {
                 UserId = userId,
+                Username = user.Username,
                 ProfileVisibility = "public",
                 RecruiterVisibility = true,
                 AiTalentDiscovery = "disabled",
@@ -65,7 +74,7 @@ public class ProfileService : IProfileService
 
             _context.UserProfiles.Add(profile);
             await _context.SaveChangesAsync(cancellationToken);
-            await _context.Entry(profile).Reference(p => p.User).LoadAsync(cancellationToken);
+            profile.User = user;
         }
 
         var socialLinks = await _context.SocialLinks
@@ -183,7 +192,10 @@ public class ProfileService : IProfileService
         string? userAgent = null, 
         CancellationToken cancellationToken = default)
     {
+        _usernameService.ValidateUsername(newUsername);
+
         var profile = await _context.UserProfiles
+            .Include(up => up.User)
             .FirstOrDefaultAsync(up => up.UserId == userId, cancellationToken);
 
         if (profile == null)
@@ -191,31 +203,32 @@ public class ProfileService : IProfileService
             throw new ResourceNotFoundException(ProfileErrorCodes.ProfileNotFound, "Profile not found.");
         }
 
-        newUsername = newUsername.Trim();
+        newUsername = _usernameService.Normalize(newUsername);
 
-        // 1. Case-insensitive conflict check
-        // Because of the 'citext' type on Postgres username, a normal comparison works, but EF Core ILIKE is safest
-        var isTaken = await _context.UserProfiles
-            .AnyAsync(up => up.UserId != userId && up.Username == newUsername, cancellationToken);
+        // 1. Username Change Cooldown check (30 days)
+        await _usernameService.CheckChangeCooldownAsync(userId, cancellationToken);
+
+        // 2. Case-insensitive conflict check
+        var isTaken = await _context.Users
+            .AnyAsync(u => u.Id != userId && u.Username == newUsername, cancellationToken);
 
         if (isTaken)
         {
             throw new ProfileException(ProfileErrorCodes.UsernameAlreadyExists, $"The username '{newUsername}' is already taken.");
         }
 
-        // 2. Username Change Cooldown check (30 days)
-        var cooldownKey = $"username_cooldown:{userId}";
-        var hasCooldown = await _cacheService.ExistsAsync(cooldownKey);
-        if (hasCooldown)
-        {
-            throw new ProfileException(ProfileErrorCodes.UsernameCooldownActive, "You can only update your username once every 30 days.");
-        }
-
         var oldStateJson = JsonSerializer.Serialize(new { profile.Username });
         var newStateJson = JsonSerializer.Serialize(new { Username = newUsername });
 
         profile.Username = newUsername;
-        profile.UpdatedAt = DateTimeOffset.UtcNow;
+        profile.UpdatedAt = _timeProvider.GetUtcNow();
+
+        if (profile.User != null)
+        {
+            profile.User.Username = newUsername;
+            profile.User.LastUsernameChangeAt = _timeProvider.GetUtcNow();
+            profile.User.UpdatedAt = _timeProvider.GetUtcNow();
+        }
 
         // Log the state transition
         var log = new ProfileActivityLog
@@ -227,12 +240,9 @@ public class ProfileService : IProfileService
             NewStateJson = newStateJson,
             IpAddress = ipAddress,
             UserAgent = userAgent,
-            CreatedAt = DateTimeOffset.UtcNow
+            CreatedAt = _timeProvider.GetUtcNow()
         };
         _context.ProfileActivityLogs.Add(log);
-
-        // Set cooldown in cache for 30 days
-        await _cacheService.SetAsync(cooldownKey, true, TimeSpan.FromDays(30));
 
         try
         {
@@ -245,11 +255,80 @@ public class ProfileService : IProfileService
         }
     }
 
+    public async Task<PublicProfileResponse> GetPublicProfileByUsernameAsync(string username, CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(username))
+        {
+            throw new ResourceNotFoundException(ProfileErrorCodes.ProfileNotFound, "Profile not found.");
+        }
+
+        var normalizedUsername = _usernameService.Normalize(username);
+
+        var profile = await _context.UserProfiles
+            .Include(up => up.User)
+            .FirstOrDefaultAsync(up => up.User.Username == normalizedUsername, cancellationToken);
+
+        if (profile == null)
+        {
+            throw new ResourceNotFoundException(ProfileErrorCodes.ProfileNotFound, "Profile not found.");
+        }
+
+        // Visibility settings of "private" or "connections" return 404 Not Found for public lookup
+        if (string.Equals(profile.ProfileVisibility, "private", StringComparison.OrdinalIgnoreCase) || 
+            string.Equals(profile.ProfileVisibility, "connections", StringComparison.OrdinalIgnoreCase))
+        {
+            throw new ResourceNotFoundException(ProfileErrorCodes.ProfileNotFound, "Profile not found.");
+        }
+
+        var socialLinks = await _context.SocialLinks
+            .Where(sl => sl.UserId == profile.UserId)
+            .Select(sl => sl.Url)
+            .ToListAsync(cancellationToken);
+
+        var signedAvatarUrl = await GetSignedAvatarUrlAsync(profile.User?.AvatarUrl, cancellationToken);
+
+        return new PublicProfileResponse(
+            profile.UserId,
+            profile.Username ?? profile.User?.Username ?? string.Empty,
+            profile.User?.FullName ?? string.Empty,
+            signedAvatarUrl,
+            profile.Bio,
+            profile.Headline,
+            profile.Company,
+            profile.Location,
+            socialLinks
+        );
+    }
+
+    private async Task<string?> GetSignedAvatarUrlAsync(string? avatarUrl, CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrEmpty(avatarUrl))
+        {
+            return null;
+        }
+
+        if (avatarUrl.StartsWith("http://", StringComparison.OrdinalIgnoreCase) || 
+            avatarUrl.StartsWith("https://", StringComparison.OrdinalIgnoreCase))
+        {
+            return avatarUrl;
+        }
+
+        try
+        {
+            return await _storageService.GetSignedUrlAsync(avatarUrl, TimeSpan.FromHours(24), cancellationToken);
+        }
+        catch (Exception ex)
+        {
+            _logger.Log(LogLevel.Warning, "Profile", $"Failed to sign avatar URL: {avatarUrl}", ex);
+            return null;
+        }
+    }
+
     private static ProfileResponse MapToResponse(UserProfile profile, List<string> socialLinks)
     {
         return new ProfileResponse(
             profile.UserId,
-            profile.Username,
+            profile.Username ?? profile.User?.Username,
             profile.User?.FullName,
             profile.Bio,
             profile.Location,
@@ -309,6 +388,7 @@ public class ProfileService : IProfileService
 
         // Update user record
         user.AvatarUrl = uploadedFile.ObjectKey;
+        user.AvatarSource = AvatarSource.Uploaded;
         user.UpdatedAt = DateTimeOffset.UtcNow;
         await _context.SaveChangesAsync(cancellationToken);
 
@@ -319,5 +399,120 @@ public class ProfileService : IProfileService
             cancellationToken);
 
         return (signedUrl, uploadedFile.ObjectKey);
+    }
+
+    public async Task<(string SignedUrl, string ObjectKey)> SyncAvatarWithProviderAsync(
+        Guid userId,
+        string providerName,
+        CancellationToken cancellationToken = default)
+    {
+        var canonicalName = providerName.ToLowerInvariant();
+        if (canonicalName != "google" && canonicalName != "github" && canonicalName != "gitlab")
+        {
+            throw new BusinessRuleException("INVALID_PROVIDER", "Unsupported sync provider.");
+        }
+
+        var user = await _context.Users
+            .Include(u => u.AuthProviders)
+            .FirstOrDefaultAsync(u => u.Id == userId, cancellationToken);
+
+        if (user == null)
+        {
+            throw new ResourceNotFoundException("USER_NOT_FOUND", "User not found.");
+        }
+
+        var provider = user.AuthProviders
+            .FirstOrDefault(ap => ap.ProviderName.ToLower() == canonicalName && ap.DeletedAt == null);
+
+        if (provider == null || string.IsNullOrEmpty(provider.ProviderAvatarUrl))
+        {
+            throw new BusinessRuleException("PROVIDER_AVATAR_MISSING", $"No connected {providerName} account or provider avatar URL found.");
+        }
+
+        // Clean up old uploaded file from storage if applicable
+        if (!string.IsNullOrEmpty(user.AvatarUrl) && 
+            !user.AvatarUrl.StartsWith("http://", StringComparison.OrdinalIgnoreCase) && 
+            !user.AvatarUrl.StartsWith("https://", StringComparison.OrdinalIgnoreCase))
+        {
+            try
+            {
+                await _storageService.DeleteFileAsync(user.AvatarUrl, cancellationToken);
+            }
+            catch (Exception ex)
+            {
+                _logger.Log(LogLevel.Warning, "Profile", $"Failed to delete old avatar key: {user.AvatarUrl}", ex);
+            }
+        }
+
+        user.AvatarUrl = provider.ProviderAvatarUrl;
+        user.AvatarSource = canonicalName switch
+        {
+            "google" => AvatarSource.Google,
+            "github" => AvatarSource.GitHub,
+            "gitlab" => AvatarSource.GitLab,
+            _ => AvatarSource.Default
+        };
+        user.UpdatedAt = DateTimeOffset.UtcNow;
+        
+        await _context.SaveChangesAsync(cancellationToken);
+
+        var log = new ProfileActivityLog
+        {
+            Id = Guid.CreateVersion7(),
+            UserId = userId,
+            ActionType = "SYNC_AVATAR",
+            OldStateJson = JsonSerializer.Serialize(new { Source = "Manual" }),
+            NewStateJson = JsonSerializer.Serialize(new { Source = canonicalName, Url = provider.ProviderAvatarUrl }),
+            CreatedAt = DateTimeOffset.UtcNow
+        };
+        _context.ProfileActivityLogs.Add(log);
+        await _context.SaveChangesAsync(cancellationToken);
+
+        return (provider.ProviderAvatarUrl, provider.ProviderAvatarUrl);
+    }
+
+    public async Task DeleteAvatarAsync(
+        Guid userId,
+        CancellationToken cancellationToken = default)
+    {
+        var user = await _context.Users.FirstOrDefaultAsync(u => u.Id == userId, cancellationToken);
+        if (user == null)
+        {
+            throw new ResourceNotFoundException("USER_NOT_FOUND", "User not found.");
+        }
+
+        // Delete old avatar from R2 storage physically if it is an object key we managed
+        if (!string.IsNullOrEmpty(user.AvatarUrl) && 
+            !user.AvatarUrl.StartsWith("http://", StringComparison.OrdinalIgnoreCase) && 
+            !user.AvatarUrl.StartsWith("https://", StringComparison.OrdinalIgnoreCase))
+        {
+            try
+            {
+                await _storageService.DeleteFileAsync(user.AvatarUrl, cancellationToken);
+            }
+            catch (Exception ex)
+            {
+                _logger.Log(LogLevel.Warning, "Profile", $"Failed to delete old avatar key: {user.AvatarUrl}", ex);
+            }
+        }
+
+        var oldStateJson = JsonSerializer.Serialize(new { user.AvatarUrl, user.AvatarSource });
+
+        user.AvatarUrl = null;
+        user.AvatarSource = AvatarSource.Default;
+        user.UpdatedAt = DateTimeOffset.UtcNow;
+        await _context.SaveChangesAsync(cancellationToken);
+
+        var log = new ProfileActivityLog
+        {
+            Id = Guid.CreateVersion7(),
+            UserId = userId,
+            ActionType = "DELETE_AVATAR",
+            OldStateJson = oldStateJson,
+            NewStateJson = JsonSerializer.Serialize(new { AvatarUrl = (string?)null, AvatarSource = AvatarSource.Default }),
+            CreatedAt = DateTimeOffset.UtcNow
+        };
+        _context.ProfileActivityLogs.Add(log);
+        await _context.SaveChangesAsync(cancellationToken);
     }
 }
