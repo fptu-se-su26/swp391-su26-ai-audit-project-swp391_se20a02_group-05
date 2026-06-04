@@ -59,7 +59,8 @@ public class AuthService : IAuthService
     private readonly IStorageService _storageService;
     private readonly IRateLimitPolicyService _rateLimitPolicyService;
     private readonly IGoogleTokenValidator _googleTokenValidator;
-
+    private readonly IUsernameService _usernameService;
+ 
     public AuthService(
         ApplicationDbContext context,
         ITokenService tokenService,
@@ -77,7 +78,8 @@ public class AuthService : IAuthService
         IOtpPolicyService otpPolicyService,
         IStorageService storageService,
         IRateLimitPolicyService rateLimitPolicyService,
-        IGoogleTokenValidator googleTokenValidator)
+        IGoogleTokenValidator googleTokenValidator,
+        IUsernameService usernameService)
     {
         _context = context;
         _tokenService = tokenService;
@@ -96,6 +98,7 @@ public class AuthService : IAuthService
         _storageService = storageService;
         _rateLimitPolicyService = rateLimitPolicyService;
         _googleTokenValidator = googleTokenValidator;
+        _usernameService = usernameService;
     }
 
 
@@ -130,7 +133,7 @@ public class AuthService : IAuthService
         {
             passwordChangedAt = user.CreatedAt;
         }
-        return new AuthResponse(user.Id, user.Email, user.FullName, signedAvatar, roles, permissions, isEmailVerified, status, nextStep, passwordChangedAt, hasPassword);
+        return new AuthResponse(user.Id, user.Email, user.Username, user.FullName, signedAvatar, roles, permissions, isEmailVerified, status, nextStep, passwordChangedAt, hasPassword);
     }
 
     private async Task<UserProfileResponse> CreateUserProfileResponseAsync(User user, IEnumerable<string> roles, IEnumerable<string> permissions, bool isEmailVerified, string status, string nextStep, CancellationToken cancellationToken = default)
@@ -145,7 +148,7 @@ public class AuthService : IAuthService
         {
             passwordChangedAt = user.CreatedAt;
         }
-        return new UserProfileResponse(user.Id, user.Email, user.FullName, signedAvatar, roles, permissions, isEmailVerified, status, nextStep, passwordChangedAt, hasPassword);
+        return new UserProfileResponse(user.Id, user.Email, user.Username, user.FullName, signedAvatar, roles, permissions, isEmailVerified, status, nextStep, passwordChangedAt, hasPassword);
     }
 
     /// <summary>
@@ -190,7 +193,7 @@ public class AuthService : IAuthService
             var reactivationToken = Guid.NewGuid().ToString("N");
             await _cacheService.SetAsync($"reactivate:token:{reactivationToken}", user.Id.ToString(), TimeSpan.FromMinutes(10));
 
-            return new AuthResponse(user.Id, user.Email, user.FullName, user.AvatarUrl, userRoles, userPermissions, user.EmailVerifiedAt.HasValue, "DELETION_PENDING", $"REACTIVATE:{reactivationToken}", null, !string.IsNullOrEmpty(user.PasswordHash));
+            return new AuthResponse(user.Id, user.Email, user.Username, user.FullName, user.AvatarUrl, userRoles, userPermissions, user.EmailVerifiedAt.HasValue, "DELETION_PENDING", $"REACTIVATE:{reactivationToken}", null, !string.IsNullOrEmpty(user.PasswordHash));
         }
 
         if (_accountService.IsAccountDisabled(user))
@@ -368,6 +371,7 @@ public class AuthService : IAuthService
                         Email = email,
                         FullName = payload.Name ?? "Google User",
                         AvatarUrl = payload.Picture,
+                        AvatarSource = !string.IsNullOrEmpty(payload.Picture) ? AvatarSource.Google : AvatarSource.Default,
                         Status = UserStatus.ACTIVE,
                         EmailVerifiedAt = _timeProvider.GetUtcNow().UtcDateTime,
                         CreatedAt = _timeProvider.GetUtcNow().UtcDateTime,
@@ -376,7 +380,8 @@ public class AuthService : IAuthService
                     };
 
                     _context.Users.Add(user);
-                    await _context.SaveChangesAsync();
+                    await _usernameService.RunWithUsernameRetryAsync(user, email, async () => 
+                        await _context.SaveChangesAsync(), cancellationToken: default);
 
                     // Create Google Provider row
                     var googleProvider = new AuthProvider
@@ -385,6 +390,7 @@ public class AuthService : IAuthService
                         ProviderName = "Google",
                         ProviderKey = payload.Subject,
                         ProviderAccountId = payload.Email ?? payload.Name ?? payload.Subject,
+                        ProviderAvatarUrl = payload.Picture,
                         CreatedAt = _timeProvider.GetUtcNow()
                     };
                     _context.AuthProviders.Add(googleProvider);
@@ -402,7 +408,7 @@ public class AuthService : IAuthService
                         var reactivationToken = Guid.NewGuid().ToString("N");
                         await _cacheService.SetAsync($"reactivate:token:{reactivationToken}", user.Id.ToString(), TimeSpan.FromMinutes(10));
 
-                        return new AuthResponse(user.Id, user.Email, user.FullName, user.AvatarUrl, userRoles, userPermissions, user.EmailVerifiedAt.HasValue, "DELETION_PENDING", $"REACTIVATE:{reactivationToken}", null, !string.IsNullOrEmpty(user.PasswordHash));
+                        return new AuthResponse(user.Id, user.Email, user.Username, user.FullName, user.AvatarUrl, userRoles, userPermissions, user.EmailVerifiedAt.HasValue, "DELETION_PENDING", $"REACTIVATE:{reactivationToken}", null, !string.IsNullOrEmpty(user.PasswordHash));
                     }
 
                     if (_accountService.IsAccountDisabled(user))
@@ -419,9 +425,19 @@ public class AuthService : IAuthService
                         throw new UnauthorizedAccessException($"Account is temporarily locked until {user.LockUntil}");
                     }
 
-                    if (!string.IsNullOrEmpty(payload.Picture) && user.AvatarUrl != payload.Picture)
+                    var googleProvider = user.AuthProviders.FirstOrDefault(ap => ap.ProviderName.ToLower() == "google" && ap.DeletedAt == null);
+
+                    if (googleProvider != null)
                     {
-                        user.AvatarUrl = payload.Picture;
+                        googleProvider.ProviderAvatarUrl = payload.Picture;
+                    }
+
+                    if (!string.IsNullOrEmpty(payload.Picture))
+                    {
+                        if (user.AvatarSource == AvatarSource.Google)
+                        {
+                            user.AvatarUrl = payload.Picture;
+                        }
                     }
                     if (!string.IsNullOrEmpty(payload.Name) && user.FullName != payload.Name && user.FullName == "Google User")
                     {
@@ -438,7 +454,6 @@ public class AuthService : IAuthService
                     await _context.SaveChangesAsync();
 
                     // Dynamically map AuthProvider link if not present or needs email update
-                    var googleProvider = user.AuthProviders.FirstOrDefault(ap => ap.ProviderName.ToLower() == "google" && ap.DeletedAt == null);
                     if (googleProvider == null)
                     {
                         googleProvider = new AuthProvider
@@ -447,16 +462,30 @@ public class AuthService : IAuthService
                             ProviderName = "Google",
                             ProviderKey = payload.Subject,
                             ProviderAccountId = payload.Email ?? payload.Name ?? payload.Subject,
+                            ProviderAvatarUrl = payload.Picture,
                             CreatedAt = _timeProvider.GetUtcNow()
                         };
                         _context.AuthProviders.Add(googleProvider);
                         await _context.SaveChangesAsync();
                         await LogAuditEventAsync(user.Id, "PROVIDER_LINKED", $"Dynamically mapped Google provider link for existing user {user.Email}.");
                     }
-                    else if (googleProvider.ProviderAccountId != payload.Email)
+                    else
                     {
-                        googleProvider.ProviderAccountId = payload.Email ?? payload.Name ?? payload.Subject;
-                        await _context.SaveChangesAsync();
+                        bool providerNeedsUpdate = false;
+                        if (googleProvider.ProviderAccountId != payload.Email)
+                        {
+                            googleProvider.ProviderAccountId = payload.Email ?? payload.Name ?? payload.Subject;
+                            providerNeedsUpdate = true;
+                        }
+                        if (googleProvider.ProviderAvatarUrl != payload.Picture)
+                        {
+                            googleProvider.ProviderAvatarUrl = payload.Picture;
+                            providerNeedsUpdate = true;
+                        }
+                        if (providerNeedsUpdate)
+                        {
+                            await _context.SaveChangesAsync();
+                        }
                     }
                 }
 
@@ -873,7 +902,8 @@ public class AuthService : IAuthService
             };
 
             _context.Users.Add(newUser);
-            await _context.SaveChangesAsync(cancellationToken);
+            await _usernameService.RunWithUsernameRetryAsync(newUser, normalizedEmail, async () => 
+                await _context.SaveChangesAsync(cancellationToken), cancellationToken: cancellationToken);
 
             // Generate secure URL-safe verification token
             var plainToken = EmailTokenGenerator.GenerateSecureToken();
@@ -912,14 +942,7 @@ public class AuthService : IAuthService
                 CorrelationId = correlationId
             };
 
-            var outboxMessage = new OutboxMessage
-            {
-                Type = "EmailVerification",
-                Payload = System.Text.Json.JsonSerializer.Serialize(payloadObj),
-                CreatedAt = _timeProvider.GetUtcNow()
-            };
-
-            _context.OutboxMessages.Add(outboxMessage);
+            _context.AddAndAuditOutboxMessage("EmailVerification", newUser.Email, correlationId, payloadObj, _timeProvider.GetUtcNow());
             await _context.SaveChangesAsync(cancellationToken);
 
             await transaction.CommitAsync(cancellationToken);
@@ -1012,14 +1035,7 @@ public class AuthService : IAuthService
                 CorrelationId = correlationId
             };
 
-            var outboxMessage = new OutboxMessage
-            {
-                Type = "WelcomeNotice",
-                Payload = System.Text.Json.JsonSerializer.Serialize(payloadObj),
-                CreatedAt = _timeProvider.GetUtcNow()
-            };
-
-            _context.OutboxMessages.Add(outboxMessage);
+            _context.AddAndAuditOutboxMessage("WelcomeNotice", user.Email, correlationId, payloadObj, _timeProvider.GetUtcNow());
             await _context.SaveChangesAsync(cancellationToken);
 
             await transaction.CommitAsync(cancellationToken);
@@ -1078,7 +1094,7 @@ public class AuthService : IAuthService
         var isCooldown = await _cacheService.GetAsync<string>(cooldownKey);
         if (isCooldown != null)
         {
-            if (_rateLimitPolicyService.DisableRateLimits)
+            if (!_rateLimitPolicyService.ShouldEnforceCooldowns())
             {
                 _rateLimitPolicyService.LogBypass("Verification email cooldown", "ResendVerificationEmailAsync", normalizedEmail);
             }
@@ -1155,19 +1171,14 @@ public class AuthService : IAuthService
                 CorrelationId = correlationId
             };
 
-            var outboxMessage = new OutboxMessage
-            {
-                Type = "EmailVerification",
-                Payload = System.Text.Json.JsonSerializer.Serialize(payloadObj),
-                CreatedAt = _timeProvider.GetUtcNow()
-            };
-
-            _context.OutboxMessages.Add(outboxMessage);
+            _context.AddAndAuditOutboxMessage("EmailVerification", user.Email, correlationId, payloadObj, _timeProvider.GetUtcNow());
             await _context.SaveChangesAsync(cancellationToken);
 
-            // Set 1-minute rate limiting cooldown in Redis
-            var cooldownTime = _rateLimitPolicyService.DisableRateLimits ? TimeSpan.Zero : TimeSpan.FromMinutes(1);
-            await _cacheService.SetAsync(cooldownKey, "active", cooldownTime);
+            // Set 1-minute rate limiting cooldown in Redis if enabled
+            if (_rateLimitPolicyService.ShouldEnforceCooldowns())
+            {
+                await _cacheService.SetAsync(cooldownKey, "active", TimeSpan.FromMinutes(1));
+            }
 
             await transaction.CommitAsync(cancellationToken);
 
@@ -1198,7 +1209,7 @@ public class AuthService : IAuthService
         var isCooldown = await _cacheService.GetAsync<string>(cooldownKey);
         if (isCooldown != null)
         {
-            if (_rateLimitPolicyService.DisableRateLimits)
+            if (!_rateLimitPolicyService.ShouldEnforceCooldowns())
             {
                 _rateLimitPolicyService.LogBypass("Forgot password cooldown", "ForgotPasswordAsync", normalizedEmail);
             }
@@ -1274,19 +1285,14 @@ public class AuthService : IAuthService
                 CorrelationId = correlationId
             };
 
-            var outboxMessage = new OutboxMessage
-            {
-                Type = "PasswordReset",
-                Payload = System.Text.Json.JsonSerializer.Serialize(payloadObj),
-                CreatedAt = _timeProvider.GetUtcNow()
-            };
-
-            _context.OutboxMessages.Add(outboxMessage);
+            _context.AddAndAuditOutboxMessage("PasswordReset", user.Email, correlationId, payloadObj, _timeProvider.GetUtcNow());
             await _context.SaveChangesAsync(cancellationToken);
 
-            // Set 1-minute rate limiting cooldown in Redis
-            var cooldownTime = _rateLimitPolicyService.DisableRateLimits ? TimeSpan.Zero : TimeSpan.FromMinutes(1);
-            await _cacheService.SetAsync(cooldownKey, "active", cooldownTime);
+            // Set 1-minute rate limiting cooldown in Redis if enabled
+            if (_rateLimitPolicyService.ShouldEnforceCooldowns())
+            {
+                await _cacheService.SetAsync(cooldownKey, "active", TimeSpan.FromMinutes(1));
+            }
 
             await transaction.CommitAsync(cancellationToken);
 
@@ -1683,13 +1689,7 @@ public class AuthService : IAuthService
                     ReactivateDeadline = reactivateDeadline,
                     CorrelationId = Guid.NewGuid().ToString("N")
                 };
-                var outboxMessage = new OutboxMessage
-                {
-                    Type = "AccountDeletionInitiated",
-                    Payload = System.Text.Json.JsonSerializer.Serialize(payloadObj),
-                    CreatedAt = _timeProvider.GetUtcNow()
-                };
-                _context.OutboxMessages.Add(outboxMessage);
+                _context.AddAndAuditOutboxMessage("AccountDeletionInitiated", user.Email, payloadObj.CorrelationId, payloadObj, _timeProvider.GetUtcNow());
 
                 await _context.SaveChangesAsync();
                 await transaction.CommitAsync();
@@ -1977,21 +1977,16 @@ public class AuthService : IAuthService
         // Verification Security Notification: If using a secondary email, dispatch warning to primary email
         if (!string.Equals(primaryEmail, normalizedTarget, StringComparison.OrdinalIgnoreCase))
         {
+            var correlationId = Guid.NewGuid().ToString("N");
             var alertPayload = new
             {
                 Email = user.Email,
                 Subject = "Security Alert: Account Deletion OTP Requested",
-                Body = $"A one-time passcode was requested to authorize the deletion of your CVerify account. The code was dispatched to your linked secondary address: {normalizedTarget}. If you did not authorize this, please immediately secure your account credentials."
+                Body = $"A one-time passcode was requested to authorize the deletion of your CVerify account. The code was dispatched to your linked secondary address: {normalizedTarget}. If you did not authorize this, please immediately secure your account credentials.",
+                CorrelationId = correlationId
             };
 
-            var outboxMessage = new OutboxMessage
-            {
-                Type = "SecurityAlertNotice",
-                Payload = System.Text.Json.JsonSerializer.Serialize(alertPayload),
-                CreatedAt = _timeProvider.GetUtcNow()
-            };
-
-            _context.OutboxMessages.Add(outboxMessage);
+            _context.AddAndAuditOutboxMessage("SecurityAlertNotice", user.Email, correlationId, alertPayload, _timeProvider.GetUtcNow());
         }
 
         var ipAddress = _httpContextAccessor.HttpContext?.Connection.RemoteIpAddress?.ToString() ?? "127.0.0.1";
@@ -2170,26 +2165,26 @@ public class AuthService : IAuthService
         // 2. Global Rate Limiting Throttling (IP + Email + Purpose)
         var ipRateKey = $"rate:otp:ip:{ipAddress}";
         var ipCount = await _cacheService.GetAsync<int?>(ipRateKey) ?? 0;
-        var maxIpCount = _rateLimitPolicyService.DisableRateLimits ? 99999 : 10;
+        var maxIpCount = !_rateLimitPolicyService.ShouldEnforceCooldowns() ? 99999 : 10;
         if (ipCount >= maxIpCount)
         {
             _logger.LogWarning("[CorrelationID: {CorrelationId}] [IP: {IpAddress}] IP OTP request limit exceeded.", correlationId, ipAddress);
             throw new AuthException(AuthErrorCodes.RateLimitExceeded, "Too many OTP requests from this IP. Please try again in an hour.");
         }
-        if (_rateLimitPolicyService.DisableRateLimits && ipCount > 0)
+        if (!_rateLimitPolicyService.ShouldEnforceCooldowns() && ipCount > 0)
         {
             _rateLimitPolicyService.LogBypass("IP OTP generation limit", "SendOtpAsync", ipAddress);
         }
 
         var emailRateKey = $"rate:otp:email:{normalizedEmail}:{request.Purpose}";
         var emailCount = await _cacheService.GetAsync<int?>(emailRateKey) ?? 0;
-        var maxEmailCount = _rateLimitPolicyService.DisableRateLimits ? 99999 : 5;
+        var maxEmailCount = !_rateLimitPolicyService.ShouldEnforceCooldowns() ? 99999 : 5;
         if (emailCount >= maxEmailCount)
         {
             _logger.LogWarning("[CorrelationID: {CorrelationId}] Email OTP request limit exceeded for: {Email}.", correlationId, normalizedEmail);
             throw new AuthException(AuthErrorCodes.RateLimitExceeded, "Too many OTP requests for this email. Please try again in 15 minutes.");
         }
-        if (_rateLimitPolicyService.DisableRateLimits && emailCount > 0)
+        if (!_rateLimitPolicyService.ShouldEnforceCooldowns() && emailCount > 0)
         {
             _rateLimitPolicyService.LogBypass("Email OTP generation limit", "SendOtpAsync", normalizedEmail);
         }
@@ -2222,7 +2217,7 @@ public class AuthService : IAuthService
                 // Check if cooldown is still active from database
                 if (verification.CooldownUntil.HasValue && verification.CooldownUntil.Value > utcNow)
                 {
-                    if (_rateLimitPolicyService.DisableRateLimits)
+                    if (!_rateLimitPolicyService.ShouldEnforceCooldowns())
                     {
                         _rateLimitPolicyService.LogBypass("OTP resend cooldown", "SendOtpAsync", normalizedEmail);
                     }
@@ -2280,9 +2275,12 @@ public class AuthService : IAuthService
 
             await _context.SaveChangesAsync(cancellationToken);
 
-            // Record incremented rate limits
-            await _cacheService.SetAsync(ipRateKey, (int?)(ipCount + 1), TimeSpan.FromHours(1));
-            await _cacheService.SetAsync(emailRateKey, (int?)(emailCount + 1), TimeSpan.FromMinutes(15));
+            // Record incremented rate limits if enabled
+            if (_rateLimitPolicyService.ShouldEnforceCooldowns())
+            {
+                await _cacheService.SetAsync(ipRateKey, (int?)(ipCount + 1), TimeSpan.FromHours(1));
+                await _cacheService.SetAsync(emailRateKey, (int?)(emailCount + 1), TimeSpan.FromMinutes(15));
+            }
 
             // Outbox Pattern Integration with template parameter mapping
             var payloadObj = new
@@ -2291,17 +2289,11 @@ public class AuthService : IAuthService
                 Otp = plainOtp,
                 ChallengeId = challengeId,
                 Purpose = request.Purpose,
-                Template = policy.EmailTemplate
+                Template = policy.EmailTemplate,
+                CorrelationId = correlationId
             };
 
-            var outboxMessage = new OutboxMessage
-            {
-                Type = "EmailOtpVerification",
-                Payload = System.Text.Json.JsonSerializer.Serialize(payloadObj),
-                CreatedAt = utcNow
-            };
-
-            _context.OutboxMessages.Add(outboxMessage);
+            _context.AddAndAuditOutboxMessage("EmailOtpVerification", normalizedEmail, correlationId, payloadObj, utcNow);
             await _context.SaveChangesAsync(cancellationToken);
 
             var sendResponse = new SendOtpResponse(challengeId, normalizedEmail, policy.CooldownSeconds);
@@ -2380,7 +2372,7 @@ public class AuthService : IAuthService
 
             if (verification.Status == OtpSessionStatus.LOCKED || verification.Attempts >= policy.MaxRetries)
             {
-                if (_rateLimitPolicyService.DisableRateLimits)
+                if (!_rateLimitPolicyService.ShouldEnforceCooldowns())
                 {
                     _rateLimitPolicyService.LogBypass("OTP verification lockout", "VerifyOtpAsync", normalizedEmail);
                 }
@@ -2418,7 +2410,7 @@ public class AuthService : IAuthService
             {
                 if (verification.Attempts >= policy.MaxRetries)
                 {
-                    if (_rateLimitPolicyService.DisableRateLimits)
+                    if (!_rateLimitPolicyService.ShouldEnforceCooldowns())
                     {
                         _rateLimitPolicyService.LogBypass("OTP verification attempts limit", "VerifyOtpAsync", normalizedEmail);
                     }
@@ -2431,7 +2423,7 @@ public class AuthService : IAuthService
                 _logger.LogWarning("[CorrelationID: {CorrelationId}] OTP code mismatch for challenge {ChallengeId}. Total attempts: {Attempts}.", correlationId, request.ChallengeId, verification.Attempts);
                 await LogAuditEventAsync(null, "OTP_FAILED", $"OTP verification failed for challenge {request.ChallengeId} on {normalizedEmail}. Attempts: {verification.Attempts}. CorrelationId: {correlationId}");
                 
-                if (verification.Status == OtpSessionStatus.LOCKED && !_rateLimitPolicyService.DisableRateLimits)
+                if (verification.Status == OtpSessionStatus.LOCKED && _rateLimitPolicyService.ShouldEnforceCooldowns())
                 {
                     throw new AuthException(AuthErrorCodes.SuspiciousActivity, "Too many failed attempts. This OTP has been blocked.");
                 }
@@ -2546,7 +2538,8 @@ public class AuthService : IAuthService
                     Roles = new List<Role> { userRole }
                 };
                 _context.Users.Add(user);
-                await _context.SaveChangesAsync(cancellationToken);
+                await _usernameService.RunWithUsernameRetryAsync(user, normalizedEmail, async () => 
+                    await _context.SaveChangesAsync(cancellationToken), cancellationToken: cancellationToken);
             }
             else
             {
@@ -2558,8 +2551,18 @@ public class AuthService : IAuthService
                 user.EmailVerifiedAt = _timeProvider.GetUtcNow().UtcDateTime;
                 user.TransitionTo(UserStatus.ACTIVE);
                 user.UpdatedAt = _timeProvider.GetUtcNow().UtcDateTime;
-                await _context.SaveChangesAsync(cancellationToken);
+
+                if (string.IsNullOrEmpty(user.Username))
+                {
+                    await _usernameService.RunWithUsernameRetryAsync(user, normalizedEmail, async () => 
+                        await _context.SaveChangesAsync(cancellationToken), cancellationToken: cancellationToken);
+                }
+                else
+                {
+                    await _context.SaveChangesAsync(cancellationToken);
+                }
             }
+
 
             // Provider mapping
             var provider = user.AuthProviders.FirstOrDefault(ap => ap.ProviderName == "Password");
@@ -2685,21 +2688,16 @@ public class AuthService : IAuthService
         await _context.SaveChangesAsync(cancellationToken);
 
         var verifyLinkFormat = _envConfig.Auth.VerifyEmailUrlFormat.Replace("/verify-email", "/company-onboarding/verify").Replace("{token}", plainToken);
+        var correlationId = Guid.NewGuid().ToString("N");
         var payloadObj = new
         {
             Email = normalizedEmail,
             CompanyName = officialName,
-            Link = verifyLinkFormat
+            Link = verifyLinkFormat,
+            CorrelationId = correlationId
         };
 
-        var outboxMessage = new OutboxMessage
-        {
-            Type = "CompanyEmailVerification",
-            Payload = System.Text.Json.JsonSerializer.Serialize(payloadObj),
-            CreatedAt = _timeProvider.GetUtcNow()
-        };
-
-        _context.OutboxMessages.Add(outboxMessage);
+        _context.AddAndAuditOutboxMessage("CompanyEmailVerification", normalizedEmail, correlationId, payloadObj, _timeProvider.GetUtcNow());
         await _context.SaveChangesAsync(cancellationToken);
 
         await LogAuditEventAsync(null, "COMPANY_VERIFIED", $"Company verification link sent for tax code {request.TaxCode} to {normalizedEmail}.");
@@ -2823,7 +2821,16 @@ public class AuthService : IAuthService
                     Roles = new List<Role> { ownerRole }
                 };
                 _context.Users.Add(user);
-                await _context.SaveChangesAsync(cancellationToken);
+                await _usernameService.RunWithUsernameRetryAsync(user, normalizedEmail, async () =>
+                    await _context.SaveChangesAsync(cancellationToken), cancellationToken: cancellationToken);
+            }
+            else
+            {
+                if (string.IsNullOrEmpty(user.Username))
+                {
+                    await _usernameService.RunWithUsernameRetryAsync(user, normalizedEmail, async () =>
+                        await _context.SaveChangesAsync(cancellationToken), cancellationToken: cancellationToken);
+                }
             }
 
             // Create Password linkage
@@ -2925,7 +2932,7 @@ public class AuthService : IAuthService
             _tokenService.SetTokenInsideCookie("refresh_token", refreshTokenStr, DateTime.UtcNow.AddHours(24));
 
             await LogAuditEventAsync(user.Id, "ORGANIZATION_CREATED", $"Workspace organization '{normalizedUsername}' registered successfully.");
-            return new AuthResponse(org.Id, org.Email, org.Name, null, workspaceRoles, permissions, true, "ACTIVE", "DASHBOARD");
+            return new AuthResponse(org.Id, org.Email, org.Username, org.Name, null, workspaceRoles, permissions, true, "ACTIVE", "DASHBOARD");
         }
         catch (Exception ex)
         {
@@ -3267,7 +3274,8 @@ public class AuthService : IAuthService
                 user.PasswordHash = passwordHash;
 
                 _context.Users.Add(user);
-                await _context.SaveChangesAsync(cancellationToken);
+                await _usernameService.RunWithUsernameRetryAsync(user, email, async () =>
+                    await _context.SaveChangesAsync(cancellationToken), cancellationToken: cancellationToken);
             }
             else
             {
@@ -3276,7 +3284,16 @@ public class AuthService : IAuthService
                 user.TransitionTo(UserStatus.ACTIVE);
                 user.EmailVerifiedAt = _timeProvider.GetUtcNow().UtcDateTime;
                 user.UpdatedAt = _timeProvider.GetUtcNow().UtcDateTime;
-                await _context.SaveChangesAsync(cancellationToken);
+                
+                if (string.IsNullOrEmpty(user.Username))
+                {
+                    await _usernameService.RunWithUsernameRetryAsync(user, email, async () =>
+                        await _context.SaveChangesAsync(cancellationToken), cancellationToken: cancellationToken);
+                }
+                else
+                {
+                    await _context.SaveChangesAsync(cancellationToken);
+                }
             }
 
             // Map Password Auth Provider (always created/updated because a password is set)
@@ -3425,7 +3442,7 @@ public class AuthService : IAuthService
 
             await LogAuditEventAsync(user.Id, "ORGANIZATION_CREATED", $"Workspace organization '{normalizedSlug}' registered successfully.");
             
-            var authResponse = new AuthResponse(org.Id, org.Email, org.Name, null, workspaceRoles, permissions, true, "ACTIVE", "DASHBOARD");
+            var authResponse = new AuthResponse(org.Id, org.Email, org.Username, org.Name, null, workspaceRoles, permissions, true, "ACTIVE", "DASHBOARD");
 
             // Cache for idempotency keys
             if (!string.IsNullOrEmpty(idempotencyKey))
@@ -3531,7 +3548,7 @@ public class AuthService : IAuthService
         _tokenService.SetTokenInsideCookie("refresh_token", refreshTokenStr, DateTime.UtcNow.AddHours(24));
 
         await LogAuditEventAsync(user.Id, "USER_LOGIN_SUCCESS", $"Logged in successfully via workspace organization {normalizedUsername}.");
-        return new AuthResponse(org.Id, org.Email, org.Name, null, workspaceRoles, permissions, true, "ACTIVE", "DASHBOARD");
+        return new AuthResponse(org.Id, org.Email, org.Username, org.Name, null, workspaceRoles, permissions, true, "ACTIVE", "DASHBOARD");
     }
 
     // --- ACTIVE SESSIONS & REVOCATIONS ---
@@ -4145,11 +4162,14 @@ public class AuthService : IAuthService
         }
 
         var throttleKey = $"validate_scopes_throttle:{userId}:{canonicalName}";
-        if (await _cacheService.ExistsAsync(throttleKey))
+        if (_rateLimitPolicyService.ShouldEnforceCooldowns() && await _cacheService.ExistsAsync(throttleKey))
         {
             return true; // Throttle: skip external API check
         }
-        await _cacheService.SetAsync(throttleKey, true, TimeSpan.FromMinutes(2));
+        if (_rateLimitPolicyService.ShouldEnforceCooldowns())
+        {
+            await _cacheService.SetAsync(throttleKey, true, TimeSpan.FromMinutes(2));
+        }
 
         var credential = await _context.OAuthCredentials
             .FirstOrDefaultAsync(oc => oc.AuthProviderId == matchedProvider.Id);
@@ -4369,7 +4389,7 @@ public class AuthService : IAuthService
             {
                 Audience = new[] { _envConfig.Auth.GoogleClientId }
             };
-            payload = await GoogleJsonWebSignature.ValidateAsync(request.IdToken, settings);
+            payload = await _googleTokenValidator.ValidateAsync(request.IdToken, settings);
         }
         catch (Exception ex)
         {
@@ -4409,6 +4429,8 @@ public class AuthService : IAuthService
                 ProviderName = "google",
                 ProviderKey = payload.Subject,
                 ProviderAccountId = payload.Email ?? payload.Name ?? payload.Subject,
+                ProviderUsername = payload.Email,
+                ProviderAvatarUrl = payload.Picture,
                 ScopeValidationStatus = ProviderScopeStatus.Valid,
                 LastScopeValidationAt = _timeProvider.GetUtcNow(),
                 LastProviderSyncAt = _timeProvider.GetUtcNow(),
@@ -4424,6 +4446,7 @@ public class AuthService : IAuthService
             googleProvider.ProviderKey = payload.Subject;
             googleProvider.ProviderAccountId = payload.Email ?? payload.Name ?? payload.Subject;
             googleProvider.ProviderUsername = payload.Email;
+            googleProvider.ProviderAvatarUrl = payload.Picture;
             googleProvider.ScopeValidationStatus = ProviderScopeStatus.Valid;
             googleProvider.LastScopeValidationAt = _timeProvider.GetUtcNow();
             googleProvider.LastProviderSyncAt = _timeProvider.GetUtcNow();

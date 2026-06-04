@@ -85,7 +85,7 @@ if (envPath != null) {
 
 // 2. Validate & Resolve Configuration (Enterprise Clean Code: Fail Fast)
 var envConfig = EnvValidator.Validate(builder.Configuration);
-if (builder.Environment.IsProduction())
+if (builder.Environment.IsProduction() || builder.Environment.EnvironmentName.Equals("Production", StringComparison.OrdinalIgnoreCase))
 {
     if (envConfig.Security.DisableRateLimits)
     {
@@ -332,6 +332,7 @@ builder.Services.AddScoped<IIdentityRepository, IdentityRepository>();
 builder.Services.AddScoped<ISystemService, SystemService>();
 builder.Services.AddScoped<ICacheService, CacheService>();
 builder.Services.AddScoped<ITokenService, TokenService>();
+builder.Services.AddScoped<IUsernameService, UsernameService>();
 builder.Services.AddScoped<IEncryptedFileStorageService, EncryptedFileStorageService>();
 builder.Services.AddScoped<IGoogleTokenValidator, GoogleTokenValidator>();
 
@@ -372,6 +373,7 @@ builder.Services.AddScoped<IEducationService, EducationService>();
 builder.Services.AddScoped<IAchievementService, AchievementService>();
 builder.Services.AddScoped<ICareerService, CareerService>();
 builder.Services.AddScoped<IAttachmentService, AttachmentService>();
+builder.Services.AddScoped<IWorkExperienceService, WorkExperienceService>();
 
 // Register AI Service
 builder.Services.AddScoped<IHmacSignatureService, HmacSignatureService>();
@@ -426,6 +428,18 @@ builder.Services.AddCustomAuthorization();
 
 var app = builder.Build();
 
+// Startup Diagnostics for Rate Limiting / Environment
+{
+    var startupLogger = app.Services.GetRequiredService<ILogger<Program>>();
+    var rateLimitPolicy = app.Services.GetRequiredService<IRateLimitPolicyService>();
+    startupLogger.LogInformation(
+        "[Startup Diagnostics] Current Environment: {EnvironmentName}, DisableRateLimits Config Value: {DisableRateLimits}, Cooldown Enforcement Active: {CooldownEnforcementActive}",
+        app.Environment.EnvironmentName,
+        rateLimitPolicy.DisableRateLimits,
+        rateLimitPolicy.ShouldEnforceCooldowns()
+    );
+}
+
 // 3. Automatically initialize/sync the database schema at application startup
 using (var scope = app.Services.CreateScope())
 {
@@ -433,9 +447,10 @@ using (var scope = app.Services.CreateScope())
     try
     {
         var context = services.GetRequiredService<ApplicationDbContext>();
+        var usernameService = services.GetRequiredService<IUsernameService>();
         var logger = services.GetRequiredService<ILogger<Program>>();
         logger.LogInformation("Initializing database schema and checking synchronization...");
-        await DbInitializer.InitializeAsync(context);
+        await DbInitializer.InitializeAsync(context, usernameService);
         logger.LogInformation("Database schema initialized and synchronized successfully.");
     }
     catch (Exception ex)

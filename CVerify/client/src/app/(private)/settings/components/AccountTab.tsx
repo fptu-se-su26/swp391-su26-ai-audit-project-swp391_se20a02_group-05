@@ -28,6 +28,7 @@ import {
   Modal,
   FieldError,
   Checkbox,
+  Link,
 } from "@heroui/react";
 import {
   ShieldAlert,
@@ -180,7 +181,7 @@ export const AccountTab: React.FC<AccountTabProps> = ({
     const reauthSuccess = searchParams.get("reauth_success");
     const deletionToken = searchParams.get("deletion_authorize_token");
     const error = searchParams.get("error");
-    
+
     if (reauthSuccess === "true" && deletionToken) {
       setDeletionAuthToken(deletionToken);
       loadDeletionRequirements();
@@ -198,7 +199,7 @@ export const AccountTab: React.FC<AccountTabProps> = ({
       params.delete("tab");
       const cleanSearch = params.toString() ? `?${params.toString()}` : "";
       window.history.replaceState(null, "", window.location.pathname + cleanSearch);
-      
+
       toast.success("OAuth re-authentication verified successfully.");
     } else if (error === "reauth_failed") {
       const details = searchParams.get("details");
@@ -383,6 +384,32 @@ export const AccountTab: React.FC<AccountTabProps> = ({
     }
   };
 
+  const loadLinkedEmails = useCallback(async () => {
+    try {
+      const res = await fetchLinkedEmails();
+      if (res.success && res.data) {
+        const verified = res.data.filter((e: any) => e.isVerified);
+        setLinkedEmails(verified);
+        if (verified.length > 0) {
+          const primary = verified.find((e: any) => e.isPrimary);
+          setSelectedOtpEmail(primary ? primary.email : verified[0].email);
+        } else if (user?.email) {
+          setLinkedEmails([{ email: user.email, isVerified: true, isPrimary: true }]);
+          setSelectedOtpEmail(user.email);
+        }
+      } else if (user?.email) {
+        setLinkedEmails([{ email: user.email, isVerified: true, isPrimary: true }]);
+        setSelectedOtpEmail(user.email);
+      }
+    } catch (err) {
+      console.error("Failed to load linked emails:", err);
+      if (user?.email) {
+        setLinkedEmails([{ email: user.email, isVerified: true, isPrimary: true }]);
+        setSelectedOtpEmail(user.email);
+      }
+    }
+  }, [fetchLinkedEmails, user]);
+
   if (isLoading && !profile) {
     return (
       <div className="flex items-center justify-center py-20 w-full h-full">
@@ -477,32 +504,6 @@ export const AccountTab: React.FC<AccountTabProps> = ({
     }
   };
 
-  const loadLinkedEmails = useCallback(async () => {
-    try {
-      const res = await fetchLinkedEmails();
-      if (res.success && res.data) {
-        const verified = res.data.filter((e: any) => e.isVerified);
-        setLinkedEmails(verified);
-        if (verified.length > 0) {
-          const primary = verified.find((e: any) => e.isPrimary);
-          setSelectedOtpEmail(primary ? primary.email : verified[0].email);
-        } else if (user?.email) {
-          setLinkedEmails([{ email: user.email, isVerified: true, isPrimary: true }]);
-          setSelectedOtpEmail(user.email);
-        }
-      } else if (user?.email) {
-        setLinkedEmails([{ email: user.email, isVerified: true, isPrimary: true }]);
-        setSelectedOtpEmail(user.email);
-      }
-    } catch (err) {
-      console.error("Failed to load linked emails:", err);
-      if (user?.email) {
-        setLinkedEmails([{ email: user.email, isVerified: true, isPrimary: true }]);
-        setSelectedOtpEmail(user.email);
-      }
-    }
-  }, [fetchLinkedEmails, user]);
-
   const handleSendFallbackOtp = async () => {
     setIsSendingOtp(true);
     try {
@@ -585,10 +586,10 @@ export const AccountTab: React.FC<AccountTabProps> = ({
                   </TextField>
                   <Description>
                     Your public profile link will be:{" "}
-                    <span className="font-bold text-foreground">
+                    <Link href={`${profileOrigin}/${currentValues.username || "username"}`} className="font-bold text-foreground text-xs">
                       {profileOrigin.replace(/^https?:\/\//, "")}/
                       {currentValues.username || "username"}
-                    </span>
+                    </Link>
                   </Description>
                 </div>
                 <div className="w-full flex gap-2">
