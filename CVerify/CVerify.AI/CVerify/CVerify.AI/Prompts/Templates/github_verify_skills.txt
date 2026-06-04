@@ -1,0 +1,1 @@
+Cross-reference CV claimed skills with GitHub evidence. For each skill, assign confidence (0.0-1.0) based on: commit messages, file types, library usage. Output JSON with verified_skills array.

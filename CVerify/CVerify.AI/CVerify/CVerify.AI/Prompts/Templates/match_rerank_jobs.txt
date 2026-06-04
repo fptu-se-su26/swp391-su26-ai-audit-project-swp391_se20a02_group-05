@@ -1,0 +1,1 @@
+Rerank job matches for candidate. Input: candidate profile, job list. Output JSON with reranked_jobs array (top 10), each with match_score and reasoning.
