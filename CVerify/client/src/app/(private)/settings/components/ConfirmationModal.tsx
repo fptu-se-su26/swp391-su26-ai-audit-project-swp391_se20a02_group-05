@@ -43,7 +43,9 @@ export const ConfirmationModal: React.FC<ConfirmationModalProps> = ({
   // Reset input when modal opens/closes
   useEffect(() => {
     if (!isOpen) {
-      setInputValue("");
+      Promise.resolve().then(() => {
+        setInputValue("");
+      });
     }
   }, [isOpen]);
 

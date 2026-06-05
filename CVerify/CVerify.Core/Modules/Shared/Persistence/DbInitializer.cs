@@ -1152,11 +1152,55 @@ public static class DbInitializer
                 salary_expectations DECIMAL(18,2),
                 remote_preference VARCHAR(20),
                 open_to_work_status VARCHAR(20),
+                preferred_work_environments TEXT,
+                work_styles TEXT,
+                company_values TEXT,
+                expected_salary_min DECIMAL(18,2),
+                expected_salary_max DECIMAL(18,2),
+                expected_salary_currency VARCHAR(10),
+                expected_salary_type VARCHAR(20),
+                expected_salary_negotiable BOOLEAN NOT NULL DEFAULT FALSE,
+                is_expected_salary_visible BOOLEAN NOT NULL DEFAULT FALSE,
+                work_preference_notes TEXT,
                 created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
                 updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
                 deleted_at TIMESTAMP WITH TIME ZONE,
                 CONSTRAINT fk_career_preferences_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
             );
+
+            DO $$
+            BEGIN
+                IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'career_preferences' AND column_name = 'preferred_work_environments') THEN
+                    ALTER TABLE career_preferences ADD COLUMN preferred_work_environments TEXT;
+                END IF;
+                IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'career_preferences' AND column_name = 'work_styles') THEN
+                    ALTER TABLE career_preferences ADD COLUMN work_styles TEXT;
+                END IF;
+                IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'career_preferences' AND column_name = 'company_values') THEN
+                    ALTER TABLE career_preferences ADD COLUMN company_values TEXT;
+                END IF;
+                IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'career_preferences' AND column_name = 'expected_salary_min') THEN
+                    ALTER TABLE career_preferences ADD COLUMN expected_salary_min DECIMAL(18,2);
+                END IF;
+                IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'career_preferences' AND column_name = 'expected_salary_max') THEN
+                    ALTER TABLE career_preferences ADD COLUMN expected_salary_max DECIMAL(18,2);
+                END IF;
+                IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'career_preferences' AND column_name = 'expected_salary_currency') THEN
+                    ALTER TABLE career_preferences ADD COLUMN expected_salary_currency VARCHAR(10);
+                END IF;
+                IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'career_preferences' AND column_name = 'expected_salary_type') THEN
+                    ALTER TABLE career_preferences ADD COLUMN expected_salary_type VARCHAR(20);
+                END IF;
+                IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'career_preferences' AND column_name = 'expected_salary_negotiable') THEN
+                    ALTER TABLE career_preferences ADD COLUMN expected_salary_negotiable BOOLEAN NOT NULL DEFAULT FALSE;
+                END IF;
+                IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'career_preferences' AND column_name = 'is_expected_salary_visible') THEN
+                    ALTER TABLE career_preferences ADD COLUMN is_expected_salary_visible BOOLEAN NOT NULL DEFAULT FALSE;
+                END IF;
+                IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'career_preferences' AND column_name = 'work_preference_notes') THEN
+                    ALTER TABLE career_preferences ADD COLUMN work_preference_notes TEXT;
+                END IF;
+            END $$;
 
             -- Normalized User Skills
             CREATE TABLE IF NOT EXISTS user_skills (

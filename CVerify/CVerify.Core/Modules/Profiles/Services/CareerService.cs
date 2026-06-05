@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using CVerify.API.Modules.Auth.Services;
 using CVerify.API.Modules.Profiles.DTOs;
@@ -94,6 +95,22 @@ public class CareerService : ICareerService
         career.SalaryExpectations = request.SalaryExpectations;
         career.RemotePreference = request.RemotePreference;
         career.OpenToWorkStatus = request.OpenToWorkStatus;
+        career.PreferredWorkEnvironments = request.PreferredWorkEnvironments != null 
+            ? JsonSerializer.Serialize(request.PreferredWorkEnvironments) 
+            : "[]";
+        career.WorkStyles = request.WorkStyles != null 
+            ? JsonSerializer.Serialize(request.WorkStyles) 
+            : "[]";
+        career.CompanyValues = request.CompanyValues != null 
+            ? JsonSerializer.Serialize(request.CompanyValues) 
+            : "[]";
+        career.ExpectedSalaryMin = request.ExpectedSalaryMin;
+        career.ExpectedSalaryMax = request.ExpectedSalaryMax;
+        career.ExpectedSalaryCurrency = request.ExpectedSalaryCurrency;
+        career.ExpectedSalaryType = request.ExpectedSalaryType;
+        career.ExpectedSalaryNegotiable = request.ExpectedSalaryNegotiable;
+        career.IsExpectedSalaryVisible = request.IsExpectedSalaryVisible;
+        career.WorkPreferenceNotes = request.WorkPreferenceNotes;
         career.UpdatedAt = DateTimeOffset.UtcNow;
 
         // Sync Skills
@@ -183,6 +200,18 @@ public class CareerService : ICareerService
         List<string> locations, 
         List<string> employmentPrefs)
     {
+        var preferredWorkEnvironments = string.IsNullOrEmpty(career.PreferredWorkEnvironments)
+            ? new List<string>()
+            : JsonSerializer.Deserialize<List<string>>(career.PreferredWorkEnvironments) ?? new List<string>();
+
+        var workStyles = string.IsNullOrEmpty(career.WorkStyles)
+            ? new List<string>()
+            : JsonSerializer.Deserialize<List<string>>(career.WorkStyles) ?? new List<string>();
+
+        var companyValues = string.IsNullOrEmpty(career.CompanyValues)
+            ? new List<string>()
+            : JsonSerializer.Deserialize<List<string>>(career.CompanyValues) ?? new List<string>();
+
         return new CareerPreferenceResponse(
             career.UserId,
             career.AvailableForHire,
@@ -194,7 +223,17 @@ public class CareerService : ICareerService
             skills,
             locations,
             employmentPrefs,
-            career.Version
+            career.Version,
+            preferredWorkEnvironments,
+            workStyles,
+            companyValues,
+            career.ExpectedSalaryMin,
+            career.ExpectedSalaryMax,
+            career.ExpectedSalaryCurrency,
+            career.ExpectedSalaryType,
+            career.ExpectedSalaryNegotiable,
+            career.IsExpectedSalaryVisible,
+            career.WorkPreferenceNotes
         );
     }
 }

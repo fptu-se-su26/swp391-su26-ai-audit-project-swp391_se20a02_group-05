@@ -113,6 +113,16 @@ export interface CareerPreferenceResponse {
   preferredLocations: string[];
   employmentPreferences: string[];
   version: number;
+  preferredWorkEnvironments: string[];
+  workStyles: string[];
+  companyValues: string[];
+  expectedSalaryMin?: number | null;
+  expectedSalaryMax?: number | null;
+  expectedSalaryCurrency?: string | null;
+  expectedSalaryType?: string | null;
+  expectedSalaryNegotiable: boolean;
+  isExpectedSalaryVisible: boolean;
+  workPreferenceNotes?: string | null;
 }
 
 export interface UpdateCareerPreferenceRequest {
@@ -126,10 +136,36 @@ export interface UpdateCareerPreferenceRequest {
   preferredLocations: string[];
   employmentPreferences: string[];
   version: number;
+  preferredWorkEnvironments: string[];
+  workStyles: string[];
+  companyValues: string[];
+  expectedSalaryMin?: number | null;
+  expectedSalaryMax?: number | null;
+  expectedSalaryCurrency?: string | null;
+  expectedSalaryType?: string | null;
+  expectedSalaryNegotiable: boolean;
+  isExpectedSalaryVisible: boolean;
+  workPreferenceNotes?: string | null;
 }
 
 export interface ReorderItemsRequest {
   orderedIds: string[];
+}
+
+export interface PublicCareerPreference {
+  availableForHire: boolean;
+  preferredLanguage: string;
+  employmentPreferences: string[];
+  preferredWorkEnvironments: string[];
+  workStyles: string[];
+  companyValues: string[];
+  expectedSalaryMin?: number | null;
+  expectedSalaryMax?: number | null;
+  expectedSalaryCurrency?: string | null;
+  expectedSalaryType?: string | null;
+  expectedSalaryNegotiable: boolean;
+  isExpectedSalaryVisible: boolean;
+  workPreferenceNotes?: string | null;
 }
 
 export interface PublicProfileResponse {
@@ -142,6 +178,7 @@ export interface PublicProfileResponse {
   company: string | null;
   location: string | null;
   socialLinks: string[];
+  careerPreference?: PublicCareerPreference | null;
 }
 
 export interface WorkExperienceAchievement {

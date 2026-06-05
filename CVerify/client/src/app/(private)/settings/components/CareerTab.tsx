@@ -1,13 +1,15 @@
 "use client";
 
 import React, { useEffect } from "react";
-import { useForm, FormProvider, useWatch } from "react-hook-form";
+import { useForm, FormProvider, useWatch, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { Card } from "@/components/ui/card";
 import { SelectDropdown } from "@/components/ui/select-dropdown";
 import { SettingsSection } from "./SettingsSection";
-import { Typography, Switch, Checkbox, toast, Spinner } from "@heroui/react";
+import { TagChipMultiSelect } from "./TagChipMultiSelect";
+import { PreferenceCard } from "./PreferenceCard";
+import { Typography, Switch, Checkbox, toast, Spinner, Input, TextArea, Label, FieldError } from "@heroui/react";
 import {
   UnsavedChangesBar,
   isDeepEqual,
@@ -16,15 +18,115 @@ import { useCareerPreferences } from "@/hooks/use-career-preferences";
 import { type UpdateCareerPreferenceRequest } from "@/types/profile.types";
 import { useProfileStore } from "@/stores/use-profile-store";
 
+const WORK_ENVIRONMENT_OPTIONS = [
+  "Professional environment",
+  "Supportive workplace",
+  "Growth-oriented environment",
+  "Dynamic and fast-paced environment",
+  "Creative environment",
+  "International environment",
+  "Remote-friendly environment",
+  "Collaborative workplace",
+  "Structured and process-driven workplace",
+  "Mentorship-focused environment",
+];
+
+const WORK_STYLE_OPTIONS = [
+  "Team-oriented",
+  "Independent",
+  "Responsible",
+  "Detail-oriented",
+  "Problem-solving focused",
+  "Result-oriented",
+  "Creative",
+  "Self-learning",
+  "Feedback-oriented",
+  "Organized",
+  "Proactive",
+  "Flexible",
+];
+
+const COMPANY_VALUES_OPTIONS = [
+  "Employee growth",
+  "Transparency",
+  "Innovation",
+  "Teamwork",
+  "Professionalism",
+  "Work-life balance",
+  "Customer focus",
+  "Product quality",
+  "Continuous improvement",
+  "Respectful culture",
+  "Knowledge sharing",
+];
+
+const CURRENCY_OPTIONS = [
+  { value: "VND", label: "VND" },
+  { value: "USD", label: "USD" },
+];
+
+const SALARY_TYPE_OPTIONS = [
+  { value: "Monthly", label: "Monthly" },
+  { value: "Hourly", label: "Hourly" },
+  { value: "Project-based", label: "Project-based" },
+];
+
+const salarySchema = z.preprocess((val) => {
+  if (val === "" || val === null || val === undefined) return null;
+  const num = Number(val);
+  return isNaN(num) ? null : num;
+}, z.number().nonnegative().nullable().optional());
+
 // 1. Zod career schema definition
-const careerSchema = z.object({
-  availableForHire: z.boolean(),
-  employmentPreferences: z
-    .array(z.string())
-    .min(1, "Select at least one employment preference"),
-  preferredLanguage: z.enum(["en", "vi", "ja", "ko", "zh"]),
-  version: z.number(),
-});
+const careerSchema = z
+  .object({
+    availableForHire: z.boolean(),
+    employmentPreferences: z.array(z.string()),
+    preferredLanguage: z.enum(["en", "vi", "ja", "ko", "zh"]),
+    version: z.number(),
+
+    preferredWorkEnvironments: z.array(z.string()),
+    workStyles: z.array(z.string()),
+    companyValues: z.array(z.string()),
+    expectedSalaryMin: salarySchema,
+    expectedSalaryMax: salarySchema,
+    expectedSalaryCurrency: z.enum(["VND", "USD"]),
+    expectedSalaryType: z.enum(["Monthly", "Hourly", "Project-based"]),
+    expectedSalaryNegotiable: z.boolean(),
+    isExpectedSalaryVisible: z.boolean(),
+    workPreferenceNotes: z.string().nullable().optional(),
+  })
+  .refine(
+    (data) => {
+      if (
+        data.expectedSalaryMin !== null &&
+        data.expectedSalaryMin !== undefined &&
+        data.expectedSalaryMax !== null &&
+        data.expectedSalaryMax !== undefined
+      ) {
+        return data.expectedSalaryMax >= data.expectedSalaryMin;
+      }
+      return true;
+    },
+    {
+      message: "Max salary must be greater than or equal to min salary.",
+      path: ["expectedSalaryMax"],
+    }
+  )
+  .refine(
+    (data) => {
+      if (data.isExpectedSalaryVisible && !data.expectedSalaryNegotiable) {
+        const hasMin = data.expectedSalaryMin !== null && data.expectedSalaryMin !== undefined;
+        const hasMax = data.expectedSalaryMax !== null && data.expectedSalaryMax !== undefined;
+        return hasMin || hasMax;
+      }
+      return true;
+    },
+    {
+      message: "Please enter expected salary or mark it as negotiable before showing it publicly.",
+      path: ["isExpectedSalaryVisible"],
+    }
+  );
 
 type CareerFormValues = z.infer<typeof careerSchema>;
 
@@ -40,12 +142,22 @@ export const CareerTab: React.FC<CareerTabProps> = ({
   const { career, isLoading, updateCareer } = useCareerPreferences();
 
   const methods = useForm<CareerFormValues>({
-    resolver: zodResolver(careerSchema),
+    resolver: zodResolver(careerSchema) as any,
     defaultValues: {
       availableForHire: true,
       employmentPreferences: [],
       preferredLanguage: "en",
       version: 0,
+      preferredWorkEnvironments: [],
+      workStyles: [],
+      companyValues: [],
+      expectedSalaryMin: null,
+      expectedSalaryMax: null,
+      expectedSalaryCurrency: "VND",
+      expectedSalaryType: "Monthly",
+      expectedSalaryNegotiable: false,
+      isExpectedSalaryVisible: false,
+      workPreferenceNotes: "",
     },
     mode: "onChange",
   });
@@ -54,10 +166,11 @@ export const CareerTab: React.FC<CareerTabProps> = ({
     handleSubmit,
     reset,
     setValue,
+    control,
     formState: { errors },
   } = methods;
 
-  const currentValues = useWatch({ control: methods.control });
+  const currentValues = useWatch({ control });
 
   // Reset form when database preferences finish loading
   useEffect(() => {
@@ -68,6 +181,16 @@ export const CareerTab: React.FC<CareerTabProps> = ({
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         preferredLanguage: (career.preferredLanguage as any) || "en",
         version: career.version || 0,
+        preferredWorkEnvironments: career.preferredWorkEnvironments || [],
+        workStyles: career.workStyles || [],
+        companyValues: career.companyValues || [],
+        expectedSalaryMin: career.expectedSalaryMin ?? null,
+        expectedSalaryMax: career.expectedSalaryMax ?? null,
+        expectedSalaryCurrency: (career.expectedSalaryCurrency as any) || "VND",
+        expectedSalaryType: (career.expectedSalaryType as any) || "Monthly",
+        expectedSalaryNegotiable: career.expectedSalaryNegotiable ?? false,
+        isExpectedSalaryVisible: career.isExpectedSalaryVisible ?? false,
+        workPreferenceNotes: career.workPreferenceNotes || "",
       });
     }
   }, [career, reset, methods.formState.isDirty]);
@@ -101,6 +224,16 @@ export const CareerTab: React.FC<CareerTabProps> = ({
           data.version ||
           career?.version ||
           0,
+        preferredWorkEnvironments: data.preferredWorkEnvironments,
+        workStyles: data.workStyles,
+        companyValues: data.companyValues,
+        expectedSalaryMin: data.expectedSalaryMin,
+        expectedSalaryMax: data.expectedSalaryMax,
+        expectedSalaryCurrency: data.expectedSalaryCurrency,
+        expectedSalaryType: data.expectedSalaryType,
+        expectedSalaryNegotiable: data.expectedSalaryNegotiable,
+        isExpectedSalaryVisible: data.isExpectedSalaryVisible,
+        workPreferenceNotes: data.workPreferenceNotes || null,
       };
 
       const updated = await updateCareer(request);
@@ -166,106 +299,9 @@ export const CareerTab: React.FC<CareerTabProps> = ({
     <FormProvider {...methods}>
       <form onSubmit={handleSubmit(handleFormSubmit)} className="space-y-10">
         <input type="hidden" {...methods.register("version")} />
-        {/* Hiring preferences section */}
-        <SettingsSection
-          title="Hiring Preferences"
-          description="Signal to companies, recruiters, and the CVerify network if you are currently open to new job contracts."
-        >
-          <Card className="flex items-center justify-between gap-6 py-6 text-left select-none">
-            <div className="flex flex-col gap-0.5">
-              <Typography
-                type="body-sm"
-                className="font-bold text-foreground font-outfit"
-              >
-                Available for Hire
-              </Typography>
-              <Typography type="body-xs" className="text-muted max-w-md">
-                When active, your public developer profile card will display a
-                vibrant “Open to Work” badge to recruiters.
-              </Typography>
-            </div>
-            <Switch
-              isSelected={currentValues.availableForHire ?? true}
-              onChange={(isSelected: boolean) => {
-                setValue("availableForHire", isSelected, { shouldDirty: true });
-              }}
-              aria-label="Available for hire toggle"
-              className="cursor-pointer"
-            >
-              {({ isSelected }) => (
-                <Switch.Control
-                  className={`w-11 h-6 rounded-full relative flex items-center transition-colors duration-200 ${isSelected ? "bg-success" : "bg-separator"}`}
-                >
-                  <Switch.Thumb
-                    className={`w-4.5 h-4.5 bg-foreground rounded-full absolute transition-all duration-200 ${isSelected ? "left-[22px]" : "left-0.5"}`}
-                  />
-                </Switch.Control>
-              )}
-            </Switch>
-          </Card>
-        </SettingsSection>
-
-        {/* Employment Preferences section */}
-        <SettingsSection
-          title="Employment Arrangements"
-          description="Select your preferred job models. You can choose multiple options to maximize recruiter relevance."
-        >
-          <Card className="flex flex-col gap-4 text-left">
-            <Typography
-              type="body-sm"
-              className="font-bold text-foreground font-outfit mb-1 select-none"
-            >
-              Preferred Arrangements
-            </Typography>
-
-            <div className="flex flex-col gap-3">
-              {employmentOptions.map((option) => {
-                const isSelected = (
-                  currentValues.employmentPreferences || []
-                ).includes(option.value);
-                return (
-                  <label
-                    key={option.value}
-                    className="flex items-center gap-3 cursor-pointer select-none text-xs font-semibold py-1 group"
-                  >
-                    <Checkbox
-                      isSelected={isSelected}
-                      onChange={(checked: boolean) =>
-                        handleCheckboxChange(option.value, checked)
-                      }
-                      aria-label={option.label}
-                      className="cursor-pointer"
-                    >
-                      <Checkbox.Control className="w-4 h-4 rounded border border-field-border flex items-center justify-center bg-field group-data-[selected=true]:bg-accent group-data-[selected=true]:border-accent transition-all shrink-0 focus-visible:ring-2 focus-visible:ring-focus">
-                        <Checkbox.Indicator className="text-accent-foreground flex items-center justify-center">
-                          <svg
-                            className="w-2.5 h-2.5 fill-none stroke-current stroke-3"
-                            viewBox="0 0 24 24"
-                          >
-                            <polyline points="20 6 9 17 4 12" />
-                          </svg>
-                        </Checkbox.Indicator>
-                      </Checkbox.Control>
-                    </Checkbox>
-                    <span className="text-foreground/90 font-semibold">
-                      {option.label}
-                    </span>
-                  </label>
-                );
-              })}
-            </div>
-
-            {errors.employmentPreferences && (
-              <Typography
-                type="body-xs"
-                className="text-danger pl-1 font-semibold block"
-                role="alert"
-              >
-                {errors.employmentPreferences.message}
-              </Typography>
-            )}
-          </Card>
-        </SettingsSection>
+        
+        {/* Hidden inputs to preserve Hiring/Employment arrangements state silently in form payload */}
+        <input type="hidden" {...methods.register("availableForHire")} />
 
         {/* Localization preferences */}
         <SettingsSection
@@ -289,6 +325,269 @@ export const CareerTab: React.FC<CareerTabProps> = ({
               />
             </div>
           </Card>
+        </SettingsSection>
+
+        {/* Ideal Work Preferences section */}
+        <SettingsSection
+          title="Career Preferences"
+          description="Customize the working styles, company values, and compensation details displayed on your public profile."
+        >
+          <div className="flex flex-col gap-6">
+            {/* Preferred Work Environment Card */}
+            <PreferenceCard
+              title="Preferred Work Environment"
+              description="Select the type of workplace where you perform best."
+            >
+              <Controller
+                control={control}
+                name="preferredWorkEnvironments"
+                render={({ field: { value, onChange } }) => (
+                  <TagChipMultiSelect
+                    options={WORK_ENVIRONMENT_OPTIONS}
+                    value={value || []}
+                    onChange={onChange}
+                    error={errors.preferredWorkEnvironments?.message}
+                  />
+                )}
+              />
+            </PreferenceCard>
+
+            {/* Work Style Card */}
+            <PreferenceCard
+              title="Work Style"
+              description="Choose the working styles that describe how you collaborate and deliver work."
+            >
+              <Controller
+                control={control}
+                name="workStyles"
+                render={({ field: { value, onChange } }) => (
+                  <TagChipMultiSelect
+                    options={WORK_STYLE_OPTIONS}
+                    value={value || []}
+                    onChange={onChange}
+                    error={errors.workStyles?.message}
+                  />
+                )}
+              />
+            </PreferenceCard>
+
+            {/* Company Values Card */}
+            <PreferenceCard
+              title="Company Values"
+              description="Select the company values that matter most to you."
+            >
+              <Controller
+                control={control}
+                name="companyValues"
+                render={({ field: { value, onChange } }) => (
+                  <TagChipMultiSelect
+                    options={COMPANY_VALUES_OPTIONS}
+                    value={value || []}
+                    onChange={onChange}
+                    error={errors.companyValues?.message}
+                  />
+                )}
+              />
+            </PreferenceCard>
+
+            {/* Expected Salary Card */}
+            <PreferenceCard
+              title="Expected Salary"
+              description="Set your expected salary and choose whether it should appear on your public profile."
+            >
+              <div className="flex flex-col gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 items-end">
+                  {/* Min Salary */}
+                  <div className="flex flex-col gap-2">
+                    <Label htmlFor="expectedSalaryMin">Min Salary</Label>
+                    <Controller
+                      control={control}
+                      name="expectedSalaryMin"
+                      render={({ field: { value, onChange } }) => (
+                        <Input
+                          id="expectedSalaryMin"
+                          aria-label="Minimum Expected Salary"
+                          type="number"
+                          placeholder="e.g. 10000000"
+                          value={value === null || value === undefined ? "" : value.toString()}
+                          onChange={onChange}
+                        />
+                      )}
+                    />
+                    {errors.expectedSalaryMin && (
+                      <FieldError className="text-danger text-xs mt-1 block">
+                        {errors.expectedSalaryMin.message}
+                      </FieldError>
+                    )}
+                  </div>
+
+                  {/* Max Salary */}
+                  <div className="flex flex-col gap-2">
+                    <Label htmlFor="expectedSalaryMax">Max Salary</Label>
+                    <Controller
+                      control={control}
+                      name="expectedSalaryMax"
+                      render={({ field: { value, onChange } }) => (
+                        <Input
+                          id="expectedSalaryMax"
+                          aria-label="Maximum Expected Salary"
+                          type="number"
+                          placeholder="e.g. 20000000"
+                          value={value === null || value === undefined ? "" : value.toString()}
+                          onChange={onChange}
+                        />
+                      )}
+                    />
+                    {errors.expectedSalaryMax && (
+                      <FieldError className="text-danger text-xs mt-1 block">
+                        {errors.expectedSalaryMax.message}
+                      </FieldError>
+                    )}
+                  </div>
+
+                  {/* Currency Select */}
+                  <div className="flex flex-col gap-2">
+                    <Controller
+                      control={control}
+                      name="expectedSalaryCurrency"
+                      render={({ field: { value, onChange } }) => (
+                        <SelectDropdown
+                          label="Currency"
+                          value={value || "VND"}
+                          onChange={onChange}
+                          options={CURRENCY_OPTIONS}
+                        />
+                      )}
+                    />
+                  </div>
+
+                  {/* Salary Type Select */}
+                  <div className="flex flex-col gap-2">
+                    <Controller
+                      control={control}
+                      name="expectedSalaryType"
+                      render={({ field: { value, onChange } }) => (
+                        <SelectDropdown
+                          label="Salary Type"
+                          value={value || "Monthly"}
+                          onChange={onChange}
+                          options={SALARY_TYPE_OPTIONS}
+                        />
+                      )}
+                    />
+                  </div>
+                </div>
+
+                {/* Salary Toggles */}
+                <div className="flex flex-col md:flex-row gap-4 mt-2">
+                  {/* Negotiable Toggle */}
+                  <div className="flex items-center justify-between gap-4 py-2 border border-border/40 bg-surface-secondary/5 rounded-xl px-4 flex-1 select-none">
+                    <div className="flex flex-col gap-0.5">
+                      <Typography type="body-xs" className="font-bold text-foreground font-outfit">
+                        Salary Negotiable
+                      </Typography>
+                      <Typography type="body-xs" className="text-muted max-w-[200px]">
+                        Check if you are open to salary negotiation.
+                      </Typography>
+                    </div>
+                    <Controller
+                      control={control}
+                      name="expectedSalaryNegotiable"
+                      render={({ field: { value, onChange } }) => (
+                        <Switch
+                          isSelected={value}
+                          onChange={onChange}
+                          aria-label="Salary Negotiable Toggle"
+                          className="cursor-pointer"
+                        >
+                          {({ isSelected }) => (
+                            <Switch.Control
+                              className={`w-10 h-5.5 rounded-full relative flex items-center transition-colors duration-200 ${isSelected ? "bg-success" : "bg-separator"}`}
+                            >
+                              <Switch.Thumb
+                                className={`w-4 h-4 bg-foreground rounded-full absolute transition-all duration-200 ${isSelected ? "left-[20px]" : "left-0.5"}`}
+                              />
+                            </Switch.Control>
+                          )}
+                        </Switch>
+                      )}
+                    />
+                  </div>
+
+                  {/* Salary Visibility Toggle */}
+                  <div className="flex items-center justify-between gap-4 py-2 border border-border/40 bg-surface-secondary/5 rounded-xl px-4 flex-1 select-none">
+                    <div className="flex flex-col gap-0.5">
+                      <Typography type="body-xs" className="font-bold text-foreground font-outfit">
+                        Show expected salary on public profile
+                      </Typography>
+                      <Typography type="body-xs" className="text-muted max-w-[250px]">
+                        Your expected salary may be visible on your public profile.
+                      </Typography>
+                    </div>
+                    <Controller
+                      control={control}
+                      name="isExpectedSalaryVisible"
+                      render={({ field: { value, onChange } }) => (
+                        <Switch
+                          isSelected={value}
+                          onChange={onChange}
+                          aria-label="Salary Visibility Toggle"
+                          className="cursor-pointer"
+                        >
+                          {({ isSelected }) => (
+                            <Switch.Control
+                              className={`w-10 h-5.5 rounded-full relative flex items-center transition-colors duration-200 ${isSelected ? "bg-success" : "bg-separator"}`}
+                            >
+                              <Switch.Thumb
+                                className={`w-4 h-4 bg-foreground rounded-full absolute transition-all duration-200 ${isSelected ? "left-[20px]" : "left-0.5"}`}
+                              />
+                            </Switch.Control>
+                          )}
+                        </Switch>
+                      )}
+                    />
+                  </div>
+                </div>
+                {errors.isExpectedSalaryVisible && (
+                  <FieldError className="text-danger text-xs mt-1 block">
+                    {errors.isExpectedSalaryVisible.message}
+                  </FieldError>
+                )}
+
+                <Typography type="body-xs" className="text-muted mt-2 block">
+                  Only show your expected salary publicly if you are comfortable sharing it on your CV.
+                </Typography>
+              </div>
+            </PreferenceCard>
+
+            {/* Work Preference Notes Card */}
+            <PreferenceCard
+              title="Work Preference Notes"
+              description="Write a short professional summary about your ideal working environment or career expectations."
+            >
+              <div className="flex flex-col gap-2">
+                <Controller
+                  control={control}
+                  name="workPreferenceNotes"
+                  render={({ field: { value, onChange } }) => (
+                    <TextArea
+                      id="workPreferenceNotes"
+                      aria-label="Work Preference Notes"
+                      placeholder="Describe your ideal working environment, career expectations, or what helps you perform at your best..."
+                      value={value || ""}
+                      onChange={onChange}
+                      rows={4}
+                    />
+                  )}
+                />
+                {errors.workPreferenceNotes && (
+                  <FieldError className="text-danger text-xs mt-1 block">
+                    {errors.workPreferenceNotes.message}
+                  </FieldError>
+                )}
+              </div>
+            </PreferenceCard>
+          </div>
         </SettingsSection>
 
         {/* Sticky Actions Bar */}

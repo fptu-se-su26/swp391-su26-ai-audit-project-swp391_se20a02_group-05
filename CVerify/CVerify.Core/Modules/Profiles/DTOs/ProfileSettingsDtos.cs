@@ -192,7 +192,18 @@ public record UpdateCareerPreferenceRequest(
     List<string>? EmploymentPreferences, // e.g. "fulltime", "parttime", "contract"
 
     [Required]
-    uint Version // Optimistic concurrency token (xmin)
+    uint Version, // Optimistic concurrency token (xmin)
+
+    List<string>? PreferredWorkEnvironments,
+    List<string>? WorkStyles,
+    List<string>? CompanyValues,
+    decimal? ExpectedSalaryMin,
+    decimal? ExpectedSalaryMax,
+    [MaxLength(10)] string? ExpectedSalaryCurrency,
+    [MaxLength(20)] string? ExpectedSalaryType,
+    bool ExpectedSalaryNegotiable,
+    bool IsExpectedSalaryVisible,
+    string? WorkPreferenceNotes
 );
 
 public record CareerPreferenceResponse(
@@ -206,7 +217,18 @@ public record CareerPreferenceResponse(
     List<string> Skills,
     List<string> PreferredLocations,
     List<string> EmploymentPreferences,
-    uint Version
+    uint Version,
+
+    List<string> PreferredWorkEnvironments,
+    List<string> WorkStyles,
+    List<string> CompanyValues,
+    decimal? ExpectedSalaryMin,
+    decimal? ExpectedSalaryMax,
+    string? ExpectedSalaryCurrency,
+    string? ExpectedSalaryType,
+    bool ExpectedSalaryNegotiable,
+    bool IsExpectedSalaryVisible,
+    string? WorkPreferenceNotes
 );
 
 public record AttachmentResponse(
