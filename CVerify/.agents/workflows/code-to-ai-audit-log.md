@@ -219,7 +219,7 @@ Review previous audit folders before generating content.
 Step 14 — Commit Audit Documentation
 Checkout the user’s documentation branch.
 Example:
-doc/DoanTheLuc
+doc/NguyenHoangNgocAnh
 Commit the audit package.
 Commit message format:
 docs(audit): add audit package #<number>
