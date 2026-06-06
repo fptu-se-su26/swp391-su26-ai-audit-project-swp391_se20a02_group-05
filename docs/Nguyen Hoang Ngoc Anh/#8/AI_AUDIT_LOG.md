@@ -19,7 +19,7 @@
 
 ## 2. Công cụ AI đã sử dụng
 
-- [ ] ChatGPT
+- [x] ChatGPT
 - [ ] Gemini
 - [ ] Claude
 - [ ] GitHub Copilot
