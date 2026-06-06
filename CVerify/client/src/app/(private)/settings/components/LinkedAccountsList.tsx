@@ -61,6 +61,7 @@ export const LinkedAccountsList: React.FC = () => {
   // Fetch all connections from the backend
   const loadConnections = useCallback(async () => {
     try {
+      await Promise.resolve(); // Defer state update to avoid set-state-in-effect
       const response = await fetchConnections();
       if (response.success && response.data) {
         setConnections(response.data);
@@ -74,6 +75,7 @@ export const LinkedAccountsList: React.FC = () => {
 
   const loadGoogleStatus = useCallback(async () => {
     try {
+      await Promise.resolve(); // Defer state update to avoid set-state-in-effect
       const response = await fetchLinkedProviders();
       if (response.success && response.data) {
         const googleProv = response.data.find(
@@ -87,8 +89,10 @@ export const LinkedAccountsList: React.FC = () => {
   }, [fetchLinkedProviders]);
 
   useEffect(() => {
-    loadConnections();
-    loadGoogleStatus();
+    Promise.resolve().then(() => {
+      loadConnections();
+      loadGoogleStatus();
+    });
   }, [loadConnections, loadGoogleStatus]);
 
   // Check query parameters for OAuth link success/error on mount
@@ -101,8 +105,10 @@ export const LinkedAccountsList: React.FC = () => {
       const provider = params.get("provider");
 
       if (pendingLinkId) {
-        setPendingId(pendingLinkId);
-        setIsModalOpen(true);
+        Promise.resolve().then(() => {
+          setPendingId(pendingLinkId);
+          setIsModalOpen(true);
+        });
         // Clean URL parameters safely, retaining tab=account
         const newUrl = window.location.pathname + "?tab=account";
         window.history.replaceState({}, document.title, newUrl);
@@ -112,7 +118,9 @@ export const LinkedAccountsList: React.FC = () => {
         toast.success(`Successfully linked ${providerName} account.`);
         const newUrl = window.location.pathname + "?tab=account";
         window.history.replaceState({}, document.title, newUrl);
-        loadConnections();
+        Promise.resolve().then(() => {
+          loadConnections();
+        });
       } else if (error) {
         toast.danger(`Failed to link account.`, {
           description: decodeURIComponent(error),

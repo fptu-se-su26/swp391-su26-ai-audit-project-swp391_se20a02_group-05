@@ -38,6 +38,30 @@ public class CareerPreference
 
     public DateTimeOffset? DeletedAt { get; set; }
 
+    public string? PreferredWorkEnvironments { get; set; }
+    public string? WorkStyles { get; set; }
+    public string? CompanyValues { get; set; }
+
+    [Column(TypeName = "decimal(18,2)")]
+    public decimal? ExpectedSalaryMin { get; set; }
+
+    [Column(TypeName = "decimal(18,2)")]
+    public decimal? ExpectedSalaryMax { get; set; }
+
+    [MaxLength(10)]
+    public string? ExpectedSalaryCurrency { get; set; }
+
+    [MaxLength(20)]
+    public string? ExpectedSalaryType { get; set; }
+
+    public bool ExpectedSalaryNegotiable { get; set; } = false;
+
+    public bool IsExpectedSalaryVisible { get; set; } = false;
+
+    public string? WorkPreferenceNotes { get; set; }
+
+    public string? DesiredJobPositions { get; set; }
+
     [ConcurrencyCheck]
     public uint Version { get; set; } // Map PostgreSQL xmin system column
 }

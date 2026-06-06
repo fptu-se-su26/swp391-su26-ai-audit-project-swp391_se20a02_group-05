@@ -287,6 +287,62 @@ public class ProfileService : IProfileService
 
         var signedAvatarUrl = await GetSignedAvatarUrlAsync(profile.User?.AvatarUrl, cancellationToken);
 
+        var careerPreference = await _context.CareerPreferences
+            .FirstOrDefaultAsync(cp => cp.UserId == profile.UserId, cancellationToken);
+
+        PublicCareerPreferenceDto? publicCareerPreference = null;
+        if (careerPreference != null)
+        {
+            var employmentPrefs = await _context.UserEmploymentPreferences
+                .Where(uep => uep.UserId == profile.UserId)
+                .Select(uep => uep.PreferenceName)
+                .ToListAsync(cancellationToken);
+
+            var preferredLocations = await _context.UserPreferredLocations
+                .Where(upl => upl.UserId == profile.UserId)
+                .Select(upl => upl.Location)
+                .ToListAsync(cancellationToken);
+
+            var preferredWorkEnvironments = string.IsNullOrEmpty(careerPreference.PreferredWorkEnvironments)
+                ? new List<string>()
+                : JsonSerializer.Deserialize<List<string>>(careerPreference.PreferredWorkEnvironments) ?? new List<string>();
+
+            var workStyles = string.IsNullOrEmpty(careerPreference.WorkStyles)
+                ? new List<string>()
+                : JsonSerializer.Deserialize<List<string>>(careerPreference.WorkStyles) ?? new List<string>();
+
+            var companyValues = string.IsNullOrEmpty(careerPreference.CompanyValues)
+                ? new List<string>()
+                : JsonSerializer.Deserialize<List<string>>(careerPreference.CompanyValues) ?? new List<string>();
+
+            var desiredJobPositions = string.IsNullOrEmpty(careerPreference.DesiredJobPositions)
+                ? new List<string>()
+                : JsonSerializer.Deserialize<List<string>>(careerPreference.DesiredJobPositions) ?? new List<string>();
+
+            decimal? expectedSalaryMin = careerPreference.IsExpectedSalaryVisible ? careerPreference.ExpectedSalaryMin : null;
+            decimal? expectedSalaryMax = careerPreference.IsExpectedSalaryVisible ? careerPreference.ExpectedSalaryMax : null;
+            string? expectedSalaryCurrency = careerPreference.IsExpectedSalaryVisible ? careerPreference.ExpectedSalaryCurrency : null;
+            string? expectedSalaryType = careerPreference.IsExpectedSalaryVisible ? careerPreference.ExpectedSalaryType : null;
+
+            publicCareerPreference = new PublicCareerPreferenceDto(
+                careerPreference.AvailableForHire,
+                careerPreference.PreferredLanguage,
+                employmentPrefs,
+                preferredWorkEnvironments,
+                workStyles,
+                companyValues,
+                preferredLocations,
+                desiredJobPositions,
+                expectedSalaryMin,
+                expectedSalaryMax,
+                expectedSalaryCurrency,
+                expectedSalaryType,
+                careerPreference.ExpectedSalaryNegotiable,
+                careerPreference.IsExpectedSalaryVisible,
+                careerPreference.WorkPreferenceNotes
+            );
+        }
+
         return new PublicProfileResponse(
             profile.UserId,
             profile.Username ?? profile.User?.Username ?? string.Empty,
@@ -296,7 +352,8 @@ public class ProfileService : IProfileService
             profile.Headline,
             profile.Company,
             profile.Location,
-            socialLinks
+            socialLinks,
+            publicCareerPreference
         );
     }
 

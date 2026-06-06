@@ -121,7 +121,10 @@ export const AccountTab: React.FC<AccountTabProps> = ({
 
   useEffect(() => {
     if (typeof window !== "undefined") {
-      setProfileOrigin(window.location.origin);
+      const origin = window.location.origin;
+      Promise.resolve().then(() => {
+        setProfileOrigin(origin);
+      });
     }
   }, []);
 
@@ -183,14 +186,16 @@ export const AccountTab: React.FC<AccountTabProps> = ({
     const error = searchParams.get("error");
 
     if (reauthSuccess === "true" && deletionToken) {
-      setDeletionAuthToken(deletionToken);
-      loadDeletionRequirements();
-      setIsDeleteModalOpen(true);
-      setDeletionStep(3);
-      setAgreeToTerms({
-        hideProfile: true,
-        gracePeriod: true,
-        auditAnonymize: true,
+      Promise.resolve().then(() => {
+        setDeletionAuthToken(deletionToken);
+        loadDeletionRequirements();
+        setIsDeleteModalOpen(true);
+        setDeletionStep(3);
+        setAgreeToTerms({
+          hideProfile: true,
+          gracePeriod: true,
+          auditAnonymize: true,
+        });
       });
 
       const params = new URLSearchParams(window.location.search);

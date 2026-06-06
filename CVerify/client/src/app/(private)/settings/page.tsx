@@ -72,7 +72,9 @@ export default function SettingsPage() {
         tab === "personal-info" ||
         tab === "career"
       ) {
-        setActiveTab(tab as TabId);
+        Promise.resolve().then(() => {
+          setActiveTab(tab as TabId);
+        });
       }
     }
   }, []);

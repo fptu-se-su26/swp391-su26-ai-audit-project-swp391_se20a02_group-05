@@ -192,7 +192,22 @@ public record UpdateCareerPreferenceRequest(
     List<string>? EmploymentPreferences, // e.g. "fulltime", "parttime", "contract"
 
     [Required]
-    uint Version // Optimistic concurrency token (xmin)
+    uint Version, // Optimistic concurrency token (xmin)
+
+    List<string>? PreferredWorkEnvironments,
+    List<string>? WorkStyles,
+    List<string>? CompanyValues,
+    List<string>? DesiredJobPositions,
+    [Range(0.0, 999999999999.99, ErrorMessage = "Minimum salary cannot be negative.")]
+    decimal? ExpectedSalaryMin,
+    [Range(0.0, 999999999999.99, ErrorMessage = "Maximum salary cannot be negative.")]
+    decimal? ExpectedSalaryMax,
+    [MaxLength(10)] string? ExpectedSalaryCurrency,
+    [MaxLength(20)] string? ExpectedSalaryType,
+    bool ExpectedSalaryNegotiable,
+    bool IsExpectedSalaryVisible,
+    [MaxLength(2000, ErrorMessage = "Notes cannot exceed 2000 characters.")]
+    string? WorkPreferenceNotes
 );
 
 public record CareerPreferenceResponse(
@@ -206,7 +221,19 @@ public record CareerPreferenceResponse(
     List<string> Skills,
     List<string> PreferredLocations,
     List<string> EmploymentPreferences,
-    uint Version
+    uint Version,
+
+    List<string> PreferredWorkEnvironments,
+    List<string> WorkStyles,
+    List<string> CompanyValues,
+    List<string> DesiredJobPositions,
+    decimal? ExpectedSalaryMin,
+    decimal? ExpectedSalaryMax,
+    string? ExpectedSalaryCurrency,
+    string? ExpectedSalaryType,
+    bool ExpectedSalaryNegotiable,
+    bool IsExpectedSalaryVisible,
+    string? WorkPreferenceNotes
 );
 
 public record AttachmentResponse(
