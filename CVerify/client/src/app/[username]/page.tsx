@@ -99,7 +99,9 @@ export default async function PublicProfilePage({ params }: PageProps) {
   const preferredWorkEnvironments = cp?.preferredWorkEnvironments || [];
   const workStyles = cp?.workStyles || [];
   const companyValues = cp?.companyValues || [];
+  const preferredLocations = cp?.preferredLocations || [];
   const employmentPreferences = cp?.employmentPreferences || [];
+  const desiredJobPositions = cp?.desiredJobPositions || [];
   const notes = cp?.workPreferenceNotes;
   const salaryText = cp ? formatExpectedSalary(cp) : null;
 
@@ -107,6 +109,9 @@ export default async function PublicProfilePage({ params }: PageProps) {
     preferredWorkEnvironments.length > 0 ||
     workStyles.length > 0 ||
     companyValues.length > 0 ||
+    preferredLocations.length > 0 ||
+    employmentPreferences.length > 0 ||
+    desiredJobPositions.length > 0 ||
     salaryText ||
     (notes && notes.trim().length > 0)
   );
@@ -289,6 +294,63 @@ export default async function PublicProfilePage({ params }: PageProps) {
                         className="px-3 py-1.5 rounded-full text-xs font-semibold bg-teal-500/10 text-teal-300 border border-teal-500/20"
                       >
                         {val}
+                      </span>
+                    ))}
+                  </div>
+                </Card>
+              )}
+
+              {/* Employment Type / Work Arrangement Card */}
+              {employmentPreferences.length > 0 && (
+                <Card className="p-6 md:p-8 rounded-3xl border border-border/30 bg-background/30 backdrop-blur-xl shadow-xl flex flex-col gap-4 text-left md:col-span-2">
+                  <span className="text-xs font-bold uppercase tracking-wider text-blue-400 select-none">
+                    Employment Type / Work Arrangement
+                  </span>
+                  <div className="flex flex-wrap gap-2">
+                    {employmentPreferences.map((ep: string) => (
+                      <span
+                        key={ep}
+                        className="px-3 py-1.5 rounded-full text-xs font-semibold bg-blue-500/10 text-blue-300 border border-blue-500/20"
+                      >
+                        {ep}
+                      </span>
+                    ))}
+                  </div>
+                </Card>
+              )}
+
+              {/* Preferred Work Location Card */}
+              {preferredLocations.length > 0 && (
+                <Card className="p-6 md:p-8 rounded-3xl border border-border/30 bg-background/30 backdrop-blur-xl shadow-xl flex flex-col gap-4 text-left md:col-span-2">
+                  <span className="text-xs font-bold uppercase tracking-wider text-pink-400 select-none">
+                    Preferred Work Location
+                  </span>
+                  <div className="flex flex-wrap gap-2">
+                    {preferredLocations.map((loc: string) => (
+                      <span
+                        key={loc}
+                        className="px-3 py-1.5 rounded-full text-xs font-semibold bg-pink-500/10 text-pink-300 border border-pink-500/20"
+                      >
+                        {loc}
+                      </span>
+                    ))}
+                  </div>
+                </Card>
+              )}
+
+              {/* Desired Job Position Card */}
+              {desiredJobPositions.length > 0 && (
+                <Card className="p-6 md:p-8 rounded-3xl border border-border/30 bg-background/30 backdrop-blur-xl shadow-xl flex flex-col gap-4 text-left md:col-span-2">
+                  <span className="text-xs font-bold uppercase tracking-wider text-orange-400 select-none">
+                    Desired Job Position
+                  </span>
+                  <div className="flex flex-wrap gap-2">
+                    {desiredJobPositions.map((pos: string) => (
+                      <span
+                        key={pos}
+                        className="px-3 py-1.5 rounded-full text-xs font-semibold bg-orange-500/10 text-orange-300 border border-orange-500/20"
+                      >
+                        {pos}
                       </span>
                     ))}
                   </div>

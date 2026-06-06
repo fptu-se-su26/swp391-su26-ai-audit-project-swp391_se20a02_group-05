@@ -60,6 +60,55 @@ const COMPANY_VALUES_OPTIONS = [
   "Knowledge sharing",
 ];
 
+const PREFERRED_LOCATION_OPTIONS = [
+  "Ho Chi Minh City",
+  "Hanoi",
+  "Da Nang",
+  "Can Tho",
+  "Hai Phong",
+  "Hue",
+  "Open to relocation",
+];
+
+const EMPLOYMENT_TYPE_OPTIONS = [
+  "Full-time",
+  "Part-time",
+  "Internship",
+  "Freelance",
+  "Contract",
+  "Temporary",
+  "Remote",
+  "Hybrid",
+  "On-site",
+];
+
+const DESIRED_JOB_POSITION_OPTIONS = [
+  "Frontend Developer",
+  "Backend Developer",
+  "Fullstack Developer",
+  "Mobile Developer",
+  "Software Engineer",
+  "Web Developer",
+  "QA Engineer",
+  "Automation Tester",
+  "Manual Tester",
+  "UI/UX Designer",
+  "Business Analyst",
+  "Product Owner",
+  "Project Manager",
+  "DevOps Engineer",
+  "Cloud Engineer",
+  "Data Analyst",
+  "Data Engineer",
+  "AI Engineer",
+  "Machine Learning Engineer",
+  "Cybersecurity Analyst",
+  "Database Administrator",
+  "System Administrator",
+  "IT Support",
+  "Technical Writer",
+];
+
 const CURRENCY_OPTIONS = [
   { value: "VND", label: "VND" },
   { value: "USD", label: "USD" },
@@ -73,28 +122,46 @@ const SALARY_TYPE_OPTIONS = [
 
 const salarySchema = z.preprocess((val) => {
   if (val === "" || val === null || val === undefined) return null;
+  if (typeof val === "string") {
+    const trimmed = val.trim();
+    if (trimmed === "") return null;
+    const num = Number(trimmed);
+    return isNaN(num) ? null : num;
+  }
   const num = Number(val);
   return isNaN(num) ? null : num;
-}, z.number().nonnegative().nullable().optional());
+}, z.number().nonnegative("Salary cannot be negative.").nullable().optional());
+
+const tagArraySchema = z
+  .array(
+    z
+      .string()
+      .trim()
+      .min(1, "Tag cannot be empty.")
+      .max(100, "Tag cannot exceed 100 characters.")
+  )
+  .max(20, "You can select up to 20 options.");
 
 // 1. Zod career schema definition
 const careerSchema = z
   .object({
     availableForHire: z.boolean(),
-    employmentPreferences: z.array(z.string()),
+    employmentPreferences: tagArraySchema,
     preferredLanguage: z.enum(["en", "vi", "ja", "ko", "zh"]),
     version: z.number(),
 
-    preferredWorkEnvironments: z.array(z.string()),
-    workStyles: z.array(z.string()),
-    companyValues: z.array(z.string()),
+    preferredWorkEnvironments: tagArraySchema,
+    workStyles: tagArraySchema,
+    companyValues: tagArraySchema,
+    preferredLocations: tagArraySchema,
+    desiredJobPositions: tagArraySchema,
     expectedSalaryMin: salarySchema,
     expectedSalaryMax: salarySchema,
     expectedSalaryCurrency: z.enum(["VND", "USD"]),
     expectedSalaryType: z.enum(["Monthly", "Hourly", "Project-based"]),
     expectedSalaryNegotiable: z.boolean(),
     isExpectedSalaryVisible: z.boolean(),
-    workPreferenceNotes: z.string().nullable().optional(),
+    workPreferenceNotes: z.string().max(2000, "Notes cannot exceed 2000 characters.").nullable().optional(),
   })
   .refine(
     (data) => {
@@ -151,6 +218,8 @@ export const CareerTab: React.FC<CareerTabProps> = ({
       preferredWorkEnvironments: [],
       workStyles: [],
       companyValues: [],
+      preferredLocations: [],
+      desiredJobPositions: [],
       expectedSalaryMin: null,
       expectedSalaryMax: null,
       expectedSalaryCurrency: "VND",
@@ -184,6 +253,8 @@ export const CareerTab: React.FC<CareerTabProps> = ({
         preferredWorkEnvironments: career.preferredWorkEnvironments || [],
         workStyles: career.workStyles || [],
         companyValues: career.companyValues || [],
+        preferredLocations: career.preferredLocations || [],
+        desiredJobPositions: career.desiredJobPositions || [],
         expectedSalaryMin: career.expectedSalaryMin ?? null,
         expectedSalaryMax: career.expectedSalaryMax ?? null,
         expectedSalaryCurrency: (career.expectedSalaryCurrency as any) || "VND",
@@ -217,8 +288,9 @@ export const CareerTab: React.FC<CareerTabProps> = ({
         remotePreference: career?.remotePreference || null,
         openToWorkStatus: career?.openToWorkStatus || null,
         skills: career?.skills || [],
-        preferredLocations: career?.preferredLocations || [],
+        preferredLocations: data.preferredLocations,
         employmentPreferences: data.employmentPreferences,
+        desiredJobPositions: data.desiredJobPositions,
         version:
           useProfileStore.getState().career?.version ||
           data.version ||
@@ -246,9 +318,36 @@ export const CareerTab: React.FC<CareerTabProps> = ({
     } catch (error: unknown) {
       console.error("Failed to save career preferences:", error);
       const axiosError = error as {
-        response?: { data?: { message?: string } };
+        response?: {
+          data?: {
+            message?: string;
+            errors?: Record<string, string[]>;
+          };
+        };
         message?: string;
       };
+
+      if (axiosError.response?.data?.errors) {
+        const backendErrors = axiosError.response.data.errors;
+        let mapped = false;
+
+        Object.entries(backendErrors).forEach(([field, messages]) => {
+          const formKey = (field.charAt(0).toLowerCase() + field.slice(1)) as keyof CareerFormValues;
+          if (messages && messages.length > 0) {
+            methods.setError(formKey, {
+              type: "server",
+              message: messages[0],
+            });
+            mapped = true;
+          }
+        });
+
+        if (mapped) {
+          toast.danger("Please correct the highlighted validation errors.");
+          return;
+        }
+      }
+
       const errMsg =
         axiosError.response?.data?.message ||
         axiosError.message ||
@@ -265,14 +364,6 @@ export const CareerTab: React.FC<CareerTabProps> = ({
     );
   }
 
-  const employmentOptions = [
-    { value: "full_time", label: "Full-time" },
-    { value: "part_time", label: "Part-time" },
-    { value: "contract", label: "Contract" },
-    { value: "freelance", label: "Freelance" },
-    { value: "internship", label: "Internship" },
-  ];
-
   const languageOptions = [
     { value: "en", label: "English" },
     { value: "vi", label: "Vietnamese" },
@@ -280,20 +371,6 @@ export const CareerTab: React.FC<CareerTabProps> = ({
     { value: "ko", label: "Korean" },
     { value: "zh", label: "Chinese" },
   ];
-
-  const handleCheckboxChange = (value: string, isSelected: boolean) => {
-    const current = currentValues.employmentPreferences || [];
-    let updated;
-    if (isSelected) {
-      updated = [...current, value];
-    } else {
-      updated = current.filter((v) => v !== value);
-    }
-    setValue("employmentPreferences", updated, {
-      shouldDirty: true,
-      shouldValidate: true,
-    });
-  };
 
   return (
     <FormProvider {...methods}>
@@ -385,6 +462,63 @@ export const CareerTab: React.FC<CareerTabProps> = ({
                     value={value || []}
                     onChange={onChange}
                     error={errors.companyValues?.message}
+                  />
+                )}
+              />
+            </PreferenceCard>
+
+            {/* Employment Type / Work Arrangement Card */}
+            <PreferenceCard
+              title="Employment Type / Work Arrangement"
+              description="Select the employment types or work arrangements you are interested in."
+            >
+              <Controller
+                control={control}
+                name="employmentPreferences"
+                render={({ field: { value, onChange } }) => (
+                  <TagChipMultiSelect
+                    options={EMPLOYMENT_TYPE_OPTIONS}
+                    value={value || []}
+                    onChange={onChange}
+                    error={errors.employmentPreferences?.message}
+                  />
+                )}
+              />
+            </PreferenceCard>
+
+            {/* Preferred Work Location Card */}
+            <PreferenceCard
+              title="Preferred Work Location"
+              description="Select or type your preferred work locations (e.g. cities or regions)."
+            >
+              <Controller
+                control={control}
+                name="preferredLocations"
+                render={({ field: { value, onChange } }) => (
+                  <TagChipMultiSelect
+                    options={PREFERRED_LOCATION_OPTIONS}
+                    value={value || []}
+                    onChange={onChange}
+                    error={errors.preferredLocations?.message}
+                  />
+                )}
+              />
+            </PreferenceCard>
+
+            {/* Desired Job Position Card */}
+            <PreferenceCard
+              title="Desired Job Position"
+              description="Select or add the software and technology positions you are interested in applying for."
+            >
+              <Controller
+                control={control}
+                name="desiredJobPositions"
+                render={({ field: { value, onChange } }) => (
+                  <TagChipMultiSelect
+                    options={DESIRED_JOB_POSITION_OPTIONS}
+                    value={value || []}
+                    onChange={onChange}
+                    error={errors.desiredJobPositions?.message}
                   />
                 )}
               />

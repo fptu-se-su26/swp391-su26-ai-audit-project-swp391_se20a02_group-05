@@ -10,6 +10,8 @@ public record PublicCareerPreferenceDto(
     List<string> PreferredWorkEnvironments,
     List<string> WorkStyles,
     List<string> CompanyValues,
+    List<string> PreferredLocations,
+    List<string> DesiredJobPositions,
     decimal? ExpectedSalaryMin,
     decimal? ExpectedSalaryMax,
     string? ExpectedSalaryCurrency,

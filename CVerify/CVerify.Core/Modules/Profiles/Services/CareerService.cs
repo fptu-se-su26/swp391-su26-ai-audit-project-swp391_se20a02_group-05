@@ -88,6 +88,24 @@ public class CareerService : ICareerService
             throw new ProfileException(ProfileErrorCodes.ProfileConcurrencyConflict, "Career preferences were modified by another process. Please reload and try again.");
         }
 
+        // Validation: Min Salary <= Max Salary
+        if (request.ExpectedSalaryMin.HasValue && request.ExpectedSalaryMax.HasValue && request.ExpectedSalaryMin.Value > request.ExpectedSalaryMax.Value)
+        {
+            throw new ValidationException(new Dictionary<string, string[]>
+            {
+                { nameof(request.ExpectedSalaryMax), new[] { "Maximum salary must be greater than or equal to minimum salary." } }
+            }, "Minimum expected salary cannot exceed the maximum expected salary.");
+        }
+
+        // Validate and normalize preference list tags
+        var preferredWorkEnvironments = ValidateAndNormalizeTags(request.PreferredWorkEnvironments, nameof(request.PreferredWorkEnvironments));
+        var workStyles = ValidateAndNormalizeTags(request.WorkStyles, nameof(request.WorkStyles));
+        var companyValues = ValidateAndNormalizeTags(request.CompanyValues, nameof(request.CompanyValues));
+        var preferredLocations = ValidateAndNormalizeTags(request.PreferredLocations, nameof(request.PreferredLocations));
+        var employmentPreferences = ValidateAndNormalizeTags(request.EmploymentPreferences, nameof(request.EmploymentPreferences));
+        var skills = ValidateAndNormalizeTags(request.Skills, nameof(request.Skills));
+        var desiredJobPositions = ValidateAndNormalizeTags(request.DesiredJobPositions, nameof(request.DesiredJobPositions));
+
         // Update properties
         career.AvailableForHire = request.AvailableForHire;
         career.PreferredLanguage = request.PreferredLanguage;
@@ -95,15 +113,10 @@ public class CareerService : ICareerService
         career.SalaryExpectations = request.SalaryExpectations;
         career.RemotePreference = request.RemotePreference;
         career.OpenToWorkStatus = request.OpenToWorkStatus;
-        career.PreferredWorkEnvironments = request.PreferredWorkEnvironments != null 
-            ? JsonSerializer.Serialize(request.PreferredWorkEnvironments) 
-            : "[]";
-        career.WorkStyles = request.WorkStyles != null 
-            ? JsonSerializer.Serialize(request.WorkStyles) 
-            : "[]";
-        career.CompanyValues = request.CompanyValues != null 
-            ? JsonSerializer.Serialize(request.CompanyValues) 
-            : "[]";
+        career.PreferredWorkEnvironments = JsonSerializer.Serialize(preferredWorkEnvironments);
+        career.WorkStyles = JsonSerializer.Serialize(workStyles);
+        career.CompanyValues = JsonSerializer.Serialize(companyValues);
+        career.DesiredJobPositions = JsonSerializer.Serialize(desiredJobPositions);
         career.ExpectedSalaryMin = request.ExpectedSalaryMin;
         career.ExpectedSalaryMax = request.ExpectedSalaryMax;
         career.ExpectedSalaryCurrency = request.ExpectedSalaryCurrency;
@@ -120,20 +133,17 @@ public class CareerService : ICareerService
         _context.UserSkills.RemoveRange(existingSkills);
 
         var finalSkills = new List<string>();
-        if (request.Skills != null)
+        foreach (var s in skills)
         {
-            foreach (var s in request.Skills.Where(x => !string.IsNullOrWhiteSpace(x)))
+            var skill = new UserSkill
             {
-                var skill = new UserSkill
-                {
-                    Id = Guid.CreateVersion7(),
-                    UserId = userId,
-                    Skill = s.Trim(),
-                    CreatedAt = DateTimeOffset.UtcNow
-                };
-                _context.UserSkills.Add(skill);
-                finalSkills.Add(skill.Skill);
-            }
+                Id = Guid.CreateVersion7(),
+                UserId = userId,
+                Skill = s,
+                CreatedAt = DateTimeOffset.UtcNow
+            };
+            _context.UserSkills.Add(skill);
+            finalSkills.Add(skill.Skill);
         }
 
         // Sync Locations
@@ -143,20 +153,17 @@ public class CareerService : ICareerService
         _context.UserPreferredLocations.RemoveRange(existingLocations);
 
         var finalLocations = new List<string>();
-        if (request.PreferredLocations != null)
+        foreach (var loc in preferredLocations)
         {
-            foreach (var loc in request.PreferredLocations.Where(x => !string.IsNullOrWhiteSpace(x)))
+            var location = new UserPreferredLocation
             {
-                var location = new UserPreferredLocation
-                {
-                    Id = Guid.CreateVersion7(),
-                    UserId = userId,
-                    Location = loc.Trim(),
-                    CreatedAt = DateTimeOffset.UtcNow
-                };
-                _context.UserPreferredLocations.Add(location);
-                finalLocations.Add(location.Location);
-            }
+                Id = Guid.CreateVersion7(),
+                UserId = userId,
+                Location = loc,
+                CreatedAt = DateTimeOffset.UtcNow
+            };
+            _context.UserPreferredLocations.Add(location);
+            finalLocations.Add(location.Location);
         }
 
         // Sync Employment Preferences
@@ -166,20 +173,17 @@ public class CareerService : ICareerService
         _context.UserEmploymentPreferences.RemoveRange(existingEmpPrefs);
 
         var finalEmpPrefs = new List<string>();
-        if (request.EmploymentPreferences != null)
+        foreach (var ep in employmentPreferences)
         {
-            foreach (var ep in request.EmploymentPreferences.Where(x => !string.IsNullOrWhiteSpace(x)))
+            var empPref = new UserEmploymentPreference
             {
-                var empPref = new UserEmploymentPreference
-                {
-                    Id = Guid.CreateVersion7(),
-                    UserId = userId,
-                    PreferenceName = ep.Trim(),
-                    CreatedAt = DateTimeOffset.UtcNow
-                };
-                _context.UserEmploymentPreferences.Add(empPref);
-                finalEmpPrefs.Add(empPref.PreferenceName);
-            }
+                Id = Guid.CreateVersion7(),
+                UserId = userId,
+                PreferenceName = ep,
+                CreatedAt = DateTimeOffset.UtcNow
+            };
+            _context.UserEmploymentPreferences.Add(empPref);
+            finalEmpPrefs.Add(empPref.PreferenceName);
         }
 
         try
@@ -212,6 +216,10 @@ public class CareerService : ICareerService
             ? new List<string>()
             : JsonSerializer.Deserialize<List<string>>(career.CompanyValues) ?? new List<string>();
 
+        var desiredJobPositions = string.IsNullOrEmpty(career.DesiredJobPositions)
+            ? new List<string>()
+            : JsonSerializer.Deserialize<List<string>>(career.DesiredJobPositions) ?? new List<string>();
+
         return new CareerPreferenceResponse(
             career.UserId,
             career.AvailableForHire,
@@ -227,6 +235,7 @@ public class CareerService : ICareerService
             preferredWorkEnvironments,
             workStyles,
             companyValues,
+            desiredJobPositions,
             career.ExpectedSalaryMin,
             career.ExpectedSalaryMax,
             career.ExpectedSalaryCurrency,
@@ -235,5 +244,51 @@ public class CareerService : ICareerService
             career.IsExpectedSalaryVisible,
             career.WorkPreferenceNotes
         );
+    }
+
+    private static List<string> ValidateAndNormalizeTags(List<string>? tags, string fieldName)
+    {
+        if (tags == null) return new List<string>();
+
+        if (tags.Count > 20)
+        {
+            throw new ValidationException(new Dictionary<string, string[]>
+            {
+                { fieldName, new[] { "Maximum of 20 items is allowed." } }
+            }, "Preference list exceeds maximum items limit.");
+        }
+
+        var normalized = new List<string>();
+        foreach (var tag in tags)
+        {
+            if (string.IsNullOrWhiteSpace(tag))
+            {
+                throw new ValidationException(new Dictionary<string, string[]>
+                {
+                    { fieldName, new[] { "Preference tag cannot be empty or whitespace." } }
+                }, "Invalid preference tag.");
+            }
+
+            var trimmed = tag.Trim();
+            if (trimmed.Length > 100)
+            {
+                throw new ValidationException(new Dictionary<string, string[]>
+                {
+                    { fieldName, new[] { $"Preference tag '{trimmed}' exceeds maximum length of 100 characters." } }
+                }, "Preference tag too long.");
+            }
+
+            if (normalized.Any(t => string.Equals(t, trimmed, StringComparison.OrdinalIgnoreCase)))
+            {
+                throw new ValidationException(new Dictionary<string, string[]>
+                {
+                    { fieldName, new[] { $"Duplicate preference tag '{trimmed}' is not allowed." } }
+                }, "Duplicate preference tag.");
+            }
+
+            normalized.Add(trimmed);
+        }
+
+        return normalized;
     }
 }

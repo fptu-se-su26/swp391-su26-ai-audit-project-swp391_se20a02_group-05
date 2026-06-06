@@ -1155,6 +1155,7 @@ public static class DbInitializer
                 preferred_work_environments TEXT,
                 work_styles TEXT,
                 company_values TEXT,
+                desired_job_positions TEXT,
                 expected_salary_min DECIMAL(18,2),
                 expected_salary_max DECIMAL(18,2),
                 expected_salary_currency VARCHAR(10),
@@ -1178,6 +1179,9 @@ public static class DbInitializer
                 END IF;
                 IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'career_preferences' AND column_name = 'company_values') THEN
                     ALTER TABLE career_preferences ADD COLUMN company_values TEXT;
+                END IF;
+                IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'career_preferences' AND column_name = 'desired_job_positions') THEN
+                    ALTER TABLE career_preferences ADD COLUMN desired_job_positions TEXT;
                 END IF;
                 IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'career_preferences' AND column_name = 'expected_salary_min') THEN
                     ALTER TABLE career_preferences ADD COLUMN expected_salary_min DECIMAL(18,2);

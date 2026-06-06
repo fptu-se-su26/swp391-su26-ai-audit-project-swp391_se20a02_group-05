@@ -112,6 +112,7 @@ export interface CareerPreferenceResponse {
   skills: string[];
   preferredLocations: string[];
   employmentPreferences: string[];
+  desiredJobPositions: string[];
   version: number;
   preferredWorkEnvironments: string[];
   workStyles: string[];
@@ -135,6 +136,7 @@ export interface UpdateCareerPreferenceRequest {
   skills: string[];
   preferredLocations: string[];
   employmentPreferences: string[];
+  desiredJobPositions: string[];
   version: number;
   preferredWorkEnvironments: string[];
   workStyles: string[];
@@ -159,6 +161,8 @@ export interface PublicCareerPreference {
   preferredWorkEnvironments: string[];
   workStyles: string[];
   companyValues: string[];
+  preferredLocations?: string[];
+  desiredJobPositions?: string[];
   expectedSalaryMin?: number | null;
   expectedSalaryMax?: number | null;
   expectedSalaryCurrency?: string | null;

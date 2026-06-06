@@ -298,6 +298,11 @@ public class ProfileService : IProfileService
                 .Select(uep => uep.PreferenceName)
                 .ToListAsync(cancellationToken);
 
+            var preferredLocations = await _context.UserPreferredLocations
+                .Where(upl => upl.UserId == profile.UserId)
+                .Select(upl => upl.Location)
+                .ToListAsync(cancellationToken);
+
             var preferredWorkEnvironments = string.IsNullOrEmpty(careerPreference.PreferredWorkEnvironments)
                 ? new List<string>()
                 : JsonSerializer.Deserialize<List<string>>(careerPreference.PreferredWorkEnvironments) ?? new List<string>();
@@ -309,6 +314,10 @@ public class ProfileService : IProfileService
             var companyValues = string.IsNullOrEmpty(careerPreference.CompanyValues)
                 ? new List<string>()
                 : JsonSerializer.Deserialize<List<string>>(careerPreference.CompanyValues) ?? new List<string>();
+
+            var desiredJobPositions = string.IsNullOrEmpty(careerPreference.DesiredJobPositions)
+                ? new List<string>()
+                : JsonSerializer.Deserialize<List<string>>(careerPreference.DesiredJobPositions) ?? new List<string>();
 
             decimal? expectedSalaryMin = careerPreference.IsExpectedSalaryVisible ? careerPreference.ExpectedSalaryMin : null;
             decimal? expectedSalaryMax = careerPreference.IsExpectedSalaryVisible ? careerPreference.ExpectedSalaryMax : null;
@@ -322,6 +331,8 @@ public class ProfileService : IProfileService
                 preferredWorkEnvironments,
                 workStyles,
                 companyValues,
+                preferredLocations,
+                desiredJobPositions,
                 expectedSalaryMin,
                 expectedSalaryMax,
                 expectedSalaryCurrency,

@@ -60,6 +60,8 @@ public class CareerPreference
 
     public string? WorkPreferenceNotes { get; set; }
 
+    public string? DesiredJobPositions { get; set; }
+
     [ConcurrencyCheck]
     public uint Version { get; set; } // Map PostgreSQL xmin system column
 }
