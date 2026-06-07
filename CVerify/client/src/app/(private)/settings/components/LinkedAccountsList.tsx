@@ -10,21 +10,22 @@ import {
   Avatar,
   toast,
   Modal,
-  Link,
 } from "@heroui/react";
 import { Github, Gitlab } from "@thesvg/react";
 import { useAuth } from "@/features/auth/hooks/use-auth";
 import { ConfirmationModal } from "./ConfirmationModal";
 import {
   Info,
-  Trash2,
   PlusCircle,
   AlertCircle,
   ExternalLink,
+  FolderTree,
 } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { type LinkedProviderConnection } from "@/types/auth.types";
 
 export const LinkedAccountsList: React.FC = () => {
+  const router = useRouter();
   const {
     fetchConnections,
     confirmLink,
@@ -53,15 +54,31 @@ export const LinkedAccountsList: React.FC = () => {
 
   // Modal-based pending link confirmation state
   const [pendingId, setPendingId] = useState<string | null>(null);
-  const [pendingDetails, setPendingDetails] = useState<any>(null);
+  interface PendingLinkDetails {
+    providerName: string;
+    providerAvatarUrl?: string | null;
+    providerDisplayName?: string | null;
+    providerUsername?: string | null;
+    providerEmail?: string | null;
+  }
+  const [pendingDetails, setPendingDetails] = useState<PendingLinkDetails | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [confirming, setConfirming] = useState(false);
   const [loadingPendingDetails, setLoadingPendingDetails] = useState(false);
 
+  const closePendingModal = useCallback(() => {
+    setIsModalOpen(false);
+    setPendingId(null);
+    setPendingDetails(null);
+    if (typeof window !== "undefined") {
+      const newUrl = window.location.pathname + "?tab=account";
+      window.history.replaceState({}, document.title, newUrl);
+    }
+  }, []);
+
   // Fetch all connections from the backend
   const loadConnections = useCallback(async () => {
     try {
-      await Promise.resolve(); // Defer state update to avoid set-state-in-effect
       const response = await fetchConnections();
       if (response.success && response.data) {
         setConnections(response.data);
@@ -75,7 +92,6 @@ export const LinkedAccountsList: React.FC = () => {
 
   const loadGoogleStatus = useCallback(async () => {
     try {
-      await Promise.resolve(); // Defer state update to avoid set-state-in-effect
       const response = await fetchLinkedProviders();
       if (response.success && response.data) {
         const googleProv = response.data.find(
@@ -89,14 +105,16 @@ export const LinkedAccountsList: React.FC = () => {
   }, [fetchLinkedProviders]);
 
   useEffect(() => {
-    Promise.resolve().then(() => {
+    const timer = setTimeout(() => {
       loadConnections();
       loadGoogleStatus();
-    });
+    }, 0);
+    return () => clearTimeout(timer);
   }, [loadConnections, loadGoogleStatus]);
 
   // Check query parameters for OAuth link success/error on mount
   useEffect(() => {
+    let timerId: NodeJS.Timeout | null = null;
     if (typeof window !== "undefined") {
       const params = new URLSearchParams(window.location.search);
       const pendingLinkId = params.get("link_pending_id");
@@ -105,22 +123,19 @@ export const LinkedAccountsList: React.FC = () => {
       const provider = params.get("provider");
 
       if (pendingLinkId) {
-        Promise.resolve().then(() => {
+        timerId = setTimeout(() => {
           setPendingId(pendingLinkId);
           setIsModalOpen(true);
-        });
-        // Clean URL parameters safely, retaining tab=account
-        const newUrl = window.location.pathname + "?tab=account";
-        window.history.replaceState({}, document.title, newUrl);
+        }, 0);
       } else if (linkSuccess && provider) {
         const providerName =
           provider.charAt(0).toUpperCase() + provider.slice(1);
         toast.success(`Successfully linked ${providerName} account.`);
         const newUrl = window.location.pathname + "?tab=account";
         window.history.replaceState({}, document.title, newUrl);
-        Promise.resolve().then(() => {
+        timerId = setTimeout(() => {
           loadConnections();
-        });
+        }, 0);
       } else if (error) {
         toast.danger(`Failed to link account.`, {
           description: decodeURIComponent(error),
@@ -129,6 +144,9 @@ export const LinkedAccountsList: React.FC = () => {
         window.history.replaceState({}, document.title, newUrl);
       }
     }
+    return () => {
+      if (timerId) clearTimeout(timerId);
+    };
   }, [loadConnections]);
 
   // Fetch pending link details when pendingId changes
@@ -142,24 +160,23 @@ export const LinkedAccountsList: React.FC = () => {
           setPendingDetails(response.data);
         } else {
           toast.danger("Failed to load pending connection details.");
-          setIsModalOpen(false);
-          setPendingId(null);
+          closePendingModal();
         }
-      } catch (err: any) {
+      } catch (err: unknown) {
         console.error(err);
-        if (err.status === 410 || err.response?.status === 410) {
+        const customErr = err as { status?: number; response?: { status?: number } };
+        if (customErr.status === 410 || customErr.response?.status === 410) {
           toast.danger("This linking request has expired. Please try again.");
         } else {
           toast.danger("Failed to retrieve pending connection details.");
         }
-        setIsModalOpen(false);
-        setPendingId(null);
+        closePendingModal();
       } finally {
         setLoadingPendingDetails(false);
       }
     };
     fetchDetails();
-  }, [pendingId, fetchPendingLinkDetails]);
+  }, [pendingId, fetchPendingLinkDetails, closePendingModal]);
 
   const handleConnect = async (provider: string) => {
     setActionLoadingId(`${provider}-link`);
@@ -219,7 +236,7 @@ export const LinkedAccountsList: React.FC = () => {
       } else {
         toast.danger(response.data?.message || "Failed to disconnect account.");
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error(err);
       toast.danger("An error occurred while unlinking account.");
     } finally {
@@ -234,17 +251,16 @@ export const LinkedAccountsList: React.FC = () => {
       const response = await confirmLink(pendingId);
       if (response.success) {
         toast.success("Account successfully connected!");
-        setIsModalOpen(false);
-        setPendingId(null);
-        setPendingDetails(null);
+        closePendingModal();
         await loadConnections();
       } else {
         toast.danger(response.data?.message || "Failed to confirm connection.");
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error(err);
+      const axiosError = err as { response?: { data?: { message?: string } } };
       toast.danger(
-        err.response?.data?.message ||
+        axiosError.response?.data?.message ||
           "An error occurred while confirming the connection.",
       );
     } finally {
@@ -418,6 +434,16 @@ export const LinkedAccountsList: React.FC = () => {
                               <ExternalLink size={14} />
                             </a>
                           )}
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => router.push(`/settings/source-code-providers?providerId=${conn.id}`)}
+                            className="rounded-xl h-8 text-xs font-semibold flex items-center gap-1.5 border border-border/40 hover:bg-foreground/5 hover:text-foreground"
+                            aria-label={`Manage repositories for @${conn.providerUsername}`}
+                          >
+                            <FolderTree size={14} className="text-muted-foreground" />
+                            <span>Manage Repositories</span>
+                          </Button>
                           <Button
                             size="sm"
                             variant="danger-soft"
@@ -622,6 +648,16 @@ export const LinkedAccountsList: React.FC = () => {
                           )}
                           <Button
                             size="sm"
+                            variant="ghost"
+                            onClick={() => router.push(`/settings/source-code-providers?providerId=${conn.id}`)}
+                            className="rounded-xl h-8 text-xs font-semibold flex items-center gap-1.5 border border-border/40 hover:bg-foreground/5 hover:text-foreground"
+                            aria-label={`Manage repositories for @${conn.providerUsername}`}
+                          >
+                            <FolderTree size={14} className="text-muted-foreground" />
+                            <span>Manage Repositories</span>
+                          </Button>
+                          <Button
+                            size="sm"
                             variant="danger-soft"
                             isPending={isUnlinking && unlinkTarget?.id === conn.id}
                             isDisabled={isUnlinking}
@@ -696,9 +732,7 @@ export const LinkedAccountsList: React.FC = () => {
         isOpen={isModalOpen}
         onOpenChange={(open) => {
           if (!open) {
-            setIsModalOpen(false);
-            setPendingId(null);
-            setPendingDetails(null);
+            closePendingModal();
           }
         }}
         isDismissable={false}
@@ -802,11 +836,7 @@ export const LinkedAccountsList: React.FC = () => {
             <Modal.Footer className="flex justify-end gap-3 pt-4 mt-4 border-t border-separator">
               <Button
                 variant="outline"
-                onClick={() => {
-                  setIsModalOpen(false);
-                  setPendingId(null);
-                  setPendingDetails(null);
-                }}
+                onClick={closePendingModal}
                 className="rounded-xl text-xs h-9.5 px-4 font-semibold text-muted hover:text-foreground"
                 isDisabled={confirming}
               >

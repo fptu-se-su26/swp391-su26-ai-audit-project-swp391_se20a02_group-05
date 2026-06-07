@@ -1,6 +1,7 @@
 "use client";
+
 import React, { useState } from "react";
-import { Typography } from "@heroui/react";
+import { TagGroup, Tag, Label, Description, ErrorMessage, Input, Button } from "@heroui/react";
 
 interface TagChipMultiSelectProps {
   label?: string;
@@ -19,47 +20,25 @@ export const TagChipMultiSelect: React.FC<TagChipMultiSelectProps> = ({
   onChange,
   error,
 }) => {
-  const [customInput, setCustomInput] = useState("");
-  const [localError, setLocalError] = useState("");
+  const [inputValue, setInputValue] = useState("");
 
-  const handleToggle = (option: string) => {
-    setLocalError("");
-    const isSelected = value.includes(option);
-    let newValue;
-    if (isSelected) {
-      newValue = value.filter((v) => v !== option);
+  const renderedOptions = Array.from(new Set([...options, ...value]));
+
+  const handleSelectionChange = (keys: any) => {
+    if (keys === "all") {
+      onChange(renderedOptions);
     } else {
-      if (value.length >= 20) {
-        setLocalError("You can select up to 20 options.");
-        return;
-      }
-      newValue = [...value, option];
+      onChange(Array.from(keys).map((k) => String(k)));
     }
-    onChange(newValue);
   };
 
   const handleAddCustomTag = () => {
-    setLocalError("");
-    const trimmed = customInput.trim();
+    const trimmed = inputValue.trim();
     if (!trimmed) return;
-
-    if (value.length >= 20) {
-      setLocalError("You can select up to 20 options.");
-      return;
+    if (!value.includes(trimmed)) {
+      onChange([...value, trimmed]);
     }
-
-    if (trimmed.length > 100) {
-      setLocalError("Tag cannot exceed 100 characters.");
-      return;
-    }
-
-    if (value.some((v) => v.toLowerCase() === trimmed.toLowerCase())) {
-      setLocalError("Duplicate tag is not allowed.");
-      return;
-    }
-
-    onChange([...value, trimmed]);
-    setCustomInput("");
+    setInputValue("");
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -69,83 +48,46 @@ export const TagChipMultiSelect: React.FC<TagChipMultiSelectProps> = ({
     }
   };
 
-  const allChips = Array.from(new Set([...options, ...value]));
-
   return (
-    <div className="flex flex-col gap-2 w-full text-left">
-      {label && (
-        <div className="flex flex-col gap-0.5 select-none">
-          <Typography type="body-sm" className="font-bold text-foreground font-outfit">
-            {label}
-          </Typography>
-          {description && (
-            <Typography type="body-xs" className="text-muted max-w-xl">
-              {description}
-            </Typography>
-          )}
-        </div>
-      )}
-
-      <div className="flex flex-wrap gap-2 mt-1">
-        {allChips.map((option) => {
-          const isSelected = value.includes(option);
-          const isCustom = !options.includes(option);
-          return (
-            <button
-              key={option}
-              type="button"
-              onClick={() => handleToggle(option)}
-              className={`px-3 py-1.5 rounded-full text-xs font-semibold border transition-all duration-150 cursor-pointer select-none flex items-center gap-1
-                ${
-                  isSelected
-                    ? "bg-accent text-accent-foreground border-accent shadow-xs scale-[1.02]"
-                    : "bg-field text-foreground/80 border-field-border hover:border-border hover:bg-surface-secondary active:scale-95"
-                }
-              `}
-            >
-              {option}
-              {isCustom && isSelected && (
-                <span className="text-[10px] font-bold opacity-60 ml-0.5">×</span>
-              )}
-            </button>
-          );
-        })}
-      </div>
-
-      {/* Custom Tag Input */}
-      <div className="flex gap-2 items-center mt-2 max-w-xs sm:max-w-sm">
-        <input
-          type="text"
+    <TagGroup
+      selectedKeys={new Set(value)}
+      selectionMode="multiple"
+      onSelectionChange={handleSelectionChange}
+      variant="default"
+      size="md"
+      className="w-full text-left"
+    >
+      {label && <Label className="font-bold text-foreground font-outfit">{label}</Label>}
+      <TagGroup.List className="mt-1 flex flex-wrap gap-2">
+        {renderedOptions.map((option) => (
+          <Tag key={option} id={option} className="cursor-pointer select-none">
+            {option}
+          </Tag>
+        ))}
+      </TagGroup.List>
+      <div className="mt-2.5 flex items-center gap-2 max-w-sm">
+        <Input
           placeholder="Add custom option..."
-          value={customInput}
-          onChange={(e) => {
-            setCustomInput(e.target.value);
-            if (localError) setLocalError("");
-          }}
+          value={inputValue}
+          onChange={(e) => setInputValue(e.target.value)}
           onKeyDown={handleKeyDown}
-          className="flex-1 px-3 py-1.5 text-xs rounded-xl bg-field border border-field-border focus:border-accent outline-hidden transition-all text-foreground"
+          aria-label={label ? `Add custom ${label}` : "Add custom option"}
         />
-        <button
-          type="button"
-          disabled={!customInput.trim()}
-          onClick={handleAddCustomTag}
-          className={`px-3 py-1.5 text-xs font-bold rounded-xl transition-all
-            ${!customInput.trim()
-              ? "bg-surface-secondary text-muted border border-border/40 cursor-not-allowed opacity-60"
-              : "bg-accent text-accent-foreground hover:opacity-90 active:scale-95 cursor-pointer"
-            }
-          `}
+        <Button
+          size="sm"
+          onPress={handleAddCustomTag}
+          className="bg-accent text-accent-foreground font-bold shrink-0"
         >
           Add
-        </button>
+        </Button>
       </div>
-
-      {(localError || error) && (
-        <Typography type="body-xs" className="text-danger pl-1 font-semibold block" role="alert">
-          {localError || error}
-        </Typography>
+      {description && <Description className="text-muted max-w-xl text-xs mt-1.5">{description}</Description>}
+      {error && (
+        <ErrorMessage className="text-danger pl-1 font-semibold block text-xs mt-1" role="alert">
+          {error}
+        </ErrorMessage>
       )}
-    </div>
+    </TagGroup>
   );
 };
 

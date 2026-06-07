@@ -72,9 +72,10 @@ export default function SettingsPage() {
         tab === "personal-info" ||
         tab === "career"
       ) {
-        Promise.resolve().then(() => {
+        const timer = setTimeout(() => {
           setActiveTab(tab as TabId);
-        });
+        }, 0);
+        return () => clearTimeout(timer);
       }
     }
   }, []);

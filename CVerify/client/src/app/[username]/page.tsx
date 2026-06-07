@@ -2,6 +2,7 @@ import React from 'react';
 import { notFound, permanentRedirect } from 'next/navigation';
 import { Compass, Briefcase, MapPin, Link as LinkIcon, ShieldCheck } from 'lucide-react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { Typography, Card, Button } from '@heroui/react';
 import { API_URL } from '@/services/axios-client';
 import { type PublicProfileResponse } from '@/types/profile.types';
@@ -35,14 +36,6 @@ async function getPublicProfile(username: string): Promise<PublicProfileResponse
     return null;
   }
 }
-
-const arrangementLabels: Record<string, string> = {
-  full_time: 'Full-time',
-  part_time: 'Part-time',
-  contract: 'Contract',
-  freelance: 'Freelance',
-  internship: 'Internship',
-};
 
 function formatExpectedSalary(cp: any): string | null {
   const min = cp.expectedSalaryMin;
@@ -100,7 +93,6 @@ export default async function PublicProfilePage({ params }: PageProps) {
   const workStyles = cp?.workStyles || [];
   const companyValues = cp?.companyValues || [];
   const preferredLocations = cp?.preferredLocations || [];
-  const employmentPreferences = cp?.employmentPreferences || [];
   const desiredJobPositions = cp?.desiredJobPositions || [];
   const notes = cp?.workPreferenceNotes;
   const salaryText = cp ? formatExpectedSalary(cp) : null;
@@ -110,7 +102,6 @@ export default async function PublicProfilePage({ params }: PageProps) {
     workStyles.length > 0 ||
     companyValues.length > 0 ||
     preferredLocations.length > 0 ||
-    employmentPreferences.length > 0 ||
     desiredJobPositions.length > 0 ||
     salaryText ||
     (notes && notes.trim().length > 0)
@@ -136,7 +127,7 @@ export default async function PublicProfilePage({ params }: PageProps) {
           </Typography>
         </Link>
         <Link href="/login">
-          <Button size="sm" variant="outline" className="font-semibold text-xs rounded-xl bg-foreground/10 text-foreground border border-border/40 backdrop-blur-sm">
+          <Button slot="button" size="sm" variant="outline" className="font-semibold text-xs rounded-xl bg-foreground/10 text-foreground border border-border/40 backdrop-blur-sm">
             Sign In
           </Button>
         </Link>
@@ -151,10 +142,13 @@ export default async function PublicProfilePage({ params }: PageProps) {
           {/* User Avatar */}
           <div className="relative w-28 h-28 rounded-full border-2 border-indigo-500/30 overflow-hidden shadow-xl mb-6">
             {profile.avatarUrl ? (
-              <img
+              <Image
                 src={profile.avatarUrl}
                 alt={profile.fullName}
+                width={112}
+                height={112}
                 className="w-full h-full object-cover"
+                unoptimized
               />
             ) : (
               <div className="w-full h-full bg-linear-to-br from-indigo-600 to-purple-600 flex items-center justify-center text-3xl font-extrabold text-white">
@@ -181,22 +175,21 @@ export default async function PublicProfilePage({ params }: PageProps) {
             </Typography>
           )}
 
-          {profile.company && (
-            <div className="flex flex-wrap items-center justify-center gap-x-6 gap-y-3 mb-8 text-sm text-muted-foreground/80">
-              {profile.company && (
-                <span className="flex items-center gap-1.5">
-                  <Briefcase size={16} className="text-indigo-400" />
-                  {profile.company}
-                </span>
-              )}
-              {profile.location && (
-                <span className="flex items-center gap-1.5">
-                  <MapPin size={16} className="text-indigo-400" />
-                  {profile.location}
-                </span>
-              )}
-            </div>
-          )}
+          {/* Meta Details Grid */}
+          <div className="flex flex-wrap items-center justify-center gap-x-6 gap-y-3 mb-8 text-sm text-muted-foreground/80">
+            {profile.company && (
+              <span className="flex items-center gap-1.5">
+                <Briefcase size={16} className="text-indigo-400" />
+                {profile.company}
+              </span>
+            )}
+            {profile.location && (
+              <span className="flex items-center gap-1.5">
+                <MapPin size={16} className="text-indigo-400" />
+                {profile.location}
+              </span>
+            )}
+          </div>
 
           {/* Bio */}
           {profile.bio && (
@@ -243,6 +236,44 @@ export default async function PublicProfilePage({ params }: PageProps) {
             </Typography>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 w-full">
+              {/* Desired Job Positions Card */}
+              {desiredJobPositions.length > 0 && (
+                <Card className="p-6 md:p-8 rounded-3xl border border-border/30 bg-background/30 backdrop-blur-xl shadow-xl flex flex-col gap-4 text-left">
+                  <span className="text-xs font-bold uppercase tracking-wider text-teal-400 select-none">
+                    Desired Job Positions
+                  </span>
+                  <div className="flex flex-wrap gap-2">
+                    {desiredJobPositions.map((pos: string) => (
+                      <span
+                        key={pos}
+                        className="px-3 py-1.5 rounded-full text-xs font-semibold bg-teal-500/10 text-teal-300 border border-teal-500/20"
+                      >
+                        {pos}
+                      </span>
+                    ))}
+                  </div>
+                </Card>
+              )}
+
+              {/* Preferred Locations Card */}
+              {preferredLocations.length > 0 && (
+                <Card className="p-6 md:p-8 rounded-3xl border border-border/30 bg-background/30 backdrop-blur-xl shadow-xl flex flex-col gap-4 text-left">
+                  <span className="text-xs font-bold uppercase tracking-wider text-rose-400 select-none">
+                    Preferred Locations
+                  </span>
+                  <div className="flex flex-wrap gap-2">
+                    {preferredLocations.map((loc: string) => (
+                      <span
+                        key={loc}
+                        className="px-3 py-1.5 rounded-full text-xs font-semibold bg-rose-500/10 text-rose-300 border border-rose-500/20"
+                      >
+                        {loc}
+                      </span>
+                    ))}
+                  </div>
+                </Card>
+              )}
+
               {/* Preferred Work Environment Card */}
               {preferredWorkEnvironments.length > 0 && (
                 <Card className="p-6 md:p-8 rounded-3xl border border-border/30 bg-background/30 backdrop-blur-xl shadow-xl flex flex-col gap-4 text-left">
@@ -284,73 +315,16 @@ export default async function PublicProfilePage({ params }: PageProps) {
               {/* Company Values Card */}
               {companyValues.length > 0 && (
                 <Card className="p-6 md:p-8 rounded-3xl border border-border/30 bg-background/30 backdrop-blur-xl shadow-xl flex flex-col gap-4 text-left md:col-span-2">
-                  <span className="text-xs font-bold uppercase tracking-wider text-teal-400 select-none">
+                  <span className="text-xs font-bold uppercase tracking-wider text-amber-400 select-none">
                     Company Values
                   </span>
                   <div className="flex flex-wrap gap-2">
                     {companyValues.map((val: string) => (
                       <span
                         key={val}
-                        className="px-3 py-1.5 rounded-full text-xs font-semibold bg-teal-500/10 text-teal-300 border border-teal-500/20"
+                        className="px-3 py-1.5 rounded-full text-xs font-semibold bg-amber-500/10 text-amber-300 border border-amber-500/20"
                       >
                         {val}
-                      </span>
-                    ))}
-                  </div>
-                </Card>
-              )}
-
-              {/* Employment Type / Work Arrangement Card */}
-              {employmentPreferences.length > 0 && (
-                <Card className="p-6 md:p-8 rounded-3xl border border-border/30 bg-background/30 backdrop-blur-xl shadow-xl flex flex-col gap-4 text-left md:col-span-2">
-                  <span className="text-xs font-bold uppercase tracking-wider text-blue-400 select-none">
-                    Employment Type / Work Arrangement
-                  </span>
-                  <div className="flex flex-wrap gap-2">
-                    {employmentPreferences.map((ep: string) => (
-                      <span
-                        key={ep}
-                        className="px-3 py-1.5 rounded-full text-xs font-semibold bg-blue-500/10 text-blue-300 border border-blue-500/20"
-                      >
-                        {ep}
-                      </span>
-                    ))}
-                  </div>
-                </Card>
-              )}
-
-              {/* Preferred Work Location Card */}
-              {preferredLocations.length > 0 && (
-                <Card className="p-6 md:p-8 rounded-3xl border border-border/30 bg-background/30 backdrop-blur-xl shadow-xl flex flex-col gap-4 text-left md:col-span-2">
-                  <span className="text-xs font-bold uppercase tracking-wider text-pink-400 select-none">
-                    Preferred Work Location
-                  </span>
-                  <div className="flex flex-wrap gap-2">
-                    {preferredLocations.map((loc: string) => (
-                      <span
-                        key={loc}
-                        className="px-3 py-1.5 rounded-full text-xs font-semibold bg-pink-500/10 text-pink-300 border border-pink-500/20"
-                      >
-                        {loc}
-                      </span>
-                    ))}
-                  </div>
-                </Card>
-              )}
-
-              {/* Desired Job Position Card */}
-              {desiredJobPositions.length > 0 && (
-                <Card className="p-6 md:p-8 rounded-3xl border border-border/30 bg-background/30 backdrop-blur-xl shadow-xl flex flex-col gap-4 text-left md:col-span-2">
-                  <span className="text-xs font-bold uppercase tracking-wider text-orange-400 select-none">
-                    Desired Job Position
-                  </span>
-                  <div className="flex flex-wrap gap-2">
-                    {desiredJobPositions.map((pos: string) => (
-                      <span
-                        key={pos}
-                        className="px-3 py-1.5 rounded-full text-xs font-semibold bg-orange-500/10 text-orange-300 border border-orange-500/20"
-                      >
-                        {pos}
                       </span>
                     ))}
                   </div>

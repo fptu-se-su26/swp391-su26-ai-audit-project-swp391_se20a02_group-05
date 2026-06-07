@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 using CVerify.API.Modules.Shared.Domain.Entities;
@@ -30,17 +31,23 @@ public class CareerPreference
     public string? RemotePreference { get; set; }
 
     [MaxLength(20)]
-    public string? OpenToWorkStatus { get; set; }
+    public string OpenToWorkStatus { get; set; } = "casual";
 
-    public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
+    public bool OpenToRelocation { get; set; } = false;
 
-    public DateTimeOffset UpdatedAt { get; set; } = DateTimeOffset.UtcNow;
+    public string LeadershipTrack { get; set; } = "undecided";
 
-    public DateTimeOffset? DeletedAt { get; set; }
+    public List<string> CompanyStagePreferences { get; set; } = new();
 
-    public string? PreferredWorkEnvironments { get; set; }
-    public string? WorkStyles { get; set; }
-    public string? CompanyValues { get; set; }
+    public List<string> PreferredIndustries { get; set; } = new();
+
+    public List<string> TargetSkills { get; set; } = new();
+
+    public List<string> PreferredWorkEnvironments { get; set; } = new();
+
+    public List<string> WorkStyles { get; set; } = new();
+
+    public List<string> CompanyValues { get; set; } = new();
 
     [Column(TypeName = "decimal(18,2)")]
     public decimal? ExpectedSalaryMin { get; set; }
@@ -60,7 +67,13 @@ public class CareerPreference
 
     public string? WorkPreferenceNotes { get; set; }
 
-    public string? DesiredJobPositions { get; set; }
+    public List<string> DesiredJobPositions { get; set; } = new();
+
+    public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
+
+    public DateTimeOffset UpdatedAt { get; set; } = DateTimeOffset.UtcNow;
+
+    public DateTimeOffset? DeletedAt { get; set; }
 
     [ConcurrencyCheck]
     public uint Version { get; set; } // Map PostgreSQL xmin system column

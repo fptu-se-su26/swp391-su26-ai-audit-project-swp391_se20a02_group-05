@@ -43,6 +43,31 @@ public static class DbInitializer
         if (shouldReset)
         {
             const string dropSql = @"
+                DROP TABLE IF EXISTS analysis_task_events CASCADE;
+                DROP TABLE IF EXISTS analysis_task_results CASCADE;
+                DROP TABLE IF EXISTS analysis_tasks CASCADE;
+                DROP TABLE IF EXISTS analysis_reports CASCADE;
+                DROP TABLE IF EXISTS analysis_job_events CASCADE;
+                DROP TABLE IF EXISTS analysis_jobs CASCADE;
+                DROP TABLE IF EXISTS source_code_repositories CASCADE;
+
+                DROP TABLE IF EXISTS profile_activity_logs CASCADE;
+                DROP TABLE IF EXISTS profile_attachments CASCADE;
+                DROP TABLE IF EXISTS social_links CASCADE;
+                DROP TABLE IF EXISTS user_skills CASCADE;
+                DROP TABLE IF EXISTS user_preferred_locations CASCADE;
+                DROP TABLE IF EXISTS user_employment_preferences CASCADE;
+                DROP TABLE IF EXISTS career_preferences CASCADE;
+                DROP TABLE IF EXISTS ai_inferred_preferences CASCADE;
+                
+                DROP TABLE IF EXISTS academic_achievements CASCADE;
+                DROP TABLE IF EXISTS education_entries CASCADE;
+                DROP TABLE IF EXISTS work_experience_links CASCADE;
+                DROP TABLE IF EXISTS work_experience_technologies CASCADE;
+                DROP TABLE IF EXISTS work_experience_achievements CASCADE;
+                DROP TABLE IF EXISTS work_experience_entries CASCADE;
+                DROP TABLE IF EXISTS user_profiles CASCADE;
+
                 DROP TABLE IF EXISTS representative_approval_votes CASCADE;
                 DROP TABLE IF EXISTS representative_rotation_requests CASCADE;
                 DROP TABLE IF EXISTS representative_authority_histories CASCADE;
@@ -138,6 +163,31 @@ public static class DbInitializer
                 IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'user_profiles') THEN
                     IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'user_profiles' AND column_name = 'username') THEN
                         ALTER TABLE user_profiles ADD COLUMN username CITEXT;
+                    END IF;
+                END IF;
+
+                -- If source_code_repositories exists, add classification and authenticity_type columns if missing
+                IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'source_code_repositories') THEN
+                    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'source_code_repositories' AND column_name = 'classification') THEN
+                        ALTER TABLE source_code_repositories ADD COLUMN classification VARCHAR(255);
+                    END IF;
+                    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'source_code_repositories' AND column_name = 'authenticity_type') THEN
+                        ALTER TABLE source_code_repositories ADD COLUMN authenticity_type VARCHAR(255);
+                    END IF;
+                    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'source_code_repositories' AND column_name = 'latest_risk_score') THEN
+                        ALTER TABLE source_code_repositories ADD COLUMN latest_risk_score DOUBLE PRECISION NOT NULL DEFAULT 0.0;
+                    END IF;
+                    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'source_code_repositories' AND column_name = 'latest_risk_level') THEN
+                        ALTER TABLE source_code_repositories ADD COLUMN latest_risk_level VARCHAR(50) NOT NULL DEFAULT 'Low';
+                    END IF;
+                    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'source_code_repositories' AND column_name = 'latest_analysis_status') THEN
+                        ALTER TABLE source_code_repositories ADD COLUMN latest_analysis_status VARCHAR(50) NOT NULL DEFAULT 'NeverAnalyzed';
+                    END IF;
+                    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'source_code_repositories' AND column_name = 'latest_analysis_completed_at_utc') THEN
+                        ALTER TABLE source_code_repositories ADD COLUMN latest_analysis_completed_at_utc TIMESTAMP WITH TIME ZONE;
+                    END IF;
+                    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'source_code_repositories' AND column_name = 'latest_risk_factors_json') THEN
+                        ALTER TABLE source_code_repositories ADD COLUMN latest_risk_factors_json JSONB;
                     END IF;
                 END IF;
             END $$;
@@ -247,6 +297,55 @@ public static class DbInitializer
                 updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
                 CONSTRAINT fk_oauth_credentials_auth_provider FOREIGN KEY (auth_provider_id) REFERENCES auth_providers(id) ON DELETE CASCADE
             );
+
+            -- Stores repositories associated with auth providers
+            CREATE TABLE IF NOT EXISTS source_code_repositories (
+                id UUID PRIMARY KEY,
+                auth_provider_id UUID NOT NULL,
+                external_repository_id VARCHAR(255) NOT NULL,
+                name VARCHAR(255) NOT NULL,
+                owner VARCHAR(255) NOT NULL,
+                description VARCHAR(1000),
+                html_url VARCHAR(1000),
+                default_branch VARCHAR(100),
+                owner_login VARCHAR(255) NOT NULL,
+                owner_type VARCHAR(50) NOT NULL,
+                is_private BOOLEAN NOT NULL DEFAULT FALSE,
+                primary_language VARCHAR(100),
+                stars_count INTEGER NOT NULL DEFAULT 0,
+                forks_count INTEGER NOT NULL DEFAULT 0,
+                open_issues_count INTEGER NOT NULL DEFAULT 0,
+                watchers_count INTEGER NOT NULL DEFAULT 0,
+                last_commit_at TIMESTAMP WITH TIME ZONE,
+                last_updated_utc TIMESTAMP WITH TIME ZONE NOT NULL,
+                last_seen_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+                is_accessible BOOLEAN NOT NULL DEFAULT TRUE,
+                archived_externally BOOLEAN NOT NULL DEFAULT FALSE,
+                is_enabled BOOLEAN NOT NULL DEFAULT TRUE,
+                is_verified BOOLEAN NOT NULL DEFAULT FALSE,
+                trust_score DOUBLE PRECISION NOT NULL DEFAULT 0.0,
+                custom_settings_json TEXT,
+                classification VARCHAR(255),
+                authenticity_type VARCHAR(255),
+                latest_risk_score DOUBLE PRECISION NOT NULL DEFAULT 0.0,
+                latest_risk_level VARCHAR(50) NOT NULL DEFAULT 'Low',
+                latest_analysis_status VARCHAR(50) NOT NULL DEFAULT 'NeverAnalyzed',
+                latest_analysis_completed_at_utc TIMESTAMP WITH TIME ZONE,
+                latest_risk_factors_json JSONB,
+                created_at_utc TIMESTAMP WITH TIME ZONE NOT NULL,
+                last_synced_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+                CONSTRAINT fk_source_code_repositories_auth_provider FOREIGN KEY (auth_provider_id) REFERENCES auth_providers(id) ON DELETE CASCADE
+            );
+            CREATE UNIQUE INDEX IF NOT EXISTS idx_source_code_repositories_external_active ON source_code_repositories(auth_provider_id, external_repository_id);
+            CREATE INDEX IF NOT EXISTS idx_source_code_repositories_owner_login ON source_code_repositories(owner_login);
+            CREATE INDEX IF NOT EXISTS idx_source_code_repositories_language ON source_code_repositories(primary_language) WHERE primary_language IS NOT NULL;
+            CREATE INDEX IF NOT EXISTS idx_source_code_repositories_updated ON source_code_repositories(last_updated_utc DESC);
+            CREATE INDEX IF NOT EXISTS idx_source_code_repositories_stars ON source_code_repositories(stars_count DESC);
+            CREATE INDEX IF NOT EXISTS idx_source_code_repositories_accessible ON source_code_repositories(is_accessible) WHERE is_accessible = TRUE;
+            CREATE INDEX IF NOT EXISTS idx_source_code_repositories_classification ON source_code_repositories(classification) WHERE classification IS NOT NULL;
+            CREATE INDEX IF NOT EXISTS idx_source_code_repositories_authenticity_type ON source_code_repositories(authenticity_type) WHERE authenticity_type IS NOT NULL;
+            CREATE INDEX IF NOT EXISTS idx_source_code_repositories_latest_risk_score ON source_code_repositories(latest_risk_score);
+            CREATE INDEX IF NOT EXISTS idx_source_code_repositories_latest_analysis_status ON source_code_repositories(latest_analysis_status);
 
             -- Stores active/inactive historical password credentials to prevent reuse
             CREATE TABLE IF NOT EXISTS password_credentials (
@@ -866,6 +965,24 @@ public static class DbInitializer
                     ALTER TABLE auth_providers ADD COLUMN provider_profile_url VARCHAR(500);
                 END IF;
 
+                -- Safely provision sync_status column if missing
+                IF NOT EXISTS (
+                    SELECT 1 
+                    FROM information_schema.columns 
+                    WHERE table_name = 'auth_providers' AND column_name = 'sync_status'
+                ) THEN
+                    ALTER TABLE auth_providers ADD COLUMN sync_status VARCHAR(50) NOT NULL DEFAULT 'Pending';
+                END IF;
+
+                -- Safely provision sync_error column if missing
+                IF NOT EXISTS (
+                    SELECT 1 
+                    FROM information_schema.columns 
+                    WHERE table_name = 'auth_providers' AND column_name = 'sync_error'
+                ) THEN
+                    ALTER TABLE auth_providers ADD COLUMN sync_error TEXT;
+                END IF;
+
             END $$;
 
             -- Safely provision avatar_source column and perform backfills
@@ -1206,6 +1323,153 @@ public static class DbInitializer
                 END IF;
             END $$;
 
+            -- Safely migrate career_preferences columns to native arrays and add new columns
+            DO $$
+            BEGIN
+                -- 1. Check if preferred_work_environments is text
+                IF EXISTS (
+                    SELECT 1 FROM information_schema.columns 
+                    WHERE table_name = 'career_preferences' 
+                      AND column_name = 'preferred_work_environments' 
+                      AND data_type = 'text'
+                ) THEN
+                    ALTER TABLE career_preferences RENAME COLUMN preferred_work_environments TO preferred_work_environments_old;
+                    ALTER TABLE career_preferences ADD COLUMN preferred_work_environments VARCHAR(100)[] NOT NULL DEFAULT ARRAY[]::VARCHAR[];
+                    UPDATE career_preferences SET preferred_work_environments = ARRAY(
+                        SELECT json_array_elements_text(preferred_work_environments_old::json)
+                    ) WHERE preferred_work_environments_old IS NOT NULL 
+                      AND preferred_work_environments_old <> '' 
+                      AND preferred_work_environments_old LIKE '[%';
+                    ALTER TABLE career_preferences DROP COLUMN preferred_work_environments_old;
+                END IF;
+
+                -- 2. Check if work_styles is text
+                IF EXISTS (
+                    SELECT 1 FROM information_schema.columns 
+                    WHERE table_name = 'career_preferences' 
+                      AND column_name = 'work_styles' 
+                      AND data_type = 'text'
+                ) THEN
+                    ALTER TABLE career_preferences RENAME COLUMN work_styles TO work_styles_old;
+                    ALTER TABLE career_preferences ADD COLUMN work_styles VARCHAR(100)[] NOT NULL DEFAULT ARRAY[]::VARCHAR[];
+                    UPDATE career_preferences SET work_styles = ARRAY(
+                        SELECT json_array_elements_text(work_styles_old::json)
+                    ) WHERE work_styles_old IS NOT NULL 
+                      AND work_styles_old <> '' 
+                      AND work_styles_old LIKE '[%';
+                    ALTER TABLE career_preferences DROP COLUMN work_styles_old;
+                END IF;
+
+                -- 3. Check if company_values is text
+                IF EXISTS (
+                    SELECT 1 FROM information_schema.columns 
+                    WHERE table_name = 'career_preferences' 
+                      AND column_name = 'company_values' 
+                      AND data_type = 'text'
+                ) THEN
+                    ALTER TABLE career_preferences RENAME COLUMN company_values TO company_values_old;
+                    ALTER TABLE career_preferences ADD COLUMN company_values VARCHAR(100)[] NOT NULL DEFAULT ARRAY[]::VARCHAR[];
+                    UPDATE career_preferences SET company_values = ARRAY(
+                        SELECT json_array_elements_text(company_values_old::json)
+                    ) WHERE company_values_old IS NOT NULL 
+                      AND company_values_old <> '' 
+                      AND company_values_old LIKE '[%';
+                    ALTER TABLE career_preferences DROP COLUMN company_values_old;
+                END IF;
+
+                -- 4. Check if desired_job_positions is text
+                IF EXISTS (
+                    SELECT 1 FROM information_schema.columns 
+                    WHERE table_name = 'career_preferences' 
+                      AND column_name = 'desired_job_positions' 
+                      AND data_type = 'text'
+                ) THEN
+                    ALTER TABLE career_preferences RENAME COLUMN desired_job_positions TO desired_job_positions_old;
+                    ALTER TABLE career_preferences ADD COLUMN desired_job_positions VARCHAR(100)[] NOT NULL DEFAULT ARRAY[]::VARCHAR[];
+                    UPDATE career_preferences SET desired_job_positions = ARRAY(
+                        SELECT json_array_elements_text(desired_job_positions_old::json)
+                    ) WHERE desired_job_positions_old IS NOT NULL 
+                      AND desired_job_positions_old <> '' 
+                      AND desired_job_positions_old LIKE '[%';
+                    ALTER TABLE career_preferences DROP COLUMN desired_job_positions_old;
+                END IF;
+
+                -- 5. Add open_to_work_status if missing or not default
+                IF NOT EXISTS (
+                    SELECT 1 FROM information_schema.columns 
+                    WHERE table_name = 'career_preferences' AND column_name = 'open_to_work_status'
+                ) THEN
+                    ALTER TABLE career_preferences ADD COLUMN open_to_work_status VARCHAR(20) DEFAULT 'casual' NOT NULL;
+                ELSE
+                    ALTER TABLE career_preferences ALTER COLUMN open_to_work_status SET DEFAULT 'casual';
+                    UPDATE career_preferences SET open_to_work_status = 'casual' WHERE open_to_work_status IS NULL;
+                    ALTER TABLE career_preferences ALTER COLUMN open_to_work_status SET NOT NULL;
+                END IF;
+
+                -- 6. Add open_to_relocation if missing
+                IF NOT EXISTS (
+                    SELECT 1 FROM information_schema.columns 
+                    WHERE table_name = 'career_preferences' AND column_name = 'open_to_relocation'
+                ) THEN
+                    ALTER TABLE career_preferences ADD COLUMN open_to_relocation BOOLEAN DEFAULT FALSE NOT NULL;
+                END IF;
+
+                -- 7. Add leadership_track if missing
+                IF NOT EXISTS (
+                    SELECT 1 FROM information_schema.columns 
+                    WHERE table_name = 'career_preferences' AND column_name = 'leadership_track'
+                ) THEN
+                    ALTER TABLE career_preferences ADD COLUMN leadership_track VARCHAR(30) DEFAULT 'undecided' NOT NULL;
+                END IF;
+
+                -- 8. Add company_stage_preferences if missing
+                IF NOT EXISTS (
+                    SELECT 1 FROM information_schema.columns 
+                    WHERE table_name = 'career_preferences' AND column_name = 'company_stage_preferences'
+                ) THEN
+                    ALTER TABLE career_preferences ADD COLUMN company_stage_preferences VARCHAR(50)[] DEFAULT ARRAY[]::VARCHAR[] NOT NULL;
+                END IF;
+
+                -- 9. Add preferred_industries if missing
+                IF NOT EXISTS (
+                    SELECT 1 FROM information_schema.columns 
+                    WHERE table_name = 'career_preferences' AND column_name = 'preferred_industries'
+                ) THEN
+                    ALTER TABLE career_preferences ADD COLUMN preferred_industries VARCHAR(100)[] DEFAULT ARRAY[]::VARCHAR[] NOT NULL;
+                END IF;
+
+                -- 10. Add target_skills if missing
+                IF NOT EXISTS (
+                    SELECT 1 FROM information_schema.columns 
+                    WHERE table_name = 'career_preferences' AND column_name = 'target_skills'
+                ) THEN
+                    ALTER TABLE career_preferences ADD COLUMN target_skills VARCHAR(100)[] DEFAULT ARRAY[]::VARCHAR[] NOT NULL;
+                END IF;
+            END $$;
+
+            -- AI Inferred Preferences table
+            CREATE TABLE IF NOT EXISTS ai_inferred_preferences (
+                user_id UUID PRIMARY KEY,
+                inferred_primary_role VARCHAR(100),
+                inferred_seniority VARCHAR(50),
+                inferred_skills VARCHAR(100)[] DEFAULT ARRAY[]::VARCHAR[] NOT NULL,
+                inferred_salary_min DECIMAL(18,2),
+                inferred_salary_max DECIMAL(18,2),
+                inferred_salary_currency VARCHAR(10) DEFAULT 'USD',
+                inferred_industries VARCHAR(100)[] DEFAULT ARRAY[]::VARCHAR[] NOT NULL,
+                confidence_score DECIMAL(5,2) DEFAULT 0.00 NOT NULL,
+                synthesis_rationale TEXT,
+                last_analyzed_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+                created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+                updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+                deleted_at TIMESTAMP WITH TIME ZONE,
+                CONSTRAINT fk_ai_inferred_preferences_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+            );
+
+            CREATE INDEX IF NOT EXISTS idx_career_prefs_desired_roles ON career_preferences USING gin (desired_job_positions);
+            CREATE INDEX IF NOT EXISTS idx_career_prefs_target_skills ON career_preferences USING gin (target_skills);
+            CREATE INDEX IF NOT EXISTS idx_ai_inferred_skills ON ai_inferred_preferences USING gin (inferred_skills);
+
             -- Normalized User Skills
             CREATE TABLE IF NOT EXISTS user_skills (
                 id UUID PRIMARY KEY,
@@ -1370,6 +1634,119 @@ public static class DbInitializer
                 CONSTRAINT fk_profile_activity_logs_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
             );
             CREATE INDEX IF NOT EXISTS idx_profile_activity_logs_user_id ON profile_activity_logs(user_id);
+
+            -- Stores background analysis jobs
+            CREATE TABLE IF NOT EXISTS analysis_jobs (
+                id UUID PRIMARY KEY,
+                repository_id UUID NOT NULL,
+                user_id UUID NOT NULL,
+                status VARCHAR(50) NOT NULL DEFAULT 'Queued',
+                progress DOUBLE PRECISION NOT NULL DEFAULT 0.0,
+                current_step VARCHAR(100),
+                commit_sha VARCHAR(100),
+                started_at TIMESTAMP WITH TIME ZONE,
+                completed_at TIMESTAMP WITH TIME ZONE,
+                error_message VARCHAR(2000),
+                created_at_utc TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+                last_updated_utc TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+                CONSTRAINT fk_analysis_jobs_repository FOREIGN KEY (repository_id) REFERENCES source_code_repositories(id) ON DELETE CASCADE,
+                CONSTRAINT fk_analysis_jobs_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+            );
+            CREATE INDEX IF NOT EXISTS idx_analysis_jobs_repository_id ON analysis_jobs(repository_id);
+            CREATE INDEX IF NOT EXISTS idx_analysis_jobs_user_id ON analysis_jobs(user_id);
+
+            -- Stores detailed events for active analysis jobs
+            CREATE TABLE IF NOT EXISTS analysis_job_events (
+                id UUID PRIMARY KEY,
+                job_id UUID NOT NULL,
+                step VARCHAR(100) NOT NULL,
+                progress DOUBLE PRECISION NOT NULL,
+                message VARCHAR(2000) NOT NULL,
+                created_at_utc TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+                CONSTRAINT fk_analysis_job_events_job FOREIGN KEY (job_id) REFERENCES analysis_jobs(id) ON DELETE CASCADE
+            );
+            CREATE INDEX IF NOT EXISTS idx_analysis_job_events_job_id ON analysis_job_events(job_id);
+
+            -- Stores final analysis reports
+            CREATE TABLE IF NOT EXISTS analysis_reports (
+                id UUID PRIMARY KEY,
+                job_id UUID NOT NULL UNIQUE,
+                repository_id UUID NOT NULL,
+                report_data JSONB NOT NULL,
+                created_at_utc TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+                CONSTRAINT fk_analysis_reports_job FOREIGN KEY (job_id) REFERENCES analysis_jobs(id) ON DELETE CASCADE,
+                CONSTRAINT fk_analysis_reports_repository FOREIGN KEY (repository_id) REFERENCES source_code_repositories(id) ON DELETE CASCADE
+            );
+            CREATE INDEX IF NOT EXISTS idx_analysis_reports_repository_id ON analysis_reports(repository_id);
+
+            -- Stores background analysis tasks
+            CREATE TABLE IF NOT EXISTS analysis_tasks (
+                id UUID PRIMARY KEY,
+                job_id UUID NOT NULL,
+                task_type VARCHAR(50) NOT NULL,
+                status VARCHAR(50) NOT NULL DEFAULT 'Queued',
+                progress DOUBLE PRECISION NOT NULL DEFAULT 0.0,
+                started_at TIMESTAMP WITH TIME ZONE,
+                completed_at TIMESTAMP WITH TIME ZONE,
+                duration_ms BIGINT,
+                retry_count INTEGER NOT NULL DEFAULT 0,
+                error_message VARCHAR(2000),
+                prompt_tokens INTEGER,
+                completion_tokens INTEGER,
+                cache_read_tokens INTEGER,
+                cache_write_tokens INTEGER,
+                estimated_cost_usd NUMERIC(10, 6),
+                model_name VARCHAR(100),
+                metadata JSONB,
+                created_at_utc TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+                last_updated_utc TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+                CONSTRAINT fk_analysis_tasks_job FOREIGN KEY (job_id) REFERENCES analysis_jobs(id) ON DELETE CASCADE
+            );
+            CREATE INDEX IF NOT EXISTS idx_analysis_tasks_job_id ON analysis_tasks(job_id);
+            CREATE UNIQUE INDEX IF NOT EXISTS idx_analysis_tasks_job_id_task_type ON analysis_tasks(job_id, task_type);
+
+            -- Stores results of completed analysis tasks
+            CREATE TABLE IF NOT EXISTS analysis_task_results (
+                task_id UUID PRIMARY KEY,
+                schema_version VARCHAR(50) NOT NULL DEFAULT '2.0.0',
+                result_data JSONB NOT NULL,
+                created_at_utc TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+                CONSTRAINT fk_analysis_task_results_task FOREIGN KEY (task_id) REFERENCES analysis_tasks(id) ON DELETE CASCADE
+            );
+
+            -- Stores detailed executions for AI/tool tasks
+            CREATE TABLE IF NOT EXISTS analysis_executions (
+                id UUID PRIMARY KEY,
+                job_id UUID NOT NULL,
+                task_id UUID NOT NULL,
+                execution_type VARCHAR(50) NOT NULL DEFAULT 'LLM_CALL',
+                provider VARCHAR(50) NOT NULL,
+                model VARCHAR(100) NOT NULL,
+                prompt_tokens INTEGER NOT NULL,
+                completion_tokens INTEGER NOT NULL,
+                total_tokens INTEGER NOT NULL,
+                cached_tokens INTEGER NOT NULL,
+                estimated_cost_usd NUMERIC(10, 6) NOT NULL,
+                duration_ms BIGINT NOT NULL,
+                created_at_utc TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+                CONSTRAINT fk_analysis_executions_task FOREIGN KEY (task_id) REFERENCES analysis_tasks(id) ON DELETE CASCADE,
+                CONSTRAINT fk_analysis_executions_job FOREIGN KEY (job_id) REFERENCES analysis_jobs(id) ON DELETE CASCADE
+            );
+            CREATE INDEX IF NOT EXISTS idx_analysis_executions_task_id ON analysis_executions(task_id);
+            CREATE INDEX IF NOT EXISTS idx_analysis_executions_job_id ON analysis_executions(job_id);
+
+            -- Stores detailed events for active analysis tasks
+            CREATE TABLE IF NOT EXISTS analysis_task_events (
+                id UUID PRIMARY KEY,
+                task_id UUID NOT NULL,
+                timestamp TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+                level VARCHAR(20) NOT NULL DEFAULT 'Info',
+                event_type VARCHAR(50) NOT NULL,
+                message VARCHAR(2000) NOT NULL,
+                metadata JSONB,
+                CONSTRAINT fk_analysis_task_events_task FOREIGN KEY (task_id) REFERENCES analysis_tasks(id) ON DELETE CASCADE
+            );
+            CREATE INDEX IF NOT EXISTS idx_analysis_task_events_task_id ON analysis_task_events(task_id);
 
             -- Optimized Indexes
             CREATE INDEX IF NOT EXISTS idx_refresh_tokens_token ON refresh_tokens(token);
@@ -1745,6 +2122,9 @@ public static class DbInitializer
         // One-time compatibility migration to generate unique usernames for legacy users
         var serviceToUse = usernameService ?? new UsernameService(context, TimeProvider.System, Microsoft.Extensions.Logging.Abstractions.NullLogger<UsernameService>.Instance, new DbInitializerRateLimitPolicyService());
         await MigrateLegacyUsernamesAsync(context, serviceToUse);
+
+        // One-time compatibility migration to backfill repository classification & authenticity columns
+        await MigrateLegacyRepositoryMetadataAsync(context);
     }
 
     private static async Task MigrateLegacyGoogleEmailsAsync(ApplicationDbContext context)
@@ -1836,6 +2216,83 @@ public static class DbInitializer
         }
 
         await context.SaveChangesAsync();
+    }
+
+    private static async Task MigrateLegacyRepositoryMetadataAsync(ApplicationDbContext context)
+    {
+        try
+        {
+            var repos = await context.SourceCodeRepositories
+                .Where(r => r.Classification == null || r.AuthenticityType == null || r.LatestAnalysisStatus == "NeverAnalyzed")
+                .ToListAsync();
+
+            if (!repos.Any())
+            {
+                return;
+            }
+
+            Console.WriteLine($"[Migration] Found {repos.Count} repositories requiring classification & authenticity backfill.");
+
+            foreach (var repo in repos)
+            {
+                var latestReport = await context.AnalysisReports
+                    .Where(rep => rep.RepositoryId == repo.Id)
+                    .OrderByDescending(rep => rep.CreatedAtUtc)
+                    .FirstOrDefaultAsync();
+
+                if (latestReport != null && !string.IsNullOrEmpty(latestReport.ReportData))
+                {
+                    try
+                    {
+                        using var doc = global::System.Text.Json.JsonDocument.Parse(latestReport.ReportData);
+                        if (doc.RootElement.TryGetProperty("ai_conclusions", out var aiConclusionsProp))
+                        {
+                            if (repo.Classification == null &&
+                                aiConclusionsProp.TryGetProperty("classification", out var classificationProp) &&
+                                classificationProp.TryGetProperty("primary_type", out var primaryTypeProp))
+                            {
+                                repo.Classification = primaryTypeProp.GetString();
+                            }
+
+                            if (repo.AuthenticityType == null &&
+                                aiConclusionsProp.TryGetProperty("authenticity", out var authenticityProp) &&
+                                authenticityProp.TryGetProperty("type", out var typeProp))
+                            {
+                                repo.AuthenticityType = typeProp.GetString();
+                            }
+
+                            if (aiConclusionsProp.TryGetProperty("risk_assessment", out var riskAssessmentProp))
+                            {
+                                if (riskAssessmentProp.TryGetProperty("risk_score", out var scoreProp))
+                                {
+                                    repo.LatestRiskScore = scoreProp.GetDouble();
+                                }
+                                if (riskAssessmentProp.TryGetProperty("risk_level", out var levelProp))
+                                {
+                                    repo.LatestRiskLevel = levelProp.GetString() ?? "Low";
+                                }
+                                if (riskAssessmentProp.TryGetProperty("top_factors", out var factorsProp))
+                                {
+                                    repo.LatestRiskFactorsJson = factorsProp.ToString();
+                                }
+                            }
+                            repo.LatestAnalysisStatus = "Completed";
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        Console.WriteLine($"[Migration] Failed to parse report data for repository {repo.Id}: {ex.Message}");
+                    }
+                }
+            }
+
+            await context.SaveChangesAsync();
+            Console.WriteLine("[Migration] Repository classification & authenticity backfill migration completed successfully.");
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[Migration] Error running MigrateLegacyRepositoryMetadataAsync: {ex.Message}");
+        }
     }
 
     private class DbInitializerRateLimitPolicyService : CVerify.API.Modules.Shared.System.Services.IRateLimitPolicyService
