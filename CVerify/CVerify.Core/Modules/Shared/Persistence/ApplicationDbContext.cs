@@ -79,6 +79,7 @@ public class ApplicationDbContext : DbContext
     public DbSet<PasswordCredential> PasswordCredentials => Set<PasswordCredential>();
     public DbSet<Organization> Organizations => Set<Organization>();
     public DbSet<OrganizationAuthority> OrganizationAuthorities => Set<OrganizationAuthority>();
+    public DbSet<OrganizationMembership> OrganizationMemberships => Set<OrganizationMembership>();
     public DbSet<OtpVerification> OtpVerifications => Set<OtpVerification>();
     public DbSet<VerificationLink> VerificationLinks => Set<VerificationLink>();
     public DbSet<OrganizationVerification> OrganizationVerifications => Set<OrganizationVerification>();
@@ -94,6 +95,8 @@ public class ApplicationDbContext : DbContext
     public DbSet<RepresentativeApprovalVote> RepresentativeApprovalVotes => Set<RepresentativeApprovalVote>();
     public DbSet<RepresentativeAuthorityHistory> RepresentativeAuthorityHistories => Set<RepresentativeAuthorityHistory>();
     public DbSet<UserEmail> UserEmails => Set<UserEmail>();
+    public DbSet<OrganizationCredential> OrganizationCredentials => Set<OrganizationCredential>();
+    public DbSet<WorkspaceInvitation> WorkspaceInvitations => Set<WorkspaceInvitation>();
 
     public DbSet<UserProfile> UserProfiles => Set<UserProfile>();
     public DbSet<PendingAuthProvider> PendingAuthProviders => Set<PendingAuthProvider>();
@@ -156,6 +159,7 @@ public class ApplicationDbContext : DbContext
         modelBuilder.Entity<PasswordCredential>().Property(pc => pc.Id).ValueGeneratedNever();
         modelBuilder.Entity<Organization>().Property(o => o.Id).ValueGeneratedNever();
         modelBuilder.Entity<OrganizationAuthority>().Property(oa => oa.Id).ValueGeneratedNever();
+        modelBuilder.Entity<OrganizationMembership>().Property(om => om.Id).ValueGeneratedNever();
         modelBuilder.Entity<OtpVerification>().Property(ov => ov.Id).ValueGeneratedNever();
         modelBuilder.Entity<VerificationLink>().Property(vl => vl.Id).ValueGeneratedNever();
         modelBuilder.Entity<OrganizationVerification>().Property(ov => ov.Id).ValueGeneratedNever();
@@ -169,8 +173,9 @@ public class ApplicationDbContext : DbContext
         modelBuilder.Entity<RecoveryToken>().Property(rt => rt.Id).ValueGeneratedNever();
         modelBuilder.Entity<RepresentativeRotationRequest>().Property(r => r.Id).ValueGeneratedNever();
         modelBuilder.Entity<RepresentativeApprovalVote>().Property(v => v.Id).ValueGeneratedNever();
-        modelBuilder.Entity<RepresentativeAuthorityHistory>().Property(h => h.Id).ValueGeneratedNever();
         modelBuilder.Entity<UserEmail>().Property(ue => ue.Id).ValueGeneratedNever();
+        modelBuilder.Entity<OrganizationCredential>().Property(oc => oc.OrganizationId).ValueGeneratedNever();
+        modelBuilder.Entity<WorkspaceInvitation>().Property(wi => wi.Id).ValueGeneratedNever();
         modelBuilder.Entity<AnalysisJob>().Property(j => j.Id).ValueGeneratedNever();
         modelBuilder.Entity<AnalysisJobEvent>().Property(e => e.Id).ValueGeneratedNever();
         modelBuilder.Entity<AnalysisReport>().Property(r => r.Id).ValueGeneratedNever();
@@ -368,8 +373,19 @@ public class ApplicationDbContext : DbContext
                 .HasColumnName("replaced_by_token_id");
 
             entity.HasIndex(t => t.UserId).HasDatabaseName("idx_refresh_tokens_user_id");
+            entity.HasIndex(t => t.OrganizationId).HasDatabaseName("idx_refresh_tokens_organization_id");
             entity.HasIndex(t => t.SessionId).HasDatabaseName("idx_refresh_tokens_session_id");
             entity.HasIndex(t => t.ExpiresAt).HasDatabaseName("idx_refresh_tokens_expires_at");
+
+            entity.HasOne(t => t.User)
+                .WithMany(u => u.RefreshTokens)
+                .HasForeignKey(t => t.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasOne(t => t.Organization)
+                .WithMany()
+                .HasForeignKey(t => t.OrganizationId)
+                .OnDelete(DeleteBehavior.Cascade);
         });
 
         // Configure Conversations
@@ -560,16 +576,22 @@ public class ApplicationDbContext : DbContext
             entity.Property(e => e.Id).ValueGeneratedNever();
             entity.HasIndex(e => e.TaskId).HasDatabaseName("idx_analysis_executions_task_id");
             entity.HasIndex(e => e.JobId).HasDatabaseName("idx_analysis_executions_job_id");
+            entity.HasIndex(e => e.UserId).HasDatabaseName("idx_analysis_executions_user_id");
 
             entity.HasOne(e => e.Task)
-                  .WithMany()
-                  .HasForeignKey(e => e.TaskId)
-                  .OnDelete(DeleteBehavior.Cascade);
+                .WithMany()
+                .HasForeignKey(e => e.TaskId)
+                .OnDelete(DeleteBehavior.Cascade);
 
             entity.HasOne(e => e.Job)
-                  .WithMany()
-                  .HasForeignKey(e => e.JobId)
-                  .OnDelete(DeleteBehavior.Cascade);
+                .WithMany()
+                .HasForeignKey(e => e.JobId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasOne(e => e.User)
+                .WithMany()
+                .HasForeignKey(e => e.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
         });
 
         // PasswordCredential configurations
@@ -611,6 +633,21 @@ public class ApplicationDbContext : DbContext
                   .WithMany()
                   .HasForeignKey(oa => oa.UserId)
                   .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        // OrganizationMembership configurations
+        modelBuilder.Entity<OrganizationMembership>(entity =>
+        {
+            entity.ToTable("organization_memberships");
+            entity.HasOne(om => om.Organization)
+                  .WithMany()
+                  .HasForeignKey(om => om.OrganizationId)
+                  .OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(om => om.User)
+                  .WithMany()
+                  .HasForeignKey(om => om.UserId)
+                  .OnDelete(DeleteBehavior.Cascade);
+            entity.HasIndex(om => new { om.OrganizationId, om.UserId }).IsUnique();
         });
 
         // Workspace configurations
@@ -961,6 +998,46 @@ public class ApplicationDbContext : DbContext
                   .HasForeignKey(ue => ue.UserId)
                   .OnDelete(DeleteBehavior.Cascade);
             entity.HasIndex(ue => ue.Email).IsUnique();
+        });
+
+        // OrganizationCredential configurations
+        modelBuilder.Entity<OrganizationCredential>(entity =>
+        {
+            entity.ToTable("organization_credentials");
+            entity.HasKey(oc => oc.OrganizationId);
+            entity.HasQueryFilter(oc => oc.DeletedAt == null);
+            entity.HasOne(oc => oc.Organization)
+                  .WithMany()
+                  .HasForeignKey(oc => oc.OrganizationId)
+                  .OnDelete(DeleteBehavior.Restrict);
+            entity.HasIndex(oc => oc.Username)
+                  .IsUnique()
+                  .HasFilter("deleted_at IS NULL")
+                  .HasDatabaseName("idx_organization_credentials_username_active");
+        });
+
+        // WorkspaceInvitation configurations
+        modelBuilder.Entity<WorkspaceInvitation>(entity =>
+        {
+            entity.ToTable("workspace_invitations");
+            entity.HasKey(wi => wi.Id);
+            entity.Property(wi => wi.Id).ValueGeneratedNever();
+            entity.HasOne(wi => wi.Workspace)
+                  .WithMany()
+                  .HasForeignKey(wi => wi.WorkspaceId)
+                  .OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(wi => wi.InvitedByUser)
+                  .WithMany()
+                  .HasForeignKey(wi => wi.InvitedByUserId)
+                  .OnDelete(DeleteBehavior.SetNull);
+            entity.HasOne(wi => wi.ConsumedByUser)
+                  .WithMany()
+                  .HasForeignKey(wi => wi.ConsumedByUserId)
+                  .OnDelete(DeleteBehavior.SetNull);
+            entity.HasIndex(wi => new { wi.WorkspaceId, wi.InviteeEmail })
+                  .IsUnique()
+                  .HasFilter("consumed_at IS NULL")
+                  .HasDatabaseName("idx_workspace_invitations_unique");
         });
     }
 }
