@@ -18,25 +18,23 @@ import {
   Spinner,
   Description,
   Chip,
+  Separator,
+  Tabs,
 } from "@heroui/react";
 import OtpInput from "@/components/ui/otp-input";
 import {
-  Eye,
-  EyeOff,
-  Building2,
   Check,
   ArrowRight,
   ArrowLeft,
   ShieldCheck,
   Mail,
-  Lock,
   Search,
-  Award,
-  Sparkles,
   AlertTriangle,
   AlertCircle,
   RefreshCw,
   UserCheck,
+  Eye,
+  EyeOff,
 } from "lucide-react";
 import PasswordStrengthMeter from "../components/password-strength-meter";
 import { evaluatePasswordStrength } from "../security/password-policy";
@@ -101,6 +99,7 @@ export function CompanyVerificationView() {
   const {
     verifyCompanyOnboarding,
     sendOtp,
+    fetchOtpSession,
     verifyOnboardingOtp,
     verifyOnboardingGoogle,
     completeOnboarding,
@@ -144,8 +143,9 @@ export function CompanyVerificationView() {
   const [slugTouched, setSlugTouched] = useState(false);
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
-  const [isPasswordVisible, setIsPasswordVisible] = useState(false);
+  const [isVisible, setIsVisible] = useState(false);
   const [isConfirmVisible, setIsConfirmVisible] = useState(false);
+
 
   // Step names & descriptions
   const steps = [
@@ -172,6 +172,95 @@ export function CompanyVerificationView() {
     }, 1000);
     return () => clearInterval(interval);
   }, [cooldown]);
+
+  // Centralized reset action clearing ALL onboarding state variables and cache artifacts
+  const resetOnboardingState = useCallback(() => {
+    setStep(1);
+    setTaxCode("");
+    setCompanyName("");
+    setTaxCodeTouched(false);
+    setCompanyNameTouched(false);
+    setVerifiedCompanyInfo(null);
+    setStep1Token("");
+    setRecoveryInfo(null);
+    setOwnerEmail("");
+    setOwnerEmailTouched(false);
+    setOtpSent(false);
+    setChallengeId("");
+    setOtpCode("");
+    setCooldown(0);
+    setStep2Token("");
+    setVerifiedEmail("");
+    setCompanyDisplayName("");
+    setOrganizationUsername("");
+    setSlugTouched(false);
+    setPassword("");
+    setConfirmPassword("");
+    setIsVisible(false);
+    setIsConfirmVisible(false);
+
+    if (typeof window !== "undefined") {
+      sessionStorage.removeItem("cverify_company_onboarding_state");
+    }
+  }, []);
+
+  // Sync active OTP session state with backend
+  const syncOtpSession = useCallback(async (email: string, chalId: string) => {
+    if (!email || !chalId) return;
+    try {
+      const res = await fetchOtpSession(email, "Onboarding", chalId);
+      if (res.success && res.data) {
+        const { hasActiveOtp, status, cooldownUntil } = res.data;
+        if (hasActiveOtp && status === "ACTIVE") {
+          if (cooldownUntil) {
+            const cooldownDiff = Math.ceil((new Date(cooldownUntil).getTime() - Date.now()) / 1000);
+            setCooldown(cooldownDiff > 0 ? cooldownDiff : 0);
+          }
+          setOtpSent(true);
+        } else {
+          resetOnboardingState();
+          toast.warning("Active verification session has expired. Please restart the onboarding process.");
+        }
+      }
+    } catch (err) {
+      console.error("Failed to sync OTP session with backend", err);
+    }
+  }, [fetchOtpSession, resetOnboardingState]);
+
+  // Route entry validation
+  useEffect(() => {
+    if (step === 2 && !step1Token) {
+      toast.danger("Access Denied", {
+        description: "Please complete the registry verification step first."
+      });
+      resetOnboardingState();
+    } else if (step === 3 && (!step2Token || !verifiedEmail)) {
+      toast.danger("Access Denied", {
+        description: "Please complete the identity link verification step first."
+      });
+      resetOnboardingState();
+    }
+  }, [step, step1Token, step2Token, verifiedEmail, resetOnboardingState]);
+
+  // Clear legacy persisted session storage cache once on mount
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      sessionStorage.removeItem("cverify_company_onboarding_state");
+    }
+  }, []);
+
+  // Focus & Visibility Synchronization: regain active OTP timers and state instantly on focus regain
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "visible" && challengeId && ownerEmail && step === 2) {
+        syncOtpSession(ownerEmail, challengeId);
+      }
+    };
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    return () => {
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+    };
+  }, [challengeId, ownerEmail, step, syncOtpSession]);
 
   // Google SSO logic
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
@@ -336,13 +425,17 @@ export function CompanyVerificationView() {
   const handleSendOtp = async () => {
     if (!ownerEmail || !validateEmail(ownerEmail)) return;
     setIsLoading(true);
-    const result = await sendOtp(ownerEmail, "Onboarding");
+
+    // Generate idempotency key for this request
+    const idempotencyKey = crypto.randomUUID();
+
+    const result = await sendOtp(ownerEmail, "Onboarding", idempotencyKey);
     setIsLoading(false);
 
     if (result.success && result.data) {
       setChallengeId(result.data.challengeId);
       setOtpSent(true);
-      setCooldown(60);
+      setCooldown(result.data.cooldownSeconds || 60);
       toast.success("Verification code dispatched", {
         description: `6-digit OTP code has been sent to ${ownerEmail}.`,
       });
@@ -393,21 +486,21 @@ export function CompanyVerificationView() {
     }
   };
 
-  // Step 3 Password complexity checks
-  const isPasswordValid =
-    evaluatePasswordStrength(password, "enterprise").percentage === 100;
-
   const slugRegex = /^[a-z0-9-]{4,32}$/;
   const isSlugValid = slugRegex.test(organizationUsername);
   const isReservedSlug = RESERVED_SLUGS.includes(organizationUsername);
   const isImpersonating = isLookalikeSlug(organizationUsername);
+
+  const passwordStrength = evaluatePasswordStrength(password, "enterprise");
+  const isPasswordValid = passwordStrength.percentage === 100;
+  const isPasswordsMatch = password === confirmPassword;
 
   const isStep3Valid =
     companyDisplayName.trim().length >= 2 &&
     isSlugValid &&
     !isReservedSlug &&
     isPasswordValid &&
-    password === confirmPassword;
+    isPasswordsMatch;
 
   // Step 3: Setup workspace final provisioning
   const handleStep3Submit = async (e: React.FormEvent) => {
@@ -421,9 +514,8 @@ export function CompanyVerificationView() {
       {
         step2Token,
         organizationUsername,
-        password,
-        confirmPassword,
         companyDisplayName,
+        password,
       },
       idempotencyKey,
     );
@@ -431,17 +523,27 @@ export function CompanyVerificationView() {
     setIsLoading(false);
 
     if (result.success) {
-      toast.success("Workspace Provisioned successfully!", {
+      toast.success("Company created successfully", {
         description:
-          "Welcome to CVerify. Your organization trust level is Level 1 (Legal Verified)!",
+          "Please sign in or create an account to claim ownership.",
       });
-      router.push("/");
+      const targetEmail = verifiedEmail;
+      resetOnboardingState();
+      router.replace(`/login?email=${encodeURIComponent(targetEmail)}`);
     } else {
-      toast.danger("Provisioning failed", {
-        description:
-          result.error?.message ||
-          "Failed to set up workspace organization username.",
-      });
+      const isExpired = result.error?.code === "TOKEN_EXPIRED" || result.error?.message?.toLowerCase().includes("expired");
+      if (isExpired) {
+        toast.danger("Session Expired", {
+          description: "Your verification token has expired. Please restart the onboarding process."
+        });
+        resetOnboardingState();
+      } else {
+        toast.danger("Provisioning failed", {
+          description:
+            result.error?.message ||
+            "Failed to set up workspace organization username.",
+        });
+      }
     }
   };
 
@@ -457,9 +559,8 @@ export function CompanyVerificationView() {
           size="sm"
           className="absolute top-6 left-4 text-muted"
           onPress={() => {
-            setRecoveryInfo(null);
-            setStep(1);
-            router.push("/login");
+            resetOnboardingState();
+            router.replace("/login");
           }}
         >
           <ArrowLeft className="size-3.5" />
@@ -467,13 +568,16 @@ export function CompanyVerificationView() {
         </Button>
 
         <div className="w-full flex flex-col items-center flex-1 overflow-hidden">
-          <div className="flex flex-col items-center shrink-0 w-full mb-4 px-6 pt-2">
-            <div className="w-12 h-12 bg-warning/10 flex items-center justify-center rounded-xl mb-4">
+          <div className="flex flex-col items-center shrink-0 w-full mb-6 px-6">
+            <div className="w-12 h-12 bg-warning-soft flex items-center justify-center rounded-xl my-6">
               <AlertTriangle className="size-6 text-warning" />
             </div>
 
-            <div className="text-center w-full flex flex-col items-center gap-2">
-              <Typography.Heading level={3} className="text-xl font-bold">
+            <div className="text-center w-full mb-3 flex flex-col items-center gap-2">
+              <Typography.Heading
+                level={3}
+                className="text-2xl font-bold text-foreground"
+              >
                 This company has already been registered
               </Typography.Heading>
               <div className="p-4 rounded-2xl bg-surface-secondary border border-border select-none mt-1 w-full">
@@ -488,7 +592,7 @@ export function CompanyVerificationView() {
                 </span>
               </div>
 
-              <Typography className="text-sm text-muted leading-relaxed text-center mt-2">
+              <Typography className="text-xs text-muted leading-relaxed text-center">
                 It looks like this organization{" "}
                 <span className="underline">already exists</span> on CVerify. If
                 your company registered previously and you no longer have
@@ -498,7 +602,7 @@ export function CompanyVerificationView() {
             </div>
           </div>
 
-          <div className="flex flex-row gap-3 w-full px-6 mt-4 pb-6 shrink-0">
+          <div className="flex flex-row gap-3 w-full px-6 pb-6 shrink-0">
             <Button
               className="flex-1 rounded-xl"
               onPress={() =>
@@ -529,7 +633,7 @@ export function CompanyVerificationView() {
   return (
     <>
       <Card
-        className={`w-full relative overflow-hidden transition-all duration-300 max-h-[80vh] flex flex-col`}
+        className={`w-full relative overflow-hidden transition-all duration-300 max-h-[75vh] flex flex-col`}
       >
         {/* Visual Premium Header Spark */}
         <div className="absolute top-0 left-0 w-full h-1.5 bg-accent shrink-0" />
@@ -543,13 +647,12 @@ export function CompanyVerificationView() {
                 <div className="flex flex-col items-center relative z-10 flex-1">
                   {/* Circle */}
                   <div
-                    className={`w-9 h-9 rounded-full flex items-center justify-center border-2 transition-all duration-300 font-bold font-mono text-xs ${
-                      step > s.id
-                        ? "bg-accent border-accent text-accent-foreground"
-                        : step === s.id
-                          ? "border-accent text-accent bg-surface"
-                          : "border-border text-muted bg-surface"
-                    }`}
+                    className={`w-9 h-9 rounded-full flex items-center justify-center border-2 transition-all duration-300 font-bold font-mono text-xs ${step > s.id
+                      ? "bg-accent border-accent text-accent-foreground"
+                      : step === s.id
+                        ? "border-accent text-accent bg-surface"
+                        : "border-border text-muted bg-surface"
+                      }`}
                   >
                     {step > s.id ? (
                       <Check className="size-4 stroke-[2.5]" />
@@ -561,11 +664,10 @@ export function CompanyVerificationView() {
                   {/* Labels stacked below */}
                   <div className="flex flex-col items-center mt-3 text-center px-1">
                     <span
-                      className={`text-xs font-bold tracking-wide transition-colors whitespace-nowrap ${
-                        step >= s.id
-                          ? "text-foreground font-semibold"
-                          : "text-muted"
-                      }`}
+                      className={`text-xs font-bold tracking-wide transition-colors whitespace-nowrap ${step >= s.id
+                        ? "text-foreground font-semibold"
+                        : "text-muted"
+                        }`}
                     >
                       {s.label}
                     </span>
@@ -592,7 +694,7 @@ export function CompanyVerificationView() {
         {/* ================= STEP 1: REGISTRY LOOKUP ================= */}
         {step === 1 && (
           <div className="w-full flex flex-col items-center flex-1 overflow-hidden">
-            <div className="flex flex-col items-center shrink-0 w-full mb-12 mt-3 px-12">
+            <div className="flex flex-col items-center w-full mb-6 px-12">
               <div className="text-center w-full flex flex-col items-centergap-2">
                 <Typography.Heading
                   level={3}
@@ -600,9 +702,9 @@ export function CompanyVerificationView() {
                 >
                   Register Your Company
                 </Typography.Heading>
-                <Typography className="text-sm text-muted text-center">
-                  Verify your legal Vietnamese business existence via VietQR
-                  corporate registry linkage.
+                <Typography className="text-xs text-muted text-center">
+                  Verify your legal business existence via corporate registry
+                  linkage.
                 </Typography>
               </div>
             </div>
@@ -612,7 +714,7 @@ export function CompanyVerificationView() {
                 className="w-full flex flex-col flex-1 overflow-hidden"
                 onSubmit={handleStep1Submit}
               >
-                <div className="flex-1 overflow-y-auto w-full px-6 pb-12 flex flex-col gap-6">
+                <div className="flex-1 overflow-y-auto w-full px-12 pb-6 flex flex-col gap-6">
                   <TextField
                     isRequired
                     name="companyName"
@@ -659,7 +761,7 @@ export function CompanyVerificationView() {
                     {isTaxCodeInvalid && (
                       <FieldError>
                         Tax code format is invalid. Must be exactly 10 digits or
-                        10 digits plus -3 branch code.
+                        10 digits -3 branch code.
                       </FieldError>
                     )}
                   </TextField>
@@ -671,7 +773,10 @@ export function CompanyVerificationView() {
                     variant="secondary"
                     fullWidth
                     className="rounded-xl"
-                    onPress={() => router.push("/login")}
+                    onPress={() => {
+                      resetOnboardingState();
+                      router.replace("/login");
+                    }}
                   >
                     Back to Sign In
                   </Button>
@@ -697,15 +802,15 @@ export function CompanyVerificationView() {
               </Form>
             ) : (
               <div className="w-full flex flex-col flex-1 overflow-hidden">
-                <div className="flex-1 overflow-y-auto w-full px-6 pb-4 flex flex-col gap-6">
-                  <div className="w-full p-6 rounded-2xl bg-success/5 border border-success/20 flex flex-col gap-3">
+                <div className="flex-1 overflow-y-auto w-full px-6 pb-5 flex flex-col gap-6">
+                  <div className="w-full p-6 rounded-2xl bg-success-soft/25 flex flex-col gap-3">
                     <div className="flex items-center gap-3">
                       <div className="w-8 h-8 rounded-full bg-success text-success-foreground flex items-center justify-center">
-                        <Check className="size-4 stroke-3" />
+                        <Check className="size-4" />
                       </div>
                       <div>
                         <h4 className="text-sm font-bold text-success">
-                          VietQR Government Database Match
+                          Company Information Verified
                         </h4>
                         <p className="text-xs text-success/80 font-medium">
                           Verified active registry record found
@@ -713,7 +818,7 @@ export function CompanyVerificationView() {
                       </div>
                     </div>
 
-                    <div className="h-px bg-success/10 w-full" />
+                    <Separator />
 
                     <div className="grid grid-cols-1 md:grid-cols-6 gap-4 text-xs">
                       <div className="md:col-span-4">
@@ -735,32 +840,20 @@ export function CompanyVerificationView() {
                       </div>
                     </div>
                   </div>
-
-                  <div className="w-full p-4 rounded-xl bg-surface-secondary border border-border flex items-start gap-3 select-none">
-                    <Award className="size-5 text-success shrink-0 mt-0.5 animate-pulse" />
-                    <p className="text-xs text-muted leading-relaxed font-medium">
-                      By verifying this legal business entity, the created
-                      workspace starts with trust status{" "}
-                      <span className="text-success font-bold">
-                        Level 1 (Legal Verified)
-                      </span>{" "}
-                      automatically on completion.
-                    </p>
-                  </div>
                 </div>
 
                 <div className="flex gap-4 px-6 py-4 border-t border-border bg-surface shrink-0 w-full">
                   <Button
-                    variant="secondary"
+                    variant="outline"
                     fullWidth
-                    className="h-12 rounded-2xl text-foreground/80 border border-border bg-surface-secondary"
+                    className="rounded-xl"
                     onPress={() => setVerifiedCompanyInfo(null)}
                   >
                     Change Registry details
                   </Button>
                   <Button
                     fullWidth
-                    className="h-12 rounded-2xl bg-accent hover:bg-accent-hover text-accent-foreground font-bold"
+                    className="rounded-xl"
                     onPress={handleStep1Confirm}
                   >
                     Confirm & Continue
@@ -776,52 +869,67 @@ export function CompanyVerificationView() {
         {step === 2 && (
           <div className="w-full flex flex-col items-center flex-1 overflow-hidden">
             <div className="flex flex-col items-center shrink-0 w-full mb-4 px-6 pt-2">
-              <div className="w-12 h-12 bg-background flex items-center justify-center rounded-xl mb-4">
-                <UserCheck className="size-6" />
-              </div>
-
-              <div className="text-center w-full flex flex-col items-center gap-2">
-                <Typography.Heading level={3} className="text-2xl font-bold">
+              <div className="text-center w-full flex flex-col items-centergap-2">
+                <Typography.Heading
+                  level={3}
+                  className="text-2xl font-bold text-center"
+                >
                   Link Owner Profile
                 </Typography.Heading>
-                <Typography className="text-sm text-muted">
+                <Typography className="text-xs text-muted text-center">
                   Prove ownership identity to associate with verified legal
                   business workspace.
                 </Typography>
               </div>
             </div>
 
-            {/* Custom visual horizontal tab switcher for Email OTP vs Google linking */}
-            <div className="flex h-14 bg-surface-secondary p-2 rounded-2xl w-[calc(100%-3rem)] mx-6 select-none shrink-0 mb-4">
-              <button
-                type="button"
-                className={`flex-1 flex items-center justify-center text-xs font-bold rounded-xl transition-all ${
-                  activeLinkTab === "email"
-                    ? "bg-surface text-foreground shadow-sm"
-                    : "text-muted hover:text-foreground"
-                }`}
-                onClick={() => setActiveLinkTab("email")}
-              >
-                <Mail className="size-3.5 mr-2" /> Email Verification
-              </button>
-              <button
-                type="button"
-                className={`flex-1 flex items-center justify-center text-xs font-bold rounded-xl transition-all ${
-                  activeLinkTab === "google"
-                    ? "bg-surface text-foreground shadow-sm"
-                    : "text-muted hover:text-foreground"
-                }`}
-                onClick={() => setActiveLinkTab("google")}
-              >
-                <Google className="size-3.5 mr-2" /> Continue with Google
-              </button>
-            </div>
+            {/* HeroUI Tabs horizontal switcher for Email OTP vs Google linking */}
+            <Tabs
+              className="w-full px-12 mb-6"
+              variant="secondary"
+              selectedKey={activeLinkTab}
+              onSelectionChange={(key) =>
+                setActiveLinkTab(key as "email" | "google")
+              }
+            >
+              <Tabs.ListContainer>
+                <Tabs.List
+                  aria-label="Link Options"
+                  className="flex items-center gap-4 h-10 border-b border-divider w-full"
+                >
+                  <Tabs.Tab
+                    id="email"
+                    className="flex items-center justify-center h-full pb-3 flex-1 cursor-pointer"
+                  >
+                    <div className="flex items-center gap-2">
+                      <Mail className="size-3.5" />
+                      <span className="text-xs font-semibold text-foreground">
+                        Email Verification
+                      </span>
+                    </div>
+                    <Tabs.Indicator className="bottom-0!" />
+                  </Tabs.Tab>
+                  <Tabs.Tab
+                    id="google"
+                    className="flex items-center justify-center h-full pb-3 flex-1 cursor-pointer"
+                  >
+                    <div className="flex items-center gap-2">
+                      <Google className="size-3.5" />
+                      <span className="text-xs font-semibold text-foreground">
+                        Continue with Google
+                      </span>
+                    </div>
+                    <Tabs.Indicator className="bottom-0!" />
+                  </Tabs.Tab>
+                </Tabs.List>
+              </Tabs.ListContainer>
+            </Tabs>
 
             {activeLinkTab === "email" ? (
               // EMAIL OTP SUITE
               !otpSent ? (
                 <div className="w-full flex flex-col flex-1 overflow-hidden">
-                  <div className="flex-1 overflow-y-auto w-full px-6 pb-4 flex flex-col gap-6">
+                  <div className="flex-1 overflow-y-auto w-full px-12 pb-6 flex flex-col gap-6">
                     <TextField
                       isRequired
                       name="email"
@@ -830,19 +938,13 @@ export function CompanyVerificationView() {
                     >
                       <Label>Professional Business Email</Label>
                       <Input
-                        placeholder="Enter professional company email (e.g. ceo@fpt.vn)"
-                        className="h-12 rounded-2xl"
+                        placeholder="Enter professional company email (e.g. ceo@company.vn)"
                         value={ownerEmail}
                         onChange={(e) => {
                           setOwnerEmail(e.target.value);
                           setOwnerEmailTouched(e.target.value.length > 0);
                         }}
                       />
-                      <Description className="text-[10px] text-muted">
-                        Note: Burner domains, temp mailboxes, and domains
-                        without active host MX DNS resolvers are automatically
-                        rejected to prevent namespace abuse.
-                      </Description>
                       {isOwnerEmailInvalid && (
                         <FieldError>
                           Please enter a valid business email.
@@ -851,18 +953,18 @@ export function CompanyVerificationView() {
                     </TextField>
                   </div>
 
-                  <div className="flex gap-4 px-6 py-4 border-t border-border bg-surface shrink-0 w-full">
+                  <div className="flex gap-6 px-12 py-6 w-full border-t border-border">
                     <Button
-                      variant="secondary"
+                      variant="outline"
                       fullWidth
-                      className="h-12 rounded-2xl"
-                      onPress={() => setStep(1)}
+                      className="rounded-xl"
+                      onPress={() => resetOnboardingState()}
                     >
                       Back to step 1
                     </Button>
                     <Button
                       fullWidth
-                      className="h-12 rounded-2xl"
+                      className="rounded-xl"
                       isDisabled={
                         !ownerEmail || isOwnerEmailInvalid || isLoading
                       }
@@ -880,17 +982,16 @@ export function CompanyVerificationView() {
                   className="w-full flex flex-col flex-1 overflow-hidden"
                   onSubmit={handleVerifyOtp}
                 >
-                  <div className="flex-1 overflow-y-auto w-full px-6 pb-4 flex flex-col gap-6 items-center">
-                    <div className="text-center bg-surface-secondary p-4 rounded-2xl w-full border border-border select-none shrink-0">
-                      <p className="text-xs text-muted font-medium">
-                        Verification 6-digit OTP code sent to:
-                      </p>
-                      <p className="text-sm font-bold text-foreground mt-1">
+                  <div className="flex-1 overflow-y-auto w-full px-6 pb-6 flex flex-col gap-3 items-center">
+                    <Typography className="text-xs text-muted">
+                      We&apos;ve sent a 6-digit verification code to{" "}
+                      <span className="font-bold text-foreground-soft">
                         {ownerEmail}
-                      </p>
-                    </div>
+                      </span>
+                      .
+                    </Typography>
 
-                    <div className="flex flex-col gap-3 items-center w-full mt-2 shrink-0">
+                    <div className="flex flex-col gap-3 items-center w-full shrink-0">
                       <Label className="text-xs font-semibold text-foreground/80">
                         Enter 6-Digit OTP Code
                       </Label>
@@ -925,7 +1026,7 @@ export function CompanyVerificationView() {
                     <Button
                       variant="secondary"
                       fullWidth
-                      className="h-12 rounded-2xl"
+                      className="rounded-xl"
                       onPress={() => setOtpSent(false)}
                     >
                       Change Email
@@ -933,14 +1034,14 @@ export function CompanyVerificationView() {
                     <Button
                       type="submit"
                       fullWidth
-                      className="h-12 rounded-2xl bg-accent hover:bg-accent-hover text-accent-foreground font-bold"
+                      className="rounded-xl"
                       isDisabled={otpCode.length < 6 || isLoading}
                       isPending={isLoading}
                     >
                       {isLoading ? (
                         <Spinner color="current" size="sm" />
                       ) : (
-                        <ShieldCheck className="size-4 mr-2" />
+                        <ShieldCheck className="size-4" />
                       )}
                       Verify OTP Code
                     </Button>
@@ -948,133 +1049,141 @@ export function CompanyVerificationView() {
                 </Form>
               )
             ) : // GOOGLE SSO LINK SUITE
-            verifiedEmail ? (
-              // GOOGLE SSO LINK SUITE (LINKED STATE)
-              <div className="w-full flex flex-col flex-1 overflow-hidden animate-in fade-in duration-300">
-                <div className="flex-1 overflow-y-auto w-full px-6 pb-4 flex flex-col gap-6">
-                  <div className="w-full p-4 rounded-xl bg-success/5 border border-success/20 flex items-start gap-3 select-none shrink-0">
-                    <Check className="size-5 text-success shrink-0 mt-0.5" />
-                    <div className="flex-1">
-                      <h4 className="text-xs font-bold text-success text-left">
-                        Google Account Linked
-                      </h4>
-                      <p className="text-[11px] text-success/80 font-medium mt-0.5 text-left">
-                        Your identity has been successfully verified.
-                      </p>
+              verifiedEmail ? (
+                // GOOGLE SSO LINK SUITE (LINKED STATE)
+                <div className="w-full flex flex-col flex-1 overflow-hidden animate-in fade-in duration-300">
+                  <div className="flex-1 overflow-y-auto w-full px-6 pb-4 flex flex-col gap-6">
+                    <div className="flex items-center gap-3 bg-success-soft/25 p-4 rounded-xl">
+                      <div className="w-8 h-8 rounded-full bg-success text-success-foreground flex items-center justify-center">
+                        <Check className="size-4" />
+                      </div>
+                      <div>
+                        <h4 className="text-sm font-bold text-success">
+                          Google Account Linked
+                        </h4>
+                        <p className="text-xs text-success/80 font-medium">
+                          Your identity has been successfully verified.
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="flex gap-4 items-end">
+                      <TextField
+                        isReadOnly
+                        name="linkedGoogleEmail"
+                        type="email"
+                        className="w-full"
+                      >
+                        <Label>Linked Google Email</Label>
+                        <Input
+                          value={verifiedEmail}
+                          className="rounded-xl"
+                          readOnly
+                        />
+                      </TextField>
+
+                      <Button
+                        variant="outline"
+                        className="rounded-xl"
+                        onPress={() => {
+                          setVerifiedEmail("");
+                          setStep2Token("");
+                        }}
+                      >
+                        <RefreshCw className="size-4 mr-2" /> Link another email
+                      </Button>
                     </div>
                   </div>
 
-                  <TextField
-                    isReadOnly
-                    name="linkedGoogleEmail"
-                    type="email"
-                    className="w-full"
-                  >
-                    <Label className="text-xs font-semibold text-foreground/80">
-                      Linked Google Email
-                    </Label>
-                    <Input
-                      value={verifiedEmail}
-                      className="h-12 rounded-2xl"
-                      readOnly
-                    />
-                  </TextField>
-
-                  <Button
-                    variant="secondary"
-                    fullWidth
-                    className="h-12 rounded-2xl border border-border bg-surface-secondary text-foreground font-semibold hover:bg-surface-secondary/80 shrink-0"
-                    onPress={() => {
-                      setVerifiedEmail("");
-                      setStep2Token("");
-                    }}
-                  >
-                    <RefreshCw className="size-4 mr-2" /> Link another email
-                  </Button>
+                  <div className="flex gap-4 px-6 py-3 border-t border-border">
+                    <Button
+                      fullWidth
+                      variant="secondary"
+                      className="rounded-xl"
+                      onPress={() => resetOnboardingState()}
+                    >
+                      Back to step 1
+                    </Button>
+                    <Button
+                      fullWidth
+                      className="rounded-xl"
+                      onPress={() => setStep(3)}
+                    >
+                      Confirm & Continue
+                      <ArrowRight className="size-4 ml-2" />
+                    </Button>
+                  </div>
                 </div>
+              ) : (
+                // GOOGLE SSO LINK SUITE (UNLINKED STATE)
+                <div className="w-full flex flex-col flex-1 overflow-hidden">
+                  <div className="flex-1 overflow-y-auto w-full px-18 pb-6 flex flex-col gap-6 items-center">
+                    <div className="text-center justify-center">
+                      <Typography.Heading
+                        level={3}
+                        className="text-xl font-bold text-foreground text-center justify-center"
+                      >
+                        Secure OAuth Linking
+                      </Typography.Heading>
+                      <Typography className="text-xs text-muted text-center leading-relaxed">
+                        Authenticate via Google Single Sign-On. Your Google email
+                        identity will serve as your primary owner account
+                        workspace.
+                      </Typography>
+                    </div>
 
-                <div className="flex gap-4 px-6 py-4 border-t border-border bg-surface shrink-0 w-full">
-                  <Button
-                    variant="secondary"
-                    className="h-12 rounded-2xl flex-1"
-                    onPress={() => setStep(1)}
-                  >
-                    Back to step 1
-                  </Button>
-                  <Button
-                    className="h-12 rounded-2xl flex-1 text-accent-foreground bg-accent hover:bg-accent-hover font-bold"
-                    onPress={() => setStep(3)}
-                  >
-                    Confirm & Continue
-                    <ArrowRight className="size-4 ml-2" />
-                  </Button>
-                </div>
-              </div>
-            ) : (
-              // GOOGLE SSO LINK SUITE (UNLINKED STATE)
-              <div className="w-full flex flex-col flex-1 overflow-hidden">
-                <div className="flex-1 overflow-y-auto w-full px-6 pb-4 flex flex-col gap-6 items-center">
-                  <div className="text-center bg-surface-secondary p-6 rounded-2xl w-full">
-                    <Sparkles className="size-6 text-success mx-auto mb-2" />
-                    <h4 className="text-sm font-bold mb-2">
-                      Secure OAuth Linking
-                    </h4>
-                    <p className="text-xs text-muted">
-                      Authenticate via Google Single Sign-On. Your Google email
-                      identity will serve as your primary owner account
-                      workspace.
-                    </p>
+                    <Button
+                      variant="tertiary"
+                      fullWidth
+                      className="rounded-xl text-sm"
+                      size="lg"
+                      onPress={handleGoogleSignIn}
+                      isDisabled={isGoogleLoading || isLoading}
+                      isPending={isGoogleLoading}
+                    >
+                      {!isGoogleLoading && <Google />}
+                      Link with Google
+                    </Button>
                   </div>
 
-                  <Button
-                    variant="tertiary"
-                    size="lg"
-                    fullWidth
-                    className="h-12 rounded-2xl"
-                    onPress={handleGoogleSignIn}
-                    isDisabled={isGoogleLoading || isLoading}
-                    isPending={isGoogleLoading}
-                  >
-                    {!isGoogleLoading && <Google />}
-                    Continue with Google
-                  </Button>
+                  <div className="flex gap-6 px-18 py-6 border-t border-border bg-surface shrink-0 w-full">
+                    <Button
+                      fullWidth
+                      variant="secondary"
+                      className="rounded-xl"
+                      onPress={() => resetOnboardingState()}
+                    >
+                      Back to step 1
+                    </Button>
+                  </div>
                 </div>
-
-                <div className="flex gap-4 px-6 py-4 border-t border-border bg-surface shrink-0 w-full">
-                  <Button
-                    variant="secondary"
-                    className="w-full h-12 rounded-2xl"
-                    onPress={() => setStep(1)}
-                  >
-                    Back to step 1
-                  </Button>
-                </div>
-              </div>
-            )}
+              )}
           </div>
         )}
 
         {/* ================= STEP 3: WORKSPACE CONFIGURATION ================= */}
         {step === 3 && (
           <div className="w-full flex flex-col items-center flex-1 overflow-hidden">
-            <div className="flex flex-col items-center shrink-0 w-full mb-4 px-6 pt-2">
-              <div className="text-center w-full flex flex-col items-center gap-2">
-                <Typography.Heading level={3} className="text-2xl font-bold">
+            <div className="flex flex-col items-center shrink-0 w-full mb-6 px-6 pt-2">
+              <div className="text-center w-full flex flex-col items-centergap-2">
+                <Typography.Heading
+                  level={3}
+                  className="text-2xl font-bold text-center"
+                >
                   Setup Workspace
                 </Typography.Heading>
-                <Typography className="text-sm text-muted">
+                <Typography className="text-xs text-muted text-center">
                   Create your tenant profile, slug handle, and owner credential
                   settings.
                 </Typography>
               </div>
             </div>
-
             <Form
               className="w-full flex flex-col flex-1 overflow-hidden"
               onSubmit={handleStep3Submit}
             >
-              <div className="flex-1 overflow-y-auto w-full px-6 pb-4 flex flex-col gap-6">
-                <div className="w-full p-4 rounded-2xl bg-surface-secondary border border-border flex items-center justify-between select-none">
+              <div className="flex-1 overflow-y-auto w-full px-6 pb-6 flex flex-col gap-6">
+                <div className="w-full p-4 rounded-xl bg-surface-secondary border border-border flex items-center justify-between">
                   <div>
                     <span className="text-xs text-muted block">
                       Linked Owner Profile
@@ -1083,7 +1192,9 @@ export function CompanyVerificationView() {
                       {verifiedEmail}
                     </span>
                   </div>
-                  <Chip color="success">Verified</Chip>
+                  <Chip color="success" variant="primary">
+                    Verified
+                  </Chip>
                 </div>
 
                 {/* Public Display Name */}
@@ -1091,7 +1202,6 @@ export function CompanyVerificationView() {
                   <Label>Public Company Name</Label>
                   <Input
                     placeholder="Enter business public name (e.g. FPT Software)"
-                    className="h-12 rounded-2xl"
                     value={companyDisplayName}
                     onChange={(e) => setCompanyDisplayName(e.target.value)}
                   />
@@ -1112,12 +1222,10 @@ export function CompanyVerificationView() {
                 >
                   <Label> Workspace Handle Slug (URL)</Label>
                   <InputGroup>
-                    <InputGroup.Prefix className="text-muted text-xs font-mono font-bold pl-3.5 select-none bg-surface-secondary h-full flex items-center border-r border-border">
-                      cverify.com/
-                    </InputGroup.Prefix>
+                    <InputGroup.Prefix>cverify.com/</InputGroup.Prefix>
                     <Input
                       placeholder="fpt-software"
-                      className="h-12 rounded-r-2xl rounded-l-none w-full"
+                      className="rounded-r-xl rounded-l-none w-full"
                       value={organizationUsername}
                       onChange={(e) => {
                         setOrganizationUsername(
@@ -1162,91 +1270,63 @@ export function CompanyVerificationView() {
                   )}
                 </TextField>
 
-                {/* Password */}
+                {/* Workspace Credentials Disclaimer */}
+                <div className="p-3.5 bg-surface-secondary border border-border rounded-xl text-xs text-muted leading-relaxed">
+                  <strong className="text-foreground font-semibold block mb-0.5">Workspace Credentials:</strong>
+                  This password establishes credentials for the Workspace login page (using slug + password). The ownership verification email is only used as a contact to automatically bootstrap admin permissions on registration, and is not a company user account or authenticated identity.
+                </div>
+
+                {/* Workspace Password */}
                 <TextField isRequired name="password" type="password">
-                  <Label>Set Account Password</Label>
+                  <Label>Workspace Password</Label>
                   <InputGroup>
                     <InputGroup.Input
-                      className="h-12"
-                      type={isPasswordVisible ? "text" : "password"}
-                      placeholder="Create a strong account password"
+                      type={isVisible ? "text" : "password"}
+                      placeholder="Workspace password (min 12 chars)"
                       value={password}
-                      onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-                        setPassword(e.target.value)
-                      }
+                      onChange={(e) => setPassword(e.target.value)}
+                      disabled={isLoading}
                     />
                     <InputGroup.Suffix>
                       <Button
                         isIconOnly
-                        aria-label={
-                          isPasswordVisible ? "Hide password" : "Show password"
-                        }
-                        size="sm"
                         variant="ghost"
-                        className="text-muted hover:text-foreground"
-                        onPress={() => setIsPasswordVisible(!isPasswordVisible)}
+                        size="sm"
+                        className="text-muted"
+                        onPress={() => setIsVisible(!isVisible)}
+                        isDisabled={isLoading}
                       >
-                        {isPasswordVisible ? (
-                          <Eye className="size-4" />
-                        ) : (
-                          <EyeOff className="size-4" />
-                        )}
+                        {isVisible ? <Eye className="size-4" /> : <EyeOff className="size-4" />}
                       </Button>
                     </InputGroup.Suffix>
                   </InputGroup>
-                  <FieldError />
-                  <PasswordStrengthMeter
-                    value={password}
-                    policyId="enterprise"
-                  />
+                  <PasswordStrengthMeter value={password} policyId="enterprise" />
                 </TextField>
 
-                {/* Confirm Password */}
-                <TextField
-                  isRequired
-                  name="confirmPassword"
-                  type="password"
-                  isInvalid={
-                    confirmPassword.length > 0 && password !== confirmPassword
-                  }
-                >
-                  <Label>Confirm Account Password</Label>
-                  <FieldError />
+                {/* Confirm Workspace Password */}
+                <TextField isRequired name="confirmPassword" type="password">
+                  <Label>Confirm Workspace Password</Label>
                   <InputGroup>
                     <InputGroup.Input
-                      className="h-12"
                       type={isConfirmVisible ? "text" : "password"}
-                      placeholder="Re-enter password to confirm"
+                      placeholder="Repeat workspace password"
                       value={confirmPassword}
-                      onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-                        setConfirmPassword(e.target.value)
-                      }
+                      onChange={(e) => setConfirmPassword(e.target.value)}
+                      disabled={isLoading}
                     />
                     <InputGroup.Suffix>
                       <Button
                         isIconOnly
-                        aria-label={
-                          isConfirmVisible ? "Hide password" : "Show password"
-                        }
-                        size="sm"
                         variant="ghost"
-                        className="text-muted hover:text-foreground"
+                        size="sm"
+                        className="text-muted"
                         onPress={() => setIsConfirmVisible(!isConfirmVisible)}
+                        isDisabled={isLoading}
                       >
-                        {isConfirmVisible ? (
-                          <Eye className="size-4" />
-                        ) : (
-                          <EyeOff className="size-4" />
-                        )}
+                        {isConfirmVisible ? <Eye className="size-4" /> : <EyeOff className="size-4" />}
                       </Button>
                     </InputGroup.Suffix>
                   </InputGroup>
-                  {confirmPassword.length > 0 &&
-                    password !== confirmPassword && (
-                      <FieldError className="text-danger text-xs mt-1">
-                        Passwords must match exactly.
-                      </FieldError>
-                    )}
                 </TextField>
               </div>
 
@@ -1254,8 +1334,12 @@ export function CompanyVerificationView() {
               <div className="flex gap-4 px-6 py-4 border-t border-border bg-surface shrink-0 w-full">
                 <Button
                   variant="secondary"
-                  className="h-12 rounded-2xl"
-                  onPress={() => setStep(2)}
+                  className="rounded-xl"
+                  onPress={() => {
+                    setStep(2);
+                    setStep2Token("");
+                    setVerifiedEmail("");
+                  }}
                   isDisabled={isLoading}
                 >
                   Back to step 2
@@ -1263,15 +1347,11 @@ export function CompanyVerificationView() {
                 <Button
                   type="submit"
                   fullWidth
-                  className="h-12 rounded-2xl"
+                  className="rounded-xl"
                   isDisabled={!isStep3Valid || isLoading}
                   isPending={isLoading}
                 >
-                  {isLoading ? (
-                    <Spinner color="current" size="sm" />
-                  ) : (
-                    <Lock className="size-4 mr-2" />
-                  )}
+                  {isLoading && <Spinner color="current" size="sm" />}
                   Provision Workspace Organization
                 </Button>
               </div>

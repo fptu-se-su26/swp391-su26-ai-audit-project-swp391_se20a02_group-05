@@ -1,5 +1,4 @@
-import { NextResponse } from 'next/server';
-import type { NextRequest } from 'next/server';
+import { NextResponse, type NextRequest } from 'next/server';
 import { ROUTES } from './lib/constants/auth.constants';
 
 const SUPPORTED_LANGS = ['vi', 'en'];
@@ -45,7 +44,7 @@ export async function proxy(request: NextRequest) {
   const accessToken = request.cookies.get('access_token')?.value;
 
   // Define route classifications
-  const isDashboardRoute = ['/admin', '/business', '/user', '/chat'].some(p => pathname.startsWith(p));
+  const isDashboardRoute = ['/admin', '/business', '/user', '/chat', '/workspace'].some(p => pathname.startsWith(p));
 
   // Development environment gated edge logging to prevent production data leakage
   if (isDev) {

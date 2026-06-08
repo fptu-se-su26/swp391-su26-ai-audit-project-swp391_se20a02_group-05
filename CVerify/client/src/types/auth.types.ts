@@ -6,11 +6,14 @@ export type ResourceActionPermission = `${string}:${string}`;
 export interface User {
   id: string;
   email: string;
+  username?: string;
   fullName: string;
   role: UserRole;
   permissions: ResourceActionPermission[];
   avatarUrl?: string;
   isEmailVerified?: boolean;
+  passwordChangedAt?: string;
+  hasPassword?: boolean;
 }
 
 export type BootstrapState = 'IDLE' | 'BOOTSTRAPPING' | 'VALIDATING' | 'READY';
@@ -36,6 +39,7 @@ export interface ApiError {
 export interface LoginResponseData {
   id: string;
   email: string;
+  username?: string;
   fullName: string;
   avatarUrl?: string;
   roles: string[];
@@ -43,11 +47,14 @@ export interface LoginResponseData {
   isEmailVerified: boolean;
   status: string;
   nextStep: string;
+  passwordChangedAt?: string;
+  hasPassword?: boolean;
 }
 
 export interface UserProfileResponseData {
   id: string;
   email: string;
+  username?: string;
   fullName: string;
   avatarUrl?: string;
   roles: string[];
@@ -55,6 +62,8 @@ export interface UserProfileResponseData {
   isEmailVerified: boolean;
   status: string;
   nextStep: string;
+  passwordChangedAt?: string;
+  hasPassword?: boolean;
 }
 
 export interface AuthSuccessResponse {
@@ -73,6 +82,16 @@ export interface VerifyOtpResponseData {
   challengeId: string;
   email: string;
   verificationToken: string;
+}
+
+export interface OtpSessionResponseData {
+  hasActiveOtp: boolean;
+  challengeId: string | null;
+  purpose: string;
+  expiresAt: string | null;
+  cooldownUntil: string | null;
+  maskedEmail: string;
+  status: string;
 }
 
 export interface VerifyCompanyLinkResponseData {
@@ -102,3 +121,70 @@ export interface ResolveEmailAuthStateResponseData {
   authState: EmailAuthState;
 }
 
+export interface LinkedEmail {
+  id: string;
+  email: string;
+  isPrimary: boolean;
+  isVerified: boolean;
+}
+
+export interface LinkedProviderConnection {
+  id: string;
+  providerName: string;
+  providerEmail: string | null;
+  providerUsername: string | null;
+  providerDisplayName: string | null;
+  providerAvatarUrl: string | null;
+  providerProfileUrl: string | null;
+  connected: boolean;
+  scopeValidationStatus: string;
+  grantedScopes: string | null;
+}
+
+export interface PendingLinkDetailsResponseData {
+  id: string;
+  providerName: string;
+  providerEmail: string | null;
+  providerUsername: string | null;
+  providerDisplayName: string | null;
+  providerAvatarUrl: string | null;
+  providerProfileUrl: string | null;
+}
+
+export interface DeletionRequirementsDto {
+  requiresPassword: boolean;
+  requiresOAuthReauth: boolean;
+  linkedOAuthProvider: string | null;
+}
+
+export interface InitiateDeletionRequest {
+  password?: string;
+  deletionAuthorizeToken?: string;
+  fallbackOtpCode?: string;
+  fallbackOtpChallengeId?: string;
+  confirmationPhrase: string;
+}
+
+export interface BlockingOrganizationDto {
+  id: string;
+  name: string;
+  username: string;
+  memberCount: number;
+}
+
+export interface DeletionInitiationResponse {
+  success: boolean;
+  errorCode: string | null;
+  message: string | null;
+  blockingOrganizations: BlockingOrganizationDto[] | null;
+}
+
+export interface ReactivateRequest {
+  reactivationToken: string;
+}
+
+export interface SetupWorkspaceResponseData {
+  success: boolean;
+  email: string;
+  organizationUsername: string;
+}

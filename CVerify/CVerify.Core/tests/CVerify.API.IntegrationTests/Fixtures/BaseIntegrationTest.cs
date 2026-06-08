@@ -7,12 +7,16 @@ using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Hosting;
 using Respawn;
 using StackExchange.Redis;
-using Microsoft.Extensions.Hosting;
-using CVerify.API.Application.Interfaces;
-using CVerify.API.Infrastructure.Services;
 using Xunit;
+using CVerify.API.Modules.Auth.BackgroundWorkers;
+using CVerify.API.Modules.Shared.Configuration;
+using CVerify.API.Modules.Shared.Email.BackgroundWorkers;
+using CVerify.API.Modules.Shared.Email.Services;
+using CVerify.API.Modules.Shared.System.BackgroundWorkers;
+
 
 namespace CVerify.API.IntegrationTests.Fixtures;
 
@@ -70,6 +74,7 @@ public class IntegrationTestApplicationFactory : WebApplicationFactory<Program>
         Environment.SetEnvironmentVariable("SMTP_PASSWORD", "test_pass");
         Environment.SetEnvironmentVariable("SENDGRID_API_KEY", "mock-sendgrid-api-key");
         Environment.SetEnvironmentVariable("Auth__DisableCsrf", "true");
+        Environment.SetEnvironmentVariable("DISABLE_RATE_LIMITS", "false");
 
         // Apply custom environment overrides if provided (e.g., stress test rate limit overrides)
         if (envOverrides != null)
@@ -104,6 +109,7 @@ public class IntegrationTestApplicationFactory : WebApplicationFactory<Program>
                 { "Auth:GoogleClientId", "mock-google-client-id" },
                 { "Auth:DisableCsrf", "true" },
                 { "Jwt:Key", "super_secret_key_super_secret_key_super_secret_key_32_characters" },
+                { "Security:DisableRateLimits", Environment.GetEnvironmentVariable("DISABLE_RATE_LIMITS") ?? "false" },
                 { "RateLimit:ForgotPasswordPermitLimit", "1000" },
                 { "RateLimit:ResetPasswordPermitLimit", "1000" },
                 { "RateLimit:ResendVerificationPermitLimit", "1000" },

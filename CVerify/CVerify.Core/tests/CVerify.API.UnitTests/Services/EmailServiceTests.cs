@@ -2,15 +2,16 @@ using System;
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
-using FluentAssertions;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Time.Testing;
+using FluentAssertions;
 using Moq;
-using CVerify.API.Application.DTOs;
-using CVerify.API.Application.Interfaces;
-using CVerify.API.Infrastructure.Configuration;
-using CVerify.API.Infrastructure.Services;
 using Xunit;
+using CVerify.API.Modules.Shared.Configuration;
+using CVerify.API.Modules.Shared.Domain.Entities;
+using CVerify.API.Modules.Shared.Email.DTOs;
+using CVerify.API.Modules.Shared.Email.Services;
+using CVerify.API.Modules.Shared.System.Services;
 
 namespace CVerify.API.UnitTests.Services;
 
@@ -23,6 +24,7 @@ public class EmailServiceTests
     private readonly Mock<IEmailTemplateService> _templateMock;
     private readonly Mock<ICacheService> _cacheMock;
     private readonly Mock<ILogger<EmailService>> _loggerMock;
+    private readonly Mock<IEmailRecipientResolver> _recipientResolverMock;
     private readonly FakeTimeProvider _timeProvider;
     private readonly EmailService _service;
 
@@ -35,13 +37,18 @@ public class EmailServiceTests
         _templateMock = new Mock<IEmailTemplateService>();
         _cacheMock = new Mock<ICacheService>();
         _loggerMock = new Mock<ILogger<EmailService>>();
+        _recipientResolverMock = new Mock<IEmailRecipientResolver>();
         _timeProvider = new FakeTimeProvider();
+
+        _recipientResolverMock.Setup(r => r.ResolveByEmailAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync((string email, CancellationToken ct) => new RecipientProfile(email, null, null));
 
         _service = new EmailService(
             _senderMock.Object,
             _templateMock.Object,
             _cacheMock.Object,
             _loggerMock.Object,
+            _recipientResolverMock.Object,
             _timeProvider
         );
     }

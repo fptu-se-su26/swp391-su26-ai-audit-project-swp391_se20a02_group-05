@@ -1,11 +1,14 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Threading.Tasks;
 using FluentAssertions;
-using CVerify.API.Application.Exceptions;
-using CVerify.API.Infrastructure.Services;
 using Xunit;
+using CVerify.API.Modules.Auth.Services;
+using Microsoft.Extensions.Options;
+using CVerify.API.Modules.Shared.Configuration;
+using CVerify.API.Modules.Shared.Email.Services;
+using CVerify.API.Modules.Shared.Exceptions;
 
 namespace CVerify.API.UnitTests.Templates;
 
@@ -22,11 +25,16 @@ public class EmailTemplateServiceTests : IDisposable
     /// </summary>
     public EmailTemplateServiceTests()
     {
-        _templatesDirectory = Path.Combine(AppContext.BaseDirectory, "Infrastructure", "EmailTemplates");
-        
-        // Ensure test environment directory is cleanly established
+        _templatesDirectory = Path.Combine(AppContext.BaseDirectory, "TestTemplates_" + Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(_templatesDirectory);
-        _service = new EmailTemplateService();
+
+        // Configure default legacy templates behavior for existing tests to ensure backward compatibility
+        var legacySettings = new EmailSettings
+        {
+            UseLegacyEmailTemplates = true
+        };
+        var options = Microsoft.Extensions.Options.Options.Create(legacySettings);
+        _service = new EmailTemplateService(options, _templatesDirectory);
     }
 
     /// <inheritdoc />
@@ -113,5 +121,100 @@ public class EmailTemplateServiceTests : IDisposable
         // Assert
         // Scriban handles undefined models gracefully by replacing with blank spaces
         result.Should().Be("Hi ! Code is .");
+    }
+
+    [Fact]
+    public async Task RenderTemplateAsync_ShouldRenderWithMasterLayoutAndComponents_WhenLegacyModeIsDisabled()
+    {
+        // Arrange
+        Directory.CreateDirectory(Path.Combine(_templatesDirectory, "Layouts"));
+        Directory.CreateDirectory(Path.Combine(_templatesDirectory, "Components"));
+        Directory.CreateDirectory(Path.Combine(_templatesDirectory, "Verification"));
+
+        await File.WriteAllTextAsync(
+            Path.Combine(_templatesDirectory, "Layouts", "MasterLayout.html"),
+            "<html>[Layout] {{ include 'Components/EmailHeader.html' }} - {{ content }} - {{ include 'Components/EmailFooter.html' }}</html>"
+        ).ConfigureAwait(false);
+
+        await File.WriteAllTextAsync(
+            Path.Combine(_templatesDirectory, "Components", "EmailHeader.html"),
+            "HeaderContent"
+        ).ConfigureAwait(false);
+
+        await File.WriteAllTextAsync(
+            Path.Combine(_templatesDirectory, "Components", "EmailFooter.html"),
+            "FooterContent"
+        ).ConfigureAwait(false);
+
+        await File.WriteAllTextAsync(
+            Path.Combine(_templatesDirectory, "Verification", "VerificationEmail.html"),
+            "VerificationContent: {{ full_name }}"
+        ).ConfigureAwait(false);
+
+        var settings = new EmailSettings
+        {
+            UseLegacyEmailTemplates = false
+        };
+        var service = new EmailTemplateService(Options.Create(settings), _templatesDirectory);
+
+        var model = new Dictionary<string, object>
+        {
+            { "full_name", "Bob" }
+        };
+
+        // Act
+        var result = await service.RenderTemplateAsync("VerificationEmail.html", model).ConfigureAwait(false);
+
+        // Assert
+        result.Should().Be("<html>[Layout] HeaderContent - VerificationContent: Bob - FooterContent</html>");
+    }
+
+    [Fact]
+    public async Task RenderTemplateAsync_ShouldInjectBrandingAndColors_WhenLegacyModeIsDisabled()
+    {
+        // Arrange
+        Directory.CreateDirectory(Path.Combine(_templatesDirectory, "Layouts"));
+        Directory.CreateDirectory(Path.Combine(_templatesDirectory, "Components"));
+        Directory.CreateDirectory(Path.Combine(_templatesDirectory, "Verification"));
+
+        await File.WriteAllTextAsync(
+            Path.Combine(_templatesDirectory, "Layouts", "MasterLayout.html"),
+            "<html>Layout [{{ product_name }}] - {{ content }}</html>"
+        ).ConfigureAwait(false);
+
+        await File.WriteAllTextAsync(
+            Path.Combine(_templatesDirectory, "Components", "EmailHeader.html"),
+            "Header"
+        ).ConfigureAwait(false);
+
+        await File.WriteAllTextAsync(
+            Path.Combine(_templatesDirectory, "Components", "EmailFooter.html"),
+            "Footer"
+        ).ConfigureAwait(false);
+
+        await File.WriteAllTextAsync(
+            Path.Combine(_templatesDirectory, "Verification", "VerificationEmail.html"),
+            "Accent: {{ colors.accent }}, Text: {{ colors.text }}"
+        ).ConfigureAwait(false);
+
+        var settings = new EmailSettings
+        {
+            UseLegacyEmailTemplates = false,
+            ProductName = "CVerifyTest",
+            Colors = new EmailColors
+            {
+                Accent = "#ff9900",
+                Text = "#333333"
+            }
+        };
+        var service = new EmailTemplateService(Options.Create(settings), _templatesDirectory);
+
+        var model = new Dictionary<string, object>();
+
+        // Act
+        var result = await service.RenderTemplateAsync("VerificationEmail.html", model).ConfigureAwait(false);
+
+        // Assert
+        result.Should().Be("<html>Layout [CVerifyTest] - Accent: #ff9900, Text: #333333</html>");
     }
 }

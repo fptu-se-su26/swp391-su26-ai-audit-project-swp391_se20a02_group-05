@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useRef } from 'react';
-import { MoreHorizontal, LucideIcon } from 'lucide-react';
+import { MoreHorizontal, type LucideIcon } from 'lucide-react';
 import { Dropdown, Label, Typography } from '@heroui/react';
 import { Button } from './button';
 import { DialogModal } from './dialog-modal';
@@ -75,7 +75,7 @@ export const TableActionDropdown: React.FC<TableActionDropdownProps> = ({
           variant="bordered"
           size="sm"
           aria-label={triggerAriaLabel}
-          className="h-8 w-8 min-w-8 rounded-lg bg-surface-secondary/40 border border-border/60 hover:bg-surface-secondary text-muted hover:text-foreground cursor-pointer focus-visible:ring-2 focus-visible:ring-focus focus-visible:outline-hidden transition-all duration-150 flex items-center justify-center"
+          className="h-8 w-8 min-w-8 rounded-lg bg-surface-secondary/40 border border-border/60 hover:bg-surface-secondary text-muted hover:text-foreground cursor-pointer focus-ring transition-all duration-150 flex items-center justify-center"
         >
           <MoreHorizontal size={15} />
         </Button>

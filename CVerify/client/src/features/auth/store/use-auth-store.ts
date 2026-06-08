@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { User, UserRole, ResourceActionPermission, BootstrapState } from '../../../types/auth.types';
+import { type User, type UserRole, type ResourceActionPermission, type BootstrapState } from '../../../types/auth.types';
 import { AUTH_KEYS, AUTH_EVENTS } from '../../../lib/constants';
 
 interface AuthState {
@@ -115,6 +115,9 @@ export const useAuthStore = create<AuthState>((set, get) => {
     },
 
     logout: (broadcast = true) => {
+      if (typeof window !== 'undefined') {
+        sessionStorage.removeItem("cverify_company_onboarding_state");
+      }
       set({
         user: null,
         isAuthenticated: false,
