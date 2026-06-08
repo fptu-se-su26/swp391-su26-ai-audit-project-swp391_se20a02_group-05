@@ -217,7 +217,9 @@ Here are the sampled file contents:
 Please generate a skills report. You must strictly match the following JSON Schema:
 {schema}
 
-Remember to return ONLY the raw JSON string. Do not include markdown code block syntax.
+Remember:
+1. Return ONLY the raw JSON string. Do not include markdown code block syntax.
+2. Limit the skills array to a maximum of 20 of the most significant and clearly evidenced technical skills to prevent response truncation.
 """
 
     def get_architecture_user_prompt(self, input_data: Any) -> str:
@@ -251,7 +253,9 @@ Here are the sampled file contents:
 Please generate an architectural report. You must strictly match the following JSON Schema:
 {schema}
 
-Remember to return ONLY the raw JSON string. Do not include markdown code block syntax.
+Remember:
+1. Return ONLY the raw JSON string. Do not include markdown code block syntax.
+2. Include only significant architectural patterns that are clearly implemented in the codebase. Return between 0 and 10 patterns, depending on what is actually observed. Avoid listing generic patterns to fill the array.
 """
 
     def get_quality_user_prompt(self, input_data: Any) -> str:
@@ -305,7 +309,9 @@ Here are the sampled file contents:
 Please generate a code quality report. You must strictly match the following JSON Schema:
 {schema}
 
-Remember to return ONLY the raw JSON string. Do not include markdown code block syntax.
+Remember:
+1. Return ONLY the raw JSON string. Do not include markdown code block syntax.
+2. Return between 0 and 5 of the most critical quality findings. Only include genuine, significant quality findings. Avoid minor style issues or filler to meet the limit.
 """
 
     def get_security_user_prompt(self, input_data: Any) -> str:
@@ -350,7 +356,9 @@ Here are the sampled file contents:
 Please generate a security report. You must strictly match the following JSON Schema:
 {schema}
 
-Remember to return ONLY the raw JSON string. Do not include markdown code block syntax.
+Remember:
+1. Return ONLY the raw JSON string. Do not include markdown code block syntax.
+2. Limit the vulnerabilities array to a maximum of 5 entries and the findings array to a maximum of 5 of the most critical security findings. Include only genuine, verified security concerns. Do not list the same security issue in both the vulnerabilities and findings arrays. Return between 0 and 5 entries for each, depending on what is actually observed.
 """
 
     def get_summary_user_prompt(self, input_data: Any) -> str:

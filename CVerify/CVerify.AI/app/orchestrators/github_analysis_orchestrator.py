@@ -10,6 +10,8 @@ from typing import AsyncGenerator, Any, Tuple, List, Literal, Optional, Union
 import redis.asyncio as redis
 from pydantic import BaseModel, Field, ValidationError, field_validator
 from app.config import settings
+from app.orchestrators.unified_evidence import UnifiedEvidenceEngine
+
 
 from app.github.technology_detector import TechnologyDetector
 from app.github.code_sampler import CodeSampler, CodeSamplingOptions
@@ -62,6 +64,10 @@ class CvSynthesisContract(BaseModel):
             raise ValueError("CV summary is too long (must be under 550 characters).")
         return v
 
+class EvidenceStrengthContract(BaseModel):
+    score: float
+    label: str
+
 class ReportV2Contract(BaseModel):
     schemaVersion: Literal["v2"]
     repoId: str
@@ -69,6 +75,7 @@ class ReportV2Contract(BaseModel):
     sections: List[SectionV2]
     risk: RiskV2
     cvSynthesis: Optional[CvSynthesisContract] = None
+    evidenceStrength: Optional[EvidenceStrengthContract] = None
 
     model_config = {
         "extra": "allow"
@@ -181,6 +188,7 @@ class GitHubAnalysisOrchestrator(IGitHubAnalysisOrchestrator):
         )
         
         logger.info(f"Executing discrete analysis task {task_type} for job {job_id}", extra=extra_log)
+        start_time = time.perf_counter()
         
         try:
             if task_type == "RepoStructure":
@@ -227,20 +235,72 @@ class GitHubAnalysisOrchestrator(IGitHubAnalysisOrchestrator):
                 "events": result.get("events", [])
             }
         except Exception as e:
+            duration = int((time.perf_counter() - start_time) * 1000)
             logger.exception(f"Error executing task {task_type} for job {job_id}: {e}", extra=extra_log)
+            
+            # Extract accumulated execution records from TraceContext
+            executions = TraceContext.get().get("executions", [])
+            task_prompt_tokens = sum(ev.get("promptTokens", 0) for ev in executions)
+            task_completion_tokens = sum(ev.get("completionTokens", 0) for ev in executions)
+            task_cache_read = sum(ev.get("cacheReadTokens", 0) for ev in executions)
+            task_cache_write = sum(ev.get("cacheWriteTokens", 0) for ev in executions)
+            task_cost = sum(ev.get("estimatedCostUsd", 0) for ev in executions)
+            
+            # Clear context executions
+            TraceContext.set(executions=[])
+            
+            telemetry = None
+            if executions:
+                telemetry = {
+                    "promptTokens": task_prompt_tokens,
+                    "completionTokens": task_completion_tokens,
+                    "totalTokens": task_prompt_tokens + task_completion_tokens,
+                    "cacheReadTokens": task_cache_read,
+                    "cacheWriteTokens": task_cache_write,
+                    "estimatedCostUsd": float(task_cost),
+                    "durationMs": duration,
+                    "modelName": executions[0].get("model") if executions else settings.claude_model,
+                    "provider": "Anthropic"
+                }
+            
+            err_str = str(e).lower()
+            error_code = "UNKNOWN_ERROR"
+            retryable = True
+            
+            if "rate limit" in err_str or "429" in err_str:
+                error_code = "RATE_LIMIT_EXCEEDED"
+                retryable = True
+            elif "timeout" in err_str or "time out" in err_str:
+                error_code = "TIMEOUT"
+                retryable = True
+            elif "connection" in err_str or "dns" in err_str:
+                error_code = "SERVICE_UNAVAILABLE"
+                retryable = True
+            elif "json" in err_str or "parse" in err_str or "format" in err_str:
+                error_code = "PARSING_ERROR"
+                retryable = False
+            elif "invalid_prompt" in err_str or "bad request" in err_str:
+                error_code = "INVALID_REQUEST"
+                retryable = False
+            
             # Persist logs even on failure to capture error traceback
             persist_trace_logs(job_id, debug_mode)
+            
             return {
                 "status": "Failed",
                 "errorMessage": str(e),
+                "errorCode": error_code,
+                "retryable": retryable,
+                "taskId": task_type,
+                "timestamp": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
                 "schemaVersion": "2.0.0",
                 "resultData": None,
-                "telemetry": None,
+                "telemetry": telemetry,
                 "events": [
                     {
                         "timestamp": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
                         "level": "Error",
-                        "eventType": "ErrorOccurred",
+                        "eventType": "AI_TASK_FAILED",
                         "message": str(e)
                     }
                 ]
@@ -266,29 +326,130 @@ class GitHubAnalysisOrchestrator(IGitHubAnalysisOrchestrator):
         sample = await self.code_sampler.sample_async(clone_dir, encrypted_token, options)
         return meta, sample
 
+    def _repair_json_string(self, candidate: str) -> str:
+        chars = []
+        stack = []
+        in_string = False
+        i = 0
+        n = len(candidate)
+        
+        while i < n:
+            c = candidate[i]
+            
+            if not in_string:
+                if c == '"':
+                    in_string = True
+                    chars.append(c)
+                    i += 1
+                elif c == '{':
+                    stack.append('}')
+                    chars.append(c)
+                    i += 1
+                elif c == '[':
+                    stack.append(']')
+                    chars.append(c)
+                    i += 1
+                elif c in ('}', ']'):
+                    if stack and stack[-1] == c:
+                        stack.pop()
+                    chars.append(c)
+                    i += 1
+                elif c == ',':
+                    # Check for trailing comma
+                    next_idx = i + 1
+                    while next_idx < n and candidate[next_idx].isspace():
+                        next_idx += 1
+                    if next_idx < n and candidate[next_idx] in ('}', ']'):
+                        # Skip the comma, move directly to brace/bracket
+                        i = next_idx
+                    else:
+                        chars.append(c)
+                        i += 1
+                else:
+                    chars.append(c)
+                    i += 1
+            else: # in_string is True
+                if c == '\\':
+                    # If it's a valid escape sequence for quote or backslash, preserve it as-is
+                    if i + 1 < n and candidate[i + 1] in ('"', '\\'):
+                        chars.append(c)
+                        chars.append(candidate[i + 1])
+                        i += 2
+                    else:
+                        # Escape the backslash
+                        chars.append('\\')
+                        chars.append('\\')
+                        i += 1
+                elif c == '"':
+                    # Check if this is the end of the string
+                    next_idx = i + 1
+                    while next_idx < n and candidate[next_idx].isspace():
+                        next_idx += 1
+                    # If we've reached the end of the candidate string, or it is followed by structural JSON chars,
+                    # it's a valid closing quote.
+                    if next_idx >= n or candidate[next_idx] in (',', '}', ']', ':'):
+                        in_string = False
+                        chars.append(c)
+                        i += 1
+                    else:
+                        # Inner unescaped double quote - escape it
+                        chars.append('\\')
+                        chars.append('"')
+                        i += 1
+                elif c == '\n':
+                    chars.append('\\')
+                    chars.append('n')
+                    i += 1
+                elif c == '\r':
+                    chars.append('\\')
+                    chars.append('r')
+                    i += 1
+                elif c == '\t':
+                    chars.append('\\')
+                    chars.append('t')
+                    i += 1
+                else:
+                    chars.append(c)
+                    i += 1
+                    
+        # If we ended inside a string literal, close it
+        if in_string:
+            chars.append('"')
+            
+        # Clean up any trailing comma at the end of the reconstructed characters
+        while chars and (chars[-1].isspace() or chars[-1] == ','):
+            if chars[-1] == ',':
+                chars.pop()
+                break
+            chars.pop()
+            
+        # Close any open braces or brackets
+        while stack:
+            chars.append(stack.pop())
+            
+        return "".join(chars)
+
     def _extract_json(self, text: str, correlation_id: str) -> dict:
         text = text.strip()
         first_brace = text.find('{')
         last_brace = text.rfind('}')
         
-        if first_brace != -1 and last_brace != -1 and last_brace > first_brace:
-            json_candidate = text[first_brace:last_brace + 1]
-            try:
-                return json.loads(json_candidate)
-            except Exception as e:
-                logger.warning(f"Failed to parse raw extracted JSON block, attempting escape sanitization: {e}", extra={"correlation_id": correlation_id})
+        if first_brace != -1:
+            if last_brace != -1 and last_brace > first_brace:
+                json_candidate = text[first_brace:last_brace + 1]
                 try:
-                    import re
-                    pattern = re.compile(r'(\\(?:["\\/bfnrt]|u[0-9a-fA-F]{4}))|\\')
-                    def replace(match):
-                        if match.group(1):
-                            return match.group(1)
-                        return r'\\'
-                    sanitized = pattern.sub(replace, json_candidate)
-                    return json.loads(sanitized)
-                except Exception as retry_err:
-                    logger.error(f"Failed to parse sanitized JSON block: {retry_err}", extra={"correlation_id": correlation_id})
-                    raise Exception(f"Claude output returned invalid JSON inside block. Sanitization failed: {retry_err}. Original error: {e}")
+                    return json.loads(json_candidate)
+                except Exception as e:
+                    logger.warning(f"Failed to parse raw extracted JSON block: {e}. Attempting repair fallback.", extra={"correlation_id": correlation_id})
+            
+            try:
+                # Scan from first_brace to the absolute end of the generated text to capture and heal truncated suffix
+                full_candidate = text[first_brace:]
+                repaired = self._repair_json_string(full_candidate)
+                return json.loads(repaired)
+            except Exception as retry_err:
+                logger.error(f"Failed to parse repaired JSON block: {retry_err}", extra={"correlation_id": correlation_id})
+                raise Exception(f"Claude output returned invalid JSON inside block. Sanitization failed: {retry_err}")
         
         try:
             return json.loads(text)
@@ -1362,32 +1523,28 @@ class GitHubAnalysisOrchestrator(IGitHubAnalysisOrchestrator):
             skills_dict[cat].append(skill_name)
         profile_info["skills"] = skills_dict
 
+        # Extract, normalize, validate, and deduplicate findings using UnifiedEvidenceEngine
+        raw_items = []
+        raw_items.extend(UnifiedEvidenceEngine.normalize_quality(quality_data))
+        raw_items.extend(UnifiedEvidenceEngine.normalize_security(security_data))
+        raw_items.extend(UnifiedEvidenceEngine.normalize_architecture(arch_data))
+
+        unique_items = UnifiedEvidenceEngine.deduplicate_and_validate(raw_items, filenames)
+        ev_strength = UnifiedEvidenceEngine.calculate_evidence_strength(unique_items)
+
+        # Convert back to legacy findings structure for downstream compatibility
         findings = []
-        for f in quality_data.get("findings", []):
-            if isinstance(f, dict):
-                f["category"] = "quality"
-                findings.append(f)
-
-        for f in security_data.get("findings", []):
-            if isinstance(f, dict):
-                f["category"] = "security"
-                findings.append(f)
-
-        filenames_set = set(filenames)
-        for f in findings:
-            ev_sigs = f.get("evidence_signals", [])
-            for sig in ev_sigs:
-                has_file_ref = False
-                sig_lower = sig.lower()
-                for fname in filenames_set:
-                    if fname.lower() in sig_lower:
-                        has_file_ref = True
-                        break
-                if not has_file_ref:
-                    if "package.json" in sig_lower or "requirements.txt" in sig_lower or "go.mod" in sig_lower:
-                        has_file_ref = True
-                if not has_file_ref:
-                    logger.warning(f"Hallucinated evidence signal detected in finding '{f.get('finding')}': '{sig}' not in files.", extra=extra_log)
+        for item in unique_items:
+            if item.type in ("engineering_practices", "security_findings"):
+                findings.append({
+                    "finding": item.title,
+                    "title": item.title,
+                    "category": "quality" if item.type == "engineering_practices" else "security",
+                    "explanation": item.content,
+                    "impact": "critical" if item.severity == "critical" else "warning" if item.severity == "medium" else "positive",
+                    "confidence": int(item.confidence * 100),
+                    "evidence_signals": item.evidence_signals
+                })
 
         narrative_info = {
             "recruiter_summary": summary_data.get("recruiter_summary", ""),
@@ -1630,7 +1787,7 @@ class GitHubAnalysisOrchestrator(IGitHubAnalysisOrchestrator):
             "edges": edges
         }
 
-        # Build sections for v2 schema
+        # Build sections for v2 schema using unique, validated evidence
         testing_frameworks = quality_data.get("testing", {}).get("frameworks", [])
         cicd_providers = quality_data.get("cicd", {}).get("providers", []) if cicd_ok else []
         
@@ -1648,24 +1805,19 @@ class GitHubAnalysisOrchestrator(IGitHubAnalysisOrchestrator):
                 "content": f"{'Configured (' + ', '.join(cicd_providers) + ')' if cicd_ok else 'Not configured'}"
             }
         ]
-        for f in findings:
-            if f.get("category") == "quality":
+        for item in unique_items:
+            if item.type == "engineering_practices":
                 eng_items.append({
-                    "title": f.get('finding', 'Quality Finding'),
-                    "content": f.get('explanation', '')
+                    "title": item.title,
+                    "content": item.content
                 })
 
         sec_items = []
-        for v in security_data.get("vulnerabilities", []):
-            sec_items.append({
-                "title": f"Vulnerability: {v.get('vulnerability')} ({v.get('impact')})",
-                "content": v.get('explanation', '')
-            })
-        for f in findings:
-            if f.get("category") == "security":
+        for item in unique_items:
+            if item.type == "security_findings":
                 sec_items.append({
-                    "title": f.get('finding', 'Security Finding'),
-                    "content": f.get('explanation', '')
+                    "title": item.title,
+                    "content": item.content
                 })
         if not sec_items:
             sec_items.append({
@@ -1674,28 +1826,17 @@ class GitHubAnalysisOrchestrator(IGitHubAnalysisOrchestrator):
             })
 
         arch_items = []
-        for p in arch_data.get("patterns", []):
-            if isinstance(p, dict) and p.get("pattern"):
+        for item in unique_items:
+            if item.type == "architecture_insights":
                 arch_items.append({
-                    "title": p.get('pattern'),
-                    "content": "Detected architectural design pattern configured in the workspace."
-                })
-            elif isinstance(p, str):
-                arch_items.append({
-                    "title": p,
-                    "content": "Detected architectural design pattern configured in the workspace."
+                    "title": item.title,
+                    "content": item.content
                 })
         if arch_data.get("explanation"):
             arch_items.append({
                 "title": "Architecture Explanation",
                 "content": arch_data.get('explanation')
             })
-        for f in findings:
-            if f.get("category") == "architecture":
-                arch_items.append({
-                    "title": f.get('finding', 'Architecture Finding'),
-                    "content": f.get('explanation', '')
-                })
         if not arch_items:
             arch_items.append({
                 "title": "Architectural Insights",
@@ -1730,6 +1871,7 @@ class GitHubAnalysisOrchestrator(IGitHubAnalysisOrchestrator):
             "sections": sections,
             "risk": risk_v2,
             "cvSynthesis": cv_synthesis_data if cv_synthesis_data else None,
+            "evidenceStrength": ev_strength,
             
             # Legacy fields for backward compatibility
             "facts": {
