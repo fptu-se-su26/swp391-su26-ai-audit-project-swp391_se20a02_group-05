@@ -35,6 +35,8 @@ using CVerify.API.Modules.Shared.System.Services;
 using CVerify.API.Modules.Shared.Email;
 using CVerify.API.Modules.Shared.Security.Authorization;
 using CVerify.API.Modules.Shared.System.BackgroundWorkers;
+using CVerify.API.Modules.SourceCode.Services;
+using CVerify.API.Modules.SourceCode.BackgroundWorkers;
 
 
 var builder = WebApplication.CreateBuilder(args);
@@ -371,9 +373,16 @@ builder.Services.AddScoped<IOtpPolicyService, OtpPolicyService>();
 builder.Services.AddScoped<IProfileService, ProfileService>();
 builder.Services.AddScoped<IEducationService, EducationService>();
 builder.Services.AddScoped<IAchievementService, AchievementService>();
+builder.Services.AddScoped<ICareerReadinessEngine, CareerReadinessEngine>();
 builder.Services.AddScoped<ICareerService, CareerService>();
 builder.Services.AddScoped<IAttachmentService, AttachmentService>();
 builder.Services.AddScoped<IWorkExperienceService, WorkExperienceService>();
+
+// Register Source Code Provider Services
+builder.Services.AddScoped<ISourceCodeProviderService, SourceCodeProviderService>();
+builder.Services.AddSingleton<IRepositorySyncQueue, BackgroundRepositorySyncQueue>();
+builder.Services.AddScoped<IRepositoryAnalysisService, RepositoryAnalysisService>();
+builder.Services.AddSingleton<IRepositoryAnalysisQueue, BackgroundRepositoryAnalysisQueue>();
 
 // Register AI Service
 builder.Services.AddScoped<IHmacSignatureService, HmacSignatureService>();
@@ -391,7 +400,9 @@ builder.Services.AddHostedService<EmailOutboxBackgroundProcessor>();
 builder.Services.AddHostedService<TokenCleanupBackgroundJob>();
 builder.Services.AddHostedService<RecoveryClaimBackgroundWorker>();
 builder.Services.AddHostedService<OtpCleanupBackgroundWorker>();
-builder.Services.AddHostedService<PendingLinkCleanupService>();
+builder.Services.AddHostedService<BackgroundRepositorySyncProcessor>();
+builder.Services.AddHostedService<AnalysisQueueRecoverySweeper>();
+builder.Services.AddHostedService<BackgroundRepositoryAnalysisProcessor>();
 
 
 // Configure JWT Authentication
