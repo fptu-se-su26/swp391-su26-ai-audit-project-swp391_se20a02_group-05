@@ -1,17 +1,14 @@
 import os
 import shutil
-import tempfile
 import json
 import logging
 import asyncio
 import time
 from abc import ABC, abstractmethod
-from typing import AsyncGenerator, Any, Tuple, List, Literal, Optional, Union
+from typing import AsyncGenerator, Any, List, Literal, Optional, Union
 import redis.asyncio as redis
 from pydantic import BaseModel, Field, ValidationError, field_validator
 from app.config import settings
-from app.orchestrators.unified_evidence import UnifiedEvidenceEngine
-
 
 from app.github.technology_detector import TechnologyDetector
 from app.github.code_sampler import CodeSampler, CodeSamplingOptions
@@ -64,10 +61,6 @@ class CvSynthesisContract(BaseModel):
             raise ValueError("CV summary is too long (must be under 550 characters).")
         return v
 
-class EvidenceStrengthContract(BaseModel):
-    score: float
-    label: str
-
 class ReportV2Contract(BaseModel):
     schemaVersion: Literal["v2"]
     repoId: str
@@ -75,26 +68,46 @@ class ReportV2Contract(BaseModel):
     sections: List[SectionV2]
     risk: RiskV2
     cvSynthesis: Optional[CvSynthesisContract] = None
-    evidenceStrength: Optional[EvidenceStrengthContract] = None
 
     model_config = {
         "extra": "allow"
     }
 
+# ---------------------------------------------------------------------------
+# Weighted skill confidence tiers
+# Tier 1 – direct tech-name match (multiplier 1.0)
+# Tier 2 – cross-cutting professional pattern match (multiplier 0.85)
+# Tier 3 – LLM-only inference, no structural evidence (multiplier 0.65)
+# Skills whose final_confidence = LLM_confidence × multiplier falls below
+# _SKILL_CONFIDENCE_FLOOR are rejected and logged.
+# ---------------------------------------------------------------------------
+_SKILL_CONFIDENCE_FLOOR: float = 40.0
+
+_CROSS_CUTTING_SKILL_PATTERNS: frozenset = frozenset({
+    # Architecture & Design
+    "clean architecture", "solid", "dependency injection", "design pattern",
+    "domain driven", "event driven", "microservice", "monorepo",
+    "separation of concerns", "repository pattern", "cqrs", "mvc", "mvvm",
+    "restful", "rest api", "api design", "graphql",
+    # Engineering practices
+    "state management", "error handling", "logging", "observability",
+    "unit test", "integration test", "tdd", "bdd", "test driven",
+    "ci/cd", "devops", "containerization", "infrastructure as code",
+    # Security / Auth
+    "authentication", "authorization", "jwt", "oauth", "rbac",
+    # Performance & Concurrency
+    "caching", "performance optimiz", "async", "concurren", "multithread",
+    # Data
+    "orm", "data modelling", "schema design", "migration",
+})
+
 logger = logging.getLogger("github_analysis_orchestrator")
 
 class IGitHubAnalysisOrchestrator(ABC):
     @abstractmethod
-    async def orchestrate_async(
-        self,
-        repository_id: Any,
-        repo_name: str,
-        repo_owner: str,
-        encrypted_token: str,
-        default_branch: str,
-        correlation_id: str
-    ) -> AsyncGenerator[dict, None]:
+    async def orchestrate_async(self, candidate_id: UUID, encrypted_token: str) -> dict:
         ...
+
 
 class GitHubAnalysisOrchestrator(IGitHubAnalysisOrchestrator):
     def __init__(self):
@@ -188,7 +201,6 @@ class GitHubAnalysisOrchestrator(IGitHubAnalysisOrchestrator):
         )
         
         logger.info(f"Executing discrete analysis task {task_type} for job {job_id}", extra=extra_log)
-        start_time = time.perf_counter()
         
         try:
             if task_type == "RepoStructure":
@@ -235,72 +247,20 @@ class GitHubAnalysisOrchestrator(IGitHubAnalysisOrchestrator):
                 "events": result.get("events", [])
             }
         except Exception as e:
-            duration = int((time.perf_counter() - start_time) * 1000)
             logger.exception(f"Error executing task {task_type} for job {job_id}: {e}", extra=extra_log)
-            
-            # Extract accumulated execution records from TraceContext
-            executions = TraceContext.get().get("executions", [])
-            task_prompt_tokens = sum(ev.get("promptTokens", 0) for ev in executions)
-            task_completion_tokens = sum(ev.get("completionTokens", 0) for ev in executions)
-            task_cache_read = sum(ev.get("cacheReadTokens", 0) for ev in executions)
-            task_cache_write = sum(ev.get("cacheWriteTokens", 0) for ev in executions)
-            task_cost = sum(ev.get("estimatedCostUsd", 0) for ev in executions)
-            
-            # Clear context executions
-            TraceContext.set(executions=[])
-            
-            telemetry = None
-            if executions:
-                telemetry = {
-                    "promptTokens": task_prompt_tokens,
-                    "completionTokens": task_completion_tokens,
-                    "totalTokens": task_prompt_tokens + task_completion_tokens,
-                    "cacheReadTokens": task_cache_read,
-                    "cacheWriteTokens": task_cache_write,
-                    "estimatedCostUsd": float(task_cost),
-                    "durationMs": duration,
-                    "modelName": executions[0].get("model") if executions else settings.claude_model,
-                    "provider": "Anthropic"
-                }
-            
-            err_str = str(e).lower()
-            error_code = "UNKNOWN_ERROR"
-            retryable = True
-            
-            if "rate limit" in err_str or "429" in err_str:
-                error_code = "RATE_LIMIT_EXCEEDED"
-                retryable = True
-            elif "timeout" in err_str or "time out" in err_str:
-                error_code = "TIMEOUT"
-                retryable = True
-            elif "connection" in err_str or "dns" in err_str:
-                error_code = "SERVICE_UNAVAILABLE"
-                retryable = True
-            elif "json" in err_str or "parse" in err_str or "format" in err_str:
-                error_code = "PARSING_ERROR"
-                retryable = False
-            elif "invalid_prompt" in err_str or "bad request" in err_str:
-                error_code = "INVALID_REQUEST"
-                retryable = False
-            
             # Persist logs even on failure to capture error traceback
             persist_trace_logs(job_id, debug_mode)
-            
             return {
                 "status": "Failed",
                 "errorMessage": str(e),
-                "errorCode": error_code,
-                "retryable": retryable,
-                "taskId": task_type,
-                "timestamp": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
                 "schemaVersion": "2.0.0",
                 "resultData": None,
-                "telemetry": telemetry,
+                "telemetry": None,
                 "events": [
                     {
                         "timestamp": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
                         "level": "Error",
-                        "eventType": "AI_TASK_FAILED",
+                        "eventType": "ErrorOccurred",
                         "message": str(e)
                     }
                 ]
@@ -322,140 +282,75 @@ class GitHubAnalysisOrchestrator(IGitHubAnalysisOrchestrator):
             from app.github.code_sampler import CodeSample
             return meta, CodeSample(file_content=[], file_names=[])
 
-        options = CodeSamplingOptions(max_files=10, max_lines_per_file=100)
+        options = CodeSamplingOptions()  # uses smart-sampler defaults (20 files / 150 lines)
         sample = await self.code_sampler.sample_async(clone_dir, encrypted_token, options)
         return meta, sample
 
-    def _repair_json_string(self, candidate: str) -> str:
-        chars = []
-        stack = []
-        in_string = False
-        i = 0
-        n = len(candidate)
-        
-        while i < n:
-            c = candidate[i]
-            
-            if not in_string:
-                if c == '"':
-                    in_string = True
-                    chars.append(c)
-                    i += 1
-                elif c == '{':
-                    stack.append('}')
-                    chars.append(c)
-                    i += 1
-                elif c == '[':
-                    stack.append(']')
-                    chars.append(c)
-                    i += 1
-                elif c in ('}', ']'):
-                    if stack and stack[-1] == c:
-                        stack.pop()
-                    chars.append(c)
-                    i += 1
-                elif c == ',':
-                    # Check for trailing comma
-                    next_idx = i + 1
-                    while next_idx < n and candidate[next_idx].isspace():
-                        next_idx += 1
-                    if next_idx < n and candidate[next_idx] in ('}', ']'):
-                        # Skip the comma, move directly to brace/bracket
-                        i = next_idx
-                    else:
-                        chars.append(c)
-                        i += 1
-                else:
-                    chars.append(c)
-                    i += 1
-            else: # in_string is True
-                if c == '\\':
-                    # If it's a valid escape sequence for quote or backslash, preserve it as-is
-                    if i + 1 < n and candidate[i + 1] in ('"', '\\'):
-                        chars.append(c)
-                        chars.append(candidate[i + 1])
-                        i += 2
-                    else:
-                        # Escape the backslash
-                        chars.append('\\')
-                        chars.append('\\')
-                        i += 1
-                elif c == '"':
-                    # Check if this is the end of the string
-                    next_idx = i + 1
-                    while next_idx < n and candidate[next_idx].isspace():
-                        next_idx += 1
-                    # If we've reached the end of the candidate string, or it is followed by structural JSON chars,
-                    # it's a valid closing quote.
-                    if next_idx >= n or candidate[next_idx] in (',', '}', ']', ':'):
-                        in_string = False
-                        chars.append(c)
-                        i += 1
-                    else:
-                        # Inner unescaped double quote - escape it
-                        chars.append('\\')
-                        chars.append('"')
-                        i += 1
-                elif c == '\n':
-                    chars.append('\\')
-                    chars.append('n')
-                    i += 1
-                elif c == '\r':
-                    chars.append('\\')
-                    chars.append('r')
-                    i += 1
-                elif c == '\t':
-                    chars.append('\\')
-                    chars.append('t')
-                    i += 1
-                else:
-                    chars.append(c)
-                    i += 1
-                    
-        # If we ended inside a string literal, close it
-        if in_string:
-            chars.append('"')
-            
-        # Clean up any trailing comma at the end of the reconstructed characters
-        while chars and (chars[-1].isspace() or chars[-1] == ','):
-            if chars[-1] == ',':
-                chars.pop()
-                break
-            chars.pop()
-            
-        # Close any open braces or brackets
-        while stack:
-            chars.append(stack.pop())
-            
-        return "".join(chars)
-
     def _extract_json(self, text: str, correlation_id: str) -> dict:
+        """
+        Parse JSON from Claude's raw output using a 3-tier fallback chain.
+
+        Tier 1 — Direct parse of the brace-delimited substring.
+        Tier 2 — Escape-sanitisation pass (fixes stray backslashes).
+        Tier 3 — ``json-repair`` library  (handles truncated / malformed JSON).
+
+        Raises if all three tiers fail.
+        """
+        extra = {"correlation_id": correlation_id}
         text = text.strip()
+
         first_brace = text.find('{')
         last_brace = text.rfind('}')
-        
-        if first_brace != -1:
-            if last_brace != -1 and last_brace > first_brace:
-                json_candidate = text[first_brace:last_brace + 1]
-                try:
-                    return json.loads(json_candidate)
-                except Exception as e:
-                    logger.warning(f"Failed to parse raw extracted JSON block: {e}. Attempting repair fallback.", extra={"correlation_id": correlation_id})
-            
-            try:
-                # Scan from first_brace to the absolute end of the generated text to capture and heal truncated suffix
-                full_candidate = text[first_brace:]
-                repaired = self._repair_json_string(full_candidate)
-                return json.loads(repaired)
-            except Exception as retry_err:
-                logger.error(f"Failed to parse repaired JSON block: {retry_err}", extra={"correlation_id": correlation_id})
-                raise Exception(f"Claude output returned invalid JSON inside block. Sanitization failed: {retry_err}")
-        
+        json_candidate = (
+            text[first_brace:last_brace + 1]
+            if first_brace != -1 and last_brace != -1 and last_brace > first_brace
+            else text
+        )
+
+        # ── Tier 1: direct parse ────────────────────────────────────────────
         try:
-            return json.loads(text)
-        except Exception as e:
-            logger.error(f"Failed to parse Claude output as JSON. Error: {e}", extra={"correlation_id": correlation_id})
-            raise Exception("Claude output did not return a valid JSON format.")
+            return json.loads(json_candidate)
+        except Exception as tier1_err:
+            logger.warning(
+                f"Tier-1 JSON parse failed, trying escape sanitisation: {tier1_err}",
+                extra=extra,
+            )
+
+        # ── Tier 2: escape-sanitisation ─────────────────────────────────────
+        try:
+            import re
+            _escape_pattern = re.compile(r'(\\(?:["\\/bfnrt]|u[0-9a-fA-F]{4}))|\\')
+            def _fix_escape(m: re.Match) -> str:
+                return m.group(1) if m.group(1) else r'\\'
+            sanitized = _escape_pattern.sub(_fix_escape, json_candidate)
+            return json.loads(sanitized)
+        except Exception as tier2_err:
+            logger.warning(
+                f"Tier-2 escape-sanitisation failed, trying json-repair: {tier2_err}",
+                extra=extra,
+            )
+
+        # ── Tier 3: json-repair ─────────────────────────────────────────────
+        try:
+            from json_repair import repair_json  # type: ignore[import]
+            repaired = repair_json(json_candidate, return_objects=True)
+            if isinstance(repaired, dict):
+                logger.info("Tier-3 json-repair succeeded.", extra=extra)
+                return repaired
+            # repair_json may return a string if it could not fully resolve the object
+            if isinstance(repaired, str):
+                return json.loads(repaired)
+            raise ValueError(f"json-repair returned unexpected type: {type(repaired)}")
+        except Exception as tier3_err:
+            logger.error(
+                f"All three JSON extraction tiers failed. "
+                f"Tier1={tier1_err} | Tier2={tier2_err} | Tier3={tier3_err}",
+                extra=extra,
+            )
+            raise Exception(
+                f"Claude output could not be parsed as JSON after all fallback attempts. "
+                f"Final error: {tier3_err}"
+            )
 
     @trace_stage("RepoStructure")
     async def analyze_structure(self, job_id: str, repository_id: str, repo_owner: str, repo_name: str, encrypted_token: str, default_branch: str, correlation_id: str) -> dict:
@@ -549,8 +444,8 @@ class GitHubAnalysisOrchestrator(IGitHubAnalysisOrchestrator):
         # Retrieve sampled files list
         sampled_files_names = []
         if is_cloned:
-            await self.publish_task_event(job_id, "RepoStructure", "Sampling files for content analysis...")
-            options = CodeSamplingOptions(max_files=10, max_lines_per_file=100)
+            await self.publish_task_event(job_id, "RepoStructure", "Sampling files for content analysis (smart critical-path sampler)...")
+            options = CodeSamplingOptions()  # uses smart-sampler defaults (20 files / 150 lines)
             sample = await self.code_sampler.sample_async(clone_dir, encrypted_token, options)
             sampled_files_names = sample.file_names
 
@@ -1523,28 +1418,32 @@ class GitHubAnalysisOrchestrator(IGitHubAnalysisOrchestrator):
             skills_dict[cat].append(skill_name)
         profile_info["skills"] = skills_dict
 
-        # Extract, normalize, validate, and deduplicate findings using UnifiedEvidenceEngine
-        raw_items = []
-        raw_items.extend(UnifiedEvidenceEngine.normalize_quality(quality_data))
-        raw_items.extend(UnifiedEvidenceEngine.normalize_security(security_data))
-        raw_items.extend(UnifiedEvidenceEngine.normalize_architecture(arch_data))
-
-        unique_items = UnifiedEvidenceEngine.deduplicate_and_validate(raw_items, filenames)
-        ev_strength = UnifiedEvidenceEngine.calculate_evidence_strength(unique_items)
-
-        # Convert back to legacy findings structure for downstream compatibility
         findings = []
-        for item in unique_items:
-            if item.type in ("engineering_practices", "security_findings"):
-                findings.append({
-                    "finding": item.title,
-                    "title": item.title,
-                    "category": "quality" if item.type == "engineering_practices" else "security",
-                    "explanation": item.content,
-                    "impact": "critical" if item.severity == "critical" else "warning" if item.severity == "medium" else "positive",
-                    "confidence": int(item.confidence * 100),
-                    "evidence_signals": item.evidence_signals
-                })
+        for f in quality_data.get("findings", []):
+            if isinstance(f, dict):
+                f["category"] = "quality"
+                findings.append(f)
+
+        for f in security_data.get("findings", []):
+            if isinstance(f, dict):
+                f["category"] = "security"
+                findings.append(f)
+
+        filenames_set = set(filenames)
+        for f in findings:
+            ev_sigs = f.get("evidence_signals", [])
+            for sig in ev_sigs:
+                has_file_ref = False
+                sig_lower = sig.lower()
+                for fname in filenames_set:
+                    if fname.lower() in sig_lower:
+                        has_file_ref = True
+                        break
+                if not has_file_ref:
+                    if "package.json" in sig_lower or "requirements.txt" in sig_lower or "go.mod" in sig_lower:
+                        has_file_ref = True
+                if not has_file_ref:
+                    logger.warning(f"Hallucinated evidence signal detected in finding '{f.get('finding')}': '{sig}' not in files.", extra=extra_log)
 
         narrative_info = {
             "recruiter_summary": summary_data.get("recruiter_summary", ""),
@@ -1602,11 +1501,22 @@ class GitHubAnalysisOrchestrator(IGitHubAnalysisOrchestrator):
         
         architecture_score = min(100.0, arch_cfg["base_score"] + arch_cfg["arch_critical"] * arch_critical + arch_cfg["arch_warning"] * arch_warning)
         
+        # Resolve per-project-type operational penalty multipliers.
+        # A "Portfolio Website" should not receive the same CI/CD penalty as a
+        # "SaaS Platform".  Multipliers live in risk_policy.json → type_multipliers.
+        _type_mults_map: dict = policy.get("type_multipliers", {})
+        _proj_key: str = class_primary_type if class_primary_type in _type_mults_map else "default"
+        _type_mult: dict = _type_mults_map.get(_proj_key, _type_mults_map.get("default", {}))
+
         operational_score = op_cfg["base_score"]
-        if not cicd_ok: operational_score += op_cfg["no_cicd"]
-        if not has_tests: operational_score += op_cfg["no_tests"]
-        if not logging_ok: operational_score += op_cfg["no_logging"]
-        if not metrics_ok: operational_score += op_cfg["no_metrics"]
+        if not cicd_ok:
+            operational_score += op_cfg["no_cicd"] * _type_mult.get("no_cicd", 1.0)
+        if not has_tests:
+            operational_score += op_cfg["no_tests"] * _type_mult.get("no_tests", 1.0)
+        if not logging_ok:
+            operational_score += op_cfg["no_logging"] * _type_mult.get("no_logging", 1.0)
+        if not metrics_ok:
+            operational_score += op_cfg["no_metrics"] * _type_mult.get("no_metrics", 1.0)
         operational_score = min(100.0, operational_score + op_cfg["op_critical"] * op_crit + op_cfg["op_warning"] * op_warn)
 
         dep_score = dep_cfg["base_score"]
@@ -1664,31 +1574,79 @@ class GitHubAnalysisOrchestrator(IGitHubAnalysisOrchestrator):
         # Authority Ranking: Git Logs (S_git: highest) -> GitHub API (S_api: medium) -> LLM Inference (S_llm: advisory)
         calibrated_skills = {}
         
-        # Reconcile LLM Inferred Skills (S_llm) with Configuration Files (S_git)
-        # S_git holds technologies from technology detector config files walk
+        # ------------------------------------------------------------------
+        # SKILL CALIBRATION — weighted confidence model (replaces binary reject)
+        #
+        # Authority ranking:
+        #   S_git  (tech detector from config/package files) — structural truth
+        #   S_llm  (Claude inference)                        — advisory
+        #
+        # Confidence tiers applied to the LLM-reported confidence score:
+        #   Tier 1 — direct tech-name overlap with detected stack  → ×1.00
+        #   Tier 2 — cross-cutting professional pattern match       → ×0.85
+        #   Tier 3 — LLM-only, no structural corroboration         → ×0.65
+        #
+        # Skills where  final_confidence < _SKILL_CONFIDENCE_FLOOR  are rejected.
+        # All accepted skills carry a `confidence_tier` field for transparency.
+        # ------------------------------------------------------------------
         detected_tech_set = {t.lower() for t in technologies}
-        
-        # If it was a list of dicts from skills_data, handle it:
+
         if isinstance(skills_data.get("skills"), list):
             calibrated_skills_list = []
             for s_item in skills_data.get("skills", []):
-                cat = s_item.get("category", "backend")
-                skill = s_item.get("skill", "")
-                skill_lower = skill.lower()
-                has_config_support = False
-                for tech in detected_tech_set:
-                    if tech in skill_lower or skill_lower in tech:
-                        has_config_support = True
-                        break
-                
-                if has_config_support or skill in ("Git", "GitHub", "CI/CD"):
-                    calibrated_skills_list.append(s_item)
+                skill: str = s_item.get("skill", "")
+                skill_lower: str = skill.lower()
+                llm_confidence: float = float(s_item.get("confidence", 80))
+
+                # Tier 1 — direct name overlap with detected stack
+                tier1_match = any(
+                    tech in skill_lower or skill_lower in tech
+                    for tech in detected_tech_set
+                )
+                # Always-valid universal skills (Git, GitHub, CI/CD) treated as Tier 1
+                is_universal = skill in ("Git", "GitHub", "CI/CD")
+
+                if tier1_match or is_universal:
+                    multiplier = 1.0
+                    tier_label = "tier1_tech_match"
                 else:
-                    msg = f"Rejected LLM skill inference '{skill}': Unsupported by configuration files dependency references."
+                    # Tier 2 — cross-cutting professional pattern
+                    tier2_match = any(
+                        pattern in skill_lower
+                        for pattern in _CROSS_CUTTING_SKILL_PATTERNS
+                    )
+                    if tier2_match:
+                        multiplier = 0.85
+                        tier_label = "tier2_pattern_match"
+                    else:
+                        # Tier 3 — LLM-only inference
+                        multiplier = 0.65
+                        tier_label = "tier3_llm_only"
+
+                final_confidence = round(llm_confidence * multiplier, 1)
+
+                if final_confidence >= _SKILL_CONFIDENCE_FLOOR:
+                    calibrated_item = dict(s_item)
+                    calibrated_item["confidence"] = final_confidence
+                    calibrated_item["confidence_tier"] = tier_label
+                    calibrated_skills_list.append(calibrated_item)
+                    if tier_label != "tier1_tech_match":
+                        msg = (
+                            f"Accepted skill '{skill}' via {tier_label} "
+                            f"(LLM={llm_confidence:.0f} × {multiplier} → {final_confidence:.1f})"
+                        )
+                        conflict_resolution_log.append(msg)
+                        logger.info(msg, extra=extra_log)
+                else:
+                    msg = (
+                        f"Rejected skill '{skill}': final confidence {final_confidence:.1f} "
+                        f"below floor {_SKILL_CONFIDENCE_FLOOR} "
+                        f"(LLM={llm_confidence:.0f} × {multiplier} via {tier_label})"
+                    )
                     conflict_resolution_log.append(msg)
                     logger.info(msg, extra=extra_log)
-            
-            # Rebuild profile skills
+
+            # Rebuild profile skills dict from calibrated list
             skills_dict = {}
             for s_item in calibrated_skills_list:
                 c_cat = s_item.get("category", "backend")
@@ -1787,7 +1745,7 @@ class GitHubAnalysisOrchestrator(IGitHubAnalysisOrchestrator):
             "edges": edges
         }
 
-        # Build sections for v2 schema using unique, validated evidence
+        # Build sections for v2 schema
         testing_frameworks = quality_data.get("testing", {}).get("frameworks", [])
         cicd_providers = quality_data.get("cicd", {}).get("providers", []) if cicd_ok else []
         
@@ -1805,19 +1763,24 @@ class GitHubAnalysisOrchestrator(IGitHubAnalysisOrchestrator):
                 "content": f"{'Configured (' + ', '.join(cicd_providers) + ')' if cicd_ok else 'Not configured'}"
             }
         ]
-        for item in unique_items:
-            if item.type == "engineering_practices":
+        for f in findings:
+            if f.get("category") == "quality":
                 eng_items.append({
-                    "title": item.title,
-                    "content": item.content
+                    "title": f.get('finding', 'Quality Finding'),
+                    "content": f.get('explanation', '')
                 })
 
         sec_items = []
-        for item in unique_items:
-            if item.type == "security_findings":
+        for v in security_data.get("vulnerabilities", []):
+            sec_items.append({
+                "title": f"Vulnerability: {v.get('vulnerability')} ({v.get('impact')})",
+                "content": v.get('explanation', '')
+            })
+        for f in findings:
+            if f.get("category") == "security":
                 sec_items.append({
-                    "title": item.title,
-                    "content": item.content
+                    "title": f.get('finding', 'Security Finding'),
+                    "content": f.get('explanation', '')
                 })
         if not sec_items:
             sec_items.append({
@@ -1826,17 +1789,28 @@ class GitHubAnalysisOrchestrator(IGitHubAnalysisOrchestrator):
             })
 
         arch_items = []
-        for item in unique_items:
-            if item.type == "architecture_insights":
+        for p in arch_data.get("patterns", []):
+            if isinstance(p, dict) and p.get("pattern"):
                 arch_items.append({
-                    "title": item.title,
-                    "content": item.content
+                    "title": p.get('pattern'),
+                    "content": "Detected architectural design pattern configured in the workspace."
+                })
+            elif isinstance(p, str):
+                arch_items.append({
+                    "title": p,
+                    "content": "Detected architectural design pattern configured in the workspace."
                 })
         if arch_data.get("explanation"):
             arch_items.append({
                 "title": "Architecture Explanation",
                 "content": arch_data.get('explanation')
             })
+        for f in findings:
+            if f.get("category") == "architecture":
+                arch_items.append({
+                    "title": f.get('finding', 'Architecture Finding'),
+                    "content": f.get('explanation', '')
+                })
         if not arch_items:
             arch_items.append({
                 "title": "Architectural Insights",
@@ -1871,7 +1845,6 @@ class GitHubAnalysisOrchestrator(IGitHubAnalysisOrchestrator):
             "sections": sections,
             "risk": risk_v2,
             "cvSynthesis": cv_synthesis_data if cv_synthesis_data else None,
-            "evidenceStrength": ev_strength,
             
             # Legacy fields for backward compatibility
             "facts": {

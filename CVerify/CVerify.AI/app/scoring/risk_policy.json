@@ -41,5 +41,18 @@
       "max_weight": 0.7,
       "avg_weight": 0.3
     }
+  },
+  "type_multipliers": {
+    "_comment": "Scales the flat operational penalties (no_cicd / no_tests / no_logging / no_metrics) by project type. 1.0 = full penalty, 0.0 = no penalty. Tuned so low-stakes project types are not unfairly penalised for missing infrastructure that is not expected for their domain.",
+    "SaaS Platform":        { "no_cicd": 1.0,  "no_tests": 1.0,  "no_logging": 1.0,  "no_metrics": 1.0  },
+    "AI System":            { "no_cicd": 0.9,  "no_tests": 0.9,  "no_logging": 0.9,  "no_metrics": 0.9  },
+    "Infrastructure Tool":  { "no_cicd": 1.0,  "no_tests": 0.9,  "no_logging": 0.8,  "no_metrics": 0.8  },
+    "Mobile App":           { "no_cicd": 0.8,  "no_tests": 1.0,  "no_logging": 0.6,  "no_metrics": 0.5  },
+    "Library":              { "no_cicd": 0.6,  "no_tests": 1.0,  "no_logging": 0.4,  "no_metrics": 0.3  },
+    "CLI Tool":             { "no_cicd": 0.5,  "no_tests": 0.8,  "no_logging": 0.3,  "no_metrics": 0.2  },
+    "Game":                 { "no_cicd": 0.3,  "no_tests": 0.5,  "no_logging": 0.3,  "no_metrics": 0.2  },
+    "Portfolio Website":    { "no_cicd": 0.2,  "no_tests": 0.3,  "no_logging": 0.2,  "no_metrics": 0.1  },
+    "CRUD Application":     { "no_cicd": 0.7,  "no_tests": 0.8,  "no_logging": 0.6,  "no_metrics": 0.5  },
+    "default":              { "no_cicd": 1.0,  "no_tests": 1.0,  "no_logging": 1.0,  "no_metrics": 1.0  }
   }
 }
