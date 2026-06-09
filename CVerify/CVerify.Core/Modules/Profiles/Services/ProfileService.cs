@@ -17,6 +17,7 @@ using CVerify.API.Modules.Shared.Security;
 using CVerify.API.Modules.Shared.Storage.Enums;
 using CVerify.API.Modules.Shared.Storage.Interfaces;
 using CVerify.API.Modules.Shared.System.Services;
+using CVerify.API.Modules.SourceCode.Entities;
 
 namespace CVerify.API.Modules.Profiles.Services;
 
@@ -331,6 +332,35 @@ public class ProfileService : IProfileService
             );
         }
 
+        var publicRepos = await _context.SourceCodeRepositories
+            .Include(r => r.AuthProvider)
+            .Where(r => r.AuthProvider.UserId == profile.UserId && 
+                        r.AuthProvider.DeletedAt == null &&
+                        r.LatestAnalysisStatus == "Completed" && 
+                        !r.IsPrivate && 
+                        r.IsEnabled)
+            .OrderByDescending(r => r.LatestAnalysisCompletedAtUtc)
+            .ToListAsync(cancellationToken);
+
+        double? avgTrustScore = null;
+        if (publicRepos.Any())
+        {
+            avgTrustScore = publicRepos.Average(r => r.TrustScore);
+        }
+
+        var publicRepoDtos = publicRepos.Select(r => new PublicRepositoryDto(
+            r.Id,
+            r.Name,
+            r.Owner,
+            r.Description,
+            r.HtmlUrl,
+            r.PrimaryLanguage,
+            r.TrustScore,
+            r.Classification,
+            r.LatestAnalysisStatus,
+            r.LatestAnalysisCompletedAtUtc
+        )).ToList();
+
         return new PublicProfileResponse(
             profile.UserId,
             profile.Username ?? profile.User?.Username ?? string.Empty,
@@ -341,7 +371,9 @@ public class ProfileService : IProfileService
             profile.Company,
             profile.Location,
             socialLinks,
-            publicCareerPreference
+            publicCareerPreference,
+            avgTrustScore,
+            publicRepoDtos
         );
     }
 
