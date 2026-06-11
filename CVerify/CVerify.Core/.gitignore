@@ -78,3 +78,7 @@ UserSecrets/
 
 # allow env example file
 !.env.example
+
+# Test build directories
+bin_test/
+obj_test/
