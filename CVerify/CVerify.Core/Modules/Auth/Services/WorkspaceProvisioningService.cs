@@ -1,9 +1,12 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Net;
 using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
+using Polly;
+using Polly.Retry;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Google.Apis.Auth;
@@ -32,6 +35,7 @@ public class WorkspaceProvisioningService : IWorkspaceProvisioningService
     private readonly EnvConfiguration _envConfig;
     private readonly ILogger<WorkspaceProvisioningService> _logger;
     private readonly IWorkspaceMembershipService _workspaceMembershipService;
+    private readonly IOrganizationBootstrapService _bootstrapService;
 
     public WorkspaceProvisioningService(
         ApplicationDbContext context,
@@ -43,7 +47,8 @@ public class WorkspaceProvisioningService : IWorkspaceProvisioningService
         IAuthService authService,
         EnvConfiguration envConfig,
         ILogger<WorkspaceProvisioningService> logger,
-        IWorkspaceMembershipService workspaceMembershipService)
+        IWorkspaceMembershipService workspaceMembershipService,
+        IOrganizationBootstrapService bootstrapService)
     {
         _context = context;
         _cacheService = cacheService;
@@ -55,6 +60,7 @@ public class WorkspaceProvisioningService : IWorkspaceProvisioningService
         _envConfig = envConfig;
         _logger = logger;
         _workspaceMembershipService = workspaceMembershipService;
+        _bootstrapService = bootstrapService;
     }
 
     private string NormalizeEmailPolicy(string email)
@@ -169,6 +175,34 @@ public class WorkspaceProvisioningService : IWorkspaceProvisioningService
 
 
 
+    private async Task<HttpResponseMessage> SendVietQrRequestWithRetryAsync(string taxCode, CancellationToken cancellationToken)
+    {
+        var pipeline = new ResiliencePipelineBuilder<HttpResponseMessage>()
+            .AddRetry(new RetryStrategyOptions<HttpResponseMessage>
+            {
+                MaxRetryAttempts = 1,
+                Delay = TimeSpan.FromSeconds(1),
+                ShouldHandle = new PredicateBuilder<HttpResponseMessage>()
+                    .HandleResult(r => (int)r.StatusCode >= 500 || r.StatusCode == HttpStatusCode.RequestTimeout)
+                    .Handle<HttpRequestException>()
+                    .Handle<TaskCanceledException>(ex => !cancellationToken.IsCancellationRequested),
+                OnRetry = args =>
+                {
+                    _logger.LogWarning(
+                        "VietQR lookup transient failure (attempt {Attempt}). Retrying in {Delay}s for tax code {TaxCode}.",
+                        args.AttemptNumber + 1, args.RetryDelay.TotalSeconds, taxCode);
+                    return ValueTask.CompletedTask;
+                }
+            })
+            .Build();
+
+        return await pipeline.ExecuteAsync(async ct =>
+        {
+            var client = _httpClientFactory.CreateClient("VietQR");
+            return await client.GetAsync($"v2/business/{taxCode}", ct);
+        }, cancellationToken);
+    }
+
     public async Task<VerifyCompanyOnboardingResponse> VerifyCompanyOnboardingAsync(VerifyCompanyOnboardingRequest request, CancellationToken cancellationToken = default)
     {
         var taxCode = request.TaxCode.Trim();
@@ -177,11 +211,18 @@ public class WorkspaceProvisioningService : IWorkspaceProvisioningService
             throw new AuthException(AuthErrorCodes.InvalidCredentials, "Tax code format is invalid.");
         }
 
-        var client = _httpClientFactory.CreateClient();
-        var response = await client.GetAsync($"https://api.vietqr.io/v2/business/{taxCode}", cancellationToken);
+        var response = await SendVietQrRequestWithRetryAsync(taxCode, cancellationToken);
 
         if (!response.IsSuccessStatusCode)
         {
+            var statusCode = (int)response.StatusCode;
+            _logger.LogWarning("VietQR business registry lookup returned HTTP {StatusCode} for tax code {TaxCode}.", statusCode, taxCode);
+
+            if (statusCode >= 500 || response.StatusCode == HttpStatusCode.RequestTimeout)
+            {
+                throw new AuthException(AuthErrorCodes.ServiceUnavailable, "The business registry service is temporarily unavailable. Please try again.");
+            }
+
             throw new AuthException(AuthErrorCodes.InvalidCredentials, "The business tax registry lookup failed.");
         }
 
@@ -401,8 +442,61 @@ public class WorkspaceProvisioningService : IWorkspaceProvisioningService
             _context.OrganizationVerifications.Add(verification);
             await _context.SaveChangesAsync(cancellationToken);
 
-            // Link existing active user to the organization immediately if they already exist
-            await _workspaceMembershipService.BootstrapInitialAdminAsync(org.Email, cancellationToken);
+            // Seed default roles for the tenant (idempotent, does not require a User to exist)
+            await _bootstrapService.SeedDefaultRolesForTenantAsync(org.Id, cancellationToken);
+
+            // Link existing active user immediately or create pending organization ownership
+            var normalizedEmail = NormalizeEmailPolicy(org.Email);
+            var repUser = await _context.Users.FirstOrDefaultAsync(u => u.Email == normalizedEmail && u.DeletedAt == null, cancellationToken);
+            if (repUser != null && repUser.Status == Shared.Domain.Enums.UserStatus.ACTIVE)
+            {
+                await _workspaceMembershipService.BootstrapInitialAdminAsync(org.Email, false, cancellationToken);
+            }
+            else
+            {
+                var pendingOwnership = new PendingOrganizationOwnership
+                {
+                    Id = Guid.CreateVersion7(),
+                    OrganizationId = org.Id,
+                    OwnerEmail = normalizedEmail,
+                    CreatedAt = _timeProvider.GetUtcNow(),
+                    ExpiresAt = _timeProvider.GetUtcNow().AddDays(30)
+                };
+                _context.PendingOrganizationOwnerships.Add(pendingOwnership);
+
+                // Also write a pending OrganizationInvitation for the representative
+                var rawToken = Guid.NewGuid().ToString("N") + Guid.NewGuid().ToString("N");
+                var tokenHash = ComputeSha256(rawToken);
+                var invitation = new OrganizationInvitation
+                {
+                    Id = Guid.CreateVersion7(),
+                    OrganizationId = org.Id,
+                    InviteeEmail = normalizedEmail,
+                    TokenHash = tokenHash,
+                    InvitedByUserId = null,
+                    Status = "Pending",
+                    CreatedAt = _timeProvider.GetUtcNow(),
+                    ExpiresAt = _timeProvider.GetUtcNow().AddDays(30)
+                };
+                _context.OrganizationInvitations.Add(invitation);
+
+                // Pre-assign the "owner" role to the invitation
+                var ownerRole = await _context.Roles.FirstOrDefaultAsync(r => r.TenantId == org.Id && r.Name == "owner" && r.Domain == "TENANT", cancellationToken);
+                if (ownerRole != null)
+                {
+                    var invitationRole = new OrganizationInvitationRole
+                    {
+                        Id = Guid.CreateVersion7(),
+                        InvitationId = invitation.Id,
+                        RoleId = ownerRole.Id,
+                        ScopeType = "ORGANIZATION",
+                        ScopeId = org.Id
+                    };
+                    _context.OrganizationInvitationRoles.Add(invitationRole);
+                }
+
+                await _context.SaveChangesAsync(cancellationToken);
+            }
 
             await transaction.CommitAsync(cancellationToken);
 
@@ -515,8 +609,61 @@ public class WorkspaceProvisioningService : IWorkspaceProvisioningService
             link.OrganizationId = org.Id;
             await _context.SaveChangesAsync(cancellationToken);
 
-            // Link existing active user to the organization immediately if they already exist
-            await _workspaceMembershipService.BootstrapInitialAdminAsync(org.Email, cancellationToken);
+            // Seed default roles for the tenant (idempotent, does not require a User to exist)
+            await _bootstrapService.SeedDefaultRolesForTenantAsync(org.Id, cancellationToken);
+
+            // Link existing active user immediately or create pending organization ownership
+            var repEmail = NormalizeEmailPolicy(org.Email);
+            var repUser = await _context.Users.FirstOrDefaultAsync(u => u.Email == repEmail && u.DeletedAt == null, cancellationToken);
+            if (repUser != null && repUser.Status == Shared.Domain.Enums.UserStatus.ACTIVE)
+            {
+                await _workspaceMembershipService.BootstrapInitialAdminAsync(org.Email, false, cancellationToken);
+            }
+            else
+            {
+                var pendingOwnership = new PendingOrganizationOwnership
+                {
+                    Id = Guid.CreateVersion7(),
+                    OrganizationId = org.Id,
+                    OwnerEmail = repEmail,
+                    CreatedAt = _timeProvider.GetUtcNow(),
+                    ExpiresAt = _timeProvider.GetUtcNow().AddDays(30)
+                };
+                _context.PendingOrganizationOwnerships.Add(pendingOwnership);
+
+                // Also write a pending OrganizationInvitation for the representative
+                var rawToken = Guid.NewGuid().ToString("N") + Guid.NewGuid().ToString("N");
+                var tokenHash = ComputeSha256(rawToken);
+                var invitation = new OrganizationInvitation
+                {
+                    Id = Guid.CreateVersion7(),
+                    OrganizationId = org.Id,
+                    InviteeEmail = repEmail,
+                    TokenHash = tokenHash,
+                    InvitedByUserId = null,
+                    Status = "Pending",
+                    CreatedAt = _timeProvider.GetUtcNow(),
+                    ExpiresAt = _timeProvider.GetUtcNow().AddDays(30)
+                };
+                _context.OrganizationInvitations.Add(invitation);
+
+                // Pre-assign the "owner" role to the invitation
+                var ownerRole = await _context.Roles.FirstOrDefaultAsync(r => r.TenantId == org.Id && r.Name == "owner" && r.Domain == "TENANT", cancellationToken);
+                if (ownerRole != null)
+                {
+                    var invitationRole = new OrganizationInvitationRole
+                    {
+                        Id = Guid.CreateVersion7(),
+                        InvitationId = invitation.Id,
+                        RoleId = ownerRole.Id,
+                        ScopeType = "ORGANIZATION",
+                        ScopeId = org.Id
+                    };
+                    _context.OrganizationInvitationRoles.Add(invitationRole);
+                }
+
+                await _context.SaveChangesAsync(cancellationToken);
+            }
 
             await transaction.CommitAsync(cancellationToken);
 
@@ -530,5 +677,11 @@ public class WorkspaceProvisioningService : IWorkspaceProvisioningService
             _logger.LogError(ex, "Workspace setup flow failed.");
             throw;
         }
+    }
+
+    private string ComputeSha256(string token)
+    {
+        var bytes = System.Security.Cryptography.SHA256.HashData(System.Text.Encoding.UTF8.GetBytes(token));
+        return Convert.ToHexString(bytes).ToLowerInvariant();
     }
 }

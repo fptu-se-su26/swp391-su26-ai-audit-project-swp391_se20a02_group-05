@@ -28,9 +28,7 @@ export interface SkillsDraft {
   targetSkills: string[];
 }
 
-export interface ProjectsDraft {
-  // Sync notice only, no editable attributes
-}
+export type ProjectsDraft = Record<string, never>;
 
 export interface ExperienceDraftItem {
   id: string; // temp-id or DB uuid

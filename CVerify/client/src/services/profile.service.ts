@@ -7,7 +7,6 @@ import {
   type EducationEntryRequest,
   type AcademicAchievementResponse,
   type AcademicAchievementRequest,
-  type CareerPreferenceResponse,
   type UpdateCareerPreferenceRequest,
   type AttachmentResponse,
   type PublicProfileResponse,
@@ -157,6 +156,15 @@ export const profileApi = {
         }
       },
     });
+    return response.data;
+  },
+
+  deleteAvatar: async (): Promise<void> => {
+    await axiosClient.delete('/v1/users/profile/avatar');
+  },
+
+  syncAvatar: async (providerName: string): Promise<{ avatarUrl: string }> => {
+    const response = await axiosClient.post<{ avatarUrl: string }>('/v1/users/profile/avatar/sync', { providerName });
     return response.data;
   },
 

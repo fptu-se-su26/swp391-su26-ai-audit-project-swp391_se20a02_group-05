@@ -1,8 +1,8 @@
 import React, { useState } from "react";
-import { useTranslation } from "react-i18next";
-import { Input, Button, Checkbox, Select, ListBox, Switch, Chip, Spinner, TextArea, toast } from "@heroui/react";
+import { Input, Button, Checkbox, Select, ListBox, Switch, Chip, Spinner, TextArea } from "@heroui/react";
 import { PlusCircle, X } from "lucide-react";
 import { type PreferencesDraft } from "./types";
+import { BaseUnsavedChangesBar } from "@/components/ui/unsaved-changes-bar";
 
 interface PreferencesFormProps {
   draft: PreferencesDraft;
@@ -21,15 +21,14 @@ export const PreferencesForm: React.FC<PreferencesFormProps> = ({
   isSaving,
   isDirty,
 }) => {
-  const { t } = useTranslation(["common"]);
   const [newLocation, setNewLocation] = useState("");
   const [newPosition, setNewPosition] = useState("");
   const [salaryError, setSalaryError] = useState<string | null>(null);
 
   const WORK_STATUS_OPTIONS = [
-    { value: "active", label: t("common:cvManagement.labels.statusActive") || "Active Search" },
-    { value: "casual", label: t("common:cvManagement.labels.statusCasual") || "Casual Browsing" },
-    { value: "closed", label: t("common:cvManagement.labels.statusClosed") || "Not Open to Work" },
+    { value: "active", label: "Active Job Search" },
+    { value: "casual", label: "Casual Browsing" },
+    { value: "closed", label: "Not Open to Work" },
   ];
 
   const REMOTE_OPTIONS = [
@@ -64,8 +63,7 @@ export const PreferencesForm: React.FC<PreferencesFormProps> = ({
       draft.expectedSalaryMax !== null &&
       draft.expectedSalaryMin > draft.expectedSalaryMax
     ) {
-      const msg = t("common:cvManagement.validation.salaryOrder");
-      setSalaryError(msg);
+      setSalaryError("Expected salary min must not be greater than max");
       return false;
     }
     setSalaryError(null);
@@ -75,7 +73,6 @@ export const PreferencesForm: React.FC<PreferencesFormProps> = ({
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!validate()) {
-      toast.danger(t("common:cvManagement.validationError"));
       return;
     }
     await onSave();
@@ -118,127 +115,39 @@ export const PreferencesForm: React.FC<PreferencesFormProps> = ({
 
   return (
     <form onSubmit={handleSave} className="flex flex-col h-full overflow-hidden relative text-left text-xs">
-      <div className="flex-1 overflow-y-auto pr-1 flex flex-col gap-4 pb-20">
+      <div className="flex-1 overflow-y-auto px-1.5 flex flex-col gap-4 pb-4">
         <div className="flex items-center justify-between gap-6 border-b border-border/20 pb-4 select-none">
-        <div className="flex flex-col gap-0.5">
-          <span className="font-bold text-sm text-foreground">{t("common:cvManagement.labels.availableForHire") || "Available for Hire"}</span>
-          <span className="text-[10px] text-muted-foreground">Toggle availability visibility.</span>
-        </div>
-        <Switch
-          isSelected={draft.availableForHire}
-          onChange={(isSelected: boolean) => onChange({ availableForHire: isSelected })}
-          aria-label="Available for hire toggle"
-          className="cursor-pointer"
-        />
-      </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {/* Job Search Status */}
-        <div className="flex flex-col gap-1.5">
-          <label className="font-bold text-foreground">{t("common:cvManagement.labels.openToWorkStatus") || "Search Status"}</label>
-          <Select
-            placeholder="Select search status"
-            selectedKey={draft.openToWorkStatus || "casual"}
-            onSelectionChange={(key) => {
-              onChange({ openToWorkStatus: key as string });
-            }}
-          >
-            <Select.Trigger className="rounded-xl border border-border bg-surface text-xs h-10 px-3">
-              <Select.Value />
-              <Select.Indicator />
-            </Select.Trigger>
-            <Select.Popover className="bg-surface border border-border rounded-xl p-1 text-xs">
-              <ListBox>
-                {WORK_STATUS_OPTIONS.map((opt) => (
-                  <ListBox.Item key={opt.value} id={opt.value} className="p-2 hover:bg-accent/10 rounded-lg cursor-pointer">
-                    {opt.label}
-                  </ListBox.Item>
-                ))}
-              </ListBox>
-            </Select.Popover>
-          </Select>
-        </div>
-
-        {/* Remote Preference */}
-        <div className="flex flex-col gap-1.5">
-          <label className="font-bold text-foreground">{t("common:cvManagement.labels.remotePreference") || "Remote Preference"}</label>
-          <Select
-            placeholder="Select arrangement"
-            selectedKey={draft.remotePreference || "any"}
-            onSelectionChange={(key) => {
-              onChange({ remotePreference: key as string });
-            }}
-          >
-            <Select.Trigger className="rounded-xl border border-border bg-surface text-xs h-10 px-3">
-              <Select.Value />
-              <Select.Indicator />
-            </Select.Trigger>
-            <Select.Popover className="bg-surface border border-border rounded-xl p-1 text-xs">
-              <ListBox>
-                {REMOTE_OPTIONS.map((opt) => (
-                  <ListBox.Item key={opt.value} id={opt.value} className="p-2 hover:bg-accent/10 rounded-lg cursor-pointer">
-                    {opt.label}
-                  </ListBox.Item>
-                ))}
-              </ListBox>
-            </Select.Popover>
-          </Select>
-        </div>
-      </div>
-
-      {/* Salary preferences */}
-      <div className="flex flex-col gap-3 border-t border-border/20 pt-4">
-        <span className="font-bold text-xs text-foreground">{t("common:publicCandidateProfile.expectedSalary")}</span>
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-          <div className="flex flex-col gap-1.5">
-            <label className="font-bold text-foreground">{t("common:cvManagement.labels.expectedSalaryMin")}</label>
-            <Input
-              type="number"
-              value={draft.expectedSalaryMin !== null ? String(draft.expectedSalaryMin) : ""}
-              onChange={(e) =>
-                onChange({
-                  expectedSalaryMin: e.target.value ? parseFloat(e.target.value) : null,
-                })
-              }
-              placeholder="e.g. 1500"
-              disabled={draft.expectedSalaryNegotiable}
-            />
+          <div className="flex flex-col gap-0.5">
+            <span className="font-bold text-sm text-foreground">Available for Hire</span>
+            <span className="text-[10px] text-muted-foreground">Toggle availability visibility.</span>
           </div>
+          <Switch
+            isSelected={draft.availableForHire}
+            onChange={(isSelected: boolean) => onChange({ availableForHire: isSelected })}
+            aria-label="Available for hire toggle"
+            className="cursor-pointer"
+          />
+        </div>
 
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {/* Job Search Status */}
           <div className="flex flex-col gap-1.5">
-            <label className="font-bold text-foreground">{t("common:cvManagement.labels.expectedSalaryMax")}</label>
-            <Input
-              type="number"
-              value={draft.expectedSalaryMax !== null ? String(draft.expectedSalaryMax) : ""}
-              onChange={(e) =>
-                onChange({
-                  expectedSalaryMax: e.target.value ? parseFloat(e.target.value) : null,
-                })
-              }
-              placeholder="e.g. 3000"
-              disabled={draft.expectedSalaryNegotiable}
-            />
-            {salaryError && (
-              <span className="text-[10px] text-danger">{salaryError}</span>
-            )}
-          </div>
-
-          <div className="flex flex-col gap-1.5">
-            <label className="font-bold text-foreground">Currency</label>
+            <label className="font-bold text-foreground">Search Status</label>
             <Select
-              selectedKey={draft.expectedSalaryCurrency || "USD"}
+              placeholder="Select search status"
+              selectedKey={draft.openToWorkStatus || "casual"}
               onSelectionChange={(key) => {
-                onChange({ expectedSalaryCurrency: key as string });
+                onChange({ openToWorkStatus: key as string });
               }}
-              isDisabled={draft.expectedSalaryNegotiable}
+              aria-label="Search status"
             >
               <Select.Trigger className="rounded-xl border border-border bg-surface text-xs h-10 px-3">
                 <Select.Value />
                 <Select.Indicator />
               </Select.Trigger>
               <Select.Popover className="bg-surface border border-border rounded-xl p-1 text-xs">
-                <ListBox>
-                  {CURRENCY_OPTIONS.map((opt) => (
+                <ListBox aria-label="Search status options">
+                  {WORK_STATUS_OPTIONS.map((opt) => (
                     <ListBox.Item key={opt.value} id={opt.value} className="p-2 hover:bg-accent/10 rounded-lg cursor-pointer">
                       {opt.label}
                     </ListBox.Item>
@@ -248,22 +157,24 @@ export const PreferencesForm: React.FC<PreferencesFormProps> = ({
             </Select>
           </div>
 
+          {/* Remote Preference */}
           <div className="flex flex-col gap-1.5">
-            <label className="font-bold text-foreground">Salary Type</label>
+            <label className="font-bold text-foreground">Work Arrangement</label>
             <Select
-              selectedKey={draft.expectedSalaryType || "Monthly"}
+              placeholder="Select arrangement"
+              selectedKey={draft.remotePreference || "any"}
               onSelectionChange={(key) => {
-                onChange({ expectedSalaryType: key as string });
+                onChange({ remotePreference: key as string });
               }}
-              isDisabled={draft.expectedSalaryNegotiable}
+              aria-label="Work arrangement"
             >
               <Select.Trigger className="rounded-xl border border-border bg-surface text-xs h-10 px-3">
                 <Select.Value />
                 <Select.Indicator />
               </Select.Trigger>
               <Select.Popover className="bg-surface border border-border rounded-xl p-1 text-xs">
-                <ListBox>
-                  {SALARY_TYPE_OPTIONS.map((opt) => (
+                <ListBox aria-label="Work arrangement options">
+                  {REMOTE_OPTIONS.map((opt) => (
                     <ListBox.Item key={opt.value} id={opt.value} className="p-2 hover:bg-accent/10 rounded-lg cursor-pointer">
                       {opt.label}
                     </ListBox.Item>
@@ -272,168 +183,249 @@ export const PreferencesForm: React.FC<PreferencesFormProps> = ({
               </Select.Popover>
             </Select>
           </div>
+        </div>
 
-          <div className="flex items-center gap-2 select-none">
-            <Checkbox
-              isSelected={draft.expectedSalaryNegotiable}
-              onChange={(isSelected: boolean) => onChange({ expectedSalaryNegotiable: isSelected })}
-            />
-            <span className="font-semibold text-foreground">Negotiable</span>
+        {/* Salary preferences */}
+        <div className="flex flex-col gap-3 border-t border-border/20 pt-4">
+          <span className="font-bold text-xs text-foreground">Expected Salary</span>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div className="flex flex-col gap-1.5">
+              <label className="font-bold text-foreground">Expected Salary Min</label>
+              <Input
+                type="number"
+                value={draft.expectedSalaryMin !== null ? String(draft.expectedSalaryMin) : ""}
+                onChange={(e) =>
+                  onChange({
+                    expectedSalaryMin: e.target.value ? parseFloat(e.target.value) : null,
+                  })
+                }
+                placeholder="e.g. 1500"
+                disabled={draft.expectedSalaryNegotiable}
+                aria-label="Expected salary min"
+              />
+            </div>
+
+            <div className="flex flex-col gap-1.5">
+              <label className="font-bold text-foreground">Expected Salary Max</label>
+              <Input
+                type="number"
+                value={draft.expectedSalaryMax !== null ? String(draft.expectedSalaryMax) : ""}
+                onChange={(e) =>
+                  onChange({
+                    expectedSalaryMax: e.target.value ? parseFloat(e.target.value) : null,
+                  })
+                }
+                placeholder="e.g. 3000"
+                disabled={draft.expectedSalaryNegotiable}
+                aria-label="Expected salary max"
+              />
+              {salaryError && (
+                <span className="text-[10px] text-danger">{salaryError}</span>
+              )}
+            </div>
+
+            <div className="flex flex-col gap-1.5">
+              <label className="font-bold text-foreground">Currency</label>
+              <Select
+                selectedKey={draft.expectedSalaryCurrency || "USD"}
+                onSelectionChange={(key) => {
+                  onChange({ expectedSalaryCurrency: key as string });
+                }}
+                isDisabled={draft.expectedSalaryNegotiable}
+                aria-label="Expected salary currency"
+              >
+                <Select.Trigger className="rounded-xl border border-border bg-surface text-xs h-10 px-3">
+                  <Select.Value />
+                  <Select.Indicator />
+                </Select.Trigger>
+                <Select.Popover className="bg-surface border border-border rounded-xl p-1 text-xs">
+                  <ListBox aria-label="Expected salary currency options">
+                    {CURRENCY_OPTIONS.map((opt) => (
+                      <ListBox.Item key={opt.value} id={opt.value} className="p-2 hover:bg-accent/10 rounded-lg cursor-pointer">
+                        {opt.label}
+                      </ListBox.Item>
+                    ))}
+                  </ListBox>
+                </Select.Popover>
+              </Select>
+            </div>
+
+            <div className="flex flex-col gap-1.5">
+              <label className="font-bold text-foreground">Salary Type</label>
+              <Select
+                selectedKey={draft.expectedSalaryType || "Monthly"}
+                onSelectionChange={(key) => {
+                  onChange({ expectedSalaryType: key as string });
+                }}
+                isDisabled={draft.expectedSalaryNegotiable}
+                aria-label="Expected salary type"
+              >
+                <Select.Trigger className="rounded-xl border border-border bg-surface text-xs h-10 px-3">
+                  <Select.Value />
+                  <Select.Indicator />
+                </Select.Trigger>
+                <Select.Popover className="bg-surface border border-border rounded-xl p-1 text-xs">
+                  <ListBox aria-label="Expected salary type options">
+                    {SALARY_TYPE_OPTIONS.map((opt) => (
+                      <ListBox.Item key={opt.value} id={opt.value} className="p-2 hover:bg-accent/10 rounded-lg cursor-pointer">
+                        {opt.label}
+                      </ListBox.Item>
+                    ))}
+                  </ListBox>
+                </Select.Popover>
+              </Select>
+            </div>
+
+            <div className="flex items-center gap-2 select-none">
+              <Checkbox
+                isSelected={draft.expectedSalaryNegotiable}
+                onChange={(isSelected: boolean) => onChange({ expectedSalaryNegotiable: isSelected })}
+                aria-label="Negotiable salary"
+              />
+              <span className="font-semibold text-foreground">Negotiable</span>
+            </div>
+
+            <div className="flex items-center gap-2 select-none">
+              <Checkbox
+                isSelected={draft.isExpectedSalaryVisible}
+                onChange={(isSelected: boolean) => onChange({ isExpectedSalaryVisible: isSelected })}
+                aria-label="Show salary publicly"
+              />
+              <span className="font-semibold text-foreground">Show salary publicly</span>
+            </div>
           </div>
+        </div>
 
-          <div className="flex items-center gap-2 select-none">
-            <Checkbox
-              isSelected={draft.isExpectedSalaryVisible}
-              onChange={(isSelected: boolean) => onChange({ isExpectedSalaryVisible: isSelected })}
+        {/* Target Roles */}
+        <div className="flex flex-col gap-3 border-t border-border/20 pt-4">
+          <span className="font-bold text-xs text-foreground">Target Roles</span>
+          <div className="flex gap-2">
+            <Input
+              value={newPosition}
+              onChange={(e) => setNewPosition(e.target.value)}
+              placeholder="Enter target role"
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  e.preventDefault();
+                  handleAddPosition();
+                }
+              }}
+              aria-label="New target role input"
             />
-            <span className="font-semibold text-foreground">Show salary publicly</span>
+            <Button size="sm" variant="secondary" className="rounded-xl border border-border/30 h-10 min-w-10" onPress={handleAddPosition} type="button" aria-label="Add target role">
+              <PlusCircle className="size-4" />
+            </Button>
+          </div>
+          <div className="flex flex-wrap gap-1.5">
+            {draft.desiredJobPositions.map((pos) => (
+              <Chip
+                key={pos}
+                size="sm"
+                variant="soft"
+                color="default"
+                className="text-[9px] font-bold py-0.5 px-2"
+              >
+                <span className="flex items-center gap-1">
+                  {pos}
+                  <button type="button" onClick={() => handleRemovePosition(pos)} className="bg-transparent border-none text-muted-foreground hover:text-foreground cursor-pointer flex items-center" aria-label={`Remove target role ${pos}`}>
+                    <X className="size-2.5" />
+                  </button>
+                </span>
+              </Chip>
+            ))}
           </div>
         </div>
-      </div>
 
-      {/* Target Roles */}
-      <div className="flex flex-col gap-3 border-t border-border/20 pt-4">
-        <span className="font-bold text-xs text-foreground">{t("common:publicCandidateProfile.targetRoles")}</span>
-        <div className="flex gap-2">
-          <Input
-            value={newPosition}
-            onChange={(e) => setNewPosition(e.target.value)}
-            placeholder={t("common:cvManagement.labels.skillsPlaceholder") || "Enter target role"}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") {
-                e.preventDefault();
-                handleAddPosition();
-              }
-            }}
+        {/* Target Locations */}
+        <div className="flex flex-col gap-3 border-t border-border/20 pt-4">
+          <span className="font-bold text-xs text-foreground">Desired Locations</span>
+          <div className="flex gap-2">
+            <Input
+              value={newLocation}
+              onChange={(e) => setNewLocation(e.target.value)}
+              placeholder="Enter preferred location"
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  e.preventDefault();
+                  handleAddLocation();
+                }
+              }}
+              aria-label="New preferred location input"
+            />
+            <Button size="sm" variant="secondary" className="rounded-xl border border-border/30 h-10 min-w-10" onPress={handleAddLocation} type="button" aria-label="Add preferred location">
+              <PlusCircle className="size-4" />
+            </Button>
+          </div>
+          <div className="flex flex-wrap gap-1.5">
+            {draft.preferredLocations.map((loc) => (
+              <Chip
+                key={loc}
+                size="sm"
+                variant="soft"
+                color="default"
+                className="text-[9px] font-bold py-0.5 px-2"
+              >
+                <span className="flex items-center gap-1">
+                  {loc}
+                  <button type="button" onClick={() => handleRemoveLocation(loc)} className="bg-transparent border-none text-muted-foreground hover:text-foreground cursor-pointer flex items-center" aria-label={`Remove preferred location ${loc}`}>
+                    <X className="size-2.5" />
+                  </button>
+                </span>
+              </Chip>
+            ))}
+          </div>
+        </div>
+
+        {/* Employment Types */}
+        <div className="flex flex-col gap-3 border-t border-border/20 pt-4">
+          <span className="font-bold text-xs text-foreground">Employment Types</span>
+          <div className="flex flex-wrap gap-x-6 gap-y-2 select-none">
+            {EMPLOYMENT_OPTIONS.map((opt) => {
+              const isSelected = draft.employmentPreferences.includes(opt.value);
+              return (
+                <div key={opt.value} className="flex items-center gap-2">
+                  <Checkbox isSelected={isSelected} onChange={() => toggleEmployment(opt.value)} aria-label={opt.label} />
+                  <span className="font-semibold text-foreground">{opt.label}</span>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Relocation Switch */}
+        <div className="flex items-center justify-between gap-6 border-t border-border/20 pt-4 select-none">
+          <div className="flex flex-col gap-0.5">
+            <span className="font-bold text-sm text-foreground">Open to Relocation</span>
+            <span className="text-[10px] text-muted-foreground">Are you willing to relocate for work?</span>
+          </div>
+          <Switch
+            isSelected={draft.openToRelocation}
+            onChange={(isSelected: boolean) => onChange({ openToRelocation: isSelected })}
+            aria-label="Open to relocation toggle"
+            className="cursor-pointer"
           />
-          <Button size="sm" variant="secondary" className="rounded-xl border border-border/30 h-10 min-w-10" onPress={handleAddPosition}>
-            <PlusCircle className="size-4" />
-          </Button>
         </div>
-        <div className="flex flex-wrap gap-1.5">
-          {draft.desiredJobPositions.map((pos) => (
-            <Chip
-              key={pos}
-              size="sm"
-              variant="soft"
-              color="default"
-              className="text-[9px] font-bold py-0.5 px-2"
-            >
-              <span className="flex items-center gap-1">
-                {pos}
-                <button type="button" onClick={() => handleRemovePosition(pos)} className="bg-transparent border-none text-muted-foreground hover:text-foreground cursor-pointer">
-                  <X className="size-2.5" />
-                </button>
-              </span>
-            </Chip>
-          ))}
-        </div>
-      </div>
 
-      {/* Target Locations */}
-      <div className="flex flex-col gap-3 border-t border-border/20 pt-4">
-        <span className="font-bold text-xs text-foreground">{t("common:publicCandidateProfile.targetLocations")}</span>
-        <div className="flex gap-2">
-          <Input
-            value={newLocation}
-            onChange={(e) => setNewLocation(e.target.value)}
-            placeholder={t("common:cvManagement.labels.locationsPlaceholder") || "Enter preferred location"}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") {
-                e.preventDefault();
-                handleAddLocation();
-              }
-            }}
+        {/* Preference Notes */}
+        <div className="flex flex-col gap-1.5 border-t border-border/20 pt-4">
+          <label className="font-bold text-foreground">Additional Work Preference Notes</label>
+          <TextArea
+            value={draft.workPreferenceNotes}
+            onChange={(e) => onChange({ workPreferenceNotes: e.target.value })}
+            placeholder="e.g. Prefer collaborative engineering teams, hybrid model..."
+            rows={3}
+            aria-label="Additional Work Preference Notes"
           />
-          <Button size="sm" variant="secondary" className="rounded-xl border border-border/30 h-10 min-w-10" onPress={handleAddLocation}>
-            <PlusCircle className="size-4" />
-          </Button>
         </div>
-        <div className="flex flex-wrap gap-1.5">
-          {draft.preferredLocations.map((loc) => (
-            <Chip
-              key={loc}
-              size="sm"
-              variant="soft"
-              color="default"
-              className="text-[9px] font-bold py-0.5 px-2"
-            >
-              <span className="flex items-center gap-1">
-                {loc}
-                <button type="button" onClick={() => handleRemoveLocation(loc)} className="bg-transparent border-none text-muted-foreground hover:text-foreground cursor-pointer">
-                  <X className="size-2.5" />
-                </button>
-              </span>
-            </Chip>
-          ))}
-        </div>
-      </div>
-
-      {/* Employment Types */}
-      <div className="flex flex-col gap-3 border-t border-border/20 pt-4">
-        <span className="font-bold text-xs text-foreground">{t("common:cvManagement.labels.employmentPreferences")}</span>
-        <div className="flex flex-wrap gap-x-6 gap-y-2 select-none">
-          {EMPLOYMENT_OPTIONS.map((opt) => {
-            const isSelected = draft.employmentPreferences.includes(opt.value);
-            return (
-              <div key={opt.value} className="flex items-center gap-2">
-                <Checkbox isSelected={isSelected} onChange={() => toggleEmployment(opt.value)} />
-                <span className="font-semibold text-foreground">{opt.label}</span>
-              </div>
-            );
-          })}
-        </div>
-      </div>
-
-      {/* Relocation Switch */}
-      <div className="flex items-center justify-between gap-6 border-t border-border/20 pt-4 select-none">
-        <div className="flex flex-col gap-0.5">
-          <span className="font-bold text-sm text-foreground">{t("common:cvManagement.labels.openToRelocation") || "Open to Relocation"}</span>
-          <span className="text-[10px] text-muted-foreground">Are you willing to relocate for work?</span>
-        </div>
-        <Switch
-          isSelected={draft.openToRelocation}
-          onChange={(isSelected: boolean) => onChange({ openToRelocation: isSelected })}
-          aria-label="Open to relocation toggle"
-          className="cursor-pointer"
-        />
-      </div>
-
-      {/* Preference Notes */}
-      <div className="flex flex-col gap-1.5 border-t border-border/20 pt-4">
-        <label className="font-bold text-foreground">{t("common:cvManagement.labels.workPreferenceNotes")}</label>
-        <TextArea
-          value={draft.workPreferenceNotes}
-          onChange={(e) => onChange({ workPreferenceNotes: e.target.value })}
-          placeholder="e.g. Prefer collaborative engineering teams, hybrid model..."
-          rows={3}
-        />
-      </div>
 
       </div>
 
-      {/* Form Action Controls */}
-      <div className="absolute bottom-0 left-0 right-0 p-4 border-t border-border/20 bg-background/95 backdrop-blur-sm flex justify-end gap-3 shrink-0 rounded-b-xl z-20">
-        <Button
-          size="sm"
-          variant="secondary"
-          className="rounded-xl font-bold select-none border border-border/30 h-9"
-          isDisabled={!isDirty || isSaving}
-          onPress={onReset}
-        >
-          {t("common:cvWorkspace.resetChanges")}
-        </Button>
-        <Button
-          type="submit"
-          size="sm"
-          className={`rounded-xl font-bold select-none border-none h-9 ${
-            isDirty ? "bg-accent text-accent-foreground" : "bg-neutral-300 text-neutral-500 cursor-not-allowed"
-          }`}
-          isDisabled={!isDirty || isSaving}
-        >
-          {isSaving ? <Spinner size="sm" color="current" /> : t("common:cvWorkspace.saveChanges")}
-        </Button>
-      </div>
+      <BaseUnsavedChangesBar
+        message="You have unsaved career preferences changes."
+        onReset={onReset}
+        isDirty={isDirty}
+        isSubmitting={isSaving}
+      />
     </form>
   );
 };

@@ -1,8 +1,9 @@
 import React, { useState } from "react";
-import { useTranslation } from "react-i18next";
-import { Input, Button, TextArea, Checkbox, Spinner, Card } from "@heroui/react";
+import { Input, Button, TextArea, Checkbox, Spinner } from "@heroui/react";
+import { Card } from "@/components/ui/card";
 import { PlusCircle, Trash2, Edit2, X } from "lucide-react";
 import { type EducationDraftItem } from "./types";
+import { BaseUnsavedChangesBar } from "@/components/ui/unsaved-changes-bar";
 
 interface EducationFormProps {
   draft: EducationDraftItem[];
@@ -21,7 +22,6 @@ export const EducationForm: React.FC<EducationFormProps> = ({
   isSaving,
   isDirty,
 }) => {
-  const { t } = useTranslation(["common"]);
   const [editingItem, setEditingItem] = useState<EducationDraftItem | null>(null);
   const [errors, setErrors] = useState<Record<string, string>>({});
 
@@ -58,13 +58,13 @@ export const EducationForm: React.FC<EducationFormProps> = ({
 
   const validateItem = (item: EducationDraftItem): boolean => {
     const newErrors: Record<string, string> = {};
-    if (!item.schoolName.trim()) newErrors.schoolName = t("common:cvManagement.validation.required");
-    if (!item.label.trim()) newErrors.label = t("common:cvManagement.validation.required");
-    if (!item.startDate) newErrors.startDate = t("common:cvManagement.validation.required");
+    if (!item.schoolName.trim()) newErrors.schoolName = "This field is required";
+    if (!item.degree.trim()) newErrors.degree = "This field is required";
+    if (!item.startDate) newErrors.startDate = "This field is required";
 
     if (item.startDate && item.endDate && !item.isCurrentlyStudying) {
       if (new Date(item.startDate) > new Date(item.endDate)) {
-        newErrors.endDate = t("common:cvManagement.validation.dateOrder");
+        newErrors.endDate = "Start date must not be after end date";
       }
     }
 
@@ -89,13 +89,13 @@ export const EducationForm: React.FC<EducationFormProps> = ({
 
   return (
     <div className="flex flex-col h-full overflow-hidden relative text-left">
-      <div className="flex-1 overflow-y-auto pr-1 flex flex-col gap-4 pb-20">
+      <div className="flex-1 overflow-y-auto px-1.5 flex flex-col gap-4 pb-4">
         {editingItem ? (
         // Inline Edit Mode
-        <div className="flex flex-col gap-5 border border-border/40 p-5 rounded-2xl bg-surface-secondary/5">
+        <div className="flex flex-col gap-5 border border-border/40 p-5 rounded-xl bg-surface-secondary/5">
           <div className="flex justify-between items-center border-b border-border/20 pb-3 select-none">
             <span className="font-bold text-xs text-foreground">
-              {editingItem.id.startsWith("temp-") ? t("common:cvManagement.labels.addEducation") : t("common:cvManagement.labels.addEducation") || "Edit Education"}
+              {editingItem.id.startsWith("temp-") ? "Add Education" : "Edit Education"}
             </span>
             <Button
               isIconOnly
@@ -103,6 +103,8 @@ export const EducationForm: React.FC<EducationFormProps> = ({
               variant="secondary"
               className="rounded-xl border border-border/30 h-8 w-8"
               onPress={() => setEditingItem(null)}
+              type="button"
+              aria-label="Close edit mode"
             >
               <X className="size-4" />
             </Button>
@@ -110,36 +112,39 @@ export const EducationForm: React.FC<EducationFormProps> = ({
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
             <div className="flex flex-col gap-1.5">
-              <label className="font-bold text-foreground">{t("common:cvManagement.labels.schoolName")} *</label>
+              <label className="font-bold text-foreground">School/University Name *</label>
               <Input
                 value={editingItem.schoolName}
                 onChange={(e) => setEditingItem({ ...editingItem, schoolName: e.target.value })}
                 placeholder="FPT University"
+                aria-label="School or University Name"
               />
               {errors.schoolName && <span className="text-[10px] text-danger">{errors.schoolName}</span>}
             </div>
 
             <div className="flex flex-col gap-1.5">
-              <label className="font-bold text-foreground">{t("common:cvManagement.labels.degree") || "Degree/Certification"} *</label>
+              <label className="font-bold text-foreground">Degree *</label>
               <Input
-                value={editingItem.label}
-                onChange={(e) => setEditingItem({ ...editingItem, label: e.target.value })}
+                value={editingItem.degree}
+                onChange={(e) => setEditingItem({ ...editingItem, degree: e.target.value, label: e.target.value })}
                 placeholder="Bachelor of Software Engineering"
+                aria-label="Degree title"
               />
-              {errors.label && <span className="text-[10px] text-danger">{errors.label}</span>}
+              {errors.degree && <span className="text-[10px] text-danger">{errors.degree}</span>}
             </div>
 
             <div className="flex flex-col gap-1.5">
-              <label className="font-bold text-foreground">{t("common:cvManagement.labels.major")}</label>
+              <label className="font-bold text-foreground">Major/Field of Study</label>
               <Input
                 value={editingItem.major}
                 onChange={(e) => setEditingItem({ ...editingItem, major: e.target.value })}
                 placeholder="Software Engineering"
+                aria-label="Major or Field of Study"
               />
             </div>
 
             <div className="flex flex-col gap-1.5">
-              <label className="font-bold text-foreground">{t("common:cvManagement.labels.startDate")} *</label>
+              <label className="font-bold text-foreground">Start Date *</label>
               <input
                 type="date"
                 className="flex h-10 w-full rounded-xl border border-border bg-surface px-3 py-2 text-xs outline-none focus:border-accent"
@@ -149,10 +154,10 @@ export const EducationForm: React.FC<EducationFormProps> = ({
             </div>
 
             <div className="flex flex-col gap-1.5">
-              <label className="font-bold text-foreground">{t("common:cvManagement.labels.endDate")}</label>
+              <label className="font-bold text-foreground">End Date</label>
               <input
                 type="date"
-                className="flex h-10 w-full rounded-xl border border-border bg-surface px-3 py-2 text-xs outline-none focus:border-accent disabled:bg-neutral-100 disabled:text-neutral-400"
+                className="flex h-10 w-full rounded-xl border border-border bg-surface px-3 py-2 text-xs outline-none focus:border-accent disabled:bg-surface-secondary disabled:text-muted"
                 value={editingItem.endDate ? editingItem.endDate.split("T")[0] : ""}
                 disabled={editingItem.isCurrentlyStudying}
                 onChange={(e) => setEditingItem({ ...editingItem, endDate: e.target.value })}
@@ -169,14 +174,15 @@ export const EducationForm: React.FC<EducationFormProps> = ({
                     endDate: isSelected ? null : editingItem.endDate,
                   })
                 }
+                aria-label="Currently studying here"
               />
               <span className="text-xs font-semibold text-foreground">
-                {t("common:cvManagement.labels.currentlyStudying")}
+                Currently studying here
               </span>
             </div>
 
             <div className="flex flex-col gap-1.5">
-              <label className="font-bold text-foreground">{t("common:cvManagement.labels.gpa")}</label>
+              <label className="font-bold text-foreground">GPA</label>
               <Input
                 type="number"
                 step="0.01"
@@ -188,11 +194,12 @@ export const EducationForm: React.FC<EducationFormProps> = ({
                   })
                 }
                 placeholder="3.6"
+                aria-label="GPA"
               />
             </div>
 
             <div className="flex flex-col gap-1.5">
-              <label className="font-bold text-foreground">{t("common:cvManagement.labels.gpaScale")}</label>
+              <label className="font-bold text-foreground">GPA Scale</label>
               <Input
                 type="number"
                 step="0.1"
@@ -204,54 +211,57 @@ export const EducationForm: React.FC<EducationFormProps> = ({
                   })
                 }
                 placeholder="4.0"
+                aria-label="GPA Scale"
               />
             </div>
           </div>
 
           <div className="flex flex-col gap-1.5 text-xs">
-            <label className="font-bold text-foreground">{t("common:cvManagement.labels.description")}</label>
+            <label className="font-bold text-foreground">Description</label>
             <TextArea
               value={editingItem.description}
               onChange={(e) => setEditingItem({ ...editingItem, description: e.target.value })}
               placeholder="e.g. GPA 3.6, Học bổng toàn phần..."
               rows={3}
+              aria-label="Education description"
             />
           </div>
 
           <Button size="sm" className="bg-accent text-accent-foreground font-bold rounded-xl border-none mt-2 h-9" onPress={handleSaveItem}>
-            {t("common:buttons.confirm")}
+            Confirm
           </Button>
         </div>
       ) : (
         // List Mode
         <div className="flex flex-col gap-4">
           <div className="flex justify-between items-center select-none">
-            <span className="text-xs font-bold text-foreground">{t("common:cvManagement.labels.addEducation")}</span>
+            <span className="text-xs font-bold text-foreground">Add Education</span>
             <Button
               size="sm"
               variant="secondary"
               className="rounded-xl text-[10px] font-bold flex items-center gap-1 border border-border/30 h-8"
               onPress={handleAddNew}
+              type="button"
             >
               <PlusCircle className="size-3.5" />
-              {t("common:cvManagement.labels.addEducation")}
+              Add Education
             </Button>
           </div>
 
           <div className="flex flex-col gap-3">
             {draft.length === 0 ? (
-              <div className="py-10 text-center border-2 border-dashed border-border/40 rounded-2xl select-none">
-                <span className="text-muted-foreground text-xs">{t("common:cvManagement.labels.noEducation")}</span>
+              <div className="py-10 text-center border-2 border-dashed border-border/40 rounded-xl select-none">
+                <span className="text-muted-foreground text-xs">No education entries added yet.</span>
               </div>
             ) : (
               draft.map((item) => (
-                <Card key={item.id} className="p-4 border border-border/40 bg-surface flex flex-row justify-between items-center gap-4">
+                <Card key={item.id} rounded="xl" glow={false} className="p-4 border border-border/40 bg-surface flex flex-row justify-between items-center gap-4">
                   <div className="flex flex-col gap-1 min-w-0">
                     <span className="font-bold text-foreground text-xs truncate">
                       {item.schoolName}
                     </span>
                     <span className="text-[10px] text-muted-foreground font-medium">
-                      {item.label} {item.major ? `- ${item.major}` : ""} ({item.startDate} to {item.isCurrentlyStudying ? t("common:cvPreview.presentLabel") : item.endDate})
+                      {item.degree || item.label} {item.major ? `- ${item.major}` : ""} ({item.startDate} to {item.isCurrentlyStudying ? "Present" : item.endDate})
                     </span>
                   </div>
                   <div className="flex gap-2">
@@ -261,6 +271,8 @@ export const EducationForm: React.FC<EducationFormProps> = ({
                       variant="secondary"
                       className="rounded-xl border border-border/30 h-8 w-8"
                       onPress={() => handleEdit(item)}
+                      type="button"
+                      aria-label={`Edit education at ${item.schoolName}`}
                     >
                       <Edit2 className="size-3.5" />
                     </Button>
@@ -270,6 +282,8 @@ export const EducationForm: React.FC<EducationFormProps> = ({
                       variant="secondary"
                       className="rounded-xl border border-border/30 h-8 w-8 text-danger"
                       onPress={() => handleRemove(item.id)}
+                      type="button"
+                      aria-label={`Remove education at ${item.schoolName}`}
                     >
                       <Trash2 className="size-3.5" />
                     </Button>
@@ -284,27 +298,13 @@ export const EducationForm: React.FC<EducationFormProps> = ({
       </div>
 
       {!editingItem && (
-        <div className="absolute bottom-0 left-0 right-0 p-4 border-t border-border/20 bg-background/95 backdrop-blur-sm flex justify-end gap-3 shrink-0 rounded-b-xl z-20">
-          <Button
-            size="sm"
-            variant="secondary"
-            className="rounded-xl font-bold select-none border border-border/30 h-9"
-            isDisabled={!isDirty || isSaving}
-            onPress={onReset}
-          >
-            {t("common:cvWorkspace.resetChanges")}
-          </Button>
-          <Button
-            size="sm"
-            onPress={onSave}
-            className={`rounded-xl font-bold select-none border-none h-9 ${
-              isDirty ? "bg-accent text-accent-foreground" : "bg-neutral-300 text-neutral-500 cursor-not-allowed"
-            }`}
-            isDisabled={!isDirty || isSaving}
-          >
-            {isSaving ? <Spinner size="sm" color="current" /> : t("common:cvWorkspace.saveChanges")}
-          </Button>
-        </div>
+        <BaseUnsavedChangesBar
+          message="You have unsaved education changes."
+          onReset={onReset}
+          onSave={onSave}
+          isDirty={isDirty}
+          isSubmitting={isSaving}
+        />
       )}
     </div>
   );

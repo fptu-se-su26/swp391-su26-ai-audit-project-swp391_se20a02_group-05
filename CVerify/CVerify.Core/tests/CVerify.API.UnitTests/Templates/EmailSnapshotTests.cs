@@ -40,6 +40,7 @@ public class EmailSnapshotTests
             : Path.Combine(AppContext.BaseDirectory, "Snapshots");
 
         _snapshotsDirectory = targetSnapshotsDir;
+
         Directory.CreateDirectory(_snapshotsDirectory);
 
         var settings = new EmailSettings

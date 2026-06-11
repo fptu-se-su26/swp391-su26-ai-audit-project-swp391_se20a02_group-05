@@ -1,8 +1,9 @@
 import React, { useState } from "react";
-import { useTranslation } from "react-i18next";
-import { Input, Button, TextArea, Checkbox, Spinner, toast, Card, Chip } from "@heroui/react";
+import { Input, Button, TextArea, Checkbox, Spinner, Chip } from "@heroui/react";
+import { Card } from "@/components/ui/card";
 import { PlusCircle, Trash2, Edit2, X, Plus } from "lucide-react";
 import { type ExperienceDraftItem } from "./types";
+import { BaseUnsavedChangesBar } from "@/components/ui/unsaved-changes-bar";
 
 interface ExperienceFormProps {
   draft: ExperienceDraftItem[];
@@ -21,7 +22,6 @@ export const ExperienceForm: React.FC<ExperienceFormProps> = ({
   isSaving,
   isDirty,
 }) => {
-  const { t } = useTranslation(["common"]);
   const [editingItem, setEditingItem] = useState<ExperienceDraftItem | null>(null);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [newTech, setNewTech] = useState("");
@@ -61,13 +61,13 @@ export const ExperienceForm: React.FC<ExperienceFormProps> = ({
 
   const validateItem = (item: ExperienceDraftItem): boolean => {
     const newErrors: Record<string, string> = {};
-    if (!item.jobTitle.trim()) newErrors.jobTitle = t("common:cvManagement.validation.required");
-    if (!item.company.trim()) newErrors.company = t("common:cvManagement.validation.required");
-    if (!item.startDate) newErrors.startDate = t("common:cvManagement.validation.required");
+    if (!item.jobTitle.trim()) newErrors.jobTitle = "This field is required";
+    if (!item.company.trim()) newErrors.company = "This field is required";
+    if (!item.startDate) newErrors.startDate = "This field is required";
 
     if (item.startDate && item.endDate && !item.isCurrentlyWorking) {
       if (new Date(item.startDate) > new Date(item.endDate)) {
-        newErrors.endDate = t("common:cvManagement.validation.dateOrder");
+        newErrors.endDate = "Start date must not be after end date";
       }
     }
 
@@ -134,13 +134,13 @@ export const ExperienceForm: React.FC<ExperienceFormProps> = ({
 
   return (
     <div className="flex flex-col h-full overflow-hidden relative text-left">
-      <div className="flex-1 overflow-y-auto pr-1 flex flex-col gap-4 pb-20">
+      <div className="flex-1 overflow-y-auto px-1.5 flex flex-col gap-4 pb-4">
         {editingItem ? (
         // Inline Edit Mode
-        <div className="flex flex-col gap-5 border border-border/40 p-5 rounded-2xl bg-surface-secondary/5">
+        <div className="flex flex-col gap-5 border border-border/40 p-5 rounded-xl bg-surface-secondary/5">
           <div className="flex justify-between items-center border-b border-border/20 pb-3 select-none">
             <span className="font-bold text-xs text-foreground">
-              {editingItem.id.startsWith("temp-") ? t("common:cvManagement.labels.addExperience") : t("common:cvManagement.labels.addExperience") || "Edit Work Experience"}
+              {editingItem.id.startsWith("temp-") ? "Add Work Experience" : "Edit Work Experience"}
             </span>
             <Button
               isIconOnly
@@ -148,6 +148,8 @@ export const ExperienceForm: React.FC<ExperienceFormProps> = ({
               variant="secondary"
               className="rounded-xl border border-border/30 h-8 w-8"
               onPress={() => setEditingItem(null)}
+              type="button"
+              aria-label="Close edit mode"
             >
               <X className="size-4" />
             </Button>
@@ -155,36 +157,39 @@ export const ExperienceForm: React.FC<ExperienceFormProps> = ({
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
             <div className="flex flex-col gap-1.5">
-              <label className="font-bold text-foreground">{t("common:cvManagement.labels.schoolName") || "Company"} *</label>
+              <label className="font-bold text-foreground">Company *</label>
               <Input
                 value={editingItem.company}
                 onChange={(e) => setEditingItem({ ...editingItem, company: e.target.value })}
                 placeholder="Google"
+                aria-label="Company name"
               />
               {errors.company && <span className="text-[10px] text-danger">{errors.company}</span>}
             </div>
 
             <div className="flex flex-col gap-1.5">
-              <label className="font-bold text-foreground">{t("common:cvManagement.labels.major") || "Role/Position"} *</label>
+              <label className="font-bold text-foreground">Role/Position *</label>
               <Input
                 value={editingItem.jobTitle}
                 onChange={(e) => setEditingItem({ ...editingItem, jobTitle: e.target.value })}
                 placeholder="Software Engineer"
+                aria-label="Role or Position"
               />
               {errors.jobTitle && <span className="text-[10px] text-danger">{errors.jobTitle}</span>}
             </div>
 
             <div className="flex flex-col gap-1.5">
-              <label className="font-bold text-foreground">{t("common:cvManagement.labels.location")}</label>
+              <label className="font-bold text-foreground">Location</label>
               <Input
                 value={editingItem.location}
                 onChange={(e) => setEditingItem({ ...editingItem, location: e.target.value })}
                 placeholder="Hanoi, Vietnam"
+                aria-label="Job location"
               />
             </div>
 
             <div className="flex flex-col gap-1.5">
-              <label className="font-bold text-foreground">{t("common:cvManagement.labels.startDate")} *</label>
+              <label className="font-bold text-foreground">Start Date *</label>
               <input
                 type="date"
                 className="flex h-10 w-full rounded-xl border border-border bg-surface px-3 py-2 text-xs outline-none focus:border-accent"
@@ -194,10 +199,10 @@ export const ExperienceForm: React.FC<ExperienceFormProps> = ({
             </div>
 
             <div className="flex flex-col gap-1.5">
-              <label className="font-bold text-foreground">{t("common:cvManagement.labels.endDate")}</label>
+              <label className="font-bold text-foreground">End Date</label>
               <input
                 type="date"
-                className="flex h-10 w-full rounded-xl border border-border bg-surface px-3 py-2 text-xs outline-none focus:border-accent disabled:bg-neutral-100 disabled:text-neutral-400"
+                className="flex h-10 w-full rounded-xl border border-border bg-surface px-3 py-2 text-xs outline-none focus:border-accent disabled:bg-surface-secondary disabled:text-muted"
                 value={editingItem.endDate ? editingItem.endDate.split("T")[0] : ""}
                 disabled={editingItem.isCurrentlyWorking}
                 onChange={(e) => setEditingItem({ ...editingItem, endDate: e.target.value })}
@@ -214,39 +219,42 @@ export const ExperienceForm: React.FC<ExperienceFormProps> = ({
                     endDate: isSelected ? null : editingItem.endDate,
                   })
                 }
+                aria-label="Currently working here"
               />
               <span className="text-xs font-semibold text-foreground">
-                {t("common:cvManagement.labels.currentlyWorking")}
+                Currently working here
               </span>
             </div>
           </div>
 
           <div className="flex flex-col gap-1.5 text-xs">
-            <label className="font-bold text-foreground">{t("common:cvManagement.labels.description")}</label>
+            <label className="font-bold text-foreground">Description</label>
             <TextArea
               value={editingItem.description}
               onChange={(e) => setEditingItem({ ...editingItem, description: e.target.value })}
               placeholder="Detail your responsibilities and achievements..."
               rows={4}
+              aria-label="Job description"
             />
           </div>
 
           {/* Tech stack section */}
           <div className="flex flex-col gap-2 border-t border-border/20 pt-3">
-            <label className="font-bold text-xs text-foreground">{t("common:cvManagement.labels.technologies")}</label>
+            <label className="font-bold text-xs text-foreground">Technologies Used</label>
             <div className="flex gap-2">
               <Input
                 value={newTech}
                 onChange={(e) => setNewTech(e.target.value)}
-                placeholder={t("common:cvManagement.labels.addTechInput")}
+                placeholder="Add technology..."
                 onKeyDown={(e) => {
                   if (e.key === "Enter") {
                     e.preventDefault();
                     addTechnology();
                   }
                 }}
+                aria-label="Technology name"
               />
-              <Button size="sm" variant="secondary" className="rounded-xl border border-border/30 h-10 min-w-10" onPress={addTechnology}>
+              <Button size="sm" variant="secondary" className="rounded-xl border border-border/30 h-10 min-w-10" onPress={addTechnology} type="button" aria-label="Add technology">
                 <Plus className="size-4" />
               </Button>
             </div>
@@ -261,7 +269,7 @@ export const ExperienceForm: React.FC<ExperienceFormProps> = ({
                 >
                   <span className="flex items-center gap-1">
                     {tech}
-                    <button type="button" onClick={() => removeTechnology(tech)} className="bg-transparent border-none text-muted-foreground cursor-pointer">
+                    <button type="button" onClick={() => removeTechnology(tech)} className="bg-transparent border-none text-muted-foreground cursor-pointer flex items-center" aria-label={`Remove ${tech} technology`}>
                       <X className="size-2.5" />
                     </button>
                   </span>
@@ -273,10 +281,10 @@ export const ExperienceForm: React.FC<ExperienceFormProps> = ({
           {/* Achievements section */}
           <div className="flex flex-col gap-3 border-t border-border/20 pt-3">
             <div className="flex justify-between items-center">
-              <span className="font-bold text-xs text-foreground">{t("common:cvManagement.sectionAchievements")}</span>
-              <Button size="sm" variant="secondary" className="rounded-xl border border-border/30 h-7 text-[10px] font-bold" onPress={addAchievement}>
+              <span className="font-bold text-xs text-foreground">Achievements</span>
+              <Button size="sm" variant="secondary" className="rounded-xl border border-border/30 h-7 text-[10px] font-bold" onPress={addAchievement} type="button">
                 <PlusCircle className="size-3.5" />
-                {t("common:cvManagement.labels.addAchievement")}
+                Add Achievement
               </Button>
             </div>
             <div className="flex flex-col gap-3">
@@ -288,24 +296,28 @@ export const ExperienceForm: React.FC<ExperienceFormProps> = ({
                     variant="secondary"
                     className="rounded-xl border border-border/30 absolute right-2 top-2 h-7 w-7 text-danger"
                     onPress={() => removeAchievement(idx)}
+                    type="button"
+                    aria-label={`Remove achievement ${idx + 1}`}
                   >
                     <Trash2 className="size-3.5" />
                   </Button>
                   <div className="flex flex-col gap-1 text-xs w-[calc(100%-40px)]">
-                    <label className="font-bold">{t("common:cvManagement.labels.fullName") || "Achievement Title"}</label>
+                    <label className="font-bold">Achievement Title</label>
                     <Input
                       value={ach.title}
                       onChange={(e) => updateAchievement(idx, "title", e.target.value)}
                       placeholder="e.g. Optimize Database Query"
+                      aria-label={`Achievement title ${idx + 1}`}
                     />
                   </div>
                   <div className="flex flex-col gap-1 text-xs">
-                    <label className="font-bold">{t("common:cvManagement.labels.description")}</label>
+                    <label className="font-bold">Description</label>
                     <TextArea
                       value={ach.description}
                       onChange={(e) => updateAchievement(idx, "description", e.target.value)}
                       placeholder="e.g. Tối ưu hóa truy vấn giúp giảm tải CPU 25%"
                       rows={2}
+                      aria-label={`Achievement description ${idx + 1}`}
                     />
                   </div>
                 </div>
@@ -314,39 +326,40 @@ export const ExperienceForm: React.FC<ExperienceFormProps> = ({
           </div>
 
           <Button size="sm" className="bg-accent text-accent-foreground font-bold rounded-xl border-none mt-2 h-9" onPress={handleSaveItem}>
-            {t("common:buttons.confirm")}
+            Confirm
           </Button>
         </div>
       ) : (
         // List Mode
         <div className="flex flex-col gap-4">
           <div className="flex justify-between items-center select-none">
-            <span className="text-xs font-bold text-foreground">{t("common:cvManagement.labels.addExperience")}</span>
+            <span className="text-xs font-bold text-foreground">Add Work Experience</span>
             <Button
               size="sm"
               variant="secondary"
               className="rounded-xl text-[10px] font-bold flex items-center gap-1 border border-border/30 h-8"
               onPress={handleAddNew}
+              type="button"
             >
               <PlusCircle className="size-3.5" />
-              {t("common:cvManagement.labels.addExperience")}
+              Add Work Experience
             </Button>
           </div>
 
           <div className="flex flex-col gap-3">
             {draft.length === 0 ? (
-              <div className="py-10 text-center border-2 border-dashed border-border/40 rounded-2xl select-none">
-                <span className="text-muted-foreground text-xs">{t("common:cvManagement.labels.noExperience")}</span>
+              <div className="py-10 text-center border-2 border-dashed border-border/40 rounded-xl select-none">
+                <span className="text-muted-foreground text-xs">No work experience added yet.</span>
               </div>
             ) : (
               draft.map((item) => (
-                <Card key={item.id} className="p-4 border border-border/40 bg-surface flex flex-row justify-between items-center gap-4">
+                <Card key={item.id} rounded="xl" glow={false} className="p-4 border border-border/40 bg-surface flex flex-row justify-between items-center gap-4">
                   <div className="flex flex-col gap-1 min-w-0">
                     <span className="font-bold text-foreground text-xs truncate">
                       {item.jobTitle} <span className="font-light text-muted">@</span> {item.company}
                     </span>
                     <span className="text-[10px] text-muted-foreground font-medium">
-                      {item.startDate} to {item.isCurrentlyWorking ? t("common:cvPreview.presentLabel") : item.endDate}
+                      {item.startDate} to {item.isCurrentlyWorking ? "Present" : item.endDate}
                     </span>
                   </div>
                   <div className="flex gap-2">
@@ -356,6 +369,8 @@ export const ExperienceForm: React.FC<ExperienceFormProps> = ({
                       variant="secondary"
                       className="rounded-xl border border-border/30 h-8 w-8"
                       onPress={() => handleEdit(item)}
+                      type="button"
+                      aria-label={`Edit experience at ${item.company}`}
                     >
                       <Edit2 className="size-3.5" />
                     </Button>
@@ -365,6 +380,8 @@ export const ExperienceForm: React.FC<ExperienceFormProps> = ({
                       variant="secondary"
                       className="rounded-xl border border-border/30 h-8 w-8 text-danger"
                       onPress={() => handleRemove(item.id)}
+                      type="button"
+                      aria-label={`Remove experience at ${item.company}`}
                     >
                       <Trash2 className="size-3.5" />
                     </Button>
@@ -379,27 +396,13 @@ export const ExperienceForm: React.FC<ExperienceFormProps> = ({
       </div>
 
       {!editingItem && (
-        <div className="absolute bottom-0 left-0 right-0 p-4 border-t border-border/20 bg-background/95 backdrop-blur-sm flex justify-end gap-3 shrink-0 rounded-b-xl z-20">
-          <Button
-            size="sm"
-            variant="secondary"
-            className="rounded-xl font-bold select-none border border-border/30 h-9"
-            isDisabled={!isDirty || isSaving}
-            onPress={onReset}
-          >
-            {t("common:cvWorkspace.resetChanges")}
-          </Button>
-          <Button
-            size="sm"
-            onPress={onSave}
-            className={`rounded-xl font-bold select-none border-none h-9 ${
-              isDirty ? "bg-accent text-accent-foreground" : "bg-neutral-300 text-neutral-500 cursor-not-allowed"
-            }`}
-            isDisabled={!isDirty || isSaving}
-          >
-            {isSaving ? <Spinner size="sm" color="current" /> : t("common:cvWorkspace.saveChanges")}
-          </Button>
-        </div>
+        <BaseUnsavedChangesBar
+          message="You have unsaved work experience changes."
+          onReset={onReset}
+          onSave={onSave}
+          isDirty={isDirty}
+          isSubmitting={isSaving}
+        />
       )}
     </div>
   );

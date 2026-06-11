@@ -1,15 +1,14 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { useTranslation } from "react-i18next";
 import { useRouter } from "next/navigation";
 import {
-  Card,
   Typography,
   Button,
   Spinner,
   toast,
 } from "@heroui/react";
+import { Card } from "@/components/ui/card";
 import {
   User,
   Briefcase,
@@ -196,7 +195,6 @@ const INITIAL_DRAFT_STATE: CvDraftState = {
 };
 
 export default function CvManagementCenter() {
-  const { t } = useTranslation(["common"]);
   const router = useRouter();
   const { user } = useAuth();
 
@@ -251,7 +249,7 @@ export default function CvManagementCenter() {
   // Manage parent dashboard layout overflow on desktop
   useEffect(() => {
     if (typeof window === "undefined") return;
-    
+
     const parentMain = document.querySelector("main.flex-1.overflow-y-auto");
     if (!parentMain) return;
 
@@ -282,14 +280,24 @@ export default function CvManagementCenter() {
         birthDate: profile.birthDate ? profile.birthDate.split("T")[0] : "",
         socialLinks: profile.socialLinks || [],
       };
-      setBaselines((prev) => ({ ...prev, "basic-info": basicMapped }));
-      setDrafts((prev) => ({ ...prev, "basic-info": basicMapped }));
 
       const summaryMapped: CareerSummaryDraft = {
         bio: profile.bio || "",
       };
-      setBaselines((prev) => ({ ...prev, "career-summary": summaryMapped }));
-      setDrafts((prev) => ({ ...prev, "career-summary": summaryMapped }));
+
+      const timer = setTimeout(() => {
+        setBaselines((prev) => ({
+          ...prev,
+          "basic-info": basicMapped,
+          "career-summary": summaryMapped,
+        }));
+        setDrafts((prev) => ({
+          ...prev,
+          "basic-info": basicMapped,
+          "career-summary": summaryMapped,
+        }));
+      }, 0);
+      return () => clearTimeout(timer);
     }
   }, [profile]);
 
@@ -299,8 +307,6 @@ export default function CvManagementCenter() {
       const skillsMapped: SkillsDraft = {
         targetSkills: declared.targetSkills || [],
       };
-      setBaselines((prev) => ({ ...prev, "skills": skillsMapped }));
-      setDrafts((prev) => ({ ...prev, "skills": skillsMapped }));
 
       const prefMapped: PreferencesDraft = {
         availableForHire: declared.availableForHire ?? true,
@@ -325,8 +331,20 @@ export default function CvManagementCenter() {
         companyValues: declared.companyValues || [],
         workPreferenceNotes: declared.workPreferenceNotes || "",
       };
-      setBaselines((prev) => ({ ...prev, "preferences": prefMapped }));
-      setDrafts((prev) => ({ ...prev, "preferences": prefMapped }));
+
+      const timer = setTimeout(() => {
+        setBaselines((prev) => ({
+          ...prev,
+          "skills": skillsMapped,
+          "preferences": prefMapped,
+        }));
+        setDrafts((prev) => ({
+          ...prev,
+          "skills": skillsMapped,
+          "preferences": prefMapped,
+        }));
+      }, 0);
+      return () => clearTimeout(timer);
     }
   }, [career]);
 
@@ -347,8 +365,12 @@ export default function CvManagementCenter() {
         achievements: we.achievements || [],
         links: we.links || [],
       }));
-      setBaselines((prev) => ({ ...prev, "experience": expMapped }));
-      setDrafts((prev) => ({ ...prev, "experience": expMapped }));
+
+      const timer = setTimeout(() => {
+        setBaselines((prev) => ({ ...prev, "experience": expMapped }));
+        setDrafts((prev) => ({ ...prev, "experience": expMapped }));
+      }, 0);
+      return () => clearTimeout(timer);
     }
   }, [workExperiences]);
 
@@ -367,8 +389,12 @@ export default function CvManagementCenter() {
         endDate: edu.endDate ? edu.endDate.split("T")[0] : null,
         isCurrentlyStudying: edu.isCurrentlyStudying,
       }));
-      setBaselines((prev) => ({ ...prev, "education": eduMapped }));
-      setDrafts((prev) => ({ ...prev, "education": eduMapped }));
+
+      const timer = setTimeout(() => {
+        setBaselines((prev) => ({ ...prev, "education": eduMapped }));
+        setDrafts((prev) => ({ ...prev, "education": eduMapped }));
+      }, 0);
+      return () => clearTimeout(timer);
     }
   }, [education]);
 
@@ -386,8 +412,12 @@ export default function CvManagementCenter() {
         attachmentSize: ach.attachment?.fileSize,
         attachmentUrl: ach.attachment?.fileUrl,
       }));
-      setBaselines((prev) => ({ ...prev, "achievements": achMapped }));
-      setDrafts((prev) => ({ ...prev, "achievements": achMapped }));
+
+      const timer = setTimeout(() => {
+        setBaselines((prev) => ({ ...prev, "achievements": achMapped }));
+        setDrafts((prev) => ({ ...prev, "achievements": achMapped }));
+      }, 0);
+      return () => clearTimeout(timer);
     }
   }, [achievements]);
 
@@ -409,7 +439,7 @@ export default function CvManagementCenter() {
     }
 
     let count = 0;
-    let total = 8;
+    const total = 8;
     if (profile?.fullName) count++;
     if (profile?.bio) count++;
     if (education && education.length > 0) count++;
@@ -425,9 +455,9 @@ export default function CvManagementCenter() {
   const completenessPercent = calculateCompleteness();
 
   const getCompletenessStatus = (percent: number) => {
-    if (percent < 50) return { label: t("common:cvManagement.statusNeedsImprovement"), color: "warning" as const };
-    if (percent < 80) return { label: t("common:cvManagement.statusInProgress"), color: "default" as const };
-    return { label: t("common:cvManagement.statusStrong"), color: "success" as const };
+    if (percent < 50) return { label: "Needs Improvement", color: "warning" as const };
+    if (percent < 80) return { label: "In Progress", color: "default" as const };
+    return { label: "Strong", color: "success" as const };
   };
 
   const status = getCompletenessStatus(completenessPercent);
@@ -442,13 +472,13 @@ export default function CvManagementCenter() {
     }
 
     const actions = [];
-    if (!profile?.fullName) actions.push({ id: "fullName", text: t("common:cvManagement.actionFullName") });
-    if (!profile?.bio) actions.push({ id: "bio", text: t("common:cvManagement.actionBio") });
-    if (!education || education.length === 0) actions.push({ id: "education", text: t("common:cvManagement.actionEducation") });
-    if (!workExperiences || workExperiences.length === 0) actions.push({ id: "experience", text: t("common:cvManagement.actionExperience") });
-    if (!achievements || achievements.length === 0) actions.push({ id: "achievements", text: t("common:cvManagement.actionAchievements") });
+    if (!profile?.fullName) actions.push({ id: "fullName", text: "Add your full name" });
+    if (!profile?.bio) actions.push({ id: "bio", text: "Add your profile summary / bio" });
+    if (!education || education.length === 0) actions.push({ id: "education", text: "Add school and education information" });
+    if (!workExperiences || workExperiences.length === 0) actions.push({ id: "experience", text: "Add work experience" });
+    if (!achievements || achievements.length === 0) actions.push({ id: "achievements", text: "Update achievements and certificates" });
     if (!career?.declaredPreferences?.targetSkills || career.declaredPreferences.targetSkills.length === 0) {
-      actions.push({ id: "skills", text: t("common:cvManagement.actionSkills") });
+      actions.push({ id: "skills", text: "Update your target skills" });
     }
     return actions;
   };
@@ -482,10 +512,10 @@ export default function CvManagementCenter() {
         if (payload.username !== baselines["basic-info"].username) {
           try {
             await updateUsername(payload.username);
-            toast.success(t("common:cvManagement.usernameUpdateSuccess"));
+            toast.success("Username updated successfully!");
           } catch (err: any) {
             console.error(err);
-            const errMsg = err.response?.data?.message || t("common:cvManagement.usernameTaken");
+            const errMsg = err.response?.data?.message || "Username is already taken, please choose another one.";
             toast.danger(errMsg);
             setIsSaving(false);
             return; // Halt save operation if username update fails
@@ -527,7 +557,7 @@ export default function CvManagementCenter() {
 
         setBaselines((prev) => ({ ...prev, "basic-info": updatedBasic }));
         setDrafts((prev) => ({ ...prev, "basic-info": updatedBasic }));
-        toast.success(t("common:cvManagement.saveSuccess"));
+        toast.success("Changes saved successfully!");
         await refreshProfile();
       } else if (activeTab === "career-summary") {
         const payload = drafts["career-summary"];
@@ -552,7 +582,7 @@ export default function CvManagementCenter() {
         const updatedSummary: CareerSummaryDraft = { bio: response.bio || "" };
         setBaselines((prev) => ({ ...prev, "career-summary": updatedSummary }));
         setDrafts((prev) => ({ ...prev, "career-summary": updatedSummary }));
-        toast.success(t("common:cvManagement.saveSuccess"));
+        toast.success("Changes saved successfully!");
         await refreshProfile();
       } else if (activeTab === "skills") {
         const payload = drafts["skills"];
@@ -564,7 +594,7 @@ export default function CvManagementCenter() {
         const updatedSkills: SkillsDraft = { targetSkills: response.declaredPreferences.targetSkills || [] };
         setBaselines((prev) => ({ ...prev, "skills": updatedSkills }));
         setDrafts((prev) => ({ ...prev, "skills": updatedSkills }));
-        toast.success(t("common:cvManagement.saveSuccess"));
+        toast.success("Changes saved successfully!");
         await refreshCareer();
       } else if (activeTab === "preferences") {
         const payload = drafts["preferences"];
@@ -620,7 +650,7 @@ export default function CvManagementCenter() {
 
         setBaselines((prev) => ({ ...prev, "preferences": updatedPref }));
         setDrafts((prev) => ({ ...prev, "preferences": updatedPref }));
-        toast.success(t("common:cvManagement.saveSuccess"));
+        toast.success("Changes saved successfully!");
         await refreshCareer();
       } else if (activeTab === "experience") {
         // List-based Work Experience save
@@ -666,7 +696,7 @@ export default function CvManagementCenter() {
           await reorderWorkExperiences(finalIds);
         }
 
-        toast.success(t("common:cvManagement.saveSuccess"));
+        toast.success("Changes saved successfully!");
         await refreshWorkExperiences();
       } else if (activeTab === "education") {
         // List-based Education save
@@ -707,7 +737,7 @@ export default function CvManagementCenter() {
           await reorderEducation(finalIds);
         }
 
-        toast.success(t("common:cvManagement.saveSuccess"));
+        toast.success("Changes saved successfully!");
         await refreshEducation();
       } else if (activeTab === "achievements") {
         // List-based Achievements save
@@ -744,12 +774,12 @@ export default function CvManagementCenter() {
           await reorderAchievements(finalIds);
         }
 
-        toast.success(t("common:cvManagement.saveSuccess"));
+        toast.success("Changes saved successfully!");
         await refreshAchievements();
       }
     } catch (err) {
       console.error(err);
-      toast.danger(t("common:cvManagement.partialSaveError"));
+      toast.danger("Some changes failed to save. Re-syncing with server...");
       // Resynchronize client list with store upon partial failure
       if (activeTab === "experience") await refreshWorkExperiences();
       if (activeTab === "education") await refreshEducation();
@@ -763,12 +793,12 @@ export default function CvManagementCenter() {
 
   const handleResetActiveSection = () => {
     setDrafts((prev) => ({ ...prev, [activeTab]: baselines[activeTab] }));
-    toast.success(t("common:cvManagement.resetSuccess"));
+    toast.success("Section reset successfully!");
   };
 
   const activeProfile = useSampleData ? SAMPLE_DATA.profile : {
-    fullName: drafts["basic-info"].fullName || t("common:cvManagement.untitled"),
-    headline: drafts["basic-info"].headline || t("common:cvManagement.unspecifiedHeadline"),
+    fullName: drafts["basic-info"].fullName || "Untitled",
+    headline: drafts["basic-info"].headline || "Headline not set",
     bio: drafts["career-summary"].bio || "",
     location: drafts["basic-info"].location || "",
     publicEmail: drafts["basic-info"].publicEmail || "",
@@ -790,14 +820,14 @@ export default function CvManagementCenter() {
   const renderOverview = () => (
     <div className="flex flex-col gap-6 text-left w-full">
       {/* Layer 1: Profile Completeness */}
-      <Card className="p-6 border border-border/40 bg-surface flex flex-col gap-4">
+      <Card rounded="xl" className="p-6 border border-border/40 bg-surface flex flex-col gap-4">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div className="flex flex-col gap-0.5">
             <Typography type="body-sm" className="font-bold text-foreground">
-              {t("common:cvManagement.completeness")}
+              Profile Completeness
             </Typography>
             <Typography type="body-xs" className="text-muted">
-              {t("common:cvManagement.completenessDescription")}
+              Completing your profile highlights helps recruiters discover your profile.
             </Typography>
           </div>
           <div className="flex items-center gap-2">
@@ -818,7 +848,7 @@ export default function CvManagementCenter() {
         {suggestedActions.length > 0 && (
           <div className="flex flex-col gap-2 border-t border-border/30 pt-3 mt-1">
             <span className="text-[10px] text-muted uppercase font-bold tracking-wider">
-              {t("common:cvManagement.suggestedActions")}
+              Suggested Actions
             </span>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
               {suggestedActions.map((action) => (
@@ -835,14 +865,14 @@ export default function CvManagementCenter() {
       {/* Layer 2: Profile Preview options */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 w-full">
         {/* Card 1: Standard A4 Preview */}
-        <Card className="p-6 border border-border/40 bg-surface flex flex-col justify-between items-start gap-4">
+        <Card rounded="xl" className="p-6 border border-border/40 bg-surface flex flex-col justify-between items-start gap-4">
           <div className="flex flex-col text-left gap-1">
             <div className="flex items-center gap-2 text-accent">
               <FileText className="size-5" />
-              <h4 className="font-extrabold text-sm uppercase tracking-wide">{t("common:cvManagement.previewA4")}</h4>
+              <h4 className="font-extrabold text-sm uppercase tracking-wide">Standard A4 CV</h4>
             </div>
             <p className="text-xs text-muted leading-relaxed">
-              {t("common:cvManagement.previewA4DescMain")}
+              Traditional A4 layout ready for download or printing.
             </p>
           </div>
           <Button
@@ -851,19 +881,19 @@ export default function CvManagementCenter() {
             className="rounded-xl font-bold text-xs select-none w-full border-border/30"
             onPress={() => setIsA4PreviewOpen(true)}
           >
-            {t("common:cvManagement.openA4Preview")}
+            Open A4 Preview
           </Button>
         </Card>
 
         {/* Card 2: CVerify Digital Profile */}
-        <Card className="p-6 border border-border/40 bg-surface flex flex-col justify-between items-start gap-4">
+        <Card rounded="xl" className="p-6 border border-border/40 bg-surface flex flex-col justify-between items-start gap-4">
           <div className="flex flex-col text-left gap-1">
             <div className="flex items-center gap-2 text-emerald-500">
               <Sparkles className="size-5" />
-              <h4 className="font-extrabold text-sm uppercase tracking-wide">{t("common:cvManagement.viewDigitalProfile")}</h4>
+              <h4 className="font-extrabold text-sm uppercase tracking-wide">CVerify Digital Profile</h4>
             </div>
             <p className="text-xs text-muted leading-relaxed">
-              {t("common:cvManagement.viewDigitalProfileDescMain")}
+              Online portfolio containing your AI verification Trust Score badges.
             </p>
           </div>
           <Button
@@ -873,11 +903,11 @@ export default function CvManagementCenter() {
               if (profile?.username) {
                 router.push(`/${profile.username.toLowerCase()}`);
               } else {
-                toast.danger(t("common:cvManagement.set_username_warning"));
+                toast.danger("Please set your Username in Basic Information before viewing your public profile.");
               }
             }}
           >
-            {t("common:cvManagement.openProfile")}
+            Open Digital Profile
           </Button>
         </Card>
       </div>
@@ -885,25 +915,26 @@ export default function CvManagementCenter() {
       {/* Layer 3: CV Structure Grid */}
       <div className="flex flex-col gap-4 text-left w-full">
         <Typography type="body-sm" className="font-bold text-foreground">
-          {t("common:cvManagement.sectionHeader")}
+          CV Profile Structure
         </Typography>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
           {[
-            { id: "basic-info" as const, label: t("common:cvManagement.sectionBasicInfo"), desc: t("common:cvManagement.sectionBasicInfoDesc"), icon: User },
-            { id: "career-summary" as const, label: t("common:cvManagement.sectionCareerSummary"), desc: t("common:cvManagement.sectionCareerSummaryDesc"), icon: FileText },
-            { id: "skills" as const, label: t("common:cvManagement.sectionSkills"), desc: t("common:cvManagement.sectionSkillsDesc"), icon: Sparkles },
-            { id: "projects" as const, label: t("common:cvManagement.sectionProjects"), desc: t("common:cvManagement.sectionProjectsDesc"), icon: FolderCode },
-            { id: "experience" as const, label: t("common:cvManagement.sectionExperience"), desc: t("common:cvManagement.sectionExperienceDesc"), icon: Briefcase },
-            { id: "education" as const, label: t("common:cvManagement.sectionEducation"), desc: t("common:cvManagement.sectionEducationDesc"), icon: GraduationCap },
-            { id: "achievements" as const, label: t("common:cvManagement.sectionAchievements"), desc: t("common:cvManagement.sectionAchievementsDesc"), icon: Award },
-            { id: "preferences" as const, label: t("common:cvManagement.sectionPreferences"), desc: t("common:cvManagement.sectionPreferencesDesc"), icon: Briefcase },
+            { id: "basic-info" as const, label: "Basic Information", desc: "Name, avatar, headline, contact info", icon: User },
+            { id: "career-summary" as const, label: "Career Summary", desc: "Brief description of yourself and career direction (Uses Bio)", icon: FileText },
+            { id: "skills" as const, label: "Target Skills", desc: "Target skills you want to develop", icon: Sparkles },
+            { id: "projects" as const, label: "Linked Projects", desc: "Projects linked from source code repositories", icon: FolderCode },
+            { id: "experience" as const, label: "Work Experience", desc: "Work history, companies, roles, and achievements", icon: Briefcase },
+            { id: "education" as const, label: "Education", desc: "Schools, majors, degrees, and durations", icon: GraduationCap },
+            { id: "achievements" as const, label: "Achievements & Certificates", desc: "Awards, professional and academic certificates", icon: Award },
+            { id: "preferences" as const, label: "Career Preferences", desc: "Target roles, expected salary, locations", icon: Briefcase },
           ].map((section) => {
             const Icon = section.icon;
             const hasDraftChanges = dirtyFlags[section.id];
             return (
               <Card
                 key={section.id}
+                rounded="xl"
                 className="p-4 border border-border/40 hover:border-accent/40 bg-surface flex items-start gap-3.5 cursor-pointer text-left select-none relative group"
                 onClick={() => {
                   setActiveTab(section.id);
@@ -942,7 +973,7 @@ export default function CvManagementCenter() {
           onPress={() => setViewState("overview")}
         >
           <ArrowLeft className="size-3.5" />
-          <span>{t("common:cvManagement.backToOverview")}</span>
+          <span>Back to Overview</span>
         </Button>
         <div className="flex items-center gap-2">
           <Button
@@ -954,16 +985,16 @@ export default function CvManagementCenter() {
             {mobileShowPreview ? <EyeOff className="size-3.5" /> : <Eye className="size-3.5" />}
             <span>{mobileShowPreview ? "Hide Preview" : "Show Preview"}</span>
           </Button>
-          <Typography type="body-sm" className="font-bold text-accent">
-            {t("common:cvManagement.editPrefix")}{activeTab === "basic-info" ? t("common:cvManagement.sectionBasicInfo") :
-              activeTab === "career-summary" ? t("common:cvManagement.sectionCareerSummary") :
-                activeTab === "skills" ? t("common:cvManagement.sectionSkills") :
-                  activeTab === "projects" ? t("common:cvManagement.sectionProjects") :
-                    activeTab === "experience" ? t("common:cvManagement.sectionExperience") :
-                      activeTab === "education" ? t("common:cvManagement.sectionEducation") :
-                        activeTab === "achievements" ? t("common:cvManagement.sectionAchievements") :
-                          t("common:cvManagement.sectionPreferences")}
-          </Typography>
+          <Typography.Heading level={4} className="font-bold text-accent">
+            Edit: {activeTab === "basic-info" ? "Basic Information" :
+              activeTab === "career-summary" ? "Career Summary" :
+                activeTab === "skills" ? "Target Skills" :
+                  activeTab === "projects" ? "Linked Projects" :
+                    activeTab === "experience" ? "Work Experience" :
+                      activeTab === "education" ? "Education" :
+                        activeTab === "achievements" ? "Achievements & Certificates" :
+                          "Career Preferences"}
+          </Typography.Heading>
         </div>
       </div>
 
@@ -973,14 +1004,14 @@ export default function CvManagementCenter() {
         <div className="lg:col-span-2 min-h-0 h-full overflow-hidden flex flex-col border-r border-border/30 pr-3">
           <div className="flex-1 overflow-y-auto flex flex-col gap-1 pr-1 pb-10">
             {[
-              { id: "basic-info" as const, label: t("common:cvManagement.sectionBasicInfo"), icon: User },
-              { id: "career-summary" as const, label: t("common:cvManagement.sectionCareerSummary"), icon: FileText },
-              { id: "skills" as const, label: t("common:cvManagement.sectionSkills"), icon: Sparkles },
-              { id: "projects" as const, label: t("common:cvManagement.sectionProjects"), icon: FolderCode },
-              { id: "experience" as const, label: t("common:cvManagement.sectionExperience"), icon: Briefcase },
-              { id: "education" as const, label: t("common:cvManagement.sectionEducation"), icon: GraduationCap },
-              { id: "achievements" as const, label: t("common:cvManagement.sectionAchievements"), icon: Award },
-              { id: "preferences" as const, label: t("common:cvManagement.sectionPreferences"), icon: Briefcase },
+              { id: "basic-info" as const, label: "Basic Information", icon: User },
+              { id: "career-summary" as const, label: "Career Summary", icon: FileText },
+              { id: "skills" as const, label: "Target Skills", icon: Sparkles },
+              { id: "projects" as const, label: "Linked Projects", icon: FolderCode },
+              { id: "experience" as const, label: "Work Experience", icon: Briefcase },
+              { id: "education" as const, label: "Education", icon: GraduationCap },
+              { id: "achievements" as const, label: "Achievements & Certificates", icon: Award },
+              { id: "preferences" as const, label: "Career Preferences", icon: Briefcase },
             ].map((tab) => {
               const Icon = tab.icon;
               const isActive = activeTab === tab.id;
@@ -1011,20 +1042,20 @@ export default function CvManagementCenter() {
 
         {/* Center column: Form editor */}
         <div className={`lg:col-span-5 xl:col-span-6 min-h-0 h-full overflow-hidden flex flex-col ${mobileShowPreview ? "hidden lg:flex" : "flex"}`}>
-          <Card className="flex-1 min-h-0 p-4 xl:p-6 border border-border/40 bg-surface flex flex-col gap-4 xl:gap-6 text-left relative overflow-hidden h-full">
+          <Card rounded="xl" className="flex-1 min-h-0 p-4 xl:p-6 border border-border/40 bg-surface flex flex-col gap-4 xl:gap-6 text-left relative overflow-hidden h-full">
             <div className="flex flex-col gap-1.5 border-b border-border/20 pb-3 shrink-0">
               <h3 className="font-extrabold text-sm uppercase tracking-wider text-foreground">
-                {t("common:cvManagement.sectionPrefix")}{activeTab === "basic-info" ? t("common:cvManagement.sectionBasicInfo") :
-                  activeTab === "career-summary" ? t("common:cvManagement.sectionCareerSummary") :
-                    activeTab === "skills" ? t("common:cvManagement.sectionSkills") :
-                      activeTab === "projects" ? t("common:cvManagement.sectionProjects") :
-                        activeTab === "experience" ? t("common:cvManagement.sectionExperience") :
-                          activeTab === "education" ? t("common:cvManagement.sectionEducation") :
-                            activeTab === "achievements" ? t("common:cvManagement.sectionAchievements") :
-                              t("common:cvManagement.sectionPreferences")}
+                Section: {activeTab === "basic-info" ? "Basic Information" :
+                  activeTab === "career-summary" ? "Career Summary" :
+                    activeTab === "skills" ? "Target Skills" :
+                      activeTab === "projects" ? "Linked Projects" :
+                        activeTab === "experience" ? "Work Experience" :
+                          activeTab === "education" ? "Education" :
+                            activeTab === "achievements" ? "Achievements & Certificates" :
+                              "Career Preferences"}
               </h3>
               <p className="text-[11px] text-muted">
-                {t("common:cvManagement.saveDisclaimer")}
+                Changes made here are saved directly into your CVerify CV data.
               </p>
             </div>
 
@@ -1038,6 +1069,7 @@ export default function CvManagementCenter() {
                 onReset={handleResetActiveSection}
                 isSaving={isSaving}
                 isDirty={dirtyFlags["basic-info"]}
+                avatarUrl={user?.avatarUrl}
               />
             )}
             {activeTab === "career-summary" && (
@@ -1107,12 +1139,12 @@ export default function CvManagementCenter() {
         {/* Right column: Live CV Preview */}
         <div className={`lg:col-span-5 xl:col-span-4 min-h-0 h-full overflow-hidden flex flex-col gap-3 xl:gap-4 text-left border-l border-border/30 pl-3 xl:pl-4 ${mobileShowPreview ? "flex" : "hidden lg:flex"}`}>
           <div className="flex items-center justify-between select-none shrink-0">
-            <span className="text-[10px] text-muted font-bold uppercase tracking-wider">{t("common:cvManagement.livePreview")}</span>
+            <span className="text-[10px] text-muted font-bold uppercase tracking-wider">Live Preview</span>
             <button
               onClick={() => setIsA4PreviewOpen(true)}
               className="text-[10px] bg-accent-soft text-accent hover:bg-accent/20 px-2.5 py-0.5 rounded-full font-extrabold uppercase cursor-pointer border-none outline-none transition-colors select-none"
             >
-              {t("common:cvManagement.viewLive")}
+              View Live
             </button>
           </div>
 
@@ -1125,13 +1157,13 @@ export default function CvManagementCenter() {
   return (
     <div className="flex flex-col w-full h-full text-left relative overflow-hidden" style={{ "--cv-editor-offset": "185px" } as React.CSSProperties}>
       {/* Page Header */}
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-2 mb-1 select-none">
+      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-2 mb-1 select-none cv-management-header">
         <div className="flex flex-col text-left">
           <Typography.Heading level={2} className="font-extrabold">
-            {t("common:cvManagement.title")}
+            CV Management
           </Typography.Heading>
           <Typography type="body-sm" className="text-muted mt-1 max-w-xl">
-            {t("common:cvManagement.description")}
+            Manage and update your professional CV profile. All changes sync with your Account Settings.
           </Typography>
         </div>
       </div>
@@ -1139,19 +1171,19 @@ export default function CvManagementCenter() {
       <div className="w-full h-px bg-separator my-3" />
 
       {/* Main Content Areas */}
-      <main className={`w-full flex-1 ${viewState === "editor" ? "lg:overflow-hidden" : "overflow-y-auto"}`}>
+      <main className={`w-full flex-1 cv-management-main ${viewState === "editor" ? "lg:overflow-hidden" : "overflow-y-auto"}`}>
         {viewState === "overview" ? renderOverview() : renderEditor()}
       </main>
 
       {/* Dialog standard A4 Preview overlay */}
       {isA4PreviewOpen && (
-        <div className="fixed inset-0 z-50 bg-[#000000]/60 backdrop-blur-sm flex items-center justify-center p-4">
-          <Card className="w-full max-w-[850px] max-h-[90vh] bg-background border border-border flex flex-col overflow-hidden text-left">
+        <div className="fixed inset-0 z-50 backdrop-blur-sm flex items-center justify-center p-4 cv-preview-overlay">
+          <Card rounded="xl" className="w-full max-w-[850px] max-h-[90vh] border border-border flex flex-col overflow-hidden text-left cv-preview-card">
             {/* Header controls */}
             <div className="flex items-center justify-between px-6 py-4 border-b border-border/40 select-none bg-surface/80 backdrop-blur-md">
               <span className="font-extrabold text-sm uppercase tracking-wide text-foreground flex items-center gap-2">
                 <FileText className="size-4 text-accent" />
-                {t("common:cvPreview.title")}
+                CV Preview
               </span>
               <div className="flex items-center gap-2">
                 <Button
@@ -1160,7 +1192,7 @@ export default function CvManagementCenter() {
                   className={["rounded-xl text-[10px] font-bold select-none border-border/30", useSampleData ? "bg-accent text-accent-foreground border-none" : ""].join(" ")}
                   onPress={() => setUseSampleData((prev) => !prev)}
                 >
-                  {useSampleData ? t("common:cvPreview.clearSample") : t("common:cvPreview.loadSample")}
+                  {useSampleData ? "Clear Sample Data" : "Load Sample Data"}
                 </Button>
                 <Button
                   size="sm"
@@ -1169,7 +1201,7 @@ export default function CvManagementCenter() {
                   onPress={handlePrint}
                 >
                   <Printer className="size-3.5" />
-                  <span>{t("common:cvPreview.print")}</span>
+                  <span>Print</span>
                 </Button>
                 <Button
                   size="sm"
@@ -1180,14 +1212,14 @@ export default function CvManagementCenter() {
                     setUseSampleData(false);
                   }}
                 >
-                  {t("common:cvPreview.close")}
+                  Close
                 </Button>
               </div>
             </div>
 
             {/* A4 Printable content frame */}
-            <div className="flex-1 overflow-y-auto p-8 bg-neutral-200/50 flex justify-center items-start">
-              <div className="shadow-md border border-neutral-300 rounded-xs overflow-hidden">
+            <div className="flex-1 overflow-y-auto p-8 bg-surface-secondary/50 flex justify-center items-start cv-preview-content-frame">
+              <div className="shadow-md border border-border rounded-xs overflow-hidden cv-preview-box">
                 <CVPreview
                   basic={activeProfile}
                   summary={{ bio: activeProfile.bio }}

@@ -48,4 +48,3 @@ public record PublicProfileResponse(
     double? TrustScore = null,
     List<PublicRepositoryDto>? Repositories = null
 );
-

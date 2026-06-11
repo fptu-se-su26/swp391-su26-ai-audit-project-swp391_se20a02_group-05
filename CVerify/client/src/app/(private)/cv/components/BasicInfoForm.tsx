@@ -1,9 +1,9 @@
 import React, { useRef, useState } from "react";
-import { useTranslation } from "react-i18next";
 import { Input, Button, Select, ListBox, Spinner, toast } from "@heroui/react";
 import { PlusCircle, Trash2, Camera } from "lucide-react";
 import { type BasicInfoDraft } from "./types";
 import { profileApi } from "@/services/profile.service";
+import { BaseUnsavedChangesBar } from "@/components/ui/unsaved-changes-bar";
 
 interface BasicInfoFormProps {
   draft: BasicInfoDraft;
@@ -13,6 +13,7 @@ interface BasicInfoFormProps {
   onReset: () => void;
   isSaving: boolean;
   isDirty: boolean;
+  avatarUrl?: string | null;
 }
 
 export const BasicInfoForm: React.FC<BasicInfoFormProps> = ({
@@ -23,8 +24,8 @@ export const BasicInfoForm: React.FC<BasicInfoFormProps> = ({
   onReset,
   isSaving,
   isDirty,
+  avatarUrl,
 }) => {
-  const { t } = useTranslation(["common"]);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const [isUploading, setIsUploading] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -43,20 +44,20 @@ export const BasicInfoForm: React.FC<BasicInfoFormProps> = ({
     const newErrors: Record<string, string> = {};
 
     if (!draft.fullName || draft.fullName.trim().length < 2) {
-      newErrors.fullName = t("common:cvManagement.validation.required");
+      newErrors.fullName = "Required";
     }
 
     if (draft.publicEmail) {
       const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
       if (!emailRegex.test(draft.publicEmail)) {
-        newErrors.publicEmail = t("common:cvManagement.validation.invalidEmail");
+        newErrors.publicEmail = "Invalid email format.";
       }
     }
 
     if (draft.phoneNumber) {
       const phoneRegex = /^[0-9+\s-]{9,15}$/;
       if (!phoneRegex.test(draft.phoneNumber)) {
-        newErrors.phoneNumber = t("common:cvManagement.validation.required");
+        newErrors.phoneNumber = "Required";
       }
     }
 
@@ -70,7 +71,7 @@ export const BasicInfoForm: React.FC<BasicInfoFormProps> = ({
             new URL(link);
           }
         } catch (e) {
-          newErrors[`link-${index}`] = t("common:cvManagement.validation.invalidUrl");
+          newErrors[`link-${index}`] = "Invalid URL format.";
         }
       }
     });
@@ -108,7 +109,7 @@ export const BasicInfoForm: React.FC<BasicInfoFormProps> = ({
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!validate()) {
-      toast.danger(t("common:cvManagement.validationError"));
+      toast.danger("Input formats failed validation.");
       return;
     }
 
@@ -136,12 +137,24 @@ export const BasicInfoForm: React.FC<BasicInfoFormProps> = ({
 
   return (
     <form onSubmit={handleSave} className="flex flex-col h-full overflow-hidden relative text-left">
-      <div className="flex-1 overflow-y-auto pr-1 flex flex-col gap-4 pb-20">
+      <div className="flex-1 overflow-y-auto px-1.5 flex flex-col gap-4 pb-4">
         <div className="flex flex-col sm:flex-row items-center gap-4 border-b border-border/20 pb-4">
         <div className="relative group cursor-pointer" onClick={() => fileInputRef.current?.click()}>
           <div className="w-20 h-20 rounded-full bg-surface-secondary flex items-center justify-center text-muted border border-border/40 overflow-hidden relative">
             {isUploading ? (
               <Spinner size="sm" />
+            ) : avatarUrl ? (
+              <>
+                <img
+                  src={avatarUrl}
+                  alt="Avatar"
+                  className="w-full h-full object-cover"
+                  referrerPolicy="no-referrer"
+                />
+                <div className="absolute inset-0 flex items-center justify-center bg-black/30 opacity-0 group-hover:opacity-100 transition-opacity">
+                  <Camera className="size-5 text-white" />
+                </div>
+              </>
             ) : (
               <Camera className="size-6 text-muted-foreground group-hover:scale-110 transition-transform" />
             )}
@@ -155,7 +168,7 @@ export const BasicInfoForm: React.FC<BasicInfoFormProps> = ({
           />
         </div>
         <div className="flex flex-col gap-1 select-none">
-          <span className="font-bold text-sm text-foreground">{t("common:cvManagement.labels.fullName")}</span>
+          <span className="font-bold text-sm text-foreground">{draft.fullName || "Full Name"}</span>
           <span className="text-[10px] text-muted-foreground">JPEG, PNG, or WebP. Max 2MB.</span>
         </div>
       </div>
@@ -163,70 +176,76 @@ export const BasicInfoForm: React.FC<BasicInfoFormProps> = ({
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {/* Full Name */}
         <div className="flex flex-col gap-1.5">
-          <label className="text-[11px] font-bold text-foreground">{t("common:cvManagement.labels.fullName")} *</label>
+          <label className="text-[11px] font-bold text-foreground">Full Name *</label>
           <Input
             value={draft.fullName}
             onChange={(e) => onChange({ fullName: e.target.value })}
             placeholder="John Doe"
+            aria-label="Full Name"
           />
           {errors.fullName && <span className="text-[10px] text-danger">{errors.fullName}</span>}
         </div>
 
         {/* Username */}
         <div className="flex flex-col gap-1.5">
-          <label className="text-[11px] font-bold text-foreground">{t("common:cvManagement.labels.username")} *</label>
+          <label className="text-[11px] font-bold text-foreground">Username *</label>
           <Input
             value={draft.username}
             onChange={(e) => onChange({ username: e.target.value })}
             placeholder="johndoe"
+            aria-label="Username"
           />
         </div>
 
         {/* Headline */}
         <div className="flex flex-col gap-1.5 md:col-span-2">
-          <label className="text-[11px] font-bold text-foreground">{t("common:cvManagement.labels.headline")}</label>
+          <label className="text-[11px] font-bold text-foreground">Professional Headline</label>
           <Input
             value={draft.headline}
             onChange={(e) => onChange({ headline: e.target.value })}
             placeholder="Senior Fullstack Engineer"
+            aria-label="Professional Headline"
           />
         </div>
 
         {/* Public Email */}
         <div className="flex flex-col gap-1.5">
-          <label className="text-[11px] font-bold text-foreground">{t("common:cvManagement.labels.publicEmail")}</label>
+          <label className="text-[11px] font-bold text-foreground">Public Email</label>
           <Input
             value={draft.publicEmail}
             onChange={(e) => onChange({ publicEmail: e.target.value })}
             placeholder="email@example.com"
+            aria-label="Public Email"
           />
           {errors.publicEmail && <span className="text-[10px] text-danger">{errors.publicEmail}</span>}
         </div>
 
         {/* Phone Number */}
         <div className="flex flex-col gap-1.5">
-          <label className="text-[11px] font-bold text-foreground">{t("common:cvManagement.labels.phoneNumber")}</label>
+          <label className="text-[11px] font-bold text-foreground">Phone Number</label>
           <Input
             value={draft.phoneNumber}
             onChange={(e) => onChange({ phoneNumber: e.target.value })}
             placeholder="0987654321"
+            aria-label="Phone Number"
           />
           {errors.phoneNumber && <span className="text-[10px] text-danger">{errors.phoneNumber}</span>}
         </div>
 
         {/* Location */}
         <div className="flex flex-col gap-1.5">
-          <label className="text-[11px] font-bold text-foreground">{t("common:cvManagement.labels.location")}</label>
+          <label className="text-[11px] font-bold text-foreground">Location</label>
           <Input
             value={draft.location}
             onChange={(e) => onChange({ location: e.target.value })}
             placeholder="Hanoi, Vietnam"
+            aria-label="Location"
           />
         </div>
 
         {/* Date of Birth */}
         <div className="flex flex-col gap-1.5">
-          <label className="text-[11px] font-bold text-foreground">{t("common:cvManagement.labels.birthDate")}</label>
+          <label className="text-[11px] font-bold text-foreground">Date of Birth</label>
           <input
             type="date"
             className="flex h-10 w-full rounded-xl border border-border bg-surface px-3 py-2 text-xs outline-none focus:border-accent transition-colors"
@@ -237,30 +256,32 @@ export const BasicInfoForm: React.FC<BasicInfoFormProps> = ({
 
         {/* Current Company */}
         <div className="flex flex-col gap-1.5">
-          <label className="text-[11px] font-bold text-foreground">{t("common:cvManagement.labels.company")}</label>
+          <label className="text-[11px] font-bold text-foreground">Current Company</label>
           <Input
             value={draft.company}
             onChange={(e) => onChange({ company: e.target.value })}
             placeholder="CVerify AI Technology"
+            aria-label="Current Company"
           />
         </div>
 
         {/* Pronouns */}
         <div className="flex flex-col gap-1.5">
-          <label className="text-[11px] font-bold text-foreground">{t("common:cvManagement.labels.pronouns")}</label>
+          <label className="text-[11px] font-bold text-foreground">Pronouns</label>
           <Select
             placeholder="Select pronouns"
             selectedKey={draft.pronouns || "prefer_not"}
             onSelectionChange={(key) => {
               onChange({ pronouns: key as string });
             }}
+            aria-label="Pronouns"
           >
             <Select.Trigger className="rounded-xl border border-border bg-surface text-xs h-10 px-3">
               <Select.Value />
               <Select.Indicator />
             </Select.Trigger>
             <Select.Popover className="bg-surface border border-border rounded-xl p-1 text-xs">
-              <ListBox>
+              <ListBox aria-label="Pronoun options">
                 {pronounsOptions.map((opt) => (
                   <ListBox.Item key={opt.value} id={opt.value} className="p-2 hover:bg-accent/10 rounded-lg cursor-pointer">
                     {opt.label}
@@ -274,11 +295,12 @@ export const BasicInfoForm: React.FC<BasicInfoFormProps> = ({
         {/* Custom Pronouns */}
         {draft.pronouns === "custom" && (
           <div className="flex flex-col gap-1.5">
-            <label className="text-[11px] font-bold text-foreground">{t("common:cvManagement.labels.customPronouns")}</label>
+            <label className="text-[11px] font-bold text-foreground">Custom Pronouns</label>
             <Input
               value={draft.customPronouns}
               onChange={(e) => onChange({ customPronouns: e.target.value })}
               placeholder="Custom pronouns"
+              aria-label="Custom Pronouns"
             />
           </div>
         )}
@@ -287,15 +309,16 @@ export const BasicInfoForm: React.FC<BasicInfoFormProps> = ({
       {/* Social Links */}
       <div className="flex flex-col gap-3 border-t border-border/20 pt-4 mt-2">
         <div className="flex justify-between items-center select-none">
-          <span className="text-xs font-bold text-foreground">{t("common:cvManagement.labels.socialLinks")}</span>
+          <span className="text-xs font-bold text-foreground">Social Profiles & Links</span>
           <Button
             size="sm"
             variant="secondary"
             className="rounded-xl text-[10px] font-bold flex items-center gap-1 border border-border/30 h-8"
             onPress={addSocialLink}
+            type="button"
           >
             <PlusCircle className="size-3.5" />
-            {t("common:cvManagement.labels.addLink")}
+            Add Link
           </Button>
         </div>
 
@@ -307,6 +330,7 @@ export const BasicInfoForm: React.FC<BasicInfoFormProps> = ({
                   value={link}
                   onChange={(e) => handleSocialLinkChange(e.target.value, index)}
                   placeholder="github.com/username"
+                  aria-label={`Social link ${index + 1}`}
                 />
                 {errors[`link-${index}`] && <span className="text-[10px] text-danger">{errors[`link-${index}`]}</span>}
               </div>
@@ -316,6 +340,8 @@ export const BasicInfoForm: React.FC<BasicInfoFormProps> = ({
                 variant="secondary"
                 className="rounded-xl border border-border/30 h-10 w-10 text-danger"
                 onPress={() => removeSocialLink(index)}
+                type="button"
+                aria-label={`Remove social link ${index + 1}`}
               >
                 <Trash2 className="size-4" />
               </Button>
@@ -326,28 +352,15 @@ export const BasicInfoForm: React.FC<BasicInfoFormProps> = ({
 
       </div>
 
-      {/* Form Action Controls */}
-      <div className="absolute bottom-0 left-0 right-0 p-4 border-t border-border/20 bg-background/95 backdrop-blur-sm flex justify-end gap-3 shrink-0 rounded-b-xl z-20">
-        <Button
-          size="sm"
-          variant="secondary"
-          className="rounded-xl font-bold select-none border border-border/30 h-9"
-          isDisabled={!isDirty || isSaving}
-          onPress={onReset}
-        >
-          {t("common:cvWorkspace.resetChanges")}
-        </Button>
-        <Button
-          type="submit"
-          size="sm"
-          className={`rounded-xl font-bold select-none border-none h-9 ${
-            isDirty ? "bg-accent text-accent-foreground" : "bg-neutral-300 text-neutral-500 cursor-not-allowed"
-          }`}
-          isDisabled={!isDirty || isSaving}
-        >
-          {isSaving ? <Spinner size="sm" color="current" /> : t("common:cvWorkspace.saveChanges")}
-        </Button>
-      </div>
+      <BaseUnsavedChangesBar
+        message="You have unsaved basic information changes."
+        onReset={onReset}
+        isDirty={isDirty}
+        isSubmitting={isSaving}
+        resetLabel="Reset Changes"
+        saveLabel="Save Changes"
+      />
     </form>
   );
 };
+export default BasicInfoForm;

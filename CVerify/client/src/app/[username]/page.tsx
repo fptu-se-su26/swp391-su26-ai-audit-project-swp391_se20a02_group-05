@@ -19,7 +19,7 @@ import {
 
 const RESERVED_USERNAMES = new Set([
   "admin", "api", "login", "register", "settings", "dashboard", "profile", "privacy", "terms", "support", "help",
-  "chat", "business", "user", "organization", "auth", "system", "unauthorized", "company-onboarding", 
+  "chat", "business", "user", "organization", "auth", "system", "unauthorized", "company-onboarding",
   "company-verification", "continue-with-email", "forgot-password", "gateway", "reset-password", "verify-email", "workspace-setup",
   "cv"
 ]);
@@ -48,7 +48,7 @@ async function getPublicProfile(username: string): Promise<PublicProfileResponse
   }
 }
 
-function formatExpectedSalary(cp: any): string | null {
+function formatExpectedSalary(cp: NonNullable<PublicProfileResponse['careerPreference']>): string | null {
   const min = cp.expectedSalaryMin;
   const max = cp.expectedSalaryMax;
   const currency = cp.expectedSalaryCurrency || 'VND';
@@ -126,7 +126,7 @@ export default async function PublicProfilePage({ params }: PageProps) {
   const verifiedSkills = getVerifiedSkills(profile.repositories);
 
   const completedRepos = (profile.repositories || []).filter(r => r.latestAnalysisStatus === 'Completed');
-  
+
   let featuredProject: PublicRepository | null = null;
   if (completedRepos.length > 0) {
     const sortedRepos = [...completedRepos].sort((a, b) => {
@@ -135,7 +135,7 @@ export default async function PublicProfilePage({ params }: PageProps) {
       if (scoreA !== scoreB) {
         return scoreB - scoreA; // Highest score first
       }
-      
+
       const dateA = a.latestAnalysisCompletedAtUtc ? new Date(a.latestAnalysisCompletedAtUtc).getTime() : 0;
       const dateB = b.latestAnalysisCompletedAtUtc ? new Date(b.latestAnalysisCompletedAtUtc).getTime() : 0;
       return dateB - dateA; // Most recent completed first
@@ -144,23 +144,23 @@ export default async function PublicProfilePage({ params }: PageProps) {
   }
 
   return (
-    <div className="relative min-h-screen w-full bg-zinc-50 text-zinc-900 flex flex-col justify-between overflow-x-hidden antialiased">
+    <div className="relative min-h-screen w-full bg-background text-foreground flex flex-col justify-between overflow-x-hidden antialiased">
       {/* Grid backdrop */}
-      <div className="absolute inset-0 bg-[radial-gradient(#e5e7eb_1px,transparent_1px)] bg-size-[24px_24px] pointer-events-none opacity-40" />
+      <div className="absolute inset-0 bg-[radial-gradient(var(--separator)_1px,transparent_1px)] bg-size-[24px_24px] pointer-events-none opacity-40" />
 
       {/* Header */}
-      <header className="relative z-10 w-full bg-white/85 backdrop-blur-md border-b border-zinc-200 select-none sticky top-0">
+      <header className="z-10 w-full bg-surface/85 backdrop-blur-md border-b border-border select-none sticky top-0">
         <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
           <Link href="/" className="flex items-center gap-2.5 hover:opacity-90 transition-opacity">
-            <div className="w-8 h-8 rounded-lg bg-zinc-900 text-white flex items-center justify-center shadow-md font-bold">
+            <div className="w-8 h-8 rounded-lg bg-foreground text-background flex items-center justify-center shadow-md font-bold">
               <Compass size={18} />
             </div>
-            <span className="font-extrabold text-sm tracking-tight text-zinc-900">
+            <span className="font-extrabold text-sm tracking-tight text-foreground">
               CVerify
             </span>
           </Link>
           <Link href="/login">
-            <Button size="sm" className="font-semibold text-xs rounded-xl bg-zinc-900 hover:bg-zinc-800 text-white transition-colors px-4 border-none h-8 min-h-8">
+            <Button size="sm" className="font-semibold text-xs rounded-xl bg-foreground hover:bg-foreground/90 text-background transition-colors px-4 border-none h-8 min-h-8">
               Sign In
             </Button>
           </Link>
@@ -169,16 +169,16 @@ export default async function PublicProfilePage({ params }: PageProps) {
 
       {/* Main Content */}
       <main className="relative z-10 flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 py-8 flex flex-col gap-6">
-        
+
         {/* Sleek Document Paper Container */}
-        <div className="w-full bg-white border border-zinc-200 rounded-2xl shadow-xs p-6 sm:p-8 flex flex-col gap-8">
-          
+        <div className="w-full bg-surface border border-border rounded-2xl shadow-xs p-6 sm:p-8 flex flex-col gap-8">
+
           {/* 1. Header Area */}
-          <div className="flex flex-col md:flex-row items-center md:items-start justify-between gap-6 pb-6 border-b border-zinc-100">
+          <div className="flex flex-col md:flex-row items-center md:items-start justify-between gap-6 pb-6 border-b border-separator">
             {/* Avatar & Info */}
             <div className="flex flex-col sm:flex-row items-center sm:items-start gap-5 text-center sm:text-left min-w-0 w-full">
               {/* Avatar */}
-              <div className="w-24 h-24 rounded-full border-2 border-zinc-200 overflow-hidden shadow-xs shrink-0 bg-zinc-100 flex items-center justify-center relative select-none">
+              <div className="w-24 h-24 rounded-full border-2 border-border overflow-hidden shadow-xs shrink-0 bg-default flex items-center justify-center relative select-none">
                 {profile.avatarUrl ? (
                   <Image
                     src={profile.avatarUrl}
@@ -189,7 +189,7 @@ export default async function PublicProfilePage({ params }: PageProps) {
                     unoptimized
                   />
                 ) : (
-                  <div className="w-full h-full bg-zinc-800 flex items-center justify-center text-3xl font-bold text-zinc-100">
+                  <div className="w-full h-full bg-default flex items-center justify-center text-3xl font-bold text-default-foreground">
                     {profile.fullName.charAt(0).toUpperCase()}
                   </div>
                 )}
@@ -198,36 +198,36 @@ export default async function PublicProfilePage({ params }: PageProps) {
               {/* Text Info */}
               <div className="flex flex-col gap-1.5 min-w-0 w-full">
                 <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2.5">
-                  <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-zinc-900">
+                  <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground">
                     {profile.fullName}
                   </h1>
-                  <span className="flex items-center gap-1 bg-emerald-50 text-emerald-700 border border-emerald-200 text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-full select-none shrink-0" title="Verified Profile">
-                    <ShieldCheck className="size-3 text-emerald-600" />
+                  <span className="flex items-center gap-1 bg-success/10 text-success border border-success/20 text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-full select-none shrink-0" title="Verified Profile">
+                    <ShieldCheck className="size-3 text-success" />
                     Verified
                   </span>
                 </div>
 
-                <div className="flex flex-wrap items-center justify-center sm:justify-start gap-x-2 gap-y-0.5 text-xs text-zinc-500 font-medium select-none">
+                <div className="flex flex-wrap items-center justify-center sm:justify-start gap-x-2 gap-y-0.5 text-xs text-muted font-medium select-none">
                   <span>@{profile.username}</span>
                   {profile.headline && (
                     <>
-                      <span className="text-zinc-300">•</span>
+                      <span className="text-separator">•</span>
                       <span>{profile.headline}</span>
                     </>
                   )}
                 </div>
 
                 {/* Meta details row */}
-                <div className="flex flex-wrap items-center justify-center sm:justify-start gap-x-4 gap-y-1.5 mt-2 text-xs text-zinc-600">
+                <div className="flex flex-wrap items-center justify-center sm:justify-start gap-x-4 gap-y-1.5 mt-2 text-xs text-muted">
                   {profile.company && (
                     <span className="flex items-center gap-1.5 min-w-0">
-                      <Briefcase size={14} className="text-zinc-400 shrink-0" />
+                      <Briefcase size={14} className="text-muted/60 shrink-0" />
                       <span className="truncate">{profile.company}</span>
                     </span>
                   )}
                   {profile.location && (
                     <span className="flex items-center gap-1.5 min-w-0">
-                      <MapPin size={14} className="text-zinc-400 shrink-0" />
+                      <MapPin size={14} className="text-muted/60 shrink-0" />
                       <span className="truncate">{profile.location}</span>
                     </span>
                   )}
@@ -237,36 +237,36 @@ export default async function PublicProfilePage({ params }: PageProps) {
 
             {/* Badges/Status Block */}
             <div className="flex flex-wrap items-center justify-center md:justify-end gap-2 shrink-0 select-none max-w-xs">
-              <span className="px-2.5 py-1 text-[10px] font-bold tracking-wider uppercase rounded-full bg-zinc-100 text-zinc-800 border border-zinc-200">
+              <span className="px-2.5 py-1 text-[10px] font-bold tracking-wider uppercase rounded-full bg-default text-default-foreground border border-border">
                 Public Candidate
               </span>
               {hasAudited && (
-                <span className="px-2.5 py-1 text-[10px] font-bold tracking-wider uppercase rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">
+                <span className="px-2.5 py-1 text-[10px] font-bold tracking-wider uppercase rounded-full bg-success/10 text-success border border-success/20">
                   AI Audited
                 </span>
               )}
               {hasAudited && (
-                <span className="px-2.5 py-1 text-[10px] font-bold tracking-wider uppercase rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">
+                <span className="px-2.5 py-1 text-[10px] font-bold tracking-wider uppercase rounded-full bg-success/10 text-success border border-success/20">
                   Repository Analyzed
                 </span>
               )}
               {githubConnected && (
-                <span className="px-2.5 py-1 text-[10px] font-bold tracking-wider uppercase rounded-full bg-blue-50 text-blue-700 border border-blue-200">
+                <span className="px-2.5 py-1 text-[10px] font-bold tracking-wider uppercase rounded-full bg-accent/10 text-accent border border-accent/20">
                   GitHub Connected
                 </span>
               )}
               {linkedinConnected && (
-                <span className="px-2.5 py-1 text-[10px] font-bold tracking-wider uppercase rounded-full bg-blue-50 text-blue-700 border border-blue-200">
+                <span className="px-2.5 py-1 text-[10px] font-bold tracking-wider uppercase rounded-full bg-accent/10 text-accent border border-accent/20">
                   LinkedIn Connected
                 </span>
               )}
               {skillsVerified && (
-                <span className="px-2.5 py-1 text-[10px] font-bold tracking-wider uppercase rounded-full bg-teal-50 text-teal-700 border border-teal-200">
+                <span className="px-2.5 py-1 text-[10px] font-bold tracking-wider uppercase rounded-full bg-success/10 text-success border border-success/20">
                   Skills Verified
                 </span>
               )}
               {isEvaluated && (
-                <span className="px-2.5 py-1 text-[10px] font-bold tracking-wider uppercase rounded-full bg-purple-50 text-purple-700 border border-purple-200">
+                <span className="px-2.5 py-1 text-[10px] font-bold tracking-wider uppercase rounded-full bg-accent/10 text-accent border border-accent/20">
                   Trust Score Evaluated
                 </span>
               )}
@@ -275,15 +275,15 @@ export default async function PublicProfilePage({ params }: PageProps) {
 
           {/* Bio & Social Links */}
           {(profile.bio || (profile.socialLinks && profile.socialLinks.length > 0)) && (
-            <div className="flex flex-col gap-4 pb-6 border-b border-zinc-100 text-left">
+            <div className="flex flex-col gap-4 pb-6 border-b border-separator text-left">
               {profile.bio && (
-                <p className="text-zinc-600 text-sm leading-relaxed whitespace-pre-line max-w-4xl">
+                <p className="text-muted text-sm leading-relaxed whitespace-pre-line max-w-4xl">
                   {profile.bio}
                 </p>
               )}
               {profile.socialLinks && profile.socialLinks.length > 0 && (
                 <div className="flex flex-wrap gap-2.5 items-center mt-2">
-                  <span className="text-[10px] text-zinc-400 uppercase font-bold tracking-wider select-none pr-1">Verified Links:</span>
+                  <span className="text-[10px] text-muted/60 uppercase font-bold tracking-wider select-none pr-1">Verified Links:</span>
                   {profile.socialLinks.map((url, idx) => {
                     let displayUrl = url.replace(/https?:\/\/(www\.)?/, '');
                     if (displayUrl.length > 30) displayUrl = displayUrl.substring(0, 28) + '...';
@@ -293,10 +293,10 @@ export default async function PublicProfilePage({ params }: PageProps) {
                         href={url.startsWith('http') ? url : `https://${url}`}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-zinc-200 bg-zinc-50 hover:bg-zinc-100 hover:border-zinc-300 transition-colors text-xs font-semibold text-zinc-700 hover:text-zinc-900"
+                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border bg-surface-secondary/50 hover:bg-surface-secondary hover:border-border transition-colors text-xs font-semibold text-foreground/80 hover:text-foreground"
                         style={{ overflowWrap: "anywhere", wordBreak: "break-word" }}
                       >
-                        <LinkIcon size={12} className="text-zinc-500 shrink-0" />
+                        <LinkIcon size={12} className="text-muted shrink-0" />
                         {displayUrl}
                       </a>
                     );
@@ -308,12 +308,12 @@ export default async function PublicProfilePage({ params }: PageProps) {
 
           {/* 2. Main Two-Column Layout */}
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-            
+
             {/* Left Column - Verification & technical snapshot */}
             <div className="lg:col-span-4 flex flex-col gap-6 text-left">
               {/* Verification Status Card */}
-              <div className="p-5 border border-zinc-200 rounded-xl bg-zinc-50/50 flex flex-col gap-4">
-                <span className="text-xs font-bold uppercase tracking-wider text-zinc-800 select-none">
+              <div className="p-5 border border-border rounded-xl bg-surface-secondary/30 flex flex-col gap-4">
+                <span className="text-xs font-bold uppercase tracking-wider text-foreground/80 select-none">
                   Verification Status
                 </span>
                 <div className="flex flex-col gap-3">
@@ -323,15 +323,15 @@ export default async function PublicProfilePage({ params }: PageProps) {
                     { label: "Career Preferences Declared", status: !!cp },
                     { label: "Open for Hire", status: cp?.availableForHire ?? false },
                   ].map((item, index) => (
-                    <div key={index} className="flex items-center justify-between text-xs py-1 border-b border-zinc-200/50 last:border-0 select-none">
-                      <span className="text-zinc-600 font-medium">{item.label}</span>
+                    <div key={index} className="flex items-center justify-between text-xs py-1 border-b border-border/40 last:border-0 select-none">
+                      <span className="text-muted font-medium">{item.label}</span>
                       {item.status ? (
-                        <span className="flex items-center gap-1 font-bold text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded-full border border-emerald-200 text-[9px] uppercase">
-                          <ShieldCheck className="size-2.5 text-emerald-600" />
+                        <span className="flex items-center gap-1 font-bold text-success bg-success/10 px-1.5 py-0.5 rounded-full border border-success/20 text-[9px] uppercase">
+                          <ShieldCheck className="size-2.5 text-success" />
                           Verified
                         </span>
                       ) : (
-                        <span className="flex items-center gap-1 font-bold text-zinc-400 bg-zinc-100 px-1.5 py-0.5 rounded-full border border-zinc-200 text-[9px] uppercase">
+                        <span className="flex items-center gap-1 font-bold text-muted bg-default px-1.5 py-0.5 rounded-full border border-border text-[9px] uppercase">
                           Inactive
                         </span>
                       )}
@@ -342,46 +342,46 @@ export default async function PublicProfilePage({ params }: PageProps) {
 
               {/* Quick Facts Card */}
               {cp && (
-                <div className="p-5 border border-zinc-200 rounded-xl bg-zinc-50/50 flex flex-col gap-4">
-                  <span className="text-xs font-bold uppercase tracking-wider text-zinc-800 select-none">
+                <div className="p-5 border border-border rounded-xl bg-surface-secondary/30 flex flex-col gap-4">
+                  <span className="text-xs font-bold uppercase tracking-wider text-foreground/80 select-none">
                     Quick Facts
                   </span>
                   <div className="flex flex-col gap-2.5 text-xs">
-                    <div className="flex justify-between py-1 border-b border-zinc-200/50">
-                      <span className="text-zinc-500 font-medium">Availability</span>
-                      <span className="font-semibold text-zinc-800">{cp.availableForHire ? "Available for Hire" : "Not Active"}</span>
+                    <div className="flex justify-between py-1 border-b border-border/40">
+                      <span className="text-muted font-medium">Availability</span>
+                      <span className="font-semibold text-foreground/80">{cp.availableForHire ? "Available for Hire" : "Not Active"}</span>
                     </div>
-                    <div className="flex justify-between py-1 border-b border-zinc-200/50">
-                      <span className="text-zinc-500 font-medium">Preferred Language</span>
-                      <span className="font-semibold text-zinc-800 capitalize">{cp.preferredLanguage === 'en' ? "English" : "Tiếng Việt"}</span>
+                    <div className="flex justify-between py-1 border-b border-border/40">
+                      <span className="text-muted font-medium">Preferred Language</span>
+                      <span className="font-semibold text-foreground/80 capitalize">{cp.preferredLanguage === 'en' ? "English" : "Tiếng Việt"}</span>
                     </div>
-                    <div className="flex justify-between py-1 border-b border-zinc-200/50">
-                      <span className="text-zinc-500 font-medium">Relocation Willingness</span>
-                      <span className="font-semibold text-zinc-800">{cp.preferredLocations && cp.preferredLocations.length > 0 ? "Yes" : "No"}</span>
+                    <div className="flex justify-between py-1 border-b border-border/40">
+                      <span className="text-muted font-medium">Relocation Willingness</span>
+                      <span className="font-semibold text-foreground/80">{cp.preferredLocations && cp.preferredLocations.length > 0 ? "Yes" : "No"}</span>
                     </div>
                     <div className="flex justify-between py-1 last:border-0">
-                      <span className="text-zinc-500 font-medium">Salary Negotiable</span>
-                      <span className="font-semibold text-zinc-800">{cp.expectedSalaryNegotiable ? "Yes" : "No"}</span>
+                      <span className="text-muted font-medium">Salary Negotiable</span>
+                      <span className="font-semibold text-foreground/80">{cp.expectedSalaryNegotiable ? "Yes" : "No"}</span>
                     </div>
                   </div>
                 </div>
               )}
 
               {/* Technical Snapshot Card */}
-              <div className="p-5 border border-zinc-200 rounded-xl bg-zinc-50/50 flex flex-col gap-4">
-                <span className="text-xs font-bold uppercase tracking-wider text-zinc-800 select-none">
+              <div className="p-5 border border-border rounded-xl bg-surface-secondary/30 flex flex-col gap-4">
+                <span className="text-xs font-bold uppercase tracking-wider text-foreground/80 select-none">
                   Technical Snapshot
                 </span>
                 {verifiedSkills.length > 0 ? (
                   <div className="flex flex-wrap gap-1.5">
                     {verifiedSkills.map((skill) => (
-                      <span key={skill} className="px-2 py-0.5 text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-md">
+                      <span key={skill} className="px-2 py-0.5 text-[10px] font-bold bg-success/10 text-success border border-success/20 rounded-md">
                         {skill}
                       </span>
                     ))}
                   </div>
                 ) : (
-                  <p className="text-xs text-zinc-500 italic">No repository skill evidence available yet</p>
+                  <p className="text-xs text-muted italic">No repository skill evidence available yet</p>
                 )}
               </div>
             </div>
@@ -389,40 +389,40 @@ export default async function PublicProfilePage({ params }: PageProps) {
             {/* Right Column - main content */}
             <div className="lg:col-span-8 flex flex-col gap-6 text-left">
               {/* Overall Trust Score card */}
-              <div className="p-5 sm:p-6 border border-zinc-200 rounded-xl bg-zinc-50/50 flex flex-col sm:flex-row items-center sm:items-start justify-between gap-6">
+              <div className="p-5 sm:p-6 border border-border rounded-xl bg-surface-secondary/30 flex flex-col sm:flex-row items-center sm:items-start justify-between gap-6">
                 <div className="flex flex-col gap-2 min-w-0 text-center sm:text-left">
                   <div className="flex items-center justify-center sm:justify-start gap-2 select-none">
-                    <span className="px-2 py-0.5 text-[9px] font-extrabold uppercase bg-zinc-100 text-zinc-800 border border-zinc-200 rounded-full">
+                    <span className="px-2 py-0.5 text-[9px] font-extrabold uppercase bg-default text-default-foreground border border-border">
                       AI Trust Score
                     </span>
                     {isEvaluated && (
-                      <span className="px-2 py-0.5 text-[9px] font-extrabold uppercase bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-full">
+                      <span className="px-2 py-0.5 text-[9px] font-extrabold uppercase bg-success/10 text-success border border-success/20 rounded-full">
                         AI Audited
                       </span>
                     )}
                   </div>
-                  <h3 className="text-base font-bold text-zinc-900 mt-1">
+                  <h3 className="text-base font-bold text-foreground mt-1">
                     {isEvaluated ? "Repository-based Trust Score" : "Trust Score Status"}
                   </h3>
-                  <p className="text-xs text-zinc-500 leading-relaxed max-w-md">
+                  <p className="text-xs text-muted leading-relaxed max-w-md">
                     {isEvaluated
                       ? "This score represents a repository-analysis-based trust score, indicating the level of verification of the candidate's public source code contributions and technical configurations."
                       : "No repository analysis available yet. Analyze a repository to generate AI-based trust and skill evidence."}
                   </p>
                 </div>
-                
+
                 {/* Visual Circle Score */}
                 {isEvaluated ? (
                   <div className="flex flex-col items-center gap-1 select-none shrink-0">
-                    <div className="w-20 h-20 rounded-full border-4 border-zinc-800 text-zinc-800 flex flex-col items-center justify-center bg-white shadow-xs">
+                    <div className="w-20 h-20 rounded-full border-4 border-accent text-accent flex flex-col items-center justify-center bg-surface shadow-xs">
                       <span className="text-2xl font-black font-outfit leading-none">{normalizeScore(profile.trustScore)}</span>
-                      <span className="text-[8px] font-bold text-neutral-400 uppercase tracking-widest mt-0.5">SCORE</span>
+                      <span className="text-[8px] font-bold text-muted uppercase tracking-widest mt-0.5">SCORE</span>
                     </div>
-                    <span className="text-[10px] font-bold text-emerald-600 uppercase tracking-wider mt-1">AI Evaluated</span>
+                    <span className="text-[10px] font-bold text-success uppercase tracking-wider mt-1">AI Evaluated</span>
                   </div>
                 ) : (
-                  <div className="flex flex-col items-center justify-center p-3 border border-dashed border-zinc-300 rounded-xl bg-zinc-100/50 shrink-0 select-none text-center max-w-[200px]">
-                    <span className="text-[10px] font-semibold text-zinc-500">AI-based score will appear after repository analysis</span>
+                  <div className="flex flex-col items-center justify-center p-3 border border-dashed border-border rounded-xl bg-default/50 shrink-0 select-none text-center max-w-[200px]">
+                    <span className="text-[10px] font-semibold text-muted">AI-based score will appear after repository analysis</span>
                   </div>
                 )}
               </div>
@@ -442,9 +442,9 @@ export default async function PublicProfilePage({ params }: PageProps) {
                 return (
                   <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
                     {stats.map((stat, idx) => (
-                      <div key={idx} className="p-3 border border-zinc-200 rounded-xl bg-white flex flex-col gap-0.5 select-none shadow-xs">
-                        <span className="text-[9px] text-zinc-400 uppercase font-bold tracking-wider">{stat.label}</span>
-                        <span className="text-lg font-black text-zinc-900 font-outfit">{stat.value}</span>
+                      <div key={idx} className="p-3 border border-border rounded-xl bg-surface flex flex-col gap-0.5 select-none shadow-xs">
+                        <span className="text-[9px] text-muted uppercase font-bold tracking-wider">{stat.label}</span>
+                        <span className="text-lg font-black text-foreground font-outfit">{stat.value}</span>
                       </div>
                     ))}
                   </div>
@@ -453,44 +453,44 @@ export default async function PublicProfilePage({ params }: PageProps) {
 
               {/* Featured Project */}
               {featuredProject && (
-                <div className="flex flex-col gap-4 border-t border-zinc-100 pt-6">
-                  <h3 className="text-sm font-bold uppercase tracking-wider text-zinc-900 mb-1">
+                <div className="flex flex-col gap-4 border-t border-separator pt-6">
+                  <h3 className="text-sm font-bold uppercase tracking-wider text-foreground mb-1">
                     Featured Project
                   </h3>
-                  <div className="p-5 border border-zinc-200 rounded-xl bg-white shadow-xs flex flex-col gap-3">
+                  <div className="p-5 border border-border rounded-xl bg-surface shadow-xs flex flex-col gap-3">
                     <div className="flex items-start justify-between gap-4">
                       <div className="flex flex-col gap-1 min-w-0">
-                        <span className="text-xs text-zinc-400 font-bold uppercase tracking-wider select-none">Highest Trust Score Repos</span>
-                        <h4 className="text-base font-bold text-zinc-900 truncate">
+                        <span className="text-xs text-muted font-bold uppercase tracking-wider select-none">Highest Trust Score Repos</span>
+                        <h4 className="text-base font-bold text-foreground truncate">
                           {featuredProject.name}
                         </h4>
-                        <p className="text-xs text-zinc-500">
+                        <p className="text-xs text-muted">
                           {featuredProject.owner}
                         </p>
                       </div>
                       <div className="flex flex-col items-end gap-1 shrink-0 select-none">
-                        <span className="px-2 py-0.5 text-[9px] font-extrabold uppercase bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-full">
+                        <span className="px-2 py-0.5 text-[9px] font-extrabold uppercase bg-success/10 text-success border border-success/20 rounded-full">
                           AI Audited
                         </span>
-                        <span className="text-xs font-black text-emerald-600 font-outfit">
+                        <span className="text-xs font-black text-success font-outfit">
                           Score: {formatScore(featuredProject.trustScore)}
                         </span>
                       </div>
                     </div>
                     {featuredProject.description && (
-                      <p className="text-xs text-zinc-600 leading-relaxed">
+                      <p className="text-xs text-muted leading-relaxed">
                         {featuredProject.description}
                       </p>
                     )}
-                    <div className="flex flex-wrap items-center justify-between gap-3 pt-2 border-t border-zinc-100 text-xs">
+                    <div className="flex flex-wrap items-center justify-between gap-3 pt-2 border-t border-separator text-xs">
                       <div className="flex items-center gap-4">
                         {featuredProject.primaryLanguage && (
-                          <span className="text-zinc-600 font-medium bg-zinc-100 px-2 py-0.5 rounded text-[11px]">
+                          <span className="text-muted font-medium bg-default px-2 py-0.5 rounded text-[11px]">
                             {featuredProject.primaryLanguage}
                           </span>
                         )}
                         {featuredProject.classification && (
-                          <span className="text-zinc-600 font-medium bg-zinc-100 px-2 py-0.5 rounded text-[11px]">
+                          <span className="text-muted font-medium bg-default px-2 py-0.5 rounded text-[11px]">
                             {featuredProject.classification}
                           </span>
                         )}
@@ -500,7 +500,7 @@ export default async function PublicProfilePage({ params }: PageProps) {
                           href={featuredProject.htmlUrl}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="text-zinc-900 font-semibold hover:underline"
+                          className="text-foreground font-semibold hover:underline"
                         >
                           View on GitHub &rarr;
                         </a>
@@ -512,18 +512,18 @@ export default async function PublicProfilePage({ params }: PageProps) {
 
               {/* Career Preferences Section */}
               {hasPreferences && (
-                <div className="flex flex-col gap-4 border-t border-zinc-100 pt-6">
-                  <h3 className="text-sm font-bold uppercase tracking-wider text-zinc-900 mb-1">
+                <div className="flex flex-col gap-4 border-t border-separator pt-6">
+                  <h3 className="text-sm font-bold uppercase tracking-wider text-foreground mb-1">
                     Career Preferences
                   </h3>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     {/* Desired Job Positions */}
                     {desiredJobPositions.length > 0 && (
                       <div className="flex flex-col gap-1.5">
-                        <span className="text-[10px] text-zinc-400 uppercase font-bold tracking-wider">Desired Job Positions</span>
+                        <span className="text-[10px] text-muted uppercase font-bold tracking-wider">Desired Job Positions</span>
                         <div className="flex flex-wrap gap-1.5">
                           {desiredJobPositions.map((pos: string) => (
-                            <span key={pos} className="px-2.5 py-1 rounded-lg text-xs font-semibold bg-zinc-100 text-zinc-800 border border-zinc-200/80">
+                            <span key={pos} className="px-2.5 py-1 rounded-lg text-xs font-semibold bg-default text-default-foreground border border-border/80">
                               {pos}
                             </span>
                           ))}
@@ -534,10 +534,10 @@ export default async function PublicProfilePage({ params }: PageProps) {
                     {/* Preferred Locations */}
                     {preferredLocations.length > 0 && (
                       <div className="flex flex-col gap-1.5">
-                        <span className="text-[10px] text-zinc-400 uppercase font-bold tracking-wider">Preferred Locations</span>
+                        <span className="text-[10px] text-muted uppercase font-bold tracking-wider">Preferred Locations</span>
                         <div className="flex flex-wrap gap-1.5">
                           {preferredLocations.map((loc: string) => (
-                            <span key={loc} className="px-2.5 py-1 rounded-lg text-xs font-semibold bg-zinc-100 text-zinc-800 border border-zinc-200/80">
+                            <span key={loc} className="px-2.5 py-1 rounded-lg text-xs font-semibold bg-default text-default-foreground border border-border/80">
                               {loc}
                             </span>
                           ))}
@@ -548,10 +548,10 @@ export default async function PublicProfilePage({ params }: PageProps) {
                     {/* Preferred Work Environment */}
                     {preferredWorkEnvironments.length > 0 && (
                       <div className="flex flex-col gap-1.5">
-                        <span className="text-[10px] text-zinc-400 uppercase font-bold tracking-wider">Preferred Work Environment</span>
+                        <span className="text-[10px] text-muted uppercase font-bold tracking-wider">Preferred Work Environment</span>
                         <div className="flex flex-wrap gap-1.5">
                           {preferredWorkEnvironments.map((env: string) => (
-                            <span key={env} className="px-2.5 py-1 rounded-lg text-xs font-semibold bg-zinc-100 text-zinc-800 border border-zinc-200/80">
+                            <span key={env} className="px-2.5 py-1 rounded-lg text-xs font-semibold bg-default text-default-foreground border border-border/80">
                               {env}
                             </span>
                           ))}
@@ -562,10 +562,10 @@ export default async function PublicProfilePage({ params }: PageProps) {
                     {/* Work Style */}
                     {workStyles.length > 0 && (
                       <div className="flex flex-col gap-1.5">
-                        <span className="text-[10px] text-zinc-400 uppercase font-bold tracking-wider">Work Style</span>
+                        <span className="text-[10px] text-muted uppercase font-bold tracking-wider">Work Style</span>
                         <div className="flex flex-wrap gap-1.5">
                           {workStyles.map((style: string) => (
-                            <span key={style} className="px-2.5 py-1 rounded-lg text-xs font-semibold bg-zinc-100 text-zinc-800 border border-zinc-200/80">
+                            <span key={style} className="px-2.5 py-1 rounded-lg text-xs font-semibold bg-default text-default-foreground border border-border/80">
                               {style}
                             </span>
                           ))}
@@ -576,10 +576,10 @@ export default async function PublicProfilePage({ params }: PageProps) {
                     {/* Company Values */}
                     {companyValues.length > 0 && (
                       <div className="flex flex-col gap-1.5 sm:col-span-2">
-                        <span className="text-[10px] text-zinc-400 uppercase font-bold tracking-wider">Preferred Company Values</span>
+                        <span className="text-[10px] text-muted uppercase font-bold tracking-wider">Preferred Company Values</span>
                         <div className="flex flex-wrap gap-1.5">
                           {companyValues.map((val: string) => (
-                            <span key={val} className="px-2.5 py-1 rounded-lg text-xs font-semibold bg-zinc-100 text-zinc-800 border border-zinc-200/80">
+                            <span key={val} className="px-2.5 py-1 rounded-lg text-xs font-semibold bg-default text-default-foreground border border-border/80">
                               {val}
                             </span>
                           ))}
@@ -590,16 +590,16 @@ export default async function PublicProfilePage({ params }: PageProps) {
                     {/* Expected Salary */}
                     {salaryText && (
                       <div className="flex flex-col gap-1 sm:col-span-2">
-                        <span className="text-[10px] text-zinc-400 uppercase font-bold tracking-wider">Expected Salary Range</span>
-                        <span className="text-xs font-semibold text-zinc-800 mt-0.5">{salaryText}</span>
+                        <span className="text-[10px] text-muted uppercase font-bold tracking-wider">Expected Salary Range</span>
+                        <span className="text-xs font-semibold text-foreground/80 mt-0.5">{salaryText}</span>
                       </div>
                     )}
 
                     {/* Work Preference Notes */}
                     {notes && notes.trim().length > 0 && (
                       <div className="flex flex-col gap-1 sm:col-span-2">
-                        <span className="text-[10px] text-zinc-400 uppercase font-bold tracking-wider">Work Preference Notes</span>
-                        <p className="text-xs text-zinc-600 leading-relaxed whitespace-pre-line mt-0.5">{notes}</p>
+                        <span className="text-[10px] text-muted uppercase font-bold tracking-wider">Work Preference Notes</span>
+                        <p className="text-xs text-muted leading-relaxed whitespace-pre-line mt-0.5">{notes}</p>
                       </div>
                     )}
                   </div>
@@ -613,7 +613,7 @@ export default async function PublicProfilePage({ params }: PageProps) {
       </main>
 
       {/* Footer */}
-      <footer className="relative z-10 w-full max-w-7xl mx-auto px-6 h-16 flex items-center justify-center border-t border-zinc-200 text-xs text-zinc-500 bg-white/50 select-none">
+      <footer className="relative z-10 w-full max-w-7xl mx-auto px-6 h-16 flex items-center justify-center border-t border-border text-xs text-muted bg-surface/50 select-none">
         &copy; {new Date().getFullYear()} CVerify. All rights reserved.
       </footer>
     </div>

@@ -1,5 +1,4 @@
 import React from "react";
-import { useTranslation } from "react-i18next";
 import {
   Phone,
   Mail,
@@ -54,7 +53,7 @@ interface CVPreviewProps {
     employmentPreferences?: string[];
     workPreferenceNotes?: string;
   };
-  projects?: any[]; // Repositories or sample projects
+  projects?: any[];
 }
 
 // Format date to MM/YYYY
@@ -87,14 +86,12 @@ const categorizeSkills = (skillsList: string[]): Record<string, string[]> => {
   };
 
   const keywords: Record<string, string> = {
-    // Languages
     javascript: "Languages", typescript: "Languages", python: "Languages", java: "Languages",
     cpp: "Languages", "c++": "Languages", csharp: "Languages", "c#": "Languages",
     go: "Languages", golang: "Languages", rust: "Languages", php: "Languages",
     ruby: "Languages", swift: "Languages", kotlin: "Languages", sql: "Languages",
     html: "Languages", css: "Languages", bash: "Languages", shell: "Languages",
     
-    // Frameworks & Libraries
     react: "Frameworks & Libraries", reactjs: "Frameworks & Libraries", next: "Frameworks & Libraries",
     nextjs: "Frameworks & Libraries", vue: "Frameworks & Libraries", vuejs: "Frameworks & Libraries",
     angular: "Frameworks & Libraries", svelte: "Frameworks & Libraries", tailwind: "Frameworks & Libraries",
@@ -104,14 +101,12 @@ const categorizeSkills = (skillsList: string[]): Record<string, string[]> => {
     expressjs: "Frameworks & Libraries", django: "Frameworks & Libraries", flask: "Frameworks & Libraries",
     fastapi: "Frameworks & Libraries",
     
-    // Databases & Cloud
     postgresql: "Databases & Cloud", mysql: "Databases & Cloud", mongodb: "Databases & Cloud",
     redis: "Databases & Cloud", sqlite: "Databases & Cloud", mariadb: "Databases & Cloud",
     firebase: "Databases & Cloud", oracle: "Databases & Cloud", aws: "Databases & Cloud",
     azure: "Databases & Cloud", gcp: "Databases & Cloud", kubernetes: "Databases & Cloud",
     k8s: "Databases & Cloud", docker: "Databases & Cloud",
     
-    // Tools & Platforms
     git: "Tools & Platforms", github: "Tools & Platforms", gitlab: "Tools & Platforms",
     cicd: "Tools & Platforms", "ci/cd": "Tools & Platforms", linux: "Tools & Platforms",
     nginx: "Tools & Platforms",
@@ -138,7 +133,6 @@ const categorizeSkills = (skillsList: string[]): Record<string, string[]> => {
     categories["Other Skills"] = others;
   }
 
-  // Filter out empty categories
   return Object.fromEntries(
     Object.entries(categories).filter(([_, list]) => list.length > 0)
   );
@@ -154,8 +148,6 @@ export const CVPreview: React.FC<CVPreviewProps> = ({
   preferences,
   projects = [],
 }) => {
-  const { t } = useTranslation(["common"]);
-
   // Clean and split lines of text into bullets
   const renderBulletPoints = (text: string) => {
     if (!text) return null;
@@ -169,7 +161,6 @@ export const CVPreview: React.FC<CVPreviewProps> = ({
     return (
       <ul className="list-disc pl-4 space-y-0.5 text-neutral-700 mt-1 text-[11px]">
         {lines.map((line, idx) => {
-          // Strip any leading bullet markers if present in input
           const cleanLine = line.replace(/^[•\*\-\u25e6]\s*/, "");
           return (
             <li key={idx} className="leading-relaxed" style={{ overflowWrap: "anywhere", wordBreak: "break-word" }}>
@@ -183,12 +174,11 @@ export const CVPreview: React.FC<CVPreviewProps> = ({
 
   // Normalize project inputs (real repos vs sample data)
   const normalizedProjects = projects.map((p: any) => {
-    // Check if it's a real repository analysis object or a sample project object
     const isRealRepo = p.createdAtUtc !== undefined;
 
     if (isRealRepo) {
       const start = formatMonthYear(p.createdAtUtc);
-      const end = p.lastCommitAt ? formatMonthYear(p.lastCommitAt) : t("common:cvPreview.presentLabel");
+      const end = p.lastCommitAt ? formatMonthYear(p.lastCommitAt) : "Present";
       const techList = p.primaryLanguage ? [p.primaryLanguage] : (p.cvSynthesis?.skills || []);
       const highlightsList = p.cvSynthesis?.highlights?.map((h: any) => `${h.signal}: ${h.impact}`) || [];
 
@@ -205,7 +195,7 @@ export const CVPreview: React.FC<CVPreviewProps> = ({
       };
     } else {
       const start = formatMonthYear(p.startDate);
-      const end = p.endDate ? formatMonthYear(p.endDate) : t("common:cvPreview.presentLabel");
+      const end = p.endDate ? formatMonthYear(p.endDate) : "Present";
       return {
         id: p.id || p.name,
         name: p.name,
@@ -233,46 +223,117 @@ export const CVPreview: React.FC<CVPreviewProps> = ({
   };
 
   return (
-    <div className="cv-print-area w-[210mm] min-h-[297mm] bg-white text-black p-[20mm] box-border relative flex flex-col justify-between font-sans text-xs shadow-md border border-neutral-300 print:shadow-none print:border-none select-text">
-      {/* Global CSS overrides for page-breaking and printing */}
+    <div className="cv-print-area w-[210mm] min-h-[297mm] bg-white text-black p-[20mm] box-border relative flex flex-col justify-between font-sans text-xs shadow-md border border-border print:shadow-none print:border-none select-text">
       <style>{`
+        @page {
+          size: A4;
+          margin: 0;
+        }
         @media print {
-          body {
+          html {
+            counter-reset: page 0;
+          }
+          html, body {
             background: white !important;
             color: black !important;
             margin: 0 !important;
             padding: 0 !important;
+            height: auto !important;
+            min-height: auto !important;
+            overflow: visible !important;
           }
-          /* Hide standard website components */
-          body > *:not(.cv-print-modal),
-          #__next,
-          #root,
-          header,
-          footer,
-          nav,
-          aside,
-          button,
-          .no-print {
-            display: none !important;
-            height: 0 !important;
-            overflow: hidden !important;
+          
+          /* Hide all screen layout elements by setting visibility: hidden */
+          body * {
             visibility: hidden !important;
           }
-          /* Show print content exclusively */
-          .cv-print-area {
+          
+          /* Make sure the CV preview area and all its descendants are visible */
+          .cv-print-area,
+          .cv-print-area * {
             visibility: visible !important;
+          }
+          
+          /* Position the cv-print-area absolutely at the top-left of page 1 */
+          .cv-print-area {
             position: absolute !important;
             left: 0 !important;
             top: 0 !important;
             width: 210mm !important;
-            min-height: 297mm !important;
+            min-height: auto !important;
+            height: auto !important;
             margin: 0 !important;
             padding: 20mm !important;
             box-shadow: none !important;
             border: none !important;
             background: white !important;
             box-sizing: border-box !important;
+            z-index: 99999 !important;
           }
+          
+          /* Reset viewport height and overflow constraints on all parent containers so multi-page printing works */
+          .min-h-screen,
+          .h-screen,
+          .overflow-hidden,
+          .overflow-y-auto,
+          main,
+          #__next,
+          #root {
+            height: auto !important;
+            min-height: auto !important;
+            overflow: visible !important;
+          }
+
+          /* Clear modal alignment, backgrounds, shadows, and paddings during print to prevent pushing layout down */
+          .cv-preview-overlay {
+            position: static !important;
+            display: block !important;
+            background: transparent !important;
+            padding: 0 !important;
+            margin: 0 !important;
+            overflow: visible !important;
+            z-index: 99999 !important;
+            backdrop-filter: none !important;
+            height: auto !important;
+            min-height: auto !important;
+          }
+          .cv-preview-card {
+            display: block !important;
+            width: 100% !important;
+            max-width: none !important;
+            max-height: none !important;
+            border: none !important;
+            background: transparent !important;
+            box-shadow: none !important;
+            margin: 0 !important;
+            padding: 0 !important;
+            overflow: visible !important;
+          }
+          .cv-preview-content-frame {
+            display: block !important;
+            padding: 0 !important;
+            background: transparent !important;
+            overflow: visible !important;
+          }
+          .cv-preview-box {
+            display: block !important;
+            border: none !important;
+            box-shadow: none !important;
+            overflow: visible !important;
+          }
+          
+          /* Completely hide specific interactive and navigational elements to avoid empty spaces */
+          header,
+          footer,
+          nav,
+          aside,
+          button,
+          .cv-management-header,
+          .cv-management-main,
+          .no-print {
+            display: none !important;
+          }
+          
           .cv-footer-print {
             position: fixed !important;
             bottom: 0 !important;
@@ -281,16 +342,20 @@ export const CVPreview: React.FC<CVPreviewProps> = ({
             display: flex !important;
             justify-content: space-between !important;
             align-items: center !important;
-            border-top: 1px solid #dfdedd !important;
+            border-top: 1px solid var(--border) !important;
             padding-top: 4px !important;
             height: 30px !important;
             font-size: 8px !important;
-            color: #737170 !important;
+            color: var(--muted) !important;
             background: white !important;
+            visibility: visible !important;
           }
+          
           .cv-footer-print .page-num-print::after {
+            counter-increment: page;
             content: "Page " counter(page);
           }
+          
           .cv-page-content-wrapper {
             margin-bottom: 35px !important;
           }
@@ -314,7 +379,7 @@ export const CVPreview: React.FC<CVPreviewProps> = ({
             className="text-xl font-bold tracking-tight text-neutral-900 uppercase w-full"
             style={{ overflowWrap: "anywhere", wordBreak: "break-word" }}
           >
-            {basic.fullName || t("common:cvManagement.untitled")}
+            {basic.fullName || "Untitled"}
           </h1>
           {basic.headline && (
             <span 
@@ -371,7 +436,7 @@ export const CVPreview: React.FC<CVPreviewProps> = ({
         {summary.bio && (
           <div className="flex flex-col gap-1 text-left cv-item-avoid-break">
             <h2 className="font-bold text-[11px] uppercase tracking-wider text-neutral-900">
-              {t("common:cvPreview.bioTitle")}
+              Career Objective / Summary
             </h2>
             <div className="border-b border-neutral-300 w-full my-0.5" />
             <p className="text-neutral-700 leading-relaxed font-normal text-[11px] whitespace-pre-wrap">
@@ -384,20 +449,20 @@ export const CVPreview: React.FC<CVPreviewProps> = ({
         {experience && experience.length > 0 && (
           <div className="flex flex-col gap-1 text-left">
             <h2 className="font-bold text-[11px] uppercase tracking-wider text-neutral-900">
-              {t("common:cvPreview.experienceTitle")}
+              Work Experience
             </h2>
             <div className="border-b border-neutral-300 w-full my-0.5" />
             <div className="flex flex-col gap-3 mt-1">
               {experience.map((exp) => {
                 const start = formatMonthYear(exp.startDate);
-                const end = exp.isCurrentlyWorking ? t("common:cvPreview.presentLabel") : formatMonthYear(exp.endDate);
+                const end = exp.isCurrentlyWorking ? "Present" : formatMonthYear(exp.endDate);
 
                 return (
                   <div key={exp.id} className="flex flex-col gap-0.5 cv-item-avoid-break">
                     <div className="flex items-start justify-between font-bold text-neutral-900 text-[11px]">
                       <span>{exp.jobTitle}</span>
                       <span className="text-[10px] text-neutral-600 font-normal shrink-0 pl-4">
-                        {start} {t("common:cvPreview.dateSeparator")} {end}
+                        {start} to {end}
                       </span>
                     </div>
                     <div className="text-[10.5px] text-neutral-700 font-medium italic">
@@ -417,7 +482,7 @@ export const CVPreview: React.FC<CVPreviewProps> = ({
 
                     {exp.technologies && exp.technologies.length > 0 && (
                       <div className="text-[10px] text-neutral-600 mt-1 pl-4">
-                        <span className="font-bold">{t("common:cvPreview.techLabel")}</span>{" "}
+                        <span className="font-bold">Technologies:</span>{" "}
                         {exp.technologies.join(", ")}
                       </div>
                     )}
@@ -449,20 +514,20 @@ export const CVPreview: React.FC<CVPreviewProps> = ({
         {education && education.length > 0 && (
           <div className="flex flex-col gap-1 text-left">
             <h2 className="font-bold text-[11px] uppercase tracking-wider text-neutral-900">
-              {t("common:cvPreview.educationTitle")}
+              Education & Credentials
             </h2>
             <div className="border-b border-neutral-300 w-full my-0.5" />
             <div className="flex flex-col gap-3 mt-1">
               {education.map((edu) => {
                 const start = formatMonthYear(edu.startDate);
-                const end = edu.isCurrentlyStudying ? t("common:cvPreview.presentLabel") : formatMonthYear(edu.endDate);
+                const end = edu.isCurrentlyStudying ? "Present" : formatMonthYear(edu.endDate);
 
                 return (
                   <div key={edu.id} className="flex flex-col gap-0.5 cv-item-avoid-break">
                     <div className="flex items-start justify-between font-bold text-neutral-900 text-[11px]">
                       <span>{edu.schoolName}</span>
                       <span className="text-[10px] text-neutral-600 font-normal shrink-0 pl-4">
-                        {start} {t("common:cvPreview.dateSeparator")} {end}
+                        {start} to {end}
                       </span>
                     </div>
                     <div className="flex items-center justify-between text-neutral-700 text-[10.5px]">
@@ -487,7 +552,7 @@ export const CVPreview: React.FC<CVPreviewProps> = ({
         {normalizedProjects.length > 0 && (
           <div className="flex flex-col gap-1 text-left">
             <h2 className="font-bold text-[11px] uppercase tracking-wider text-neutral-900">
-              {t("common:cvManagement.sectionProjects") || "Projects"}
+              Linked Projects
             </h2>
             <div className="border-b border-neutral-300 w-full my-0.5" />
             <div className="flex flex-col gap-3 mt-1">
@@ -546,7 +611,7 @@ export const CVPreview: React.FC<CVPreviewProps> = ({
         {hasSkills && (
           <div className="flex flex-col gap-1 text-left cv-item-avoid-break">
             <h2 className="font-bold text-[11px] uppercase tracking-wider text-neutral-900">
-              {t("common:cvPreview.skillsTitle")}
+              Technical Skills
             </h2>
             <div className="border-b border-neutral-300 w-full my-0.5" />
             
@@ -570,7 +635,7 @@ export const CVPreview: React.FC<CVPreviewProps> = ({
         {achievements && achievements.length > 0 && (
           <div className="flex flex-col gap-1 text-left">
             <h2 className="font-bold text-[11px] uppercase tracking-wider text-neutral-900">
-              {t("common:cvPreview.achievementsTitle")}
+              Achievements & Certificates
             </h2>
             <div className="border-b border-neutral-300 w-full my-0.5" />
             <div className="flex flex-col gap-3 mt-1">
@@ -583,7 +648,7 @@ export const CVPreview: React.FC<CVPreviewProps> = ({
                     </span>
                   </div>
                   <div className="text-[10.5px] text-neutral-700 font-medium">
-                    {t("common:cvPreview.issuerLabel")}{ach.issuer}
+                    Issued by: {ach.issuer}
                   </div>
                   {renderBulletPoints(ach.description)}
                   {ach.credentialUrl && (
@@ -607,32 +672,32 @@ export const CVPreview: React.FC<CVPreviewProps> = ({
         {/* Section: Career Preferences */}
         <div className="flex flex-col gap-1 text-left cv-item-avoid-break">
           <h2 className="font-bold text-[11px] uppercase tracking-wider text-neutral-900">
-            {t("common:careerPreferences.title") || "Career Preferences"}
+            Career Preferences
           </h2>
           <div className="border-b border-neutral-300 w-full my-0.5" />
           
           <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-1 mt-1 text-[10.5px] text-neutral-700">
             {preferences.openToWorkStatus && (
               <div>
-                <span className="font-bold text-neutral-900">{t("common:cvManagement.labels.openToWorkStatus") || "Job Search Status"}:</span>{" "}
+                <span className="font-bold text-neutral-900">Job Search Status:</span>{" "}
                 <span>
                   {preferences.openToWorkStatus === "active"
-                    ? t("common:cvManagement.labels.statusActive")
+                    ? "Active Job Search"
                     : preferences.openToWorkStatus === "casual"
-                    ? t("common:cvManagement.labels.statusCasual")
-                    : t("common:cvManagement.labels.statusClosed")}
+                    ? "Casual Browsing"
+                    : "Not Open to Work"}
                 </span>
               </div>
             )}
             {preferences.desiredJobPositions && preferences.desiredJobPositions.length > 0 && (
               <div>
-                <span className="font-bold text-neutral-900">{t("common:publicCandidateProfile.targetRoles") || "Target Roles"}:</span>{" "}
+                <span className="font-bold text-neutral-900">Target Roles:</span>{" "}
                 <span>{preferences.desiredJobPositions.join(", ")}</span>
               </div>
             )}
             {(preferences.expectedSalaryMin || preferences.expectedSalaryMax) && (
               <div>
-                <span className="font-bold text-neutral-900">{t("common:publicCandidateProfile.expectedSalary") || "Expected Salary"}:</span>{" "}
+                <span className="font-bold text-neutral-900">Expected Salary:</span>{" "}
                 <span>
                   {preferences.expectedSalaryNegotiable
                     ? "Negotiable"
@@ -642,25 +707,25 @@ export const CVPreview: React.FC<CVPreviewProps> = ({
             )}
             {preferences.remotePreference && (
               <div>
-                <span className="font-bold text-neutral-900">{t("common:cvManagement.labels.remotePreference") || "Remote Preference"}:</span>{" "}
+                <span className="font-bold text-neutral-900">Work Arrangement:</span>{" "}
                 <span className="capitalize">{preferences.remotePreference}</span>
               </div>
             )}
             {preferences.preferredLocations && preferences.preferredLocations.length > 0 && (
               <div>
-                <span className="font-bold text-neutral-900">{t("common:publicCandidateProfile.targetLocations") || "Target Locations"}:</span>{" "}
+                <span className="font-bold text-neutral-900">Desired Locations:</span>{" "}
                 <span>{preferences.preferredLocations.join(", ")}</span>
               </div>
             )}
             {preferences.employmentPreferences && preferences.employmentPreferences.length > 0 && (
               <div>
-                <span className="font-bold text-neutral-900">{t("common:cvManagement.labels.employmentPreferences") || "Employment Types"}:</span>{" "}
+                <span className="font-bold text-neutral-900">Employment Types:</span>{" "}
                 <span className="capitalize">{preferences.employmentPreferences.join(", ")}</span>
               </div>
             )}
             {preferences.workPreferenceNotes && (
               <div className="col-span-1 md:col-span-2 mt-0.5">
-                <span className="font-bold text-neutral-900">{t("common:cvManagement.labels.workPreferenceNotes") || "Preference Notes"}:</span>{" "}
+                <span className="font-bold text-neutral-900">Additional Work Preference Notes:</span>{" "}
                 <span className="italic">{preferences.workPreferenceNotes}</span>
               </div>
             )}
@@ -672,7 +737,7 @@ export const CVPreview: React.FC<CVPreviewProps> = ({
       {/* Subtle Authentication Footer (Visible on screen and repeated on each print page via fixed css) */}
       <div className="cv-footer-print mt-6 border-t border-neutral-300 pt-2 flex justify-between items-center text-[8.5px] text-neutral-500 font-sans select-none no-print print-only">
         <span>Verified by CVerify • AI-assisted candidate profile authentication</span>
-        <span className="page-num-print"></span>
+        <span className="page-num-print" />
       </div>
 
       <div className="cv-footer-screen mt-6 border-t border-neutral-300 pt-2 flex justify-between items-center text-[8.5px] text-neutral-500 font-sans select-none print:hidden">
