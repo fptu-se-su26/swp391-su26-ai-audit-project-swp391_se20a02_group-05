@@ -618,6 +618,15 @@ public class ApplicationDbContext : DbContext
                   .IsUnique()
                   .HasFilter("deleted_at IS NULL")
                   .HasDatabaseName("idx_organizations_tax_code_active");
+
+            entity.Property(o => o.IndustryTags)
+                  .HasColumnType("varchar(100)[]");
+
+            entity.Property(o => o.BenefitTags)
+                  .HasColumnType("varchar(100)[]");
+
+            entity.Property(o => o.GalleryUrls)
+                  .HasColumnType("varchar(2048)[]");
         });
 
         // OrganizationAuthority configurations

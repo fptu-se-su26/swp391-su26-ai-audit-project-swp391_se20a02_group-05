@@ -17,11 +17,30 @@ export const Card: React.FC<CardProps> = ({
   ...props
 }) => {
   const Component = as as React.ElementType;
+<<<<<<< Updated upstream
   return (
     <Component
       {...props}
       className={[
         "relative overflow-hidden w-full rounded-2xl p-6 sm:p-8 transition-all duration-300 text-left",
+=======
+  
+  const roundedClass = `rounded-${rounded}`;
+  const beforeRoundedClass = `before:rounded-${rounded}`;
+
+  // Check if className contains any custom padding overrides
+  const hasPadding = className.split(/\s+/).some(cls => 
+    /^(?:[a-z0-9]+:)?p[xytrbl]?-/.test(cls)
+  );
+
+  return (
+    <Component
+      {...props}
+      className={cn(
+        "relative overflow-hidden w-full transition-all duration-300 text-left",
+        hasPadding ? "" : "p-6 sm:p-8",
+        roundedClass,
+>>>>>>> Stashed changes
         "bg-surface text-foreground",
         "border border-border/60",
         // Premium drop shadows and glowing border effects

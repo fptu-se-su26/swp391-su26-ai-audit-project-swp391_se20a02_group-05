@@ -3,6 +3,7 @@
 import React from "react";
 import { useAuth } from "../../features/auth/hooks/use-auth";
 import { useRouter } from "next/navigation";
+import { useTranslation } from "react-i18next";
 import {
   Dropdown,
   Avatar,
@@ -32,6 +33,7 @@ export function AuthAvatar() {
   const router = useRouter();
   const { t, i18n } = useTranslation(["navbar", "common"]);
   const { theme, setTheme } = useThemeStore();
+  const { t, i18n } = useTranslation("navbar");
 
   React.useEffect(() => {
     console.log("[Navbar Avatar Render Diagnostics] user.avatarUrl:", user?.avatarUrl);
@@ -104,6 +106,8 @@ export function AuthAvatar() {
     }
   };
 
+  const activeLangLabel = (i18n.language || "vi").startsWith("en") ? "EN" : "VN";
+
   return (
     <Dropdown>
       <Dropdown.Trigger>
@@ -130,6 +134,7 @@ export function AuthAvatar() {
       <Dropdown.Popover className="min-w-[240px] rounded-xl p-1 z-9999 bg-background border-2">
         <Dropdown.Menu onAction={handleAction} className="outline-hidden">
           <Dropdown.Section className="gap-1">
+<<<<<<< Updated upstream
             <Dropdown.Item
               id="profile"
               textValue={t("navbar:menu.profile", { defaultValue: "View Profile" })}
@@ -157,13 +162,50 @@ export function AuthAvatar() {
             <Dropdown.Item
               id="balance"
               textValue={t("navbar:menu.remainCredit", { defaultValue: "Remain Credit" })}
+=======
+            {!isBusiness && (
+              <>
+                <Dropdown.Item
+                  id="profile"
+                  textValue={t("menu.profile")}
+                  className="rounded-lg"
+                >
+                  <div className="flex items-center gap-2.5 w-full">
+                    <User className="size-4 shrink-0 text-muted" />
+                    <Label className="cursor-pointer font-semibold text-foreground">
+                      {t("menu.profile")}
+                    </Label>
+                  </div>
+                </Dropdown.Item>
+                <Dropdown.Item
+                  id="settings"
+                  textValue={t("menu.settings")}
+                  className="rounded-lg"
+                >
+                  <div className="flex items-center gap-2.5 w-full">
+                    <Settings className="size-4 shrink-0 text-muted" />
+                    <Label className="cursor-pointer font-semibold text-foreground">
+                      {t("menu.settings")}
+                    </Label>
+                  </div>
+                </Dropdown.Item>
+              </>
+            )}
+            <Dropdown.Item
+              id="balance"
+              textValue={t("menu.remainCredit")}
+>>>>>>> Stashed changes
               className="rounded-lg"
             >
               <div className="flex items-center justify-between w-full gap-2">
                 <div className="flex items-center gap-2.5">
                   <CreditCard className="size-4 shrink-0 text-muted" />
                   <Label className="cursor-pointer font-semibold text-foreground">
+<<<<<<< Updated upstream
                     {t("navbar:menu.remainCredit", { defaultValue: "Remain Credit" })}
+=======
+                    {t("menu.remainCredit")}
+>>>>>>> Stashed changes
                   </Label>
                 </div>
                 <Chip
@@ -182,14 +224,22 @@ export function AuthAvatar() {
             <Dropdown.SubmenuTrigger>
               <Dropdown.Item
                 id="theme-selector"
+<<<<<<< Updated upstream
                 textValue={t("navbar:menu.themes", { defaultValue: "Themes" })}
+=======
+                textValue={t("menu.themes")}
+>>>>>>> Stashed changes
                 className="rounded-lg cursor-pointer"
               >
                 <div className="flex items-center justify-between w-full gap-2">
                   <div className="flex items-center gap-2.5">
                     <Palette className="size-4 shrink-0 text-muted" />
                     <Label className="cursor-pointer font-semibold text-foreground">
+<<<<<<< Updated upstream
                       {t("navbar:menu.themes", { defaultValue: "Themes" })}
+=======
+                      {t("menu.themes")}
+>>>>>>> Stashed changes
                     </Label>
                   </div>
                   <div className="flex items-center gap-1.5">
@@ -202,7 +252,11 @@ export function AuthAvatar() {
                           <div className="flex items-center gap-1 text-muted">
                             <LaptopMinimal className="size-3" />
                             <span className="text-[10px]">
+<<<<<<< Updated upstream
                               {t("navbar:menu.themes_system", { defaultValue: "System" })}
+=======
+                              {t("menu.themes_system")}
+>>>>>>> Stashed changes
                             </span>
                           </div>
                         );
@@ -212,7 +266,11 @@ export function AuthAvatar() {
                           <div className="flex items-center gap-1 text-muted">
                             <Moon className="size-3" />
                             <span className="text-[10px]">
+<<<<<<< Updated upstream
                               {t("navbar:menu.themes_dark", { defaultValue: "Dark" })}
+=======
+                              {t("menu.themes_dark")}
+>>>>>>> Stashed changes
                             </span>
                           </div>
                         );
@@ -221,7 +279,11 @@ export function AuthAvatar() {
                         <div className="flex items-center gap-1 text-muted">
                           <Sun className="size-3" />
                           <span className="text-[10px]">
+<<<<<<< Updated upstream
                             {t("navbar:menu.themes_light", { defaultValue: "Light" })}
+=======
+                            {t("menu.themes_light")}
+>>>>>>> Stashed changes
                           </span>
                         </div>
                       );
@@ -250,37 +312,61 @@ export function AuthAvatar() {
                 >
                   <Dropdown.Item
                     id="light"
+<<<<<<< Updated upstream
                     textValue={t("navbar:menu.themes_light", { defaultValue: "Light" })}
+=======
+                    textValue={t("menu.themes_light")}
+>>>>>>> Stashed changes
                     className="rounded-lg"
                   >
                     <div className="flex items-center gap-2 w-full">
                       <Sun className="size-4 shrink-0 text-muted" />
                       <Label className="cursor-pointer font-semibold text-foreground">
+<<<<<<< Updated upstream
                         {t("navbar:menu.themes_light", { defaultValue: "Light" })}
+=======
+                        {t("menu.themes_light")}
+>>>>>>> Stashed changes
                       </Label>
                     </div>
                   </Dropdown.Item>
                   <Dropdown.Item
                     id="dark"
+<<<<<<< Updated upstream
                     textValue={t("navbar:menu.themes_dark", { defaultValue: "Dark" })}
+=======
+                    textValue={t("menu.themes_dark")}
+>>>>>>> Stashed changes
                     className="rounded-lg"
                   >
                     <div className="flex items-center gap-2 w-full">
                       <Moon className="size-4 shrink-0 text-muted" />
                       <Label className="cursor-pointer font-semibold text-foreground">
+<<<<<<< Updated upstream
                         {t("navbar:menu.themes_dark", { defaultValue: "Dark" })}
+=======
+                        {t("menu.themes_dark")}
+>>>>>>> Stashed changes
                       </Label>
                     </div>
                   </Dropdown.Item>
                   <Dropdown.Item
                     id="system"
+<<<<<<< Updated upstream
                     textValue={t("navbar:menu.themes_system", { defaultValue: "System" })}
+=======
+                    textValue={t("menu.themes_system")}
+>>>>>>> Stashed changes
                     className="rounded-lg"
                   >
                     <div className="flex items-center gap-2 w-full">
                       <LaptopMinimal className="size-4 shrink-0 text-muted" />
                       <Label className="cursor-pointer font-semibold text-foreground">
+<<<<<<< Updated upstream
                         {t("navbar:menu.themes_system", { defaultValue: "System" })}
+=======
+                        {t("menu.themes_system")}
+>>>>>>> Stashed changes
                       </Label>
                     </div>
                   </Dropdown.Item>
@@ -290,21 +376,33 @@ export function AuthAvatar() {
             <Dropdown.SubmenuTrigger>
               <Dropdown.Item
                 id="language-selector"
+<<<<<<< Updated upstream
                 textValue={t("navbar:menu.languages", { defaultValue: "Languages" })}
+=======
+                textValue={t("menu.languages")}
+>>>>>>> Stashed changes
                 className="rounded-lg"
               >
                 <div className="flex items-center justify-between w-full gap-2">
                   <div className="flex items-center gap-2.5">
                     <Globe className="size-4 shrink-0 text-muted" />
                     <Label className="cursor-pointer font-semibold text-foreground">
+<<<<<<< Updated upstream
                       {t("navbar:menu.languages", { defaultValue: "Languages" })}
+=======
+                      {t("menu.languages")}
+>>>>>>> Stashed changes
                     </Label>
                   </div>
                   <div className="flex items-center gap-1.5">
                     <div className="flex items-center gap-1 text-muted">
                       <Globe className="size-3" />
                       <span className="text-[10px]">
+<<<<<<< Updated upstream
                         {i18n.language === "vi" ? "VN" : "EN"}
+=======
+                        {activeLangLabel}
+>>>>>>> Stashed changes
                       </span>
                     </div>
                     <Dropdown.SubmenuIndicator />
@@ -350,13 +448,21 @@ export function AuthAvatar() {
             </Dropdown.SubmenuTrigger>
             <Dropdown.Item
               id="support"
+<<<<<<< Updated upstream
               textValue={t("navbar:menu.support", { defaultValue: "Support" })}
+=======
+              textValue={t("menu.support")}
+>>>>>>> Stashed changes
               className="rounded-lg"
             >
               <div className="flex items-center gap-2.5 w-full">
                 <Headset className="size-4 shrink-0 text-muted" />
                 <Label className="cursor-pointer font-semibold text-foreground">
+<<<<<<< Updated upstream
                   {t("navbar:menu.support", { defaultValue: "Support" })}
+=======
+                  {t("menu.support")}
+>>>>>>> Stashed changes
                 </Label>
               </div>
             </Dropdown.Item>
@@ -365,14 +471,22 @@ export function AuthAvatar() {
           <Dropdown.Section className="gap-1">
             <Dropdown.Item
               id="logout"
+<<<<<<< Updated upstream
               textValue={t("navbar:menu.logout", { defaultValue: "Logout" })}
+=======
+              textValue={t("menu.logout")}
+>>>>>>> Stashed changes
               className="rounded-lg hover:bg-danger-soft"
             >
               <div className="flex items-center justify-between w-full gap-2">
                 <div className="flex items-center gap-2.5">
                   <LogOut className="size-4 shrink-0 rotate-180 text-danger" />
                   <Label className="text-danger cursor-pointer font-bold">
+<<<<<<< Updated upstream
                     {t("navbar:menu.logout", { defaultValue: "Logout" })}
+=======
+                    {t("menu.logout")}
+>>>>>>> Stashed changes
                   </Label>
                 </div>
                 <Kbd slot="keyboard" variant="light">

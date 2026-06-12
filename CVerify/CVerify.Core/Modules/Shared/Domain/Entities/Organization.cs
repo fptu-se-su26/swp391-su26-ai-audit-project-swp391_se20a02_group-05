@@ -55,6 +55,61 @@ public class Organization
     [MaxLength(255)]
     public string? RepresentativeIdentity { get; set; }
 
+<<<<<<< Updated upstream
+=======
+    [MaxLength(2048)]
+    public string? BannerUrl { get; set; }
+
+    [MaxLength(2048)]
+    public string? LogoUrl { get; set; }
+
+    [MaxLength(100)]
+    public string? CompanyType { get; set; }
+
+    [MaxLength(100)]
+    public string? CompanySize { get; set; }
+
+    public int BranchCount { get; set; } = 0;
+
+    public List<string> IndustryTags { get; set; } = new();
+
+    public string? Description { get; set; }
+
+    public List<string> BenefitTags { get; set; } = new();
+
+    public List<string> GalleryUrls { get; set; } = new();
+
+    [MaxLength(255)]
+    public string? ContactName { get; set; }
+
+    [MaxLength(50)]
+    public string? ContactPhone { get; set; }
+
+    [MaxLength(255)]
+    public string? ContactEmail { get; set; }
+
+    [MaxLength(100)]
+    public string? City { get; set; }
+
+    [MaxLength(500)]
+    public string? DetailAddress { get; set; }
+
+    [MaxLength(2048)]
+    public string? GoogleMapsEmbedUrl { get; set; }
+
+    [MaxLength(2048)]
+    public string? LinkedinUrl { get; set; }
+
+    [MaxLength(2048)]
+    public string? FacebookUrl { get; set; }
+
+    [MaxLength(2048)]
+    public string? TwitterUrl { get; set; }
+
+    [MaxLength(2048)]
+    public string? Website { get; set; }
+
+>>>>>>> Stashed changes
     public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
 
     public DateTimeOffset UpdatedAt { get; set; } = DateTimeOffset.UtcNow;

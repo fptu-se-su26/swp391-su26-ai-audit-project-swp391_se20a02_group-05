@@ -24,5 +24,80 @@ export const workspaceService = {
       params
     });
     return response.data;
+<<<<<<< Updated upstream
+=======
+  },
+
+  async uploadBanner(organizationSlug: string, file: File): Promise<{ avatarUrl: string }> {
+    const formData = new FormData();
+    formData.append('file', file);
+    const response = await axiosClient.post<{ avatarUrl: string }>(
+      `/workspace/${organizationSlug}/banner`,
+      formData,
+      {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      }
+    );
+    return response.data;
+  },
+
+  async uploadAvatar(organizationSlug: string, file: File): Promise<{ avatarUrl: string }> {
+    const formData = new FormData();
+    formData.append('file', file);
+    const response = await axiosClient.post<{ avatarUrl: string }>(
+      `/workspace/${organizationSlug}/avatar`,
+      formData,
+      {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      }
+    );
+    return response.data;
+  },
+
+  async updateWorkspaceDetails(
+    organizationSlug: string,
+    updates: Partial<WorkspaceDetails>
+  ): Promise<WorkspaceDetails> {
+    const response = await axiosClient.patch<WorkspaceDetails>(
+      `/workspace/${organizationSlug}`,
+      updates
+    );
+    return response.data;
+  },
+
+  async uploadGalleryImage(
+    organizationSlug: string,
+    file: File
+  ): Promise<{ avatarUrl: string }> {
+    const formData = new FormData();
+    formData.append('file', file);
+    const response = await axiosClient.post<{ avatarUrl: string }>(
+      `/workspace/${organizationSlug}/gallery`,
+      formData,
+      {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      }
+    );
+    return response.data;
+  },
+
+  async deleteGalleryImage(
+    organizationSlug: string,
+    imageUrl: string
+  ): Promise<{ message: string }> {
+    const response = await axiosClient.delete<{ message: string }>(
+      `/workspace/${organizationSlug}/gallery`,
+      {
+        params: { imageUrl },
+      }
+    );
+    return response.data;
+>>>>>>> Stashed changes
   }
 };

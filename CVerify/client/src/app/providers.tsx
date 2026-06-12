@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect } from "react";
+import "@/infrastructure/i18n";
 import { useAuth } from "../features/auth/hooks/use-auth";
 import { usePathname } from "next/navigation";
 import { Toast } from "@heroui/react";

@@ -9,6 +9,11 @@ interface WorkspaceState {
   myOrganizations: LinkedOrganization[] | null;
   fetchWorkspace: (slug: string) => Promise<WorkspaceDetails | null>;
   fetchMyOrganizations: () => Promise<LinkedOrganization[] | null>;
+<<<<<<< Updated upstream
+=======
+  updateWorkspaceDetails: (slug: string, updates: Partial<WorkspaceDetails>) => Promise<boolean>;
+  toggleFollowWorkspace: (slug: string) => void;
+>>>>>>> Stashed changes
   invalidateCache: (slug?: string) => void;
 }
 
@@ -64,6 +69,48 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
       return null;
     }
   },
+<<<<<<< Updated upstream
+=======
+
+  updateWorkspaceDetails: async (slug: string, updates: Partial<WorkspaceDetails>) => {
+    try {
+      const details = await workspaceService.updateWorkspaceDetails(slug, updates);
+      set((state) => ({
+        workspaces: {
+          ...state.workspaces,
+          [slug]: {
+            ...state.workspaces[slug],
+            ...details,
+          }
+        }
+      }));
+      return true;
+    } catch (err) {
+      console.error('[Workspace Store] Failed to update workspace details', err);
+      return false;
+    }
+  },
+
+  toggleFollowWorkspace: (slug: string) => {
+    set((state) => {
+      const current = state.workspaces[slug];
+      if (!current) return state;
+      const isFollowing = !current.isFollowing;
+      const followersCount = (current.followersCount ?? 0) + (isFollowing ? 1 : -1);
+      return {
+        workspaces: {
+          ...state.workspaces,
+          [slug]: {
+            ...current,
+            isFollowing,
+            followersCount,
+          }
+        }
+      };
+    });
+  },
+
+>>>>>>> Stashed changes
   invalidateCache: (slug?: string) => {
     if (slug) {
       set((state) => {

@@ -161,6 +161,66 @@ public static class DbInitializer
                         UPDATE organizations SET username = 'org-' || substring(id::text, 1, 8) WHERE username IS NULL;
                         ALTER TABLE organizations ALTER COLUMN username SET NOT NULL;
                     END IF;
+<<<<<<< Updated upstream
+=======
+                    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'organizations' AND column_name = 'banner_url') THEN
+                        ALTER TABLE organizations ADD COLUMN banner_url VARCHAR(2048);
+                    END IF;
+                    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'organizations' AND column_name = 'logo_url') THEN
+                        ALTER TABLE organizations ADD COLUMN logo_url VARCHAR(2048);
+                    END IF;
+                    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'organizations' AND column_name = 'company_type') THEN
+                        ALTER TABLE organizations ADD COLUMN company_type VARCHAR(100);
+                    END IF;
+                    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'organizations' AND column_name = 'company_size') THEN
+                        ALTER TABLE organizations ADD COLUMN company_size VARCHAR(100);
+                    END IF;
+                    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'organizations' AND column_name = 'branch_count') THEN
+                        ALTER TABLE organizations ADD COLUMN branch_count INTEGER NOT NULL DEFAULT 0;
+                    END IF;
+                    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'organizations' AND column_name = 'industry_tags') THEN
+                        ALTER TABLE organizations ADD COLUMN industry_tags VARCHAR(100)[] NOT NULL DEFAULT ARRAY[]::VARCHAR[];
+                    END IF;
+                    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'organizations' AND column_name = 'description') THEN
+                        ALTER TABLE organizations ADD COLUMN description TEXT;
+                    END IF;
+                    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'organizations' AND column_name = 'benefit_tags') THEN
+                        ALTER TABLE organizations ADD COLUMN benefit_tags VARCHAR(100)[] NOT NULL DEFAULT ARRAY[]::VARCHAR[];
+                    END IF;
+                    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'organizations' AND column_name = 'gallery_urls') THEN
+                        ALTER TABLE organizations ADD COLUMN gallery_urls VARCHAR(2048)[] NOT NULL DEFAULT ARRAY[]::VARCHAR[];
+                    END IF;
+                    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'organizations' AND column_name = 'contact_name') THEN
+                        ALTER TABLE organizations ADD COLUMN contact_name VARCHAR(255);
+                    END IF;
+                    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'organizations' AND column_name = 'contact_phone') THEN
+                        ALTER TABLE organizations ADD COLUMN contact_phone VARCHAR(50);
+                    END IF;
+                    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'organizations' AND column_name = 'contact_email') THEN
+                        ALTER TABLE organizations ADD COLUMN contact_email VARCHAR(255);
+                    END IF;
+                    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'organizations' AND column_name = 'city') THEN
+                        ALTER TABLE organizations ADD COLUMN city VARCHAR(100);
+                    END IF;
+                    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'organizations' AND column_name = 'detail_address') THEN
+                        ALTER TABLE organizations ADD COLUMN detail_address VARCHAR(500);
+                    END IF;
+                    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'organizations' AND column_name = 'google_maps_embed_url') THEN
+                        ALTER TABLE organizations ADD COLUMN google_maps_embed_url VARCHAR(2048);
+                    END IF;
+                    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'organizations' AND column_name = 'linkedin_url') THEN
+                        ALTER TABLE organizations ADD COLUMN linkedin_url VARCHAR(2048);
+                    END IF;
+                    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'organizations' AND column_name = 'facebook_url') THEN
+                        ALTER TABLE organizations ADD COLUMN facebook_url VARCHAR(2048);
+                    END IF;
+                    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'organizations' AND column_name = 'twitter_url') THEN
+                        ALTER TABLE organizations ADD COLUMN twitter_url VARCHAR(2048);
+                    END IF;
+                    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'organizations' AND column_name = 'website') THEN
+                        ALTER TABLE organizations ADD COLUMN website VARCHAR(2048);
+                    END IF;
+>>>>>>> Stashed changes
                 END IF;
 
                 -- If user_profiles exists but lacks username, add it
@@ -380,6 +440,28 @@ public static class DbInitializer
                 representative_phone VARCHAR(50),
                 recovery_authority VARCHAR(255),
                 representative_identity VARCHAR(255),
+<<<<<<< Updated upstream
+=======
+                banner_url VARCHAR(2048),
+                logo_url VARCHAR(2048),
+                company_type VARCHAR(100),
+                company_size VARCHAR(100),
+                branch_count INTEGER NOT NULL DEFAULT 0,
+                industry_tags VARCHAR(100)[] NOT NULL DEFAULT ARRAY[]::VARCHAR[],
+                description TEXT,
+                benefit_tags VARCHAR(100)[] NOT NULL DEFAULT ARRAY[]::VARCHAR[],
+                gallery_urls VARCHAR(2048)[] NOT NULL DEFAULT ARRAY[]::VARCHAR[],
+                contact_name VARCHAR(255),
+                contact_phone VARCHAR(50),
+                contact_email VARCHAR(255),
+                city VARCHAR(100),
+                detail_address VARCHAR(500),
+                google_maps_embed_url VARCHAR(2048),
+                linkedin_url VARCHAR(2048),
+                facebook_url VARCHAR(2048),
+                twitter_url VARCHAR(2048),
+                website VARCHAR(2048),
+>>>>>>> Stashed changes
                 created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
                 updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
                 deleted_at TIMESTAMP WITH TIME ZONE
