@@ -195,33 +195,28 @@ class GitHubAnalysisOrchestrator(IGitHubAnalysisOrchestrator):
         start_time = time.perf_counter()
         
         try:
-            if task_type == "RepoStructure":
+            if task_type in ("RepoStructure", "L1-001"):
                 result = await self.analyze_structure(job_id, repository_id, repo_owner, repo_name, encrypted_token, default_branch, correlation_id)
-            elif task_type == "CommitIntelligence":
+            elif task_type in ("CommitIntelligence", "L1-002"):
                 result = await self.analyze_commits(job_id, encrypted_token, correlation_id)
-            elif task_type == "SkillExtraction":
-                result = await self.analyze_skills(job_id, encrypted_token, correlation_id)
-            elif task_type == "ArchitectureAnalysis":
-                result = await self.analyze_architecture(job_id, encrypted_token, correlation_id)
-            elif task_type == "CodeQuality":
-                result = await self.analyze_quality(job_id, encrypted_token, correlation_id)
-            elif task_type == "SecurityAnalysis":
-                result = await self.analyze_security(job_id, encrypted_token, correlation_id)
-            elif task_type == "RepositoryClassification":
-                result = await self.analyze_classification(job_id, encrypted_token, correlation_id)
-            elif task_type == "RepositorySummary":
-                result = await self.analyze_summary(job_id, encrypted_token, correlation_id)
-            elif task_type == "CvSynthesis":
-                result = await self.analyze_cv_synthesis(job_id, encrypted_token, correlation_id)
-            # ── Line 1 v2 pipeline tasks (DagScheduler L1-003 … L1-018) ──
             elif task_type in ("CommitDiff", "L1-003"):
                 result = await self.analyze_commit_diff(job_id, encrypted_token, correlation_id)
+            elif task_type in ("SkillExtraction", "TechStackExtraction", "L1-004"):
+                result = await self.analyze_skills(job_id, encrypted_token, correlation_id)
+            elif task_type in ("FeatureExtraction", "L1-005"):
+                result = await self.analyze_feature_extraction(job_id, encrypted_token, correlation_id)
+            elif task_type in ("ArchitectureAnalysis", "L1-006"):
+                result = await self.analyze_architecture(job_id, encrypted_token, correlation_id)
             elif task_type in ("CommitTimeline", "L1-007"):
                 result = await self.analyze_commit_timeline(job_id, encrypted_token, correlation_id)
+            elif task_type in ("ArchitectureChange", "L1-008"):
+                result = await self.analyze_architecture_change(job_id, encrypted_token, correlation_id)
             elif task_type in ("CommitIntent", "L1-009"):
                 result = await self.analyze_commit_intent(job_id, encrypted_token, correlation_id)
             elif task_type in ("Complexity", "L1-010"):
                 result = await self.analyze_complexity(job_id, encrypted_token, correlation_id)
+            elif task_type in ("CodeQuality", "L1-011"):
+                result = await self.analyze_quality(job_id, encrypted_token, correlation_id)
             elif task_type in ("GitBlame", "L1-012"):
                 result = await self.analyze_git_blame(job_id, encrypted_token, correlation_id)
             elif task_type in ("CloneDetection", "L1-013"):
@@ -230,10 +225,20 @@ class GitHubAnalysisOrchestrator(IGitHubAnalysisOrchestrator):
                 result = await self.analyze_ai_generated_code(job_id, encrypted_token, correlation_id)
             elif task_type in ("Ownership", "L1-015"):
                 result = await self.analyze_ownership(job_id, encrypted_token, correlation_id)
+            elif task_type in ("RepoIntelligenceReport", "L1-016"):
+                result = await self.analyze_repo_intelligence_report(job_id, encrypted_token, correlation_id)
             elif task_type in ("SkillGraph", "L1-017"):
                 result = await self.analyze_skill_graph(job_id, encrypted_token, correlation_id)
             elif task_type in ("TrustScore", "L1-018"):
                 result = await self.analyze_trust_score(job_id, encrypted_token, correlation_id)
+            elif task_type == "SecurityAnalysis":
+                result = await self.analyze_security(job_id, encrypted_token, correlation_id)
+            elif task_type == "RepositoryClassification":
+                result = await self.analyze_classification(job_id, encrypted_token, correlation_id)
+            elif task_type == "RepositorySummary":
+                result = await self.analyze_summary(job_id, encrypted_token, correlation_id)
+            elif task_type == "CvSynthesis":
+                result = await self.analyze_cv_synthesis(job_id, encrypted_token, correlation_id)
             else:
                 raise ValueError(f"Unknown task type: {task_type}")
 
@@ -1779,56 +1784,123 @@ class GitHubAnalysisOrchestrator(IGitHubAnalysisOrchestrator):
 
     @trace_stage("Complexity")
     async def analyze_complexity(self, job_id: str, encrypted_token: str, correlation_id: str) -> dict:
-        """Classify repository files into 6-level complexity taxonomy (§5.3)."""
+        """Cyclomatic + Cognitive Complexity per function/method via lizard AST walker (§5.3).
+        Aggregates to module-level and repo-level scores."""
         meta = self._read_meta(job_id)
-        filenames = meta.get("filenames", [])
+        clone_dir = self._clone_dir(job_id)
 
-        level_counts = {f"L{i}": 0 for i in range(1, 7)}
-        level_examples: dict[str, list[str]] = {f"L{i}": [] for i in range(1, 7)}
-        total_power_score = 0.0
+        if not meta.get("is_cloned") or not os.path.exists(clone_dir):
+            return self._empty_result({
+                "avg_cyclomatic": 0, "avg_cognitive": 0,
+                "high_complexity_functions": [], "module_scores": {},
+                "repo_complexity_level": "unknown"
+            })
 
-        # Power score ranges per level (mid-point used as representative value)
-        LEVEL_POWER = {"L1": 3, "L2": 20, "L3": 100, "L4": 275, "L5": 750, "L6": 2000}
+        await self.publish_task_event(job_id, "Complexity", "Running lizard AST complexity analysis...")
 
-        for fname in filenames:
-            _, level_int = self._classify_file_complexity(fname)
-            key = f"L{level_int}"
-            level_counts[key] += 1
-            if len(level_examples[key]) < 3:
-                level_examples[key].append(fname)
-            total_power_score += LEVEL_POWER.get(key, 3)
+        try:
+            import lizard
+        except ImportError:
+            await self.publish_task_event(job_id, "Complexity", "lizard not installed — skipping AST analysis.")
+            return self._empty_result({
+                "avg_cyclomatic": 0, "avg_cognitive": 0,
+                "high_complexity_functions": [], "module_scores": {},
+                "repo_complexity_level": "unknown", "error": "lizard package missing"
+            })
 
-        total_files = max(1, sum(level_counts.values()))
-        level_distribution = {
-            k: {"count": v, "pct": round(v / total_files * 100, 1), "examples": level_examples[k]}
-            for k, v in level_counts.items()
+        # Run lizard in a thread (CPU-bound)
+        def _run_lizard():
+            return lizard.analyze(
+                [clone_dir],
+                exts=lizard.get_extensions([]),
+                exclude_pattern=["*/node_modules/*", "*/.git/*", "*/vendor/*",
+                                  "*/dist/*", "*/build/*", "*/__pycache__/*"]
+            )
+
+        analysis = await asyncio.to_thread(_run_lizard)
+
+        all_funcs: list[dict] = []
+        module_data: dict[str, list[float]] = {}
+
+        for file_info in analysis:
+            rel_path = os.path.relpath(file_info.filename, clone_dir).replace("\\", "/")
+            module = rel_path.split("/")[0] if "/" in rel_path else "root"
+
+            for func in file_info.function_list:
+                cc = func.cyclomatic_complexity
+                # lizard does not expose cognitive complexity directly — approximate
+                # as CC + nesting_depth * 2 (simplified proxy matching SonarQube heuristic)
+                cognitive = cc + getattr(func, "max_nesting_depth", 0) * 2
+
+                all_funcs.append({
+                    "file": rel_path,
+                    "function": func.name,
+                    "cyclomatic": cc,
+                    "cognitive": cognitive,
+                    "lines": func.length,
+                    "params": func.parameter_count,
+                })
+                module_data.setdefault(module, []).append(cc)
+
+        if not all_funcs:
+            return self._empty_result({
+                "avg_cyclomatic": 0, "avg_cognitive": 0,
+                "high_complexity_functions": [], "module_scores": {},
+                "repo_complexity_level": "low"
+            })
+
+        all_cc = [f["cyclomatic"] for f in all_funcs]
+        all_cog = [f["cognitive"] for f in all_funcs]
+        avg_cc = round(sum(all_cc) / len(all_cc), 2)
+        avg_cog = round(sum(all_cog) / len(all_cog), 2)
+        max_cc = max(all_cc)
+
+        # High-complexity functions (CC > 10 per SonarQube threshold)
+        high_cc_funcs = sorted(
+            [f for f in all_funcs if f["cyclomatic"] > 10],
+            key=lambda x: x["cyclomatic"], reverse=True
+        )[:20]
+
+        # Module-level aggregates
+        module_scores = {
+            mod: {
+                "avg_cyclomatic": round(sum(ccs) / len(ccs), 2),
+                "max_cyclomatic": max(ccs),
+                "function_count": len(ccs)
+            }
+            for mod, ccs in module_data.items()
         }
 
-        # Dominant complexity tier
-        dominant_level = max(level_counts, key=lambda k: level_counts[k] * int(k[1]))
-
-        # Trivial file ratio (§5.4 — L1 capped at 5% of Power Score)
-        l1_power = level_counts["L1"] * LEVEL_POWER["L1"]
-        l1_ratio = round(l1_power / max(1.0, total_power_score), 3)
-        trivial_capped = l1_ratio > 0.05
+        # Repo-level classification (SonarQube thresholds)
+        if avg_cc <= 4 and max_cc <= 10:
+            repo_complexity_level = "low"
+        elif avg_cc <= 8 and max_cc <= 20:
+            repo_complexity_level = "medium"
+        elif avg_cc <= 15:
+            repo_complexity_level = "high"
+        else:
+            repo_complexity_level = "very_high"
 
         await self.publish_task_event(job_id, "Complexity",
-            f"Complexity taxonomy: dominant={dominant_level}, total_power={total_power_score:.0f}, L1_ratio={l1_ratio:.1%}.")
+            f"Complexity: {len(all_funcs)} functions analysed. avg_CC={avg_cc}, avg_Cognitive={avg_cog}, "
+            f"high_CC={len(high_cc_funcs)}, level={repo_complexity_level}.")
 
         return {
             "data": {
-                "dominant_level": dominant_level,
-                "level_distribution": level_distribution,
-                "total_power_score": round(total_power_score, 1),
-                "trivial_file_ratio": l1_ratio,
-                "trivial_capped": trivial_capped,
+                "avg_cyclomatic": avg_cc,
+                "avg_cognitive": avg_cog,
+                "max_cyclomatic": max_cc,
+                "total_functions_analysed": len(all_funcs),
+                "high_complexity_functions": high_cc_funcs,
+                "module_scores": module_scores,
+                "repo_complexity_level": repo_complexity_level,
             },
             "telemetry": None,
             "events": [{
                 "timestamp": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
                 "level": "Info",
                 "eventType": "StepCompleted",
-                "message": f"Complexity analysis complete. Dominant tier: {dominant_level}. Power score: {total_power_score:.0f}."
+                "message": f"Complexity analysis complete. avg_CC={avg_cc}, level={repo_complexity_level}."
             }]
         }
 
@@ -1940,85 +2012,180 @@ class GitHubAnalysisOrchestrator(IGitHubAnalysisOrchestrator):
 
     # ── L1-013 CloneDetection ────────────────────────────────────────────────
 
+    # Source code extensions to fingerprint (exclude generated/binary files)
+    _CODE_EXTENSIONS = {
+        ".py", ".js", ".ts", ".jsx", ".tsx", ".java", ".cs", ".go",
+        ".rb", ".php", ".cpp", ".c", ".h", ".rs", ".kt", ".swift",
+        ".scala", ".dart", ".vue", ".sql"
+    }
+
     @trace_stage("CloneDetection")
     async def analyze_clone_detection(self, job_id: str, encrypted_token: str, correlation_id: str) -> dict:
-        """Heuristic detection of tutorial clones, commit dumps, and fork inflation (§6.5)."""
-        import subprocess
+        """SimHash / MinHash LSH clone detection on source code content (§4.4 spec).
+        Detects near-duplicate blocks, Type-2/3 clones, and inter-file copy-paste.
+        Falls back to commit-pattern heuristics when datasketch is unavailable."""
+        import subprocess, re
         meta = self._read_meta(job_id)
         clone_dir = self._clone_dir(job_id)
 
         flags: list[str] = []
+        clone_pairs: list[dict] = []
         risk_score = 0.0
+        clone_similarity_score = 0.0  # Used by L1-015 Ownership formula
 
-        # Already classified as fork by repo_classifier
         if meta.get("repo_type") in ("FORK_NO_CONTRIBUTION", "FORK_UPSTREAM_CONTRIBUTION"):
             flags.append("known_fork")
             risk_score += 30.0
 
-        if meta.get("is_cloned") and os.path.exists(os.path.join(clone_dir, ".git")):
-            # Heuristic 1: single large initial commit (tutorial clone)
-            log_proc = await asyncio.to_thread(subprocess.run,
-                ["git", "log", "--no-merges", "--format=%H", "--reverse"],
+        if not meta.get("is_cloned") or not os.path.exists(os.path.join(clone_dir, ".git")):
+            return self._empty_result({
+                "clone_risk_score": risk_score, "classification": "clean",
+                "flags": flags, "clone_pairs": [], "clone_similarity_score": 0.0
+            })
+
+        # ── Stage 1: commit-pattern pre-filter (fast, no library dependency) ──
+        log_proc = await asyncio.to_thread(subprocess.run,
+            ["git", "log", "--no-merges", "--format=%H", "--reverse"],
+            cwd=clone_dir, capture_output=True, text=True, errors="ignore"
+        )
+        hashes = [h.strip() for h in log_proc.stdout.strip().split("\n") if h.strip()]
+        total_commits = len(hashes)
+
+        if hashes:
+            first_stat = await asyncio.to_thread(subprocess.run,
+                ["git", "diff-tree", "--no-commit-id", "-r", "--shortstat", hashes[0]],
                 cwd=clone_dir, capture_output=True, text=True, errors="ignore"
             )
-            hashes = [h.strip() for h in log_proc.stdout.strip().split("\n") if h.strip()]
-            if hashes:
-                first_stat = await asyncio.to_thread(subprocess.run,
-                    ["git", "diff-tree", "--no-commit-id", "-r", "--shortstat", hashes[0]],
-                    cwd=clone_dir, capture_output=True, text=True, errors="ignore"
-                )
-                import re
-                first_added = int((re.search(r"(\d+) insertion", first_stat.stdout) or ["", 0])[1] or 0)
-                total_commits = len(hashes)
-
-                if first_added > 1000 and total_commits <= 5:
-                    flags.append("tutorial_clone_suspected")
-                    risk_score += 50.0
-                elif first_added > 500 and total_commits <= 3:
-                    flags.append("large_initial_commit")
-                    risk_score += 30.0
-
-            # Heuristic 2: commit bomb (>100 commits in a single day)
-            day_proc = await asyncio.to_thread(subprocess.run,
-                ["git", "log", "--no-merges", "--format=%ad", "--date=short"],
-                cwd=clone_dir, capture_output=True, text=True, errors="ignore"
-            )
-            day_counts: dict[str, int] = {}
-            for d in day_proc.stdout.strip().split("\n"):
-                d = d.strip()
-                if d:
-                    day_counts[d] = day_counts.get(d, 0) + 1
-            max_day_commits = max(day_counts.values(), default=0)
-            if max_day_commits > 100:
-                flags.append(f"commit_bomb_detected:{max_day_commits}_commits_in_one_day")
-                risk_score += 40.0
-            elif max_day_commits > 50:
-                flags.append(f"high_commit_velocity:{max_day_commits}_commits_in_one_day")
-                risk_score += 20.0
-
-            # Heuristic 3: no development history (single commit or empty after initial)
-            if len(hashes) <= 2 and first_added > 200:
+            first_added = int((re.search(r"(\d+) insertion", first_stat.stdout) or ["", 0])[1] or 0)
+            if first_added > 1000 and total_commits <= 5:
+                flags.append("tutorial_clone_suspected")
+                risk_score += 50.0
+            elif first_added > 500 and total_commits <= 3:
+                flags.append("large_initial_commit")
+                risk_score += 30.0
+            if total_commits <= 2 and first_added > 200:
                 flags.append("no_development_history")
                 risk_score += 25.0
+
+        day_proc = await asyncio.to_thread(subprocess.run,
+            ["git", "log", "--no-merges", "--format=%ad", "--date=short"],
+            cwd=clone_dir, capture_output=True, text=True, errors="ignore"
+        )
+        day_counts: dict[str, int] = {}
+        for d in day_proc.stdout.strip().split("\n"):
+            d = d.strip()
+            if d:
+                day_counts[d] = day_counts.get(d, 0) + 1
+        max_day_commits = max(day_counts.values(), default=0)
+        if max_day_commits > 100:
+            flags.append(f"commit_bomb:{max_day_commits}_commits_one_day")
+            risk_score += 40.0
+        elif max_day_commits > 50:
+            flags.append(f"high_commit_velocity:{max_day_commits}_commits_one_day")
+            risk_score += 20.0
+
+        # ── Stage 2: MinHash LSH on code content (SimHash-equivalent for text) ──
+        await self.publish_task_event(job_id, "CloneDetection",
+            "Building MinHash fingerprints for source files...")
+
+        try:
+            from datasketch import MinHash, MinHashLSH
+
+            # Collect source files, skip very large ones
+            source_files: list[tuple[str, str]] = []
+            for root, _dirs, files in os.walk(clone_dir):
+                _dirs[:] = [d for d in _dirs if d not in {".git", "node_modules", "vendor", "dist", "build"}]
+                for fname in files:
+                    if os.path.splitext(fname)[1].lower() in self._CODE_EXTENSIONS:
+                        full = os.path.join(root, fname)
+                        rel = os.path.relpath(full, clone_dir).replace("\\", "/")
+                        try:
+                            size = os.path.getsize(full)
+                            if 50 < size < 200_000:
+                                source_files.append((rel, full))
+                        except OSError:
+                            pass
+
+            def _build_minhashes(files: list[tuple[str, str]]) -> list[tuple[str, "MinHash"]]:
+                result = []
+                for rel, full in files:
+                    try:
+                        with open(full, "r", encoding="utf-8", errors="ignore") as fh:
+                            tokens = set(fh.read().lower().split())
+                        if len(tokens) < 20:
+                            continue
+                        m = MinHash(num_perm=128)
+                        for t in tokens:
+                            m.update(t.encode("utf-8"))
+                        result.append((rel, m))
+                    except Exception:
+                        pass
+                return result
+
+            minhash_pairs = await asyncio.to_thread(_build_minhashes, source_files)
+
+            if len(minhash_pairs) >= 2:
+                lsh = MinHashLSH(threshold=0.75, num_perm=128)
+                for rel, mh in minhash_pairs:
+                    safe_key = rel.replace("/", "__")
+                    try:
+                        lsh.insert(safe_key, mh)
+                    except ValueError:
+                        pass  # duplicate key (same file path collision)
+
+                duplicates_found = 0
+                seen_pairs: set[frozenset] = set()
+                for rel, mh in minhash_pairs:
+                    safe_key = rel.replace("/", "__")
+                    candidates = lsh.query(mh)
+                    for cand in candidates:
+                        if cand == safe_key:
+                            continue
+                        pair_key = frozenset({safe_key, cand})
+                        if pair_key in seen_pairs:
+                            continue
+                        seen_pairs.add(pair_key)
+                        duplicates_found += 1
+                        if len(clone_pairs) < 20:
+                            clone_pairs.append({
+                                "file_a": rel,
+                                "file_b": cand.replace("__", "/"),
+                                "type": "near_duplicate"
+                            })
+
+                if duplicates_found > 0:
+                    clone_similarity_score = min(1.0, duplicates_found / max(1, len(minhash_pairs)))
+                    if duplicates_found >= 5:
+                        flags.append(f"minhash_near_duplicates:{duplicates_found}_pairs")
+                        risk_score += min(40.0, duplicates_found * 4.0)
+                    elif duplicates_found >= 2:
+                        flags.append(f"minhash_some_duplicates:{duplicates_found}_pairs")
+                        risk_score += min(20.0, duplicates_found * 4.0)
+
+        except ImportError:
+            flags.append("datasketch_unavailable:minhash_skipped")
 
         risk_score = min(100.0, risk_score)
         classification = "clean" if risk_score < 25 else "suspicious" if risk_score < 60 else "high_risk"
 
         await self.publish_task_event(job_id, "CloneDetection",
-            f"Clone detection: {classification} (score={risk_score:.0f}). Flags: {flags or ['none']}.")
+            f"Clone detection: {classification} (score={risk_score:.0f}). "
+            f"Pairs={len(clone_pairs)}. Flags: {flags or ['none']}.")
 
         return {
             "data": {
                 "clone_risk_score": round(risk_score, 1),
+                "clone_similarity_score": round(clone_similarity_score, 4),
                 "classification": classification,
                 "flags": flags,
+                "clone_pairs": clone_pairs,
             },
             "telemetry": None,
             "events": [{
                 "timestamp": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
                 "level": "Info" if classification == "clean" else "Warning",
                 "eventType": "StepCompleted",
-                "message": f"Clone detection complete: {classification}."
+                "message": f"Clone detection complete: {classification}. {len(clone_pairs)} near-duplicate pairs found."
             }]
         }
 
@@ -2099,55 +2266,99 @@ class GitHubAnalysisOrchestrator(IGitHubAnalysisOrchestrator):
 
     # ── L1-015 Ownership ────────────────────────────────────────────────────
 
+    # Weights for the 4-component ownership formula (§4.3 spec)
+    # AuthorshipRatio×w1 + (1−CloneSimilarity)×w2 + OriginalityScore×w3 + MaintenanceContribution×w4
+    _OWNERSHIP_W1 = 0.40  # AuthorshipRatio — git blame line ownership
+    _OWNERSHIP_W2 = 0.25  # (1 − CloneSimilarity) — penalise near-duplicate code
+    _OWNERSHIP_W3 = 0.20  # OriginalityScore — commit-based originality
+    _OWNERSHIP_W4 = 0.15  # MaintenanceContribution — refactor/fix commits
+
     @trace_stage("Ownership")
     async def analyze_ownership(self, job_id: str, encrypted_token: str, correlation_id: str) -> dict:
-        """Aggregate ownership evidence from GitBlame + CommitHistory (§4.3 formula)."""
+        """Ownership Score = AuthorshipRatio×w1 + (1−CloneSimilarity)×w2 +
+        OriginalityScore×w3 + MaintenanceContribution×w4  (§4.3 spec formula)."""
         meta = self._read_meta(job_id)
         blame_cache = self._read_task_cache(job_id, "GitBlame")
         commit_cache = self._read_task_cache(job_id, "CommitIntelligence")
+        clone_cache = self._read_task_cache(job_id, "CloneDetection")
+        timeline_cache = self._read_task_cache(job_id, "CommitTimeline")
 
-        # Pull deterministic facts
-        blame_ratio = blame_cache.get("overall_author_ratio", meta.get("user_commit_ratio", 1.0))
-        commit_ratio = (commit_cache.get("ownership") or {}).get("user_commit_ratio", meta.get("user_commit_ratio", 1.0))
-        total_commits = (commit_cache.get("ownership") or {}).get("total_commits", meta.get("total_commits", 1))
-        bus_factor = (commit_cache.get("ownership") or {}).get("bus_factor", meta.get("bus_factor", 1))
+        # ── w1: AuthorshipRatio — from git blame ──────────────────────────────
+        authorship_ratio = float(
+            blame_cache.get("overall_author_ratio",
+                            meta.get("user_commit_ratio", 1.0))
+        )
 
-        # Ownership Score formula (§4.3):
-        # weighted average of blame-line ratio and commit ratio, penalised for high bus-factor
-        raw_ownership = (blame_ratio * 0.6) + (commit_ratio * 0.4)
-        bus_factor_penalty = min(0.3, max(0.0, (bus_factor - 2) * 0.05))
-        ownership_score = round(max(0.0, raw_ownership - bus_factor_penalty), 4)
+        # ── w2: (1 − CloneSimilarity) — from MinHash clone detection ─────────
+        clone_similarity = float(clone_cache.get("clone_similarity_score", 0.0))
+        originality_from_clone = 1.0 - clone_similarity
 
-        # Module-level ownership from GitBlame file list
+        # ── w3: OriginalityScore — commit-authored lines vs total ─────────────
+        commit_ratio = float(
+            (commit_cache.get("ownership") or {}).get(
+                "user_commit_ratio", meta.get("user_commit_ratio", authorship_ratio)
+            )
+        )
+        # Reduce if known fork
+        if meta.get("repo_type") in ("FORK_NO_CONTRIBUTION", "FORK_UPSTREAM_CONTRIBUTION"):
+            commit_ratio *= 0.5
+        originality_score = min(1.0, commit_ratio)
+
+        # ── w4: MaintenanceContribution — voluntary refactor/fix ratio ───────
+        refactor_initiative = float(timeline_cache.get("refactor_initiative", 0.0))
+        bug_fix_ratio = float(timeline_cache.get("bug_to_fix_ratio", 0.0))
+        maintenance_contribution = min(1.0, (refactor_initiative + bug_fix_ratio) * 2.0)
+
+        # ── Weighted ownership score ──────────────────────────────────────────
+        raw_ownership = (
+            authorship_ratio       * self._OWNERSHIP_W1 +
+            originality_from_clone * self._OWNERSHIP_W2 +
+            originality_score      * self._OWNERSHIP_W3 +
+            maintenance_contribution * self._OWNERSHIP_W4
+        )
+        ownership_score = round(max(0.0, min(1.0, raw_ownership)), 4)
+
+        # ── Module-level ownership from GitBlame ──────────────────────────────
         module_ownership: dict[str, float] = {}
+        module_count: dict[str, int] = {}
         for fa in blame_cache.get("file_authorship", []):
             f = fa.get("file", "")
             user_lines = fa.get("user_lines", 0)
             total_lines = max(1, fa.get("total_lines", 1))
             module = f.split("/")[0] if "/" in f else "root"
             module_ownership[module] = module_ownership.get(module, 0) + user_lines / total_lines
-
-        # Normalize per-module
-        module_count: dict[str, int] = {}
-        for fa in blame_cache.get("file_authorship", []):
-            module = (fa.get("file") or "root").split("/")[0]
             module_count[module] = module_count.get(module, 0) + 1
         normalized_module = {
             mod: round(module_ownership[mod] / module_count[mod], 4)
             for mod in module_ownership if module_count.get(mod, 0) > 0
         }
 
+        total_commits = (commit_cache.get("ownership") or {}).get("total_commits", meta.get("total_commits", 1))
+        bus_factor = (commit_cache.get("ownership") or {}).get("bus_factor", meta.get("bus_factor", 1))
         is_primary = ownership_score >= 0.50
 
         await self.publish_task_event(job_id, "Ownership",
-            f"Ownership score={ownership_score:.2f}. Primary author={is_primary}. Bus factor={bus_factor}.")
+            f"Ownership score={ownership_score:.3f} "
+            f"(AR={authorship_ratio:.2f}, OC={originality_from_clone:.2f}, "
+            f"OS={originality_score:.2f}, MC={maintenance_contribution:.2f}). "
+            f"Primary={is_primary}.")
 
         return {
             "data": {
                 "ownership_score": ownership_score,
                 "is_primary_author": is_primary,
-                "blame_line_ratio": blame_ratio,
-                "commit_ratio": commit_ratio,
+                "components": {
+                    "authorship_ratio": round(authorship_ratio, 4),
+                    "originality_from_clone": round(originality_from_clone, 4),
+                    "originality_score": round(originality_score, 4),
+                    "maintenance_contribution": round(maintenance_contribution, 4),
+                },
+                "weights": {
+                    "w1_authorship": self._OWNERSHIP_W1,
+                    "w2_clone_originality": self._OWNERSHIP_W2,
+                    "w3_commit_originality": self._OWNERSHIP_W3,
+                    "w4_maintenance": self._OWNERSHIP_W4,
+                },
                 "bus_factor": bus_factor,
                 "total_commits": total_commits,
                 "module_ownership": normalized_module,
@@ -2157,7 +2368,7 @@ class GitHubAnalysisOrchestrator(IGitHubAnalysisOrchestrator):
                 "timestamp": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
                 "level": "Info",
                 "eventType": "StepCompleted",
-                "message": f"Ownership score computed: {ownership_score:.2f}."
+                "message": f"Ownership score computed: {ownership_score:.3f} (primary={is_primary})."
             }]
         }
 
@@ -2258,67 +2469,117 @@ class GitHubAnalysisOrchestrator(IGitHubAnalysisOrchestrator):
 
     # ── L1-018 TrustScore ────────────────────────────────────────────────────
 
+    # Trust Score formula weights per spec (§6.4):
+    # Ownership 30% + Code Quality 25% + Complexity 20% + Commit Integrity 25%
+    _TRUST_W_OWNERSHIP = 0.30
+    _TRUST_W_QUALITY   = 0.25
+    _TRUST_W_COMPLEXITY = 0.20
+    _TRUST_W_INTEGRITY  = 0.25
+
     @trace_stage("TrustScore")
     async def analyze_trust_score(self, job_id: str, encrypted_token: str, correlation_id: str) -> dict:
-        """Three-dimensional Trust Score: Evidence × 0.40 + Ownership × 0.35 + Consistency × 0.25 (§6.4)."""
+        """Trust Score = Ownership×30% + CodeQuality×25% + Complexity×20% + CommitIntegrity×25% (§6.4)."""
         meta = self._read_meta(job_id)
 
-        intent_cache = self._read_task_cache(job_id, "CommitIntent")
-        quality_cache = self._read_task_cache(job_id, "CodeQuality")
-        ownership_cache = self._read_task_cache(job_id, "Ownership")
-        timeline_cache = self._read_task_cache(job_id, "CommitTimeline")
-        clone_cache = self._read_task_cache(job_id, "CloneDetection")
-        ai_code_cache = self._read_task_cache(job_id, "AiGeneratedCode")
+        ownership_cache  = self._read_task_cache(job_id, "Ownership")
+        quality_cache    = self._read_task_cache(job_id, "CodeQuality")
+        complexity_cache = self._read_task_cache(job_id, "Complexity")
+        timeline_cache   = self._read_task_cache(job_id, "CommitTimeline")
+        clone_cache      = self._read_task_cache(job_id, "CloneDetection")
+        ai_code_cache    = self._read_task_cache(job_id, "AiGeneratedCode")
+        intent_cache     = self._read_task_cache(job_id, "CommitIntent")
 
-        # Dimension 1: Evidence Verification Score (0-100)
-        # Does the code actually match claimed skills?
-        intent_confidence = float(intent_cache.get("confidence", 0.7)) * 100
-        quality_has_tests = 1.0 if quality_cache.get("testing", {}).get("has_tests") else 0.5
-        evidence_score = round(min(100.0, intent_confidence * quality_has_tests), 1)
+        # ── Dimension 1: Ownership (30%) ─────────────────────────────────────
+        # Raw ownership score from L1-015 (already 0–1 scale); convert to 0–100
+        ownership_raw = float(ownership_cache.get("ownership_score", meta.get("user_commit_ratio", 0.7)))
+        clone_risk = float(clone_cache.get("clone_risk_score", 0.0))
+        ai_risk = float(ai_code_cache.get("ai_risk_score", 0.0))
+        ownership_dim = round(max(0.0, min(100.0,
+            ownership_raw * 100 - clone_risk * 0.4 - ai_risk * 0.3
+        )), 1)
 
-        # Dimension 2: Ownership Confidence (0-100)
-        ownership_score = float(ownership_cache.get("ownership_score", meta.get("user_commit_ratio", 1.0))) * 100
-        clone_penalty = float(clone_cache.get("clone_risk_score", 0)) * 0.5
-        ai_penalty = float(ai_code_cache.get("ai_risk_score", 0)) * 0.4
-        ownership_confidence = round(max(0.0, min(100.0, ownership_score - clone_penalty - ai_penalty)), 1)
+        # ── Dimension 2: Code Quality (25%) ──────────────────────────────────
+        # Derive from L1-011 CodeQuality cache: test coverage proxy + code smells
+        quality_score_raw = float((quality_cache.get("quality_score") or quality_cache.get("overall_score") or 65))
+        has_tests = bool((quality_cache.get("testing") or {}).get("has_tests", False))
+        quality_dim = round(min(100.0, quality_score_raw * (1.1 if has_tests else 0.85)), 1)
 
-        # Dimension 3: Consistency Score (0-100)
-        freq_score = float(timeline_cache.get("commit_frequency_score", 50))
+        # ── Dimension 3: Complexity Appropriateness (20%) ────────────────────
+        # Reward moderate complexity (not trivially simple, not unreadably complex)
+        repo_level = complexity_cache.get("repo_complexity_level", "medium")
+        avg_cc = float(complexity_cache.get("avg_cyclomatic", 5.0))
+        high_cc_count = len(complexity_cache.get("high_complexity_functions", []))
+        total_funcs = max(1, int(complexity_cache.get("total_functions_analysed", 1)))
+
+        if repo_level == "low":
+            # Simple code is fine but not impressive
+            complexity_base = 65.0
+        elif repo_level == "medium":
+            complexity_base = 85.0
+        elif repo_level == "high":
+            complexity_base = 70.0
+        else:  # very_high
+            complexity_base = 50.0
+
+        high_ratio = high_cc_count / total_funcs
+        complexity_penalty = min(25.0, high_ratio * 100)
+        complexity_dim = round(max(0.0, complexity_base - complexity_penalty), 1)
+
+        # ── Dimension 4: Commit Integrity (25%) ──────────────────────────────
+        # Combines timeline consistency + intent inference confidence + anti-farming signals
+        freq_score = float(timeline_cache.get("commit_frequency_score", 50.0))
         burst_count = len(timeline_cache.get("burst_days", []))
-        consistency_penalty = min(30.0, burst_count * 5.0)
-        consistency_score = round(max(0.0, min(100.0, freq_score - consistency_penalty)), 1)
+        burst_penalty = min(20.0, burst_count * 4.0)
+        intent_confidence = float(intent_cache.get("confidence", 0.7)) * 100
 
-        # Weighted trust score (§6.4 formula)
-        raw_trust = (
-            evidence_score * 0.40 +
-            ownership_confidence * 0.35 +
-            consistency_score * 0.25
+        # AI-generated code and clone flags degrade commit integrity
+        integrity_adversarial = min(30.0,
+            (1 if "tutorial_clone_suspected" in clone_cache.get("flags", []) else 0) * 20.0 +
+            (1 if ai_code_cache.get("risk_level") == "high" else 0) * 15.0
         )
 
-        # Apply repo classification confidence ceiling
+        commit_integrity_dim = round(max(0.0, min(100.0,
+            (freq_score * 0.5 + intent_confidence * 0.5) - burst_penalty - integrity_adversarial
+        )), 1)
+
+        # ── Weighted Trust Score ──────────────────────────────────────────────
+        raw_trust = (
+            ownership_dim       * self._TRUST_W_OWNERSHIP +
+            quality_dim         * self._TRUST_W_QUALITY +
+            complexity_dim      * self._TRUST_W_COMPLEXITY +
+            commit_integrity_dim * self._TRUST_W_INTEGRITY
+        )
+
         confidence_ceiling = float(meta.get("confidence_ceiling", 1.0))
         trust_score = round(min(raw_trust * confidence_ceiling, 100.0), 1)
 
-        # Adversarial risk adjustments
         adversarial_flags: list[str] = clone_cache.get("flags", []) + [
-            f.get("flag", "") for f in ai_code_cache.get("flags", []) if f.get("flag")
+            f.get("flag", "") for f in ai_code_cache.get("flags", []) if isinstance(f, dict) and f.get("flag")
         ]
-        if adversarial_flags:
-            trust_score = max(0.0, trust_score - len(adversarial_flags) * 5.0)
+        if len(adversarial_flags) > 2:
+            trust_score = max(0.0, round(trust_score - (len(adversarial_flags) - 2) * 3.0, 1))
 
         trust_level = "high" if trust_score >= 70 else "medium" if trust_score >= 40 else "low"
 
         await self.publish_task_event(job_id, "TrustScore",
-            f"Trust score={trust_score:.1f} ({trust_level}). E={evidence_score} O={ownership_confidence} C={consistency_score}.")
+            f"Trust score={trust_score:.1f} ({trust_level}). "
+            f"O={ownership_dim} Q={quality_dim} Cx={complexity_dim} CI={commit_integrity_dim}.")
 
         return {
             "data": {
                 "trust_score": round(trust_score, 1),
                 "trust_level": trust_level,
                 "dimensions": {
-                    "evidence_verification": evidence_score,
-                    "ownership_confidence": ownership_confidence,
-                    "consistency_score": consistency_score,
+                    "ownership":          ownership_dim,
+                    "code_quality":       quality_dim,
+                    "complexity":         complexity_dim,
+                    "commit_integrity":   commit_integrity_dim,
+                },
+                "weights": {
+                    "ownership":        self._TRUST_W_OWNERSHIP,
+                    "code_quality":     self._TRUST_W_QUALITY,
+                    "complexity":       self._TRUST_W_COMPLEXITY,
+                    "commit_integrity": self._TRUST_W_INTEGRITY,
                 },
                 "raw_score_before_ceiling": round(raw_trust, 1),
                 "confidence_ceiling_applied": confidence_ceiling,
@@ -2330,6 +2591,354 @@ class GitHubAnalysisOrchestrator(IGitHubAnalysisOrchestrator):
                 "level": "Info",
                 "eventType": "StepCompleted",
                 "message": f"Trust Score computed: {trust_score:.1f}/100 ({trust_level})."
+            }]
+        }
+
+    # ── L1-005 FeatureExtraction ─────────────────────────────────────────────
+
+    @trace_stage("FeatureExtraction")
+    async def analyze_feature_extraction(self, job_id: str, encrypted_token: str, correlation_id: str) -> dict:
+        """NLP-based feature identification from code structure + commit context (§1B spec).
+        Combines file structure patterns, diff capability signals, and LLM inference."""
+        meta = self._read_meta(job_id)
+        if not meta.get("is_cloned"):
+            return self._empty_result({"features": [], "feature_count": 0, "complexity_distribution": {}})
+
+        diff_cache = self._read_task_cache(job_id, "CommitDiff")
+        arch_cache = self._read_task_cache(job_id, "ArchitectureAnalysis")
+
+        cap_signals = diff_cache.get("capability_signals", [])
+        technologies = meta.get("technologies", [])
+        arch_style = (arch_cache.get("architecture") or {}).get("style", "unknown")
+
+        await self.publish_task_event(job_id, "FeatureExtraction", "Inferring features from code structure + commit signals (AI)...")
+
+        # Build compact prompt from structural evidence only
+        cap_summary = "\n".join(
+            f"- {s['capability']}: {s['frequency']} commits" for s in cap_signals[:15]
+        )
+        tech_summary = ", ".join(technologies[:15])
+        filenames_sample = "\n".join(meta.get("filenames", [])[:40])
+
+        user_prompt = (
+            f"Repository: {meta.get('repo_owner','?')}/{meta.get('repo_name','?')}\n"
+            f"Architecture style: {arch_style}\n"
+            f"Tech stack: {tech_summary}\n\n"
+            f"Capability signals from code diffs (frequency):\n{cap_summary}\n\n"
+            f"Sample file paths:\n{filenames_sample}\n\n"
+            "Based ONLY on the file structure, tech stack, and diff capability signals above, "
+            "identify the features this repository implements. For each feature provide a complexity score 1-10.\n"
+            "Respond with JSON:\n"
+            "{\n"
+            '  "features": [\n'
+            '    {"name": "...", "description": "...", "complexity_score": 5, "evidence": ["file_or_capability"], "category": "auth|api|data|ui|infra|ml|other"}\n'
+            '  ],\n'
+            '  "primary_domain": "...",\n'
+            '  "complexity_summary": "simple|moderate|complex|advanced"\n'
+            "}"
+        )
+
+        system_prompt = self.prompt_factory.get_system_prompt()
+        raw_text, telemetry = await self.claude_service.analyze_repo_with_telemetry(
+            system_prompt, user_prompt, correlation_id
+        )
+        parsed = self._extract_json(raw_text, correlation_id)
+        features = parsed.get("features", [])
+
+        # Aggregate complexity distribution
+        complexity_dist: dict[str, int] = {"1-3": 0, "4-6": 0, "7-8": 0, "9-10": 0}
+        for f in features:
+            score = int(f.get("complexity_score", 5))
+            if score <= 3:
+                complexity_dist["1-3"] += 1
+            elif score <= 6:
+                complexity_dist["4-6"] += 1
+            elif score <= 8:
+                complexity_dist["7-8"] += 1
+            else:
+                complexity_dist["9-10"] += 1
+
+        await self.publish_task_event(job_id, "FeatureExtraction",
+            f"Feature extraction complete: {len(features)} features identified.")
+
+        return {
+            "data": {
+                "features": features,
+                "feature_count": len(features),
+                "primary_domain": parsed.get("primary_domain", "unknown"),
+                "complexity_summary": parsed.get("complexity_summary", "moderate"),
+                "complexity_distribution": complexity_dist,
+            },
+            "telemetry": telemetry,
+            "events": [{
+                "timestamp": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+                "level": "Info",
+                "eventType": "StepCompleted",
+                "message": f"Feature extraction complete: {len(features)} features."
+            }]
+        }
+
+    # ── L1-008 ArchitectureChange ────────────────────────────────────────────
+
+    @trace_stage("ArchitectureChange")
+    async def analyze_architecture_change(self, job_id: str, encrypted_token: str, correlation_id: str) -> dict:
+        """Detect major refactors and architectural changes from commit diffs (§1C spec).
+        Evaluates before/after structural metrics to assess decision quality."""
+        import subprocess, re
+        meta = self._read_meta(job_id)
+        clone_dir = self._clone_dir(job_id)
+
+        if not meta.get("is_cloned") or not os.path.exists(os.path.join(clone_dir, ".git")):
+            return self._empty_result({"architectural_changes": [], "change_count": 0, "quality_trajectory": "neutral"})
+
+        await self.publish_task_event(job_id, "ArchitectureChange", "Detecting architectural changes from commit history...")
+
+        # Identify commits that touched many files across multiple modules (structural refactors)
+        log_proc = await asyncio.to_thread(subprocess.run,
+            ["git", "log", "--no-merges", "--format=%H|%ae|%s|%aI", "-n", "100"],
+            cwd=clone_dir, capture_output=True, text=True, errors="ignore"
+        )
+
+        arch_changes = []
+        module_rename_pattern = re.compile(r"(rename|restructure|reorganize|refactor|move|extract|split|merge)", re.I)
+        infra_patterns = [".github", "docker", "k8s", "terraform", "helm", "compose", "ci", "cd", "workflow"]
+
+        for line in log_proc.stdout.strip().split("\n"):
+            if "|" not in line:
+                continue
+            parts = line.split("|", 3)
+            h = parts[0].strip()
+            email = parts[1].strip() if len(parts) > 1 else ""
+            msg = parts[2].strip() if len(parts) > 2 else ""
+            ts = parts[3].strip() if len(parts) > 3 else ""
+
+            # Get changed files for this commit
+            files_proc = await asyncio.to_thread(subprocess.run,
+                ["git", "diff-tree", "--no-commit-id", "-r", "--name-status", h],
+                cwd=clone_dir, capture_output=True, text=True, errors="ignore"
+            )
+            if files_proc.returncode != 0:
+                continue
+
+            changes = files_proc.stdout.strip().split("\n")
+            file_count = len([c for c in changes if c.strip()])
+            renames = [c for c in changes if c.startswith("R")]
+            modules_touched = set()
+            for c in changes:
+                parts_c = c.split("\t")
+                if len(parts_c) >= 2:
+                    fpath = parts_c[-1].strip()
+                    modules_touched.add(fpath.split("/")[0] if "/" in fpath else "root")
+
+            is_arch_change = (
+                file_count >= 8 and len(modules_touched) >= 3  # cross-module change
+                or len(renames) >= 3                            # significant rename/restructure
+                or bool(module_rename_pattern.search(msg))      # message mentions refactor
+                or any(p in (c.split("\t")[-1].lower() if "\t" in c else c.lower())
+                       for c in changes for p in infra_patterns)
+            )
+
+            if is_arch_change:
+                # Assess change quality: renames + multi-module = proactive architecture improvement
+                quality = "improvement" if len(renames) >= 2 or file_count >= 10 else "neutral"
+                if "fix" in msg.lower() and file_count > 15:
+                    quality = "emergency_refactor"  # large change driven by bug — riskier
+
+                arch_changes.append({
+                    "hash": h[:8],
+                    "timestamp": ts,
+                    "message": msg,
+                    "files_changed": file_count,
+                    "renames": len(renames),
+                    "modules_touched": list(modules_touched)[:8],
+                    "change_quality": quality,
+                })
+
+            if len(arch_changes) >= 15:
+                break
+
+        # Quality trajectory: mostly improvements vs mostly emergency fixes
+        if arch_changes:
+            improvements = sum(1 for c in arch_changes if c["change_quality"] == "improvement")
+            emergencies = sum(1 for c in arch_changes if c["change_quality"] == "emergency_refactor")
+            if improvements > emergencies:
+                quality_trajectory = "improving"
+            elif emergencies > improvements:
+                quality_trajectory = "reactive"
+            else:
+                quality_trajectory = "neutral"
+        else:
+            quality_trajectory = "neutral"
+
+        await self.publish_task_event(job_id, "ArchitectureChange",
+            f"Architecture change detection complete: {len(arch_changes)} events, trajectory={quality_trajectory}.")
+
+        return {
+            "data": {
+                "architectural_changes": arch_changes,
+                "change_count": len(arch_changes),
+                "quality_trajectory": quality_trajectory,
+            },
+            "telemetry": None,
+            "events": [{
+                "timestamp": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+                "level": "Info",
+                "eventType": "StepCompleted",
+                "message": f"Architecture change detection complete: {len(arch_changes)} changes, {quality_trajectory} trajectory."
+            }]
+        }
+
+    # ── L1-016 RepoIntelligenceReport ───────────────────────────────────────
+
+    @trace_stage("RepoIntelligenceReport")
+    async def analyze_repo_intelligence_report(self, job_id: str, encrypted_token: str, correlation_id: str) -> dict:
+        """Aggregate all 1A–1E outputs into the final Repository Intelligence Report JSON (§1F spec).
+        This is the primary output of Line 1 and the input for Line 2 (Candidate Evaluation)."""
+        meta = self._read_meta(job_id)
+
+        # Read all upstream task caches
+        structure   = self._read_task_cache(job_id, "RepoStructure")
+        commits     = self._read_task_cache(job_id, "CommitIntelligence")
+        diff        = self._read_task_cache(job_id, "CommitDiff")
+        tech        = self._read_task_cache(job_id, "SkillExtraction")
+        features    = self._read_task_cache(job_id, "FeatureExtraction")
+        arch        = self._read_task_cache(job_id, "ArchitectureAnalysis")
+        arch_change = self._read_task_cache(job_id, "ArchitectureChange")
+        timeline    = self._read_task_cache(job_id, "CommitTimeline")
+        intent      = self._read_task_cache(job_id, "CommitIntent")
+        complexity  = self._read_task_cache(job_id, "Complexity")
+        quality     = self._read_task_cache(job_id, "CodeQuality")
+        blame       = self._read_task_cache(job_id, "GitBlame")
+        clone       = self._read_task_cache(job_id, "CloneDetection")
+        ai_code     = self._read_task_cache(job_id, "AiGeneratedCode")
+        ownership   = self._read_task_cache(job_id, "Ownership")
+        skill_graph = self._read_task_cache(job_id, "SkillGraph")
+        trust       = self._read_task_cache(job_id, "TrustScore")
+
+        await self.publish_task_event(job_id, "RepoIntelligenceReport",
+            "Composing Repository Intelligence Report from all 1A–1E outputs...")
+
+        # Top capability signals for display
+        top_capabilities = sorted(
+            diff.get("capability_signals", []),
+            key=lambda x: x.get("frequency", 0), reverse=True
+        )[:10]
+
+        report = {
+            # ── Identity ──────────────────────────────────────────────────────
+            "repo_id": f"{meta.get('repo_owner','')}/{meta.get('repo_name','')}",
+            "repo_url": meta.get("repo_url", ""),
+            "repo_type": meta.get("repo_type", "ORIGINAL_WORK"),
+            "generated_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+            "schema_version": "2.0",
+
+            # ── 1A: Repo Ingestion ────────────────────────────────────────────
+            "ingestion": {
+                "language_distribution": meta.get("language_distribution", {}),
+                "file_count": meta.get("file_count", 0),
+                "total_commits": meta.get("total_commits", 0),
+                "last_commit_date": meta.get("last_commit_date", ""),
+                "default_branch": meta.get("default_branch", "main"),
+                "repo_size_kb": meta.get("repo_size_kb", 0),
+            },
+
+            # ── 1B: Tech Stack + Features ─────────────────────────────────────
+            "tech_stack": {
+                "technologies": meta.get("technologies", []),
+                "frameworks": (tech.get("frameworks") or []),
+                "confirmed_packages": (tech.get("confirmed_packages") or []),
+            },
+            "features": {
+                "count": features.get("feature_count", 0),
+                "primary_domain": features.get("primary_domain", "unknown"),
+                "complexity_summary": features.get("complexity_summary", "moderate"),
+                "top_features": (features.get("features") or [])[:5],
+            },
+            "architecture": {
+                "style": (arch.get("architecture") or {}).get("style", "unknown"),
+                "patterns": (arch.get("architecture") or {}).get("patterns", []),
+                "change_trajectory": arch_change.get("quality_trajectory", "neutral"),
+                "architectural_changes_count": arch_change.get("change_count", 0),
+            },
+
+            # ── 1C: Commit Context ────────────────────────────────────────────
+            "commit_analysis": {
+                "dominant_intent": intent.get("dominant_intent", "unknown"),
+                "intent_confidence": intent.get("confidence", 0),
+                "capability_signals": top_capabilities,
+                "commits_per_week": timeline.get("commits_per_week", 0),
+                "bug_to_fix_ratio": timeline.get("bug_to_fix_ratio", 0),
+                "refactor_initiative": timeline.get("refactor_initiative", 0),
+                "commit_frequency_score": timeline.get("commit_frequency_score", 0),
+                "working_patterns": timeline.get("working_patterns", {}),
+            },
+
+            # ── 1D: Code Quality + Complexity ─────────────────────────────────
+            "code_quality": {
+                "overall_score": (quality.get("quality_score") or quality.get("overall_score") or 0),
+                "has_tests": (quality.get("testing") or {}).get("has_tests", False),
+                "code_smells": (quality.get("issues") or [])[:5],
+            },
+            "complexity": {
+                "avg_cyclomatic": complexity.get("avg_cyclomatic", 0),
+                "avg_cognitive": complexity.get("avg_cognitive", 0),
+                "repo_complexity_level": complexity.get("repo_complexity_level", "unknown"),
+                "high_complexity_functions_count": len(complexity.get("high_complexity_functions", [])),
+            },
+
+            # ── 1E: Ownership + Anti-Fraud ────────────────────────────────────
+            "ownership": {
+                "ownership_score": ownership.get("ownership_score", 0),
+                "is_primary_author": ownership.get("is_primary_author", False),
+                "authorship_ratio": (ownership.get("components") or {}).get("authorship_ratio", 0),
+                "module_ownership": ownership.get("module_ownership", {}),
+            },
+            "fraud_signals": {
+                "clone_risk_score": clone.get("clone_risk_score", 0),
+                "clone_classification": clone.get("classification", "clean"),
+                "clone_flags": clone.get("flags", []),
+                "ai_code_risk_score": ai_code.get("ai_risk_score", 0),
+                "ai_code_risk_level": ai_code.get("risk_level", "low"),
+            },
+
+            # ── 1F: Outputs ───────────────────────────────────────────────────
+            "skill_evidence_graph": {
+                "skill_count": skill_graph.get("skill_count", 0),
+                "skills_summary": skill_graph.get("skills_summary", {}),
+            },
+            "trust_score": {
+                "score": trust.get("trust_score", 0),
+                "level": trust.get("trust_level", "low"),
+                "dimensions": trust.get("dimensions", {}),
+                "adversarial_flags": trust.get("adversarial_flags", []),
+            },
+        }
+
+        # Eligibility gate (S-001 prerequisite: Ownership ≥ 30%, Commits ≥ 5, no heavy clone)
+        eligibility_passed = (
+            ownership.get("ownership_score", 0) >= 0.30 and
+            meta.get("total_commits", 0) >= 5 and
+            clone.get("classification", "clean") != "high_risk"
+        )
+        report["eligibility"] = {
+            "passed": eligibility_passed,
+            "ownership_ok": ownership.get("ownership_score", 0) >= 0.30,
+            "commits_ok": meta.get("total_commits", 0) >= 5,
+            "clone_ok": clone.get("classification", "clean") != "high_risk",
+        }
+
+        await self.publish_task_event(job_id, "RepoIntelligenceReport",
+            f"Repository Intelligence Report composed. Trust={trust.get('trust_score',0):.1f}, "
+            f"Eligibility={'PASS' if eligibility_passed else 'FAIL'}.")
+
+        return {
+            "data": report,
+            "telemetry": None,
+            "events": [{
+                "timestamp": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+                "level": "Info",
+                "eventType": "StepCompleted",
+                "message": f"Repository Intelligence Report complete. Trust={trust.get('trust_score',0):.1f}/100."
             }]
         }
 
