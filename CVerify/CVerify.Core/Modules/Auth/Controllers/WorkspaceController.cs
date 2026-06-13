@@ -95,20 +95,29 @@ public class WorkspaceController : ControllerBase
         var signedBannerUrl = await GetSignedUrlAsync(org.BannerUrl);
         var signedLogoUrl = await GetSignedUrlAsync(org.LogoUrl);
 
+        var signedGalleryUrls = new List<string>();
+        if (org.GalleryUrls != null)
+        {
+            foreach (var url in org.GalleryUrls)
+            {
+                var signed = await GetSignedUrlAsync(url);
+                if (signed != null) signedGalleryUrls.Add(signed);
+            }
+        }
+
         var userIdClaim = User?.FindFirst(ClaimTypes.NameIdentifier);
         if (userIdClaim == null || !Guid.TryParse(userIdClaim.Value, out var userId))
         {
             // Anonymous visitor: return basic public profile details
-            return Ok(new WorkspaceDetailsDto(
-                org.Id,
-                org.Name,
-                org.Username,
+            return Ok(MapToWorkspaceDetailsDto(
+                org,
                 null,
                 new List<LinkedOrganizationDto>(),
                 new List<string>(),
                 workspaces,
                 signedBannerUrl,
-                signedLogoUrl
+                signedLogoUrl,
+                signedGalleryUrls
             ));
         }
 
@@ -120,16 +129,15 @@ public class WorkspaceController : ControllerBase
             if (org.Id != userId)
             {
                 // Authenticated as a different business account (treat as anonymous public viewer)
-                return Ok(new WorkspaceDetailsDto(
-                    org.Id,
-                    org.Name,
-                    org.Username,
+                return Ok(MapToWorkspaceDetailsDto(
+                    org,
                     null,
                     new List<LinkedOrganizationDto>(),
                     new List<string>(),
                     workspaces,
                     signedBannerUrl,
-                    signedLogoUrl
+                    signedLogoUrl,
+                    signedGalleryUrls
                 ));
             }
 
@@ -143,16 +151,15 @@ public class WorkspaceController : ControllerBase
                 "candidate:trust:override", "organization:audit:view", "billing:invoice:view", "billing:subscription:manage"
             };
 
-            return Ok(new WorkspaceDetailsDto(
-                org.Id,
-                org.Name,
-                org.Username,
+            return Ok(MapToWorkspaceDetailsDto(
+                org,
                 "OWNER",
                 new List<LinkedOrganizationDto>(),
                 businessPermissions,
                 workspaces,
                 signedBannerUrl,
-                signedLogoUrl
+                signedLogoUrl,
+                signedGalleryUrls
             ));
         }
 
@@ -161,16 +168,15 @@ public class WorkspaceController : ControllerBase
         if (!isAuthorized)
         {
             // Authenticated but not authorized to view workspace (treat as public viewer)
-            return Ok(new WorkspaceDetailsDto(
-                org.Id,
-                org.Name,
-                org.Username,
+            return Ok(MapToWorkspaceDetailsDto(
+                org,
                 null,
                 new List<LinkedOrganizationDto>(),
                 new List<string>(),
                 workspaces,
                 signedBannerUrl,
-                signedLogoUrl
+                signedLogoUrl,
+                signedGalleryUrls
             ));
         }
 
@@ -181,16 +187,15 @@ public class WorkspaceController : ControllerBase
         if (membership == null || membership.Status != "active")
         {
             // Fallback for safety (treat as public viewer)
-            return Ok(new WorkspaceDetailsDto(
-                org.Id,
-                org.Name,
-                org.Username,
+            return Ok(MapToWorkspaceDetailsDto(
+                org,
                 null,
                 new List<LinkedOrganizationDto>(),
                 new List<string>(),
                 workspaces,
                 signedBannerUrl,
-                signedLogoUrl
+                signedLogoUrl,
+                signedGalleryUrls
             ));
         }
 
@@ -211,17 +216,201 @@ public class WorkspaceController : ControllerBase
             .Select(om => new LinkedOrganizationDto(om.Organization.Name, om.Organization.Username))
             .ToListAsync();
 
-        return Ok(new WorkspaceDetailsDto(
-            org.Id,
-            org.Name,
-            org.Username,
+        return Ok(MapToWorkspaceDetailsDto(
+            org,
             membership.Role,
             linkedOrgs,
             permissions,
             workspaces,
             signedBannerUrl,
-            signedLogoUrl
+            signedLogoUrl,
+            signedGalleryUrls
         ));
+    }
+
+    [HttpPatch("{organizationSlug}")]
+    [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(WorkspaceDetailsDto))]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> UpdateWorkspaceDetails(
+        string organizationSlug,
+        [FromBody] UpdateWorkspaceDetailsRequestDto dto,
+        CancellationToken cancellationToken)
+    {
+        if (dto == null)
+        {
+            return BadRequest("Request payload is empty.");
+        }
+
+        var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier);
+        if (userIdClaim == null || !Guid.TryParse(userIdClaim.Value, out var userId))
+        {
+            return Unauthorized();
+        }
+
+        var org = await _context.Organizations
+            .FirstOrDefaultAsync(o => o.Username.ToLower() == organizationSlug.ToLower() && o.DeletedAt == null, cancellationToken);
+
+        if (org == null)
+        {
+            return NotFound(new { message = "Organization not found" });
+        }
+
+        var actorTypeClaim = User.FindFirst("actor_type")?.Value;
+        bool isBusiness = string.Equals(actorTypeClaim, "business", StringComparison.OrdinalIgnoreCase);
+
+        if (isBusiness)
+        {
+            if (org.Id != userId)
+            {
+                return Forbid();
+            }
+        }
+        else
+        {
+            var isAuthorized = await _authorizationService.AuthorizeAsync(userId, org.Id, OrganizationPermissions.EditProfile, cancellationToken: cancellationToken);
+            if (!isAuthorized)
+            {
+                return Forbid();
+            }
+        }
+
+        // Apply updates
+        org.Description = dto.Description;
+        org.CompanyType = dto.CompanyType;
+        org.CompanySize = dto.CompanySize;
+        org.BranchCount = dto.BranchCount;
+        org.IndustryTags = dto.IndustryTags ?? new List<string>();
+        org.BenefitTags = dto.BenefitTags ?? new List<string>();
+        org.ContactName = dto.ContactName;
+        org.ContactPhone = dto.ContactPhone;
+        org.ContactEmail = dto.ContactEmail;
+        org.City = dto.City;
+        org.DetailAddress = dto.DetailAddress;
+        org.GoogleMapsEmbedUrl = dto.GoogleMapsEmbedUrl;
+        org.LinkedinUrl = dto.LinkedinUrl;
+        org.FacebookUrl = dto.FacebookUrl;
+        org.TwitterUrl = dto.TwitterUrl;
+        org.Website = dto.Website;
+        org.UpdatedAt = DateTimeOffset.UtcNow;
+
+        await _context.SaveChangesAsync(cancellationToken);
+
+        // Fetch same information to return the updated Details DTO
+        var workspaces = await _context.Workspaces
+            .Where(w => w.OrganizationId == org.Id && w.DeletedAt == null)
+            .Select(w => new WorkspaceDto(w.Id, w.DisplayName, w.Slug))
+            .ToListAsync(cancellationToken);
+
+        var signedBannerUrl = await GetSignedUrlAsync(org.BannerUrl, cancellationToken);
+        var signedLogoUrl = await GetSignedUrlAsync(org.LogoUrl, cancellationToken);
+
+        var signedGalleryUrls = new List<string>();
+        if (org.GalleryUrls != null)
+        {
+            foreach (var url in org.GalleryUrls)
+            {
+                var signed = await GetSignedUrlAsync(url, cancellationToken);
+                if (signed != null) signedGalleryUrls.Add(signed);
+            }
+        }
+
+        // Determine permissions and role just like GET endpoint
+        string? userRole = null;
+        var permissions = new List<string>();
+        var linkedOrgs = new List<LinkedOrganizationDto>();
+
+        if (isBusiness)
+        {
+            userRole = "OWNER";
+            permissions = new List<string>
+            {
+                "organization:profile:edit", "organization:settings:edit", "organization:workspace:view", "organization:roles:manage", "organization:roles:view",
+                "organization:members:manage", "organization:members:view", "identity:verification:initiate", "identity:verification:approve",
+                "identity:verification:reject", "evidence:graph:validate", "evidence:graph:comment", "analysis:repository:sync",
+                "analysis:repository:run", "analysis:repository:configure", "trust:metric:view", "trust:flag:manage",
+                "ai:interview:configure", "ai:interview:conduct", "ai:interview:evaluate", "candidate:trust:score",
+                "candidate:trust:override", "organization:audit:view", "billing:invoice:view", "billing:subscription:manage"
+            };
+        }
+        else
+        {
+            var membership = await _context.OrganizationMemberships
+                .FirstOrDefaultAsync(om => om.OrganizationId == org.Id && om.UserId == userId, cancellationToken);
+            if (membership != null && membership.Status == "active")
+            {
+                userRole = membership.Role;
+                var userPerms = await _authorizationService.GetPermissionsAsync(userId, org.Id, cancellationToken);
+                var allDbPermissions = await _context.Permissions
+                    .Select(p => p.Name)
+                    .ToListAsync(cancellationToken);
+                permissions = allDbPermissions
+                    .Where(p => PermissionEvaluator.HasPermission(userPerms, p, org.Id))
+                    .ToList();
+
+                linkedOrgs = await _context.OrganizationMemberships
+                    .Where(om => om.UserId == userId && om.OrganizationId != org.Id && om.Status == "active")
+                    .Include(om => om.Organization)
+                    .Select(om => new LinkedOrganizationDto(om.Organization.Name, om.Organization.Username))
+                    .ToListAsync(cancellationToken);
+            }
+        }
+
+        var responseDto = MapToWorkspaceDetailsDto(
+            org,
+            userRole,
+            linkedOrgs,
+            permissions,
+            workspaces,
+            signedBannerUrl,
+            signedLogoUrl,
+            signedGalleryUrls
+        );
+
+        return Ok(responseDto);
+    }
+
+    private WorkspaceDetailsDto MapToWorkspaceDetailsDto(
+        Organization org,
+        string? userRole,
+        List<LinkedOrganizationDto> linkedOrganizations,
+        List<string> permissions,
+        List<WorkspaceDto> workspaces,
+        string? signedBannerUrl,
+        string? signedLogoUrl,
+        List<string> signedGalleryUrls)
+    {
+        return new WorkspaceDetailsDto(
+            org.Id,
+            org.Name,
+            org.Username,
+            userRole,
+            linkedOrganizations,
+            permissions,
+            workspaces,
+            signedBannerUrl,
+            signedLogoUrl,
+            org.CompanyType,
+            org.CompanySize,
+            org.BranchCount,
+            org.IndustryTags ?? new List<string>(),
+            org.Description,
+            org.BenefitTags ?? new List<string>(),
+            signedGalleryUrls,
+            org.ContactName,
+            org.ContactPhone,
+            org.ContactEmail,
+            org.City,
+            org.DetailAddress,
+            org.GoogleMapsEmbedUrl,
+            org.LinkedinUrl,
+            org.FacebookUrl,
+            org.TwitterUrl,
+            org.Website,
+            org.TaxCode
+        );
     }
 
     private async Task<string?> GetSignedUrlAsync(string? url, CancellationToken cancellationToken = default)
@@ -248,6 +437,7 @@ public class WorkspaceController : ControllerBase
     }
 
     [HttpGet("{organizationSlug}/members")]
+    [AllowAnonymous]
     [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(PaginatedMembersResponseDto))]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
@@ -256,15 +446,17 @@ public class WorkspaceController : ControllerBase
         string organizationSlug,
         [FromQuery] int page = 1,
         [FromQuery] int pageSize = 10,
-        [FromQuery] string? search = null)
+        [FromQuery] string? search = null,
+        [FromQuery] bool publicOnly = false)
     {
         if (page < 1) page = 1;
         if (pageSize < 1 || pageSize > 100) pageSize = 10;
 
         var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier);
-        if (userIdClaim == null || !Guid.TryParse(userIdClaim.Value, out var userId))
+        Guid? userId = null;
+        if (userIdClaim != null && Guid.TryParse(userIdClaim.Value, out var parsedId))
         {
-            return Unauthorized();
+            userId = parsedId;
         }
 
         var org = await _context.Organizations
@@ -275,55 +467,84 @@ public class WorkspaceController : ControllerBase
             return NotFound(new { message = "Organization not found" });
         }
 
-        var actorTypeClaim = User.FindFirst("actor_type")?.Value;
-        bool isBusiness = string.Equals(actorTypeClaim, "business", StringComparison.OrdinalIgnoreCase);
+        bool limitToPublic = userId == null || publicOnly;
 
-        if (isBusiness)
+        if (!limitToPublic)
         {
-            if (org.Id != userId)
+            var actorTypeClaim = User.FindFirst("actor_type")?.Value;
+            bool isBusiness = string.Equals(actorTypeClaim, "business", StringComparison.OrdinalIgnoreCase);
+
+            if (isBusiness)
             {
-                return Forbid();
+                if (org.Id != userId.Value)
+                {
+                    return Forbid();
+                }
+            }
+            else
+            {
+                // Authorize permission using centralized authorization service
+                var isAuthorized = await _authorizationService.AuthorizeAsync(userId.Value, org.Id, OrganizationPermissions.ViewMembers);
+                if (!isAuthorized)
+                {
+                    return Forbid();
+                }
             }
         }
-        else
-        {
-            // Authorize permission using centralized authorization service
-            var isAuthorized = await _authorizationService.AuthorizeAsync(userId, org.Id, OrganizationPermissions.ViewMembers);
-            if (!isAuthorized)
-            {
-                return Forbid();
-            }
-        }
 
-        var query = _context.OrganizationMemberships
-            .Where(om => om.OrganizationId == org.Id)
-            .Include(om => om.User)
-            .AsNoTracking();
+        var baseQuery = (from om in _context.OrganizationMemberships.Where(om => om.OrganizationId == org.Id && om.Status == "active")
+                         join up in _context.UserProfiles on om.UserId equals up.UserId into upGroup
+                         from up in upGroup.DefaultIfEmpty()
+                         select new { om, up }).AsNoTracking();
+
+        if (limitToPublic)
+        {
+            baseQuery = baseQuery.Where(x => x.up != null && x.up.ProfileVisibility == "public");
+        }
 
         if (!string.IsNullOrWhiteSpace(search))
         {
             var searchLower = search.ToLower();
-            query = query.Where(om => 
-                om.User.FullName.ToLower().Contains(searchLower) ||
-                om.User.Email.ToLower().Contains(searchLower)
+            baseQuery = baseQuery.Where(x => 
+                x.om.User.FullName.ToLower().Contains(searchLower) ||
+                x.om.User.Email.ToLower().Contains(searchLower)
             );
         }
 
-        var totalCount = await query.CountAsync();
-        var items = await query
-            .OrderBy(om => om.User.FullName)
+        var totalCount = await baseQuery.CountAsync();
+        var items = await baseQuery
+            .OrderBy(x => x.om.User.FullName)
             .Skip((page - 1) * pageSize)
             .Take(pageSize)
-            .Select(om => new MemberDto(
-                om.UserId,
-                om.User.FullName,
-                om.User.Email,
-                om.Role,
-                om.Status
-            ))
+            .Select(x => new {
+                x.om.UserId,
+                x.om.User.FullName,
+                x.om.User.Email,
+                x.om.Role,
+                x.om.Status,
+                Headline = x.up != null ? x.up.Headline : null,
+                Username = x.up != null ? x.up.Username : null,
+                x.om.User.AvatarUrl
+            })
             .ToListAsync();
 
-        return Ok(new PaginatedMembersResponseDto(items, totalCount, page, pageSize));
+        var dtoList = new List<MemberDto>();
+        foreach (var x in items)
+        {
+            var signedAvatar = await GetSignedUrlAsync(x.AvatarUrl);
+            dtoList.Add(new MemberDto(
+                x.UserId,
+                x.FullName,
+                x.Email,
+                x.Role,
+                x.Status,
+                x.Headline,
+                x.Username,
+                signedAvatar
+            ));
+        }
+
+        return Ok(new PaginatedMembersResponseDto(dtoList, totalCount, page, pageSize));
     }
 
     [HttpPost("{organizationSlug}/banner")]

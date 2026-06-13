@@ -5,7 +5,7 @@ import { useParams } from "next/navigation";
 import { Card } from "@/components/ui/card";
 import { Typography, Chip } from "@heroui/react";
 import { Button } from "@/components/ui/button";
-import { Search, MapPin, Briefcase, Calendar, ChevronRight, X, AlertCircle } from "lucide-react";
+
 
 interface Job {
   id: string;
@@ -113,24 +113,23 @@ export default function WorkspaceJobsTab() {
       <Card className="p-6 bg-surface border border-border rounded-2xl space-y-4 select-none">
         {/* Search */}
         <div className="relative">
-          <Search size={16} className="absolute left-4 top-3.5 text-muted-foreground" />
           <input
             type="text"
             placeholder="Search open positions..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full bg-card border border-border rounded-xl pl-11 pr-4 py-3 text-sm focus:outline-hidden focus:border-accent text-foreground font-outfit"
+            className="w-full bg-card border border-border rounded-xl px-4 py-3 text-sm focus:outline-hidden focus:border-accent text-foreground font-outfit"
           />
         </div>
 
         {/* Filters */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div className="space-y-1">
-            <span className="text-[10px] text-muted-foreground font-bold uppercase">Department</span>
+            <span className="text-[10px] text-muted-foreground font-medium uppercase">Department</span>
             <select
               value={selectedDept}
               onChange={(e) => setSelectedDept(e.target.value)}
-              className="w-full bg-card border border-border rounded-xl px-3 py-2.5 text-xs text-foreground focus:outline-hidden focus:border-accent font-outfit"
+              className="w-full bg-card border border-border rounded-xl px-3 py-2.5 text-xs text-foreground focus:outline-hidden focus:border-accent font-outfit font-normal"
             >
               {departments.map((dept) => (
                 <option key={dept} value={dept}>
@@ -141,11 +140,11 @@ export default function WorkspaceJobsTab() {
           </div>
 
           <div className="space-y-1">
-            <span className="text-[10px] text-muted-foreground font-bold uppercase">Location</span>
+            <span className="text-[10px] text-muted-foreground font-medium uppercase">Location</span>
             <select
               value={selectedLoc}
               onChange={(e) => setSelectedLoc(e.target.value)}
-              className="w-full bg-card border border-border rounded-xl px-3 py-2.5 text-xs text-foreground focus:outline-hidden focus:border-accent font-outfit"
+              className="w-full bg-card border border-border rounded-xl px-3 py-2.5 text-xs text-foreground focus:outline-hidden focus:border-accent font-outfit font-normal"
             >
               {locations.map((loc) => (
                 <option key={loc} value={loc}>
@@ -156,11 +155,11 @@ export default function WorkspaceJobsTab() {
           </div>
 
           <div className="space-y-1">
-            <span className="text-[10px] text-muted-foreground font-bold uppercase">Employment Type</span>
+            <span className="text-[10px] text-muted-foreground font-medium uppercase">Employment Type</span>
             <select
               value={selectedType}
               onChange={(e) => setSelectedType(e.target.value)}
-              className="w-full bg-card border border-border rounded-xl px-3 py-2.5 text-xs text-foreground focus:outline-hidden focus:border-accent font-outfit"
+              className="w-full bg-card border border-border rounded-xl px-3 py-2.5 text-xs text-foreground focus:outline-hidden focus:border-accent font-outfit font-normal"
             >
               {types.map((type) => (
                 <option key={type} value={type}>
@@ -176,11 +175,10 @@ export default function WorkspaceJobsTab() {
       <div className="space-y-4">
         {filteredJobs.length === 0 ? (
           <div className="border border-dashed border-border/80 rounded-2xl p-12 text-center select-none bg-surface">
-            <AlertCircle size={32} className="text-muted-foreground mx-auto mb-3" />
-            <Typography type="h4" className="font-bold text-foreground mb-1">
+            <Typography type="h4" className="font-semibold text-foreground mb-1">
               No matching positions found
             </Typography>
-            <Typography type="body-xs" className="text-muted max-w-md mx-auto">
+            <Typography type="body-xs" className="text-muted max-w-md mx-auto font-normal">
               Try modifying your search keywords or adjusting the department, location, or type filters.
             </Typography>
           </div>
@@ -193,31 +191,28 @@ export default function WorkspaceJobsTab() {
             >
               <div className="space-y-2">
                 <div className="flex flex-wrap items-center gap-2 select-none">
-                  <Chip size="sm" variant="soft" color="accent" className="text-[9px] font-bold py-0.5 px-2">
+                  <Chip size="sm" variant="soft" color="accent" className="text-[9px] font-medium py-0.5 px-2">
                     {job.department}
                   </Chip>
-                  <Chip size="sm" variant="soft" color="warning" className="text-[9px] font-bold py-0.5 px-2">
+                  <Chip size="sm" variant="soft" color="warning" className="text-[9px] font-medium py-0.5 px-2">
                     {job.type}
                   </Chip>
                 </div>
 
-                <Typography type="body-sm" className="font-extrabold text-foreground text-base hover:text-accent transition-colors">
+                <Typography type="body-sm" className="font-semibold text-foreground text-base hover:text-accent transition-colors">
                   {job.title}
                 </Typography>
 
-                <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground select-none">
-                  <span className="flex items-center gap-1">
-                    <MapPin size={12} className="text-muted" />
+                <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground select-none font-normal">
+                  <span className="flex items-center">
                     {job.location}
                   </span>
                   <span>•</span>
-                  <span className="flex items-center gap-1">
-                    <Briefcase size={12} className="text-muted" />
+                  <span className="flex items-center">
                     {job.salary}
                   </span>
                   <span>•</span>
-                  <span className="flex items-center gap-1">
-                    <Calendar size={12} className="text-muted" />
+                  <span className="flex items-center">
                     {job.posted}
                   </span>
                 </div>
@@ -225,12 +220,12 @@ export default function WorkspaceJobsTab() {
 
               <div className="flex items-center gap-2 select-none">
                 {appliedJobs.includes(job.id) && (
-                  <Chip size="sm" color="success" variant="soft" className="text-[10px] font-bold">
+                  <Chip size="sm" color="success" variant="soft" className="text-[10px] font-medium">
                     Applied
                   </Chip>
                 )}
-                <div className="w-8 h-8 rounded-lg border border-border flex items-center justify-center text-muted hover:text-foreground hover:bg-card/50 transition-colors">
-                  <ChevronRight size={16} />
+                <div className="w-8 h-8 rounded-lg border border-border flex items-center justify-center text-muted hover:text-foreground hover:bg-card/50 transition-colors text-xs font-normal">
+                  →
                 </div>
               </div>
             </Card>
@@ -245,23 +240,23 @@ export default function WorkspaceJobsTab() {
             {/* Header */}
             <div className="flex justify-between items-start pb-4 border-b border-border select-none">
               <div className="space-y-1">
-                <Typography type="h3" className="font-extrabold text-foreground text-lg leading-tight">
+                <Typography type="h3" className="font-semibold text-foreground text-lg leading-tight">
                   {activeJob.title}
                 </Typography>
                 <div className="flex flex-wrap gap-2 pt-1">
-                  <Chip size="sm" variant="soft" color="accent" className="text-[9px] font-bold">
+                  <Chip size="sm" variant="soft" color="accent" className="text-[9px] font-medium">
                     {activeJob.department}
                   </Chip>
-                  <Chip size="sm" variant="soft" color="warning" className="text-[9px] font-bold">
+                  <Chip size="sm" variant="soft" color="warning" className="text-[9px] font-medium">
                     {activeJob.type}
                   </Chip>
                 </div>
               </div>
               <button
                 onClick={() => setActiveJob(null)}
-                className="w-8 h-8 rounded-lg border border-border hover:bg-card/50 flex items-center justify-center text-muted hover:text-foreground transition-colors cursor-pointer"
+                className="w-8 h-8 rounded-lg border border-border hover:bg-card/50 flex items-center justify-center text-muted hover:text-foreground transition-colors cursor-pointer text-lg"
               >
-                <X size={16} />
+                ×
               </button>
             </div>
 
@@ -270,27 +265,27 @@ export default function WorkspaceJobsTab() {
               {/* Stats Block */}
               <div className="grid grid-cols-2 gap-4 p-4 rounded-xl border border-border bg-card/10 select-none">
                 <div>
-                  <span className="text-[9px] text-muted-foreground font-bold uppercase block">Location</span>
-                  <span className="text-xs font-semibold text-foreground">{activeJob.location}</span>
+                  <span className="text-[9px] text-muted-foreground font-medium uppercase block">Location</span>
+                  <span className="text-xs font-medium text-foreground">{activeJob.location}</span>
                 </div>
                 <div>
-                  <span className="text-[9px] text-muted-foreground font-bold uppercase block">Compensation</span>
-                  <span className="text-xs font-semibold text-foreground">{activeJob.salary}</span>
+                  <span className="text-[9px] text-muted-foreground font-medium uppercase block">Compensation</span>
+                  <span className="text-xs font-medium text-foreground">{activeJob.salary}</span>
                 </div>
               </div>
 
               {/* Description */}
               <div className="space-y-2">
-                <span className="text-[10px] text-muted font-bold uppercase select-none">Job Description</span>
-                <Typography type="body-xs" className="text-muted leading-relaxed text-sm">
+                <span className="text-[10px] text-muted font-medium uppercase select-none">Job Description</span>
+                <Typography type="body-xs" className="text-muted leading-relaxed text-sm font-normal">
                   {activeJob.description}
                 </Typography>
               </div>
 
               {/* Requirements */}
               <div className="space-y-2">
-                <span className="text-[10px] text-muted font-bold uppercase select-none">Requirements</span>
-                <ul className="list-disc pl-5 space-y-1.5 text-sm text-muted-foreground">
+                <span className="text-[10px] text-muted font-medium uppercase select-none">Requirements</span>
+                <ul className="list-disc pl-5 space-y-1.5 text-sm text-muted-foreground font-normal">
                   {activeJob.requirements.map((req, idx) => (
                     <li key={idx} className="leading-relaxed">
                       {req}
@@ -306,7 +301,7 @@ export default function WorkspaceJobsTab() {
                 onClick={() => setActiveJob(null)}
                 variant="bordered"
                 size="sm"
-                className="font-bold text-xs border-border text-muted hover:text-foreground cursor-pointer rounded-xl"
+                className="font-medium text-xs border-border text-muted hover:text-foreground cursor-pointer rounded-xl"
               >
                 Close Details
               </Button>
@@ -315,7 +310,7 @@ export default function WorkspaceJobsTab() {
                 disabled={appliedJobs.includes(activeJob.id)}
                 variant="solid"
                 size="sm"
-                className={`font-bold text-xs rounded-xl cursor-pointer ${
+                className={`font-medium text-xs rounded-xl cursor-pointer ${
                   appliedJobs.includes(activeJob.id)
                     ? "bg-success/20 text-success border-none"
                     : "bg-accent text-background hover:bg-accent/90 border-none"

@@ -18,6 +18,7 @@ export const workspaceService = {
       page?: number;
       pageSize?: number;
       search?: string;
+      publicOnly?: boolean;
     }
   ): Promise<PaginatedWorkspaceMembers> {
     const response = await axiosClient.get<PaginatedWorkspaceMembers>(`/workspace/${organizationSlug}/members`, {
@@ -52,6 +53,17 @@ export const workspaceService = {
           'Content-Type': 'multipart/form-data',
         },
       }
+    );
+    return response.data;
+  },
+
+  async updateWorkspaceDetails(
+    organizationSlug: string,
+    updates: Partial<WorkspaceDetails>
+  ): Promise<WorkspaceDetails> {
+    const response = await axiosClient.patch<WorkspaceDetails>(
+      `/workspace/${organizationSlug}`,
+      updates
     );
     return response.data;
   }

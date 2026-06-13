@@ -18,7 +18,7 @@ interface WorkspaceState {
   myOrganizations: LinkedOrganization[] | null;
   fetchWorkspace: (slug: string) => Promise<WorkspaceDetails | null>;
   fetchMyOrganizations: () => Promise<LinkedOrganization[] | null>;
-  updateWorkspaceDetails: (slug: string, updates: Partial<WorkspaceDetails>) => void;
+  updateWorkspaceDetails: (slug: string, updates: Partial<WorkspaceDetails>) => Promise<WorkspaceDetails | null>;
   toggleFollowWorkspace: (slug: string) => void;
   invalidateCache: (slug?: string) => void;
 
@@ -132,20 +132,24 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
     }
   },
 
-  updateWorkspaceDetails: (slug: string, updates: Partial<WorkspaceDetails>) => {
-    set((state) => {
-      const current = state.workspaces[slug];
-      if (!current) return state;
-      return {
+  updateWorkspaceDetails: async (slug: string, updates: Partial<WorkspaceDetails>) => {
+    try {
+      const updated = await workspaceService.updateWorkspaceDetails(slug, updates);
+      set((state) => ({
         workspaces: {
           ...state.workspaces,
           [slug]: {
-            ...current,
-            ...updates,
+            ...DEFAULT_DETAILS,
+            ...state.workspaces[slug],
+            ...updated,
           }
         }
-      };
-    });
+      }));
+      return updated;
+    } catch (err) {
+      console.error('[Workspace Store] Failed to update workspace details', err);
+      throw err;
+    }
   },
 
   toggleFollowWorkspace: (slug: string) => {

@@ -4,6 +4,9 @@ export interface WorkspaceMember {
   email: string;
   role: 'OWNER' | 'REPRESENTATIVE' | 'HR' | 'MEMBER';
   status: string;
+  headline?: string;
+  username?: string;
+  avatarUrl?: string;
 }
 
 export interface LinkedOrganization {
@@ -38,6 +41,22 @@ export interface WorkspaceDetails {
   logoUrl?: string;
   followersCount?: number;
   isFollowing?: boolean;
+
+  companyType?: string;
+  branchCount?: number;
+  industryTags?: string[];
+  benefitTags?: string[];
+  galleryUrls?: string[];
+  contactName?: string;
+  contactPhone?: string;
+  contactEmail?: string;
+  city?: string;
+  detailAddress?: string;
+  googleMapsEmbedUrl?: string;
+  linkedinUrl?: string;
+  facebookUrl?: string;
+  twitterUrl?: string;
+  taxCode?: string;
 }
 
 export interface PaginatedWorkspaceMembers {
@@ -106,6 +125,32 @@ export interface PaginatedInvitations {
   totalItems: number;
   page: number;
   pageSize: number;
-}
+}export const TAG_TRANSLATIONS: Record<string, string> = {
+  "Web Development": "Phát triển Web",
+  "Mobile Development": "Phát triển Di động",
+  "Embedded Systems": "Hệ thống nhúng",
+  "Cloud Computing": "Điện toán đám mây",
+  "Artificial Intelligence": "Trí tuệ nhân tạo (AI)",
+  "Machine Learning": "Học máy",
+  "Data Science": "Khoa học dữ liệu",
+  "Computer Vision": "Thị giác máy tính",
+  "Semiconductor": "Bán dẫn",
+  "IC Design": "Thiết kế vi mạch",
+  "IoT (Internet of Things)": "Internet vạn vật (IoT)",
+  "Microelectronics": "Vi điện tử",
+  "Healthcare": "Chăm sóc sức khỏe",
+  "Remote Work": "Làm việc từ xa",
+  "Flexible Hours": "Giờ làm việc linh hoạt",
+  "Training": "Đào tạo & Phát triển",
+  "Free Lunch": "Ăn trưa miễn phí",
+  "Gym Membership": "Hỗ trợ phòng gym",
+  "Stock Options": "Cổ phiếu thưởng",
+  "Performance Bonus": "Thưởng hiệu suất",
+  "Laptop Provided": "Cung cấp laptop",
+  "Team Building": "Du lịch & Team Building",
+  "Paid Time Off": "Nghỉ phép có lương",
+};
 
-
+export const getTagLabel = (tag: string): string => {
+  return TAG_TRANSLATIONS[tag] || tag;
+};

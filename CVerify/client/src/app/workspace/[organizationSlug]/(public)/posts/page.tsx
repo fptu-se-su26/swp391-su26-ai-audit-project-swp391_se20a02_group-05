@@ -4,7 +4,7 @@ import React, { useState } from "react";
 import { useParams } from "next/navigation";
 import { Card } from "@/components/ui/card";
 import { Typography, Chip } from "@heroui/react";
-import { Heart, Share2, MessageSquare, ShieldCheck, User } from "lucide-react";
+
 
 interface Post {
   id: string;
@@ -80,17 +80,16 @@ export default function WorkspacePostsTab() {
             {/* Author / Metadata */}
             <div className="flex justify-between items-start select-none">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-full bg-accent/10 border border-border flex items-center justify-center text-accent">
-                  <User size={18} />
+                <div className="w-10 h-10 rounded-full bg-accent/10 border border-border flex items-center justify-center text-accent font-medium text-sm select-none">
+                  {post.author.substring(0, 1).toUpperCase()}
                 </div>
                 <div>
                   <div className="flex items-center gap-1.5">
-                    <Typography type="body-sm" className="font-bold text-foreground text-sm">
+                    <Typography type="body-sm" className="font-semibold text-foreground text-sm">
                       {post.author}
                     </Typography>
-                    <ShieldCheck size={14} className="text-success" />
                   </div>
-                  <span className="text-[10px] text-muted-foreground block -mt-0.5">
+                  <span className="text-[10px] text-muted-foreground block -mt-0.5 font-normal">
                     {post.date}
                   </span>
                 </div>
@@ -105,7 +104,7 @@ export default function WorkspacePostsTab() {
                     ? "warning"
                     : "success"
                 }
-                className="text-[9px] font-bold"
+                className="text-[9px] font-medium"
               >
                 {post.category}
               </Chip>
@@ -113,7 +112,7 @@ export default function WorkspacePostsTab() {
 
             {/* Post Title & Content */}
             <div className="space-y-2">
-              <Typography type="body-sm" className="font-extrabold text-foreground text-base leading-tight">
+              <Typography type="body-sm" className="font-semibold text-foreground text-base leading-tight">
                 {post.title}
               </Typography>
               <Typography type="body-xs" className="text-muted text-xs leading-relaxed whitespace-pre-line">
@@ -125,21 +124,18 @@ export default function WorkspacePostsTab() {
             <div className="flex items-center gap-4 pt-3 border-t border-border/60 text-xs text-muted-foreground select-none">
               <button
                 onClick={() => handleLike(post.id)}
-                className={`flex items-center gap-1.5 py-1 px-2.5 rounded-lg hover:bg-card/40 transition-colors cursor-pointer font-bold ${
+                className={`flex items-center gap-1.5 py-1 px-2.5 rounded-lg hover:bg-card/40 transition-colors cursor-pointer font-medium ${
                   isLiked ? "text-danger" : "text-muted hover:text-foreground"
                 }`}
               >
-                <Heart size={14} className={isLiked ? "fill-danger" : ""} />
-                <span>{post.likes}</span>
+                <span>{isLiked ? "Liked" : "Like"} • {post.likes}</span>
               </button>
 
-              <button className="flex items-center gap-1.5 py-1 px-2.5 rounded-lg hover:bg-card/40 transition-colors text-muted hover:text-foreground cursor-pointer font-bold">
-                <MessageSquare size={14} />
-                <span>{post.commentsCount}</span>
+              <button className="flex items-center gap-1.5 py-1 px-2.5 rounded-lg hover:bg-card/40 transition-colors text-muted hover:text-foreground cursor-pointer font-medium">
+                <span>Comments • {post.commentsCount}</span>
               </button>
 
-              <button className="flex items-center gap-1.5 py-1 px-2.5 rounded-lg hover:bg-card/40 transition-colors text-muted hover:text-foreground cursor-pointer font-bold ml-auto">
-                <Share2 size={14} />
+              <button className="flex items-center gap-1.5 py-1 px-2.5 rounded-lg hover:bg-card/40 transition-colors text-muted hover:text-foreground cursor-pointer font-medium ml-auto">
                 <span>Share</span>
               </button>
             </div>
