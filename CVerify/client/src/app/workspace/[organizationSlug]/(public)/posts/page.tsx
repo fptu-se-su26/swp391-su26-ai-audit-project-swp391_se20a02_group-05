@@ -14,7 +14,9 @@ import {
   MoreHorizontal,
   Send,
   Heart,
-  Check
+  Check,
+  X,
+  Plus
 } from "lucide-react";
 
 interface Comment {
@@ -144,7 +146,59 @@ export default function WorkspacePostsTab() {
 
   const commentInputRefs = useRef<Record<string, HTMLInputElement | null>>({});
 
+  const [showCreatePostModal, setShowCreatePostModal] = useState(false);
+  const [newPostContent, setNewPostContent] = useState("");
+  const [newPostCategory, setNewPostCategory] = useState<"Announcement" | "Engineering" | "Recruitment">("Announcement");
+  const [newPostImages, setNewPostImages] = useState("");
+
   if (!workspaceDetails) return null;
+
+  // Reactive Permission helper key check
+  const hasPermission = (permissionKey: string): boolean => {
+    if (!workspaceDetails) return false;
+    // Fallback logic for managers
+    if (
+      workspaceDetails.userRole === "OWNER" ||
+      workspaceDetails.userRole === "REPRESENTATIVE" ||
+      workspaceDetails.userRole === "HR"
+    ) {
+      return true;
+    }
+    return workspaceDetails.permissions?.includes(permissionKey) || false;
+  };
+
+  // Handle local form submission for post creation
+  const handleCreatePostSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newPostContent.trim()) {
+      toast.danger("Vui lòng nhập nội dung thông báo!");
+      return;
+    }
+
+    const created: Post = {
+      id: `post-new-${Date.now()}`,
+      category: newPostCategory,
+      author: user?.fullName || "Manager",
+      authorRole: workspaceDetails.userRole || "Administrator",
+      date: "Just now",
+      content: newPostContent.trim(),
+      images: newPostImages.trim()
+        ? newPostImages.split(",").map((s) => s.trim()).filter(Boolean)
+        : [],
+      likes: 0,
+      sharesCount: 0,
+      comments: []
+    };
+
+    setPosts([created, ...posts]);
+    toast.success("Đăng thông báo thành công!");
+
+    // Reset fields
+    setNewPostContent("");
+    setNewPostImages("");
+    setNewPostCategory("Announcement");
+    setShowCreatePostModal(false);
+  };
 
   // Toggle like status (Facebook style)
   const handleLike = (postId: string) => {
@@ -318,6 +372,26 @@ export default function WorkspacePostsTab() {
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
       {/* ── Main Feed Column ── */}
       <div className="lg:col-span-2 space-y-6">
+        {/* "What's on your mind?" announcement widget */}
+        {hasPermission("organization:posts:write") && (
+          <Card className="p-4 bg-surface border border-border rounded-xl flex items-center gap-3">
+            <div className="w-10 h-10 rounded-full bg-accent/10 border border-border flex items-center justify-center text-accent font-semibold text-sm shrink-0 select-none overflow-hidden">
+              {user?.avatarUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={user.avatarUrl} alt={user.fullName} className="w-full h-full object-cover" />
+              ) : (
+                user?.fullName?.substring(0, 1).toUpperCase() || "M"
+              )}
+            </div>
+            <button
+              onClick={() => setShowCreatePostModal(true)}
+              className="flex-1 text-left bg-card/40 hover:bg-card/60 transition-colors border border-border rounded-full px-4 py-2.5 text-muted-foreground text-xs cursor-pointer font-outfit"
+            >
+              Write an announcement or share company updates...
+            </button>
+          </Card>
+        )}
+
         {posts.map((post) => {
           const isLiked = likedPosts.includes(post.id);
 
@@ -750,6 +824,101 @@ export default function WorkspacePostsTab() {
           </div>
         </Card>
       </div>
+
+      {/* ── Scoped Form Drawer Modal Dialog for Announcement/Post Creation ── */}
+      {showCreatePostModal && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-surface border border-border w-full max-w-xl rounded-xl shadow-2xl overflow-hidden font-outfit select-none flex flex-col max-h-[90vh]">
+            {/* Modal Header */}
+            <div className="p-4 border-b border-border flex items-center justify-between bg-card/10">
+              <span className="font-semibold text-sm text-foreground">Write an announcement or share company updates...</span>
+              <button
+                onClick={() => setShowCreatePostModal(false)}
+                className="p-1 rounded-full hover:bg-card/50 text-muted hover:text-foreground cursor-pointer border-none"
+              >
+                <X className="size-4" />
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <form onSubmit={handleCreatePostSubmit} className="p-6 overflow-y-auto space-y-4 text-xs font-normal">
+              {/* Content Textarea */}
+              <div className="space-y-1">
+                <label className="text-[10px] text-muted uppercase font-semibold">Nội dung thông báo *</label>
+                <textarea
+                  required
+                  rows={5}
+                  placeholder="Nhập nội dung thông báo hoặc cập nhật công ty..."
+                  value={newPostContent}
+                  onChange={(e) => setNewPostContent(e.target.value)}
+                  className="w-full bg-card border border-border rounded-lg px-3 py-2 text-xs text-foreground focus:outline-hidden focus:border-accent resize-none font-outfit"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                {/* Category Selection */}
+                <div className="space-y-1">
+                  <label className="text-[10px] text-muted uppercase font-semibold">Phân loại / Category</label>
+                  <select
+                    value={newPostCategory}
+                    onChange={(e) => setNewPostCategory(e.target.value as any)}
+                    className="w-full bg-card border border-border rounded-lg px-3 py-2 text-xs text-foreground focus:outline-hidden focus:border-accent cursor-pointer"
+                  >
+                    <option value="Announcement">Announcement</option>
+                    <option value="Engineering">Engineering</option>
+                    <option value="Recruitment">Recruitment</option>
+                  </select>
+                </div>
+
+                {/* Author Display (Read Only or Prefilled) */}
+                <div className="space-y-1">
+                  <label className="text-[10px] text-muted uppercase font-semibold">Người đăng</label>
+                  <input
+                    type="text"
+                    disabled
+                    value={user?.fullName || "Manager"}
+                    className="w-full bg-card/50 border border-border rounded-lg px-3 py-2 text-xs text-muted-foreground cursor-not-allowed"
+                  />
+                </div>
+              </div>
+
+              {/* Attachment Images */}
+              <div className="space-y-1">
+                <label className="text-[10px] text-muted uppercase font-semibold">
+                  Hình ảnh đính kèm (Nhập URL hình ảnh, phân tách bằng dấu phẩy)
+                </label>
+                <input
+                  type="text"
+                  placeholder="Ví dụ: https://images.unsplash.com/..., https://images.unsplash.com/..."
+                  value={newPostImages}
+                  onChange={(e) => setNewPostImages(e.target.value)}
+                  className="w-full bg-card border border-border rounded-lg px-3 py-2 text-xs text-foreground focus:outline-hidden focus:border-accent"
+                />
+                <span className="text-[10px] text-muted-foreground block">
+                  Bạn có thể nhập một hoặc nhiều URL ảnh cách nhau bởi dấu phẩy để hiển thị dưới dạng lưới ảnh Facebook.
+                </span>
+              </div>
+
+              {/* Modal Footer / Actions */}
+              <div className="flex justify-end gap-2 pt-4 border-t border-border/40">
+                <button
+                  type="button"
+                  onClick={() => setShowCreatePostModal(false)}
+                  className="px-4 py-2 rounded-lg border border-border text-muted hover:text-foreground font-semibold hover:bg-card/50 transition-colors cursor-pointer text-xs"
+                >
+                  Hủy
+                </button>
+                <button
+                  type="submit"
+                  className="px-4 py-2 rounded-lg bg-accent text-background hover:bg-accent/90 transition-colors font-semibold cursor-pointer text-xs border-none"
+                >
+                  Post Announcement
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
