@@ -39,7 +39,8 @@ export interface WorkspaceDetails {
   coreValues?: string;
   bannerUrl?: string;
   logoUrl?: string;
-  followersCount?: number;
+  followersCount?: number;  // in-store display field (mapped from DEFAULT_DETAILS or followerCount)
+  followerCount?: number;   // raw backend field name from WorkspaceDetailsDto
   isFollowing?: boolean;
 
   companyType?: string;

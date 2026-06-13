@@ -106,6 +106,7 @@ public class ApplicationDbContext : DbContext
     public DbSet<Organization> Organizations => Set<Organization>();
     public DbSet<OrganizationAuthority> OrganizationAuthorities => Set<OrganizationAuthority>();
     public DbSet<OrganizationMembership> OrganizationMemberships => Set<OrganizationMembership>();
+    public DbSet<OrganizationFollower> OrganizationFollowers => Set<OrganizationFollower>();
     public DbSet<OtpVerification> OtpVerifications => Set<OtpVerification>();
     public DbSet<VerificationLink> VerificationLinks => Set<VerificationLink>();
     public DbSet<OrganizationVerification> OrganizationVerifications => Set<OrganizationVerification>();
@@ -188,6 +189,17 @@ public class ApplicationDbContext : DbContext
         modelBuilder.Entity<Message>().Property(m => m.Id).ValueGeneratedNever();
         modelBuilder.Entity<AuthProvider>().Property(ap => ap.Id).ValueGeneratedNever();
         modelBuilder.Entity<Organization>().Property(o => o.Id).ValueGeneratedNever();
+
+        // OrganizationFollower — composite PK, no auto-generated key
+        modelBuilder.Entity<OrganizationFollower>(entity =>
+        {
+            entity.HasKey(of => new { of.UserId, of.OrganizationId });
+            entity.HasOne(of => of.Organization)
+                  .WithMany()
+                  .HasForeignKey(of => of.OrganizationId)
+                  .OnDelete(DeleteBehavior.Cascade);
+        });
+
         modelBuilder.Entity<OrganizationAuthority>().Property(oa => oa.Id).ValueGeneratedNever();
         modelBuilder.Entity<OrganizationMembership>().Property(om => om.Id).ValueGeneratedNever();
         modelBuilder.Entity<OtpVerification>().Property(ov => ov.Id).ValueGeneratedNever();

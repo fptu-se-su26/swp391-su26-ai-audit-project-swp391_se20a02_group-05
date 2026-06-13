@@ -3,76 +3,183 @@
 import React, { useState } from "react";
 import { useParams } from "next/navigation";
 import { Card } from "@/components/ui/card";
-import { Typography, Chip } from "@heroui/react";
+import { Typography, Chip, toast } from "@heroui/react";
 import { Button } from "@/components/ui/button";
-
+import { useWorkspaceStore } from "@/features/workspace/store/use-workspace-store";
+import {
+  Briefcase,
+  MapPin,
+  Calendar,
+  Users,
+  Award,
+  Bookmark,
+  DollarSign,
+  Clock,
+  Check,
+  GraduationCap,
+  BookOpen,
+  Search
+} from "lucide-react";
 
 interface Job {
   id: string;
   title: string;
   department: string;
   location: string;
+  workplaceType: "Hybrid" | "Remote" | "On-site";
+  city: string;
   type: string;
   posted: string;
+  deadline: string;
   salary: string;
-  description: string;
+  salaryMinMax: string;
+  headcount: number;
+  gender: string;
+  experience: string;
+  degree: string;
+  category: string;
+  description: string[];
   requirements: string[];
+  benefits: string[];
+  tags: string[];
+  skills: string[];
+  coverUrl: string;
 }
 
 export default function WorkspaceJobsTab() {
   const params = useParams();
   const organizationSlug = typeof params?.organizationSlug === "string" ? params.organizationSlug : "";
 
-  // Mock Jobs list
+  const workspaceDetails = useWorkspaceStore((s) => s.workspaces[organizationSlug]);
+
+  // Mock Jobs list containing high fidelity details
   const mockJobs: Job[] = [
     {
       id: "job-1",
       title: "Senior Full-Stack Developer (.NET & React)",
       department: "Engineering",
       location: "Hanoi, Vietnam (Hybrid)",
+      workplaceType: "Hybrid",
+      city: "Hanoi",
       type: "Full-Time",
       posted: "2 days ago",
-      salary: "Negotiable",
-      description: "We are seeking a Senior Full-Stack Developer to lead architectural decisions across our verification platforms. You will work closely with .NET backend microservices and dynamic React single page applications.",
-      requirements: [
-        "5+ years of software development experience.",
-        "Strong proficiency in C# .NET Core and Web API.",
-        "Solid front-end skills in React, TypeScript, and modern state managers (Zustand, Redux).",
-        "Experience designing and implementing RESTful APIs.",
+      deadline: "20/07/2026",
+      salary: "$ 2,000 - 4,500 USD",
+      salaryMinMax: "50 - 110 triệu",
+      headcount: 3,
+      gender: "Không yêu cầu",
+      experience: "5+ năm kinh nghiệm",
+      degree: "Đại học / Kỹ sư",
+      category: "Phát triển phần mềm, Công nghệ thông tin",
+      description: [
+        "Thiết kế và phát triển kiến trúc hệ thống backend microservices bằng .NET Core 8 và cơ sở dữ liệu PostgreSQL.",
+        "Xây dựng giao diện ứng dụng web Single Page Application (SPA) hiệu năng cao, mượt mà bằng React, TypeScript và quản lý trạng thái qua Zustand/Redux.",
+        "Tối ưu hóa các truy vấn SQL nâng cao và cấu hình bộ nhớ cache Redis phân tán.",
+        "Viết mã nguồn kiểm thử tự động (Unit Test / Integration Test) đảm bảo độ ổn định cao trước khi bàn giao hệ thống.",
+        "Tham gia hướng dẫn kỹ thuật, code review và hỗ trợ các thành viên junior trong đội ngũ."
       ],
+      requirements: [
+        "Tốt nghiệp đại học chuyên ngành Công nghệ thông tin, Khoa học máy tính hoặc tương đương.",
+        "Tối thiểu 5 năm kinh nghiệm thực chiến phát triển ứng dụng web, có kiến thức sâu rộng về lập trình hướng đối tượng OOP và các Design Pattern.",
+        "Thành thạo ngôn ngữ C#, ASP.NET Core, Entity Framework Core và lập trình bất đồng bộ.",
+        "Kinh nghiệm làm việc sâu sắc với ReactJS, Hooks, state management và thư viện CSS như Tailwind/Vanilla CSS.",
+        "Kinh nghiệm thiết kế API RESTful chất lượng, hiểu biết tốt về CI/CD và Git."
+      ],
+      benefits: [
+        "Lương thưởng hấp dẫn lên tới $4,500 USD cùng tháng lương thứ 13 và thưởng hiệu suất cuối năm.",
+        "Được cung cấp đầy đủ trang thiết bị làm việc hiện đại cao cấp (MacBook Pro / Dell XPS và màn hình phụ).",
+        "Gói bảo hiểm chăm sóc sức khỏe cao cấp toàn diện cho bản thân và gia đình.",
+        "Hưởng 15 ngày phép có lương trong năm và chế độ nghỉ lễ tết theo luật lao động.",
+        "Tham gia các chương trình đào tạo kỹ năng chuyên sâu và chứng chỉ công nghệ quốc tế miễn phí."
+      ],
+      tags: ["React", "TypeScript", ".NET Core", "C#", "Microservices"],
+      skills: ["C#", ".NET Core", "React", "TypeScript", "PostgreSQL", "Zustand"],
+      coverUrl: "https://images.unsplash.com/photo-1555066931-4365d14bab8c?q=80&w=600"
     },
     {
       id: "job-2",
       title: "Automated Verification QA Engineer",
       department: "Quality Assurance",
       location: "Remote",
+      workplaceType: "Remote",
+      city: "Da Nang",
       type: "Contract",
       posted: "5 days ago",
-      salary: "Competitive",
-      description: "Join our QA team to design, write, and execute automated tests validating cryptographically hashed employee credential chains. You will build test suites and automate regression runs.",
-      requirements: [
-        "3+ years of automated testing experience (Playwright, Selenium, or Cypress).",
-        "Familiarity with CI/CD tools and GitHub Actions workflows.",
-        "Good understanding of security concepts (signatures, hashing).",
-        "Strong debugging and logging analytical skills.",
+      deadline: "15/07/2026",
+      salary: "$ 1,200 - 2,500 USD",
+      salaryMinMax: "30 - 62 triệu",
+      headcount: 2,
+      gender: "Không yêu cầu",
+      experience: "3+ năm kinh nghiệm",
+      degree: "Đại học / Cao đẳng",
+      category: "Kiểm thử phần mềm, Quality Assurance",
+      description: [
+        "Thiết kế, xây dựng và duy trì các kịch bản kiểm thử tự động (Automated Test Scripts) cho hệ thống xác thực cryptographic của CVerify.",
+        "Viết và tối ưu hóa các bộ test suite kiểm tra hiệu năng (Performance Test) và độ tin cậy của chuỗi dữ liệu băm.",
+        "Tích hợp các bài kiểm thử tự động vào hệ thống CI/CD thông qua GitHub Actions.",
+        "Phối hợp chặt chẽ với đội ngũ phát triển sản phẩm để tìm kiếm, phân tích và theo dõi các lỗi phát sinh.",
+        "Tạo các báo cáo kiểm thử chi tiết và đề xuất các giải pháp nâng cao chất lượng sản phẩm."
       ],
+      requirements: [
+        "Tối thiểu 3 năm kinh nghiệm làm kỹ sư kiểm thử tự động (Auto QA).",
+        "Thành thạo ít nhất một trong các công cụ viết test tự động: Playwright, Cypress hoặc Selenium.",
+        "Có kinh nghiệm làm việc với ngôn ngữ lập trình JavaScript/TypeScript hoặc Python.",
+        "Có kiến thức căn bản về mật mã học, mã băm (hashing), chữ ký số là một lợi thế lớn.",
+        "Tư duy phân tích lỗi tốt, cẩn thận, tỉ mỉ và giao tiếp hiệu quả."
+      ],
+      benefits: [
+        "Mức lương thỏa thuận cạnh tranh cao tương xứng theo năng lực thực tế.",
+        "Làm việc từ xa (Remote) 100% giúp chủ động cân bằng thời gian và cuộc sống.",
+        "Được cung cấp gói ngân sách hỗ trợ nâng cấp thiết bị cá nhân hàng năm.",
+        "Tham gia hoạt động teambuilding thường niên cùng công ty tại các resort đẳng cấp.",
+        "Được tài trợ chi phí thi các chứng chỉ quốc tế chuyên ngành kiểm thử (ISTQB...)."
+      ],
+      tags: ["Automation", "Playwright", "Cypress", "QA", "CI/CD"],
+      skills: ["Playwright", "Cypress", "QA Testing", "TypeScript", "CI/CD"],
+      coverUrl: "https://images.unsplash.com/photo-1516321318423-f06f85e504b3?q=80&w=600"
     },
     {
       id: "job-3",
       title: "Lead UI/UX Product Designer",
       department: "Design",
       location: "Hanoi, Vietnam (On-site)",
+      workplaceType: "On-site",
+      city: "Hanoi",
       type: "Full-Time",
       posted: "1 week ago",
-      salary: "Competitive",
-      description: "We are looking for a visionary Lead Product Designer to guide the visual aesthetics of CVerify workspace panels. You will define and govern components, design systems, and visual guidelines.",
-      requirements: [
-        "4+ years designing high-fidelity dashboards and SaaS platforms.",
-        "Expertise in Figma design system organization, auto-layouts, and design tokens.",
-        "Deep understanding of user experience paradigms (UX research, wireframing).",
-        "Ability to work closely with React developer teams to ensure pixel-perfect delivery.",
+      deadline: "30/06/2026",
+      salary: "$ 1,500 - 3,200 USD",
+      salaryMinMax: "38 - 80 triệu",
+      headcount: 1,
+      gender: "Không yêu cầu",
+      experience: "4+ năm kinh nghiệm",
+      degree: "Đại học / Cao đẳng Mỹ thuật",
+      category: "Thiết kế đồ họa, UI/UX Design",
+      description: [
+        "Chịu trách nhiệm thiết kế giao diện (UI) và xây dựng trải nghiệm người dùng (UX) cho các hệ thống phần mềm của CVerify.",
+        "Xây dựng wireframe, prototype và sơ đồ luồng trải nghiệm người dùng (user flow) dựa trên hoạt động nghiên cứu hành vi khách hàng.",
+        "Tổ chức, thiết lập và mở rộng hệ thống thiết kế (Design System) của công ty trên Figma đảm bảo tính nhất quán cao.",
+        "Hợp tác chặt chẽ cùng Product Manager và Tech Lead để thẩm định thiết kế trước khi chuyển giao lập trình.",
+        "Thực hiện đo lường, phân tích hành vi và phản hồi từ người dùng thực tế để liên tục cải tiến sản phẩm."
       ],
-    },
+      requirements: [
+        "Tối thiểu 4 năm kinh nghiệm thiết kế giao diện ứng dụng web dashboard, nền tảng SaaS phức tạp.",
+        "Kỹ năng sử dụng Figma xuất sắc (thành thạo Auto-layout, Variables, Components, Prototyping nâng cao).",
+        "Có tư duy logic tốt về trải nghiệm người dùng (UX), khả năng phân tích và giải quyết các bài toán thiết kế khó.",
+        "Có portfolio chất lượng cao trình bày chi tiết tư duy thiết kế qua các dự án thực tế.",
+        "Hiểu biết căn bản về HTML/CSS là lợi thế lớn giúp phối hợp ăn ý với đội ngũ frontend."
+      ],
+      benefits: [
+        "Mức lương cạnh tranh hấp dẫn cùng các phụ cấp ăn trưa, đi lại tại văn phòng.",
+        "Môi trường làm việc năng động, không gian văn phòng hạng A hiện đại và rộng rãi.",
+        "Thưởng hiệu suất công việc định kỳ và xét tăng lương định kỳ 2 lần/năm.",
+        "Chương trình khám sức khỏe tổng quát định kỳ hàng năm tại hệ thống bệnh viện quốc tế.",
+        "Hỗ trợ 100% chi phí tham gia các khóa học chuyên sâu nâng cao chuyên môn tự chọn."
+      ],
+      tags: ["Figma", "UI/UX", "Product Design", "Design System", "Wireframing"],
+      skills: ["Figma", "UI/UX", "Product Design", "Design System", "Wireframing"],
+      coverUrl: "https://images.unsplash.com/photo-1581291518633-83b4ebd1d83e?q=80&w=600"
+    }
   ];
 
   const [searchQuery, setSearchQuery] = useState("");
@@ -82,20 +189,27 @@ export default function WorkspaceJobsTab() {
 
   const [activeJob, setActiveJob] = useState<Job | null>(null);
   const [appliedJobs, setAppliedJobs] = useState<string[]>([]);
+  const [savedJobs, setSavedJobs] = useState<string[]>([]);
 
-  // Unique lists for filters
+  if (!workspaceDetails) return null;
+
+  const orgName = workspaceDetails.organizationName || "Doanh nghiệp đối tác";
+  const orgLogo = workspaceDetails.logoUrl;
+
+  // Filter unique lists
   const departments = ["All", ...Array.from(new Set(mockJobs.map((j) => j.department)))];
-  const locations = ["All", ...Array.from(new Set(mockJobs.map((j) => j.location.split(" (")[0])))];
+  const locations = ["All", ...Array.from(new Set(mockJobs.map((j) => j.city)))];
   const types = ["All", ...Array.from(new Set(mockJobs.map((j) => j.type)))];
 
   // Filtering Logic
   const filteredJobs = mockJobs.filter((job) => {
     const matchesSearch =
       job.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      job.description.toLowerCase().includes(searchQuery.toLowerCase());
+      job.tags.some((t) => t.toLowerCase().includes(searchQuery.toLowerCase())) ||
+      job.skills.some((s) => s.toLowerCase().includes(searchQuery.toLowerCase()));
 
     const matchesDept = selectedDept === "All" || job.department === selectedDept;
-    const matchesLoc = selectedLoc === "All" || job.location.includes(selectedLoc);
+    const matchesLoc = selectedLoc === "All" || job.city === selectedLoc;
     const matchesType = selectedType === "All" || job.type === selectedType;
 
     return matchesSearch && matchesDept && matchesLoc && matchesType;
@@ -104,188 +218,181 @@ export default function WorkspaceJobsTab() {
   const handleApply = (jobId: string) => {
     if (!appliedJobs.includes(jobId)) {
       setAppliedJobs([...appliedJobs, jobId]);
+      toast.success("Nộp đơn ứng tuyển thành công!");
+    }
+  };
+
+  const handleSaveToggle = (e: React.MouseEvent, jobId: string) => {
+    e.stopPropagation();
+    if (savedJobs.includes(jobId)) {
+      setSavedJobs(savedJobs.filter((id) => id !== jobId));
+      toast.success("Đã bỏ lưu công việc.");
+    } else {
+      setSavedJobs([...savedJobs, jobId]);
+      toast.success("Đã lưu công việc thành công!");
     }
   };
 
   return (
     <div className="space-y-6 relative">
-      {/* Search and Filter Panel */}
-      <Card className="p-6 bg-surface border border-border rounded-2xl space-y-4 select-none">
-        {/* Search */}
-        <div className="relative">
-          <input
-            type="text"
-            placeholder="Search open positions..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full bg-card border border-border rounded-xl px-4 py-3 text-sm focus:outline-hidden focus:border-accent text-foreground font-outfit"
-          />
-        </div>
-
-        {/* Filters */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div className="space-y-1">
-            <span className="text-[10px] text-muted-foreground font-medium uppercase">Department</span>
-            <select
-              value={selectedDept}
-              onChange={(e) => setSelectedDept(e.target.value)}
-              className="w-full bg-card border border-border rounded-xl px-3 py-2.5 text-xs text-foreground focus:outline-hidden focus:border-accent font-outfit font-normal"
+      {activeJob ? (
+        <Card className="bg-surface border border-border rounded-xl overflow-hidden font-outfit select-none">
+          {/* Header Bar */}
+          <div className="p-4 border-b border-border flex items-center justify-between bg-card/10">
+            <button
+              onClick={() => setActiveJob(null)}
+              className="font-semibold text-xs border border-border text-muted hover:text-foreground cursor-pointer bg-transparent rounded-lg px-4 py-1.5 flex items-center gap-1 transition-colors"
             >
-              {departments.map((dept) => (
-                <option key={dept} value={dept}>
-                  {dept}
-                </option>
-              ))}
-            </select>
+              ← Quay lại danh sách
+            </button>
+            <span className="text-xs text-muted-foreground font-normal">Chi tiết tin tuyển dụng</span>
           </div>
 
-          <div className="space-y-1">
-            <span className="text-[10px] text-muted-foreground font-medium uppercase">Location</span>
-            <select
-              value={selectedLoc}
-              onChange={(e) => setSelectedLoc(e.target.value)}
-              className="w-full bg-card border border-border rounded-xl px-3 py-2.5 text-xs text-foreground focus:outline-hidden focus:border-accent font-outfit font-normal"
-            >
-              {locations.map((loc) => (
-                <option key={loc} value={loc}>
-                  {loc}
-                </option>
-              ))}
-            </select>
+          {/* 1. Large Cover Banner Image */}
+          <div className="w-full h-48 md:h-64 relative shrink-0 bg-surface-secondary">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={activeJob.coverUrl} alt={activeJob.title} className="w-full h-full object-cover" />
           </div>
 
-          <div className="space-y-1">
-            <span className="text-[10px] text-muted-foreground font-medium uppercase">Employment Type</span>
-            <select
-              value={selectedType}
-              onChange={(e) => setSelectedType(e.target.value)}
-              className="w-full bg-card border border-border rounded-xl px-3 py-2.5 text-xs text-foreground focus:outline-hidden focus:border-accent font-outfit font-normal"
-            >
-              {types.map((type) => (
-                <option key={type} value={type}>
-                  {type}
-                </option>
-              ))}
-            </select>
-          </div>
-        </div>
-      </Card>
-
-      {/* Jobs Listing */}
-      <div className="space-y-4">
-        {filteredJobs.length === 0 ? (
-          <div className="border border-dashed border-border/80 rounded-2xl p-12 text-center select-none bg-surface">
-            <Typography type="h4" className="font-semibold text-foreground mb-1">
-              No matching positions found
-            </Typography>
-            <Typography type="body-xs" className="text-muted max-w-md mx-auto font-normal">
-              Try modifying your search keywords or adjusting the department, location, or type filters.
-            </Typography>
-          </div>
-        ) : (
-          filteredJobs.map((job) => (
-            <Card
-              key={job.id}
-              onClick={() => setActiveJob(job)}
-              className="p-6 bg-surface border border-border rounded-2xl hover:border-accent/40 transition-colors cursor-pointer flex justify-between items-center gap-4"
-            >
-              <div className="space-y-2">
-                <div className="flex flex-wrap items-center gap-2 select-none">
-                  <Chip size="sm" variant="soft" color="accent" className="text-[9px] font-medium py-0.5 px-2">
-                    {job.department}
-                  </Chip>
-                  <Chip size="sm" variant="soft" color="warning" className="text-[9px] font-medium py-0.5 px-2">
-                    {job.type}
-                  </Chip>
-                </div>
-
-                <Typography type="body-sm" className="font-semibold text-foreground text-base hover:text-accent transition-colors">
-                  {job.title}
-                </Typography>
-
-                <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground select-none font-normal">
-                  <span className="flex items-center">
-                    {job.location}
-                  </span>
-                  <span>•</span>
-                  <span className="flex items-center">
-                    {job.salary}
-                  </span>
-                  <span>•</span>
-                  <span className="flex items-center">
-                    {job.posted}
-                  </span>
-                </div>
-              </div>
-
-              <div className="flex items-center gap-2 select-none">
-                {appliedJobs.includes(job.id) && (
-                  <Chip size="sm" color="success" variant="soft" className="text-[10px] font-medium">
-                    Applied
-                  </Chip>
-                )}
-                <div className="w-8 h-8 rounded-lg border border-border flex items-center justify-center text-muted hover:text-foreground hover:bg-card/50 transition-colors text-xs font-normal">
-                  →
-                </div>
-              </div>
-            </Card>
-          ))
-        )}
-      </div>
-
-      {/* Details Side Drawer Modal Overlay */}
-      {activeJob && (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex justify-end">
-          <div className="w-full max-w-xl bg-surface border-l border-border h-full flex flex-col p-6 shadow-2xl overflow-y-auto">
-            {/* Header */}
-            <div className="flex justify-between items-start pb-4 border-b border-border select-none">
-              <div className="space-y-1">
-                <Typography type="h3" className="font-semibold text-foreground text-lg leading-tight">
-                  {activeJob.title}
-                </Typography>
-                <div className="flex flex-wrap gap-2 pt-1">
-                  <Chip size="sm" variant="soft" color="accent" className="text-[9px] font-medium">
-                    {activeJob.department}
-                  </Chip>
-                  <Chip size="sm" variant="soft" color="warning" className="text-[9px] font-medium">
-                    {activeJob.type}
-                  </Chip>
-                </div>
-              </div>
-              <button
-                onClick={() => setActiveJob(null)}
-                className="w-8 h-8 rounded-lg border border-border hover:bg-card/50 flex items-center justify-center text-muted hover:text-foreground transition-colors cursor-pointer text-lg"
-              >
-                ×
-              </button>
+          {/* 2. Overlapping circular company Logo */}
+          <div className="px-6 flex gap-4 items-end shrink-0 relative z-10">
+            <div className="w-20 h-20 rounded-full border-4 border-surface bg-surface -mt-10 shadow-md overflow-hidden flex items-center justify-center text-accent font-semibold text-xl">
+              {orgLogo ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={orgLogo} alt={`${orgName} Logo`} className="w-full h-full object-cover" />
+              ) : (
+                orgName.substring(0, 1).toUpperCase()
+              )}
             </div>
+            <div className="pb-1">
+              <div className="flex items-center gap-1.5">
+                <span className="text-xs font-semibold text-foreground">{orgName}</span>
+                <span className="inline-flex items-center justify-center bg-blue-500 rounded-full p-0.5 text-white size-3">
+                  <Check className="size-1.5" strokeWidth={5} />
+                </span>
+              </div>
+            </div>
+          </div>
 
-            {/* Content */}
-            <div className="flex-1 py-6 space-y-6">
-              {/* Stats Block */}
-              <div className="grid grid-cols-2 gap-4 p-4 rounded-xl border border-border bg-card/10 select-none">
-                <div>
-                  <span className="text-[9px] text-muted-foreground font-medium uppercase block">Location</span>
-                  <span className="text-xs font-medium text-foreground">{activeJob.location}</span>
-                </div>
-                <div>
-                  <span className="text-[9px] text-muted-foreground font-medium uppercase block">Compensation</span>
-                  <span className="text-xs font-medium text-foreground">{activeJob.salary}</span>
+          {/* 3. Job details Body Header */}
+          <div className="px-6 pt-4 pb-2 shrink-0">
+            <Typography type="h3" className="font-semibold text-foreground text-xl leading-tight">
+              {activeJob.title}
+            </Typography>
+            <div className="flex flex-wrap items-center gap-3 pt-2 text-xs font-normal">
+              <span className="text-accent font-semibold text-sm">
+                {activeJob.salary} ({activeJob.salaryMinMax})
+              </span>
+              <span className="text-muted">·</span>
+              <Chip size="sm" variant="soft" color="accent" className="text-[9px] font-medium h-5 px-1.5">
+                {activeJob.department}
+              </Chip>
+              <Chip size="sm" variant="soft" color="warning" className="text-[9px] font-medium h-5 px-1.5">
+                {activeJob.type}
+              </Chip>
+            </div>
+          </div>
+
+          {/* 4. Split Two Column Detail Layout */}
+          <div className="p-6 grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
+            {/* Left Column (Job Specifications & Lists) */}
+            <div className="lg:col-span-2 space-y-6">
+              
+              {/* ── Thông tin tuyển dụng (Grid Card) ── */}
+              <div className="p-4 rounded-xl border border-border bg-card/10 space-y-3 font-normal">
+                <span className="text-[10px] text-foreground uppercase tracking-wider block font-semibold border-b border-border/40 pb-1.5">
+                  Thông tin tuyển dụng
+                </span>
+                
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-[11px] text-muted-foreground">
+                  <div className="flex items-center gap-2">
+                    <Briefcase className="size-3.5 text-accent shrink-0" />
+                    <div>
+                      <span className="block text-[9px] text-muted uppercase">Vị trí</span>
+                      <span className="font-medium text-foreground">Nhân viên ({activeJob.department})</span>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    <Calendar className="size-3.5 text-accent shrink-0" />
+                    <div>
+                      <span className="block text-[9px] text-muted uppercase">Hạn nộp</span>
+                      <span className="font-medium text-foreground">{activeJob.deadline}</span>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    <Users className="size-3.5 text-accent shrink-0" />
+                    <div>
+                      <span className="block text-[9px] text-muted uppercase">Số lượng tuyển</span>
+                      <span className="font-medium text-foreground">{activeJob.headcount} người</span>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    <Users className="size-3.5 text-accent shrink-0" />
+                    <div>
+                      <span className="block text-[9px] text-muted uppercase">Giới tính</span>
+                      <span className="font-medium text-foreground">{activeJob.gender}</span>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    <Award className="size-3.5 text-accent shrink-0" />
+                    <div>
+                      <span className="block text-[9px] text-muted uppercase">Kinh nghiệm</span>
+                      <span className="font-medium text-foreground">{activeJob.experience}</span>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    <GraduationCap className="size-3.5 text-accent shrink-0" />
+                    <div>
+                      <span className="block text-[9px] text-muted uppercase">Bằng cấp</span>
+                      <span className="font-medium text-foreground">{activeJob.degree}</span>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    <MapPin className="size-3.5 text-accent shrink-0" />
+                    <div>
+                      <span className="block text-[9px] text-muted uppercase">Nơi làm việc</span>
+                      <span className="font-medium text-foreground">Việc làm {activeJob.workplaceType} tại {activeJob.city}</span>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    <BookOpen className="size-3.5 text-accent shrink-0" />
+                    <div>
+                      <span className="block text-[9px] text-muted uppercase">Lĩnh vực</span>
+                      <span className="font-medium text-foreground truncate max-w-[200px]" title={activeJob.category}>
+                        {activeJob.category}
+                      </span>
+                    </div>
+                  </div>
                 </div>
               </div>
 
-              {/* Description */}
-              <div className="space-y-2">
-                <span className="text-[10px] text-muted font-medium uppercase select-none">Job Description</span>
-                <Typography type="body-xs" className="text-muted leading-relaxed text-sm font-normal">
-                  {activeJob.description}
-                </Typography>
+              {/* ── Mô tả công việc ── */}
+              <div className="space-y-2 font-normal text-foreground">
+                <span className="text-[10px] text-foreground uppercase tracking-wider block font-semibold border-b border-border/40 pb-1">
+                  Mô tả công việc
+                </span>
+                <ul className="list-disc pl-5 space-y-1.5 text-xs text-foreground font-normal">
+                  {activeJob.description.map((desc, idx) => (
+                    <li key={idx} className="leading-relaxed">
+                      {desc}
+                    </li>
+                  ))}
+                </ul>
               </div>
 
-              {/* Requirements */}
-              <div className="space-y-2">
-                <span className="text-[10px] text-muted font-medium uppercase select-none">Requirements</span>
-                <ul className="list-disc pl-5 space-y-1.5 text-sm text-muted-foreground font-normal">
+              {/* ── Yêu cầu công việc ── */}
+              <div className="space-y-2 font-normal text-foreground">
+                <span className="text-[10px] text-foreground uppercase tracking-wider block font-semibold border-b border-border/40 pb-1">
+                  Yêu cầu công việc
+                </span>
+                <ul className="list-disc pl-5 space-y-1.5 text-xs text-foreground font-normal">
                   {activeJob.requirements.map((req, idx) => (
                     <li key={idx} className="leading-relaxed">
                       {req}
@@ -293,34 +400,330 @@ export default function WorkspaceJobsTab() {
                   ))}
                 </ul>
               </div>
+
+              {/* ── Quyền lợi được hưởng ── */}
+              <div className="space-y-2 font-normal text-foreground">
+                <span className="text-[10px] text-foreground uppercase tracking-wider block font-semibold border-b border-border/40 pb-1">
+                  Quyền lợi được hưởng
+                </span>
+                <ul className="list-disc pl-5 space-y-1.5 text-xs text-foreground font-normal">
+                  {activeJob.benefits.map((ben, idx) => (
+                    <li key={idx} className="leading-relaxed">
+                      {ben}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+
+              {/* ── Từ khóa & Kỹ năng ── */}
+              <div className="space-y-3 font-normal">
+                <div>
+                  <span className="text-[10px] text-foreground uppercase tracking-wider block font-semibold border-b border-border/40 pb-1 mb-2">
+                    Từ khóa tuyển dụng
+                  </span>
+                  <div className="flex flex-wrap gap-1.5">
+                    {activeJob.tags.map((t) => (
+                      <span key={t} className="text-[10px] bg-card border border-border/60 text-muted px-2 py-0.5 rounded-md font-medium">
+                        {t}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+
+                <div>
+                  <span className="text-[10px] text-foreground uppercase tracking-wider block font-semibold border-b border-border/40 pb-1 mb-2">
+                    Kỹ năng yêu cầu
+                  </span>
+                  <div className="flex flex-wrap gap-1.5">
+                    {activeJob.skills.map((s) => (
+                      <span key={s} className="text-[10px] bg-accent/10 border border-accent/20 text-accent px-2 py-0.5 rounded-md font-medium">
+                        {s}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              </div>
             </div>
 
-            {/* Footer */}
-            <div className="pt-4 border-t border-border flex justify-end gap-2 select-none">
-              <Button
-                onClick={() => setActiveJob(null)}
-                variant="bordered"
-                size="sm"
-                className="font-medium text-xs border-border text-muted hover:text-foreground cursor-pointer rounded-xl"
-              >
-                Close Details
-              </Button>
-              <Button
-                onClick={() => handleApply(activeJob.id)}
-                disabled={appliedJobs.includes(activeJob.id)}
-                variant="solid"
-                size="sm"
-                className={`font-medium text-xs rounded-xl cursor-pointer ${
-                  appliedJobs.includes(activeJob.id)
-                    ? "bg-success/20 text-success border-none"
-                    : "bg-accent text-background hover:bg-accent/90 border-none"
-                }`}
-              >
-                {appliedJobs.includes(activeJob.id) ? "Applied Successfully" : "Apply for Job"}
-              </Button>
+            {/* Right Column (Widget cards & actions) */}
+            <div className="space-y-5">
+              
+              {/* Apply card box */}
+              <Card className="p-4 bg-amber-500/5 border border-accent/30 rounded-xl text-center space-y-3 font-normal">
+                <Typography type="body-xs" className="text-muted leading-relaxed text-[11px] font-normal">
+                  Bạn có đang quan tâm đến vị trí tuyển dụng này? Còn một thời gian ngắn nữa để ứng tuyển trực tiếp!
+                </Typography>
+                <Button
+                  onClick={() => handleApply(activeJob.id)}
+                  disabled={appliedJobs.includes(activeJob.id)}
+                  variant="solid"
+                  size="sm"
+                  className={`w-full font-semibold text-xs py-2 h-9 rounded-lg cursor-pointer border-none transition-colors ${
+                    appliedJobs.includes(activeJob.id)
+                      ? "bg-success/20 text-success cursor-default"
+                      : "bg-accent text-background hover:bg-accent/90"
+                  }`}
+                >
+                  {appliedJobs.includes(activeJob.id) ? "Đã ứng tuyển thành công" : "Ứng tuyển ngay"}
+                </Button>
+              </Card>
+
+              {/* Company summary info widget */}
+              <Card className="p-4 bg-surface border border-border rounded-xl space-y-3 font-normal">
+                <div className="flex items-center gap-2 pb-2 border-b border-border/50">
+                  <div className="w-8 h-8 rounded-full border border-border flex items-center justify-center overflow-hidden shrink-0">
+                    {orgLogo ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={orgLogo} alt={orgName} className="w-full h-full object-cover" />
+                    ) : (
+                      orgName.substring(0, 1).toUpperCase()
+                    )}
+                  </div>
+                  <div>
+                    <span className="font-semibold text-foreground text-xs block truncate max-w-[170px]">
+                      {orgName}
+                    </span>
+                  </div>
+                </div>
+
+                <div className="space-y-2 text-[10px] text-muted-foreground">
+                  {workspaceDetails.companySize && (
+                    <div>
+                      <span className="block text-[8px] text-muted uppercase">Quy mô nhân viên</span>
+                      <span className="font-medium text-foreground">{workspaceDetails.companySize}</span>
+                    </div>
+                  )}
+
+                  <div>
+                    <span className="block text-[8px] text-muted uppercase">Địa điểm</span>
+                    <span className="font-medium text-foreground">{workspaceDetails.city || workspaceDetails.location || "Chưa cập nhật"}</span>
+                  </div>
+
+                  {workspaceDetails.website && (
+                    <div>
+                      <span className="block text-[8px] text-muted uppercase">Website</span>
+                      <a
+                        href={workspaceDetails.website}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="font-medium text-accent hover:underline break-all"
+                      >
+                        {workspaceDetails.website.replace("https://", "").replace("http://", "")}
+                      </a>
+                    </div>
+                  )}
+                </div>
+              </Card>
+
+              {/* Google Map location widget */}
+              {workspaceDetails.googleMapsEmbedUrl && (
+                <Card className="p-4 bg-surface border border-border rounded-xl space-y-2 font-normal">
+                  <span className="text-[10px] text-foreground uppercase tracking-wider block font-semibold pb-1 border-b border-border/40">
+                    Bản đồ
+                  </span>
+                  <div className="h-40 rounded-lg overflow-hidden border border-border/80">
+                    <iframe
+                      src={workspaceDetails.googleMapsEmbedUrl}
+                      width="100%"
+                      height="100%"
+                      style={{ border: 0 }}
+                      allowFullScreen={false}
+                      loading="lazy"
+                      title="Google Maps Location"
+                    />
+                  </div>
+                </Card>
+              )}
             </div>
           </div>
-        </div>
+
+          {/* Footer actions */}
+          <div className="p-4 border-t border-border flex justify-end gap-2 shrink-0 bg-card/10">
+            <button
+              onClick={() => setActiveJob(null)}
+              className="font-semibold text-xs border border-border text-muted hover:text-foreground cursor-pointer bg-transparent rounded-lg px-4 py-1.5 transition-colors"
+            >
+              Quay lại danh sách
+            </button>
+          </div>
+        </Card>
+      ) : (
+        <>
+          {/* Search and Filter Panel */}
+          <Card className="p-5 bg-surface border border-border rounded-xl space-y-4 select-none">
+            {/* Search */}
+            <div className="relative">
+              <input
+                type="text"
+                placeholder="Tìm kiếm công việc theo tiêu đề, kỹ năng hoặc từ khóa..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full bg-card border border-border rounded-lg pl-10 pr-4 py-2 text-xs focus:outline-hidden focus:border-accent text-foreground font-outfit font-normal"
+              />
+              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 size-4 text-muted" />
+            </div>
+
+            {/* Filters */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 font-normal">
+              <div className="space-y-1">
+                <span className="text-[10px] text-muted uppercase tracking-wider block font-semibold">Phòng ban</span>
+                <select
+                  value={selectedDept}
+                  onChange={(e) => setSelectedDept(e.target.value)}
+                  className="w-full bg-card border border-border rounded-lg px-3 py-2 text-xs text-foreground focus:outline-hidden focus:border-accent font-outfit font-normal cursor-pointer"
+                >
+                  {departments.map((dept) => (
+                    <option key={dept} value={dept}>
+                      {dept === "All" ? "Tất cả phòng ban" : dept}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="space-y-1">
+                <span className="text-[10px] text-muted uppercase tracking-wider block font-semibold">Địa điểm</span>
+                <select
+                  value={selectedLoc}
+                  onChange={(e) => setSelectedLoc(e.target.value)}
+                  className="w-full bg-card border border-border rounded-lg px-3 py-2 text-xs text-foreground focus:outline-hidden focus:border-accent font-outfit font-normal cursor-pointer"
+                >
+                  {locations.map((loc) => (
+                    <option key={loc} value={loc}>
+                      {loc === "All" ? "Tất cả địa điểm" : loc}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="space-y-1">
+                <span className="text-[10px] text-muted uppercase tracking-wider block font-semibold">Hình thức làm việc</span>
+                <select
+                  value={selectedType}
+                  onChange={(e) => setSelectedType(e.target.value)}
+                  className="w-full bg-card border border-border rounded-lg px-3 py-2 text-xs text-foreground focus:outline-hidden focus:border-accent font-outfit font-normal cursor-pointer"
+                >
+                  {types.map((type) => (
+                    <option key={type} value={type}>
+                      {type === "All" ? "Tất cả hình thức" : type}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+          </Card>
+
+          {/* Jobs Listing */}
+          <div className="space-y-4">
+            {filteredJobs.length === 0 ? (
+              <Card className="border border-dashed border-border/80 rounded-xl p-12 text-center select-none bg-surface">
+                <Typography type="h4" className="font-semibold text-foreground mb-1">
+                  Không tìm thấy vị trí tuyển dụng phù hợp
+                </Typography>
+                <Typography type="body-xs" className="text-muted max-w-md mx-auto font-normal">
+                  Thử thay đổi từ khóa tìm kiếm hoặc điều chỉnh lại các bộ lọc phòng ban, địa điểm để tìm kiếm cơ hội khác nhé.
+                </Typography>
+              </Card>
+            ) : (
+              filteredJobs.map((job) => {
+                const isApplied = appliedJobs.includes(job.id);
+                const isSaved = savedJobs.includes(job.id);
+
+                return (
+                  <Card
+                    key={job.id}
+                    onClick={() => setActiveJob(job)}
+                    className="p-4 md:p-5 bg-surface border border-border rounded-xl hover:border-accent/40 hover:shadow-xs transition-all cursor-pointer select-none relative"
+                  >
+                    {/* Bookmark Button - Absolute Top Right Corner */}
+                    <button
+                      onClick={(e) => handleSaveToggle(e, job.id)}
+                      aria-label="Save job"
+                      className="absolute top-4 right-4 p-1.5 rounded-full hover:bg-card/50 border-none transition-colors text-muted hover:text-foreground cursor-pointer z-20"
+                    >
+                      <Bookmark className={`size-4 ${isSaved ? "fill-amber-500 text-amber-500" : ""}`} />
+                    </button>
+
+                    {/* Horizontal side-by-side flex layout */}
+                    <div className="flex flex-row gap-4 items-start w-full pr-8">
+                      {/* Left: Cover/Image Frame */}
+                      <div className="w-20 h-20 md:w-24 md:h-24 rounded-lg overflow-hidden shrink-0 border border-border bg-card/20 select-none">
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img src={job.coverUrl} alt={job.title} className="w-full h-full object-cover" />
+                      </div>
+
+                      {/* Right content area: info and actions */}
+                      <div className="flex-1 min-w-0 flex flex-col md:flex-row justify-between items-start md:items-end gap-4">
+                        {/* Job main metadata */}
+                        <div className="space-y-1.5 min-w-0 flex-1">
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            <Typography type="body-sm" className="font-semibold text-foreground text-sm hover:text-accent transition-colors truncate">
+                              {job.title}
+                            </Typography>
+                          </div>
+
+                          {/* Company Name & Verified enterprise Checkmark */}
+                          <div className="flex items-center gap-1 text-[11px] text-muted leading-tight font-normal">
+                            <span className="truncate">{orgName}</span>
+                            <span className="inline-flex items-center justify-center bg-blue-500 rounded-full p-0.5 text-white size-3 select-none">
+                              <Check className="size-1.5" strokeWidth={5} />
+                            </span>
+                          </div>
+
+                          {/* Salary, Location, Date line with Icons */}
+                          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] font-normal text-muted-foreground pt-0.5">
+                            <span className="flex items-center gap-1 text-accent font-semibold">
+                              <DollarSign className="size-3" />
+                              <span>{job.salary}</span>
+                            </span>
+                            <span>·</span>
+                            <span className="flex items-center gap-1">
+                              <MapPin className="size-3 text-muted-foreground" />
+                              <span>{job.location}</span>
+                            </span>
+                            <span>·</span>
+                            <span className="flex items-center gap-1">
+                              <Clock className="size-3 text-muted-foreground" />
+                              <span>Hạn nộp: {job.deadline}</span>
+                            </span>
+                          </div>
+
+                          {/* Tag chips */}
+                          <div className="flex flex-wrap gap-1.5 pt-1.5 select-none">
+                            {job.tags.map((tag) => (
+                              <span
+                                key={tag}
+                                className="text-[9px] bg-card border border-border/80 text-muted px-1.5 py-0.5 rounded-md font-medium"
+                              >
+                                {tag}
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+
+                        {/* Actions: Apply button */}
+                        <div className="shrink-0 pt-2 md:pt-0">
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleApply(job.id);
+                            }}
+                            className={`text-xs font-semibold px-6 py-2 rounded-lg cursor-pointer transition-colors border-none whitespace-nowrap min-w-[120px] md:min-w-[140px] text-center ${
+                              isApplied
+                                ? "bg-success/20 text-success cursor-default"
+                                : "bg-accent text-background hover:bg-accent/90"
+                            }`}
+                          >
+                            {isApplied ? "Đã ứng tuyển" : "Ứng tuyển ngay"}
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  </Card>
+                );
+              })
+            )}
+          </div>
+        </>
       )}
     </div>
   );

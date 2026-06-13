@@ -10,6 +10,7 @@ import { SkeletonLoader } from "@/components/ui/states";
 import Link from "next/link";
 import { ImageCropperModal } from "@/components/ui/image-cropper-modal";
 import { workspaceService } from "@/features/workspace/services/workspace.service";
+import { Plus, Check, Share2 } from "lucide-react";
 
 export default function PublicWorkspaceLayout({
   children,
@@ -310,12 +311,16 @@ export default function PublicWorkspaceLayout({
                 onClick={() => toggleFollowWorkspace(organizationSlug)}
                 variant={workspaceDetails.isFollowing ? "bordered" : "solid"}
                 size="sm"
-                className={`font-medium text-xs cursor-pointer h-9 px-4 rounded-xl ${workspaceDetails.isFollowing
+                className={`font-medium text-xs cursor-pointer h-9 px-4 rounded-xl flex items-center gap-1.5 ${workspaceDetails.isFollowing
                     ? "border-border text-foreground hover:bg-card/50"
                     : "bg-accent text-background hover:bg-accent/90 border-none"
                   }`}
               >
-                {workspaceDetails.isFollowing ? "Following" : "Follow"}
+                {workspaceDetails.isFollowing ? (
+                  <><Check size={13} strokeWidth={2.5} /><span>Following</span></>
+                ) : (
+                  <><Plus size={13} strokeWidth={2.5} /><span>Follow</span></>
+                )}
               </Button>
 
               <span title="Share Profile">
@@ -323,9 +328,10 @@ export default function PublicWorkspaceLayout({
                   onClick={handleShare}
                   variant="bordered"
                   size="sm"
-                  className="font-medium text-xs h-9 px-3 flex items-center justify-center rounded-xl border-border text-muted hover:text-foreground cursor-pointer"
+                  className="font-medium text-xs h-9 px-3 flex items-center justify-center gap-1.5 rounded-xl border-border text-muted hover:text-foreground cursor-pointer"
                 >
-                  {shareSuccess ? "Shared" : "Share"}
+                  <Share2 size={13} strokeWidth={2} />
+                  <span>{shareSuccess ? "Shared" : "Share"}</span>
                 </Button>
               </span>
 
@@ -345,13 +351,21 @@ export default function PublicWorkspaceLayout({
 
             {/* Core Info */}
             <div className="mt-4 space-y-3 font-normal">
-              <div className="flex flex-wrap items-center gap-3">
-                <Typography type="h1" className="text-xl font-semibold text-foreground">
-                  {workspaceDetails.organizationName}
-                </Typography>
-                <Chip color="success" variant="soft" size="sm" className="font-medium text-[10px] py-0.5 px-2">
-                  Verified Enterprise
-                </Chip>
+              {/* Company name + badges row */}
+              <div className="space-y-1">
+                <div className="flex flex-wrap items-center gap-3">
+                  <Typography type="h1" className="text-xl font-semibold text-foreground">
+                    {workspaceDetails.organizationName}
+                  </Typography>
+                  <Chip color="success" variant="soft" size="sm" className="font-medium text-[10px] py-0.5 px-2">
+                    Verified Enterprise
+                  </Chip>
+                </div>
+                {workspaceDetails.followersCount !== undefined && (
+                  <span className="text-[11px] text-muted font-normal select-none">
+                    {workspaceDetails.followersCount.toLocaleString()} followers
+                  </span>
+                )}
               </div>
 
               <Typography type="body-xs" className="text-muted max-w-3xl leading-relaxed font-normal">
@@ -400,50 +414,6 @@ export default function PublicWorkspaceLayout({
                   </div>
                 </div>
               )}
-
-              {/* Attributes line */}
-              <div className="flex flex-wrap items-center gap-x-3 gap-y-2 text-xs text-muted-foreground pt-2 select-none font-normal">
-                {workspaceDetails.industryTags && workspaceDetails.industryTags.length > 0 ? (
-                  workspaceDetails.industryTags.map((tag) => (
-                    <span key={tag} className="flex items-center">
-                      {tag}
-                    </span>
-                  ))
-                ) : (
-                  workspaceDetails.industry && (
-                    <span className="flex items-center">
-                      {workspaceDetails.industry}
-                    </span>
-                  )
-                )}
-                <span>•</span>
-                {(workspaceDetails.city || workspaceDetails.location) && (
-                  <span className="flex items-center">
-                    {workspaceDetails.city 
-                      ? (workspaceDetails.city.toLowerCase().includes("vietnam") || workspaceDetails.city.toLowerCase().includes("việt nam")
-                        ? workspaceDetails.city
-                        : `${workspaceDetails.city}, Vietnam`) 
-                      : workspaceDetails.location}
-                  </span>
-                )}
-                <span>•</span>
-                {workspaceDetails.companySize && (
-                  <span className="flex items-center">
-                    {workspaceDetails.companySize.toLowerCase().includes("employee") || 
-                     workspaceDetails.companySize.toLowerCase().includes("nhân viên")
-                      ? workspaceDetails.companySize 
-                      : `${workspaceDetails.companySize} employees`}
-                  </span>
-                )}
-                {workspaceDetails.followersCount !== undefined && (
-                  <>
-                    <span>•</span>
-                    <span className="text-foreground font-medium">
-                      {workspaceDetails.followersCount.toLocaleString()} followers
-                    </span>
-                  </>
-                )}
-              </div>
             </div>
           </div>
 

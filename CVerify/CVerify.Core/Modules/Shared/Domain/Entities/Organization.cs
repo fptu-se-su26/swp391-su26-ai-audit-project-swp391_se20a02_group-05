@@ -65,6 +65,7 @@ public class Organization
     public string? CompanyType { get; set; }
     public string? CompanySize { get; set; }
     public int BranchCount { get; set; } = 0;
+    public int FollowerCount { get; set; } = 0;
     public List<string> IndustryTags { get; set; } = new();
     public List<string> BenefitTags { get; set; } = new();
     public List<string> GalleryUrls { get; set; } = new();

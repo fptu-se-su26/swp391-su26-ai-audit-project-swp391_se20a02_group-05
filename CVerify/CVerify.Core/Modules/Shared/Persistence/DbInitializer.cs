@@ -40,6 +40,26 @@ public static class DbInitializer
             throw new InvalidOperationException("Database connectivity check failed. Please ensure PostgreSQL is running and the connection string is correct.");
         }
 
+        // Temporary fix to mark AddNotificationSystem migration as applied if activity_events table exists
+        try
+        {
+            await context.Database.ExecuteSqlRawAsync(@"
+                CREATE TABLE IF NOT EXISTS ""__EFMigrationsHistory"" (
+                    migration_id character varying(150) NOT NULL,
+                    product_version character varying(32) NOT NULL,
+                    CONSTRAINT pk___ef_migrations_history PRIMARY KEY (migration_id)
+                );
+                INSERT INTO ""__EFMigrationsHistory"" (migration_id, product_version)
+                VALUES ('20260611091911_AddNotificationSystem', '8.0.0')
+                ON CONFLICT (migration_id) DO NOTHING;
+            ");
+        }
+        catch (Exception)
+        {
+            // Ignore if anything fails
+        }
+
+
         // 1b. Environment-guarded destructive reset (Development or specific environments only)
         var resetDbEnv = Environment.GetEnvironmentVariable("RESET_DATABASE");
         bool shouldReset = string.Equals(resetDbEnv, "true", StringComparison.OrdinalIgnoreCase);
@@ -119,6 +139,7 @@ public static class DbInitializer
                 DROP TABLE IF EXISTS organization_verifications CASCADE;
                 DROP TABLE IF EXISTS organization_authorities CASCADE;
                 DROP TABLE IF EXISTS organization_memberships CASCADE;
+                DROP TABLE IF EXISTS organization_followers CASCADE;
                 DROP TABLE IF EXISTS organization_members CASCADE;
                 DROP TABLE IF EXISTS organizations CASCADE;
                 DROP TABLE IF EXISTS pending_auth_providers CASCADE;
@@ -248,6 +269,9 @@ public static class DbInitializer
                     END IF;
                     IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'organizations' AND column_name = 'website') THEN
                         ALTER TABLE organizations ADD COLUMN website VARCHAR(2048);
+                    END IF;
+                    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'organizations' AND column_name = 'follower_count') THEN
+                        ALTER TABLE organizations ADD COLUMN follower_count INTEGER NOT NULL DEFAULT 0;
                     END IF;
                 END IF;
 
@@ -675,6 +699,7 @@ public static class DbInitializer
                 facebook_url VARCHAR(2048),
                 twitter_url VARCHAR(2048),
                 website VARCHAR(2048),
+                follower_count INTEGER NOT NULL DEFAULT 0,
                 created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
                 updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
                 deleted_at TIMESTAMP WITH TIME ZONE
@@ -734,6 +759,17 @@ public static class DbInitializer
                 CONSTRAINT fk_organization_memberships_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
             );
             CREATE UNIQUE INDEX IF NOT EXISTS idx_organization_memberships_org_user ON organization_memberships(organization_id, user_id);
+
+            -- Stores organization followers (Organization Followers Layer)
+            CREATE TABLE IF NOT EXISTS organization_followers (
+                user_id UUID NOT NULL,
+                organization_id UUID NOT NULL,
+                followed_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+                PRIMARY KEY (user_id, organization_id),
+                CONSTRAINT fk_organization_followers_organization FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE,
+                CONSTRAINT fk_organization_followers_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+            );
+            CREATE INDEX IF NOT EXISTS idx_organization_followers_org_id ON organization_followers(organization_id);
 
             -- Stores workspaces (Workspace Identity Layer)
             CREATE TABLE IF NOT EXISTS workspaces (

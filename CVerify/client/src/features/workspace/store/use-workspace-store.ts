@@ -19,7 +19,7 @@ interface WorkspaceState {
   fetchWorkspace: (slug: string) => Promise<WorkspaceDetails | null>;
   fetchMyOrganizations: () => Promise<LinkedOrganization[] | null>;
   updateWorkspaceDetails: (slug: string, updates: Partial<WorkspaceDetails>) => Promise<WorkspaceDetails | null>;
-  toggleFollowWorkspace: (slug: string) => void;
+  toggleFollowWorkspace: (slug: string) => Promise<void>;
   invalidateCache: (slug?: string) => void;
 
   // Business Roles State
@@ -115,6 +115,9 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
       const augmented: WorkspaceDetails = {
         ...DEFAULT_DETAILS,
         ...details,
+        // Map backend followerCount → store followersCount
+        followersCount: details.followerCount ?? details.followersCount ?? DEFAULT_DETAILS.followersCount,
+        isFollowing: details.isFollowing ?? DEFAULT_DETAILS.isFollowing,
       };
       set((state) => ({
         workspaces: { ...state.workspaces, [slug]: augmented },
@@ -152,23 +155,51 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
     }
   },
 
-  toggleFollowWorkspace: (slug: string) => {
-    set((state) => {
-      const current = state.workspaces[slug];
-      if (!current) return state;
-      const isFollowing = !current.isFollowing;
-      const followersCount = (current.followersCount ?? 0) + (isFollowing ? 1 : -1);
-      return {
+  toggleFollowWorkspace: async (slug: string) => {
+    const current = get().workspaces[slug];
+    if (!current) return;
+
+    // Optimistic update
+    const optimisticIsFollowing = !current.isFollowing;
+    const optimisticCount = (current.followersCount ?? 0) + (optimisticIsFollowing ? 1 : -1);
+    set((state) => ({
+      workspaces: {
+        ...state.workspaces,
+        [slug]: {
+          ...state.workspaces[slug],
+          isFollowing: optimisticIsFollowing,
+          followersCount: optimisticCount,
+        }
+      }
+    }));
+
+    try {
+      const result = await workspaceService.toggleFollowWorkspace(slug);
+      // Confirm with server-authoritative state
+      set((state) => ({
         workspaces: {
           ...state.workspaces,
           [slug]: {
-            ...current,
-            isFollowing,
-            followersCount,
+            ...state.workspaces[slug],
+            isFollowing: result.isFollowing,
+            followersCount: result.followerCount,
           }
         }
-      };
-    });
+      }));
+    } catch (err) {
+      console.error('[Workspace Store] Follow toggle failed, reverting optimistic update', err);
+      // Revert on failure
+      set((state) => ({
+        workspaces: {
+          ...state.workspaces,
+          [slug]: {
+            ...state.workspaces[slug],
+            isFollowing: current.isFollowing,
+            followersCount: current.followersCount,
+          }
+        }
+      }));
+    }
   },
 
   invalidateCache: (slug?: string) => {

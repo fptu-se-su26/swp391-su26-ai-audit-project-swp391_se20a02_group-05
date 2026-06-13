@@ -55,7 +55,9 @@ public record WorkspaceDetailsDto(
     string? FacebookUrl = null,
     string? TwitterUrl = null,
     string? Website = null,
-    string? TaxCode = null
+    string? TaxCode = null,
+    int FollowerCount = 0,
+    bool IsFollowing = false
 );
 
 public record UpdateWorkspaceDetailsRequestDto(
@@ -82,4 +84,9 @@ public record PaginatedMembersResponseDto(
     int TotalCount,
     int Page,
     int PageSize
+);
+
+public record FollowToggleResponseDto(
+    int FollowerCount,
+    bool IsFollowing
 );

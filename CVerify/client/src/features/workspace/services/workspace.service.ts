@@ -66,5 +66,14 @@ export const workspaceService = {
       updates
     );
     return response.data;
+  },
+
+  async toggleFollowWorkspace(
+    organizationSlug: string
+  ): Promise<{ followerCount: number; isFollowing: boolean }> {
+    const response = await axiosClient.post<{ followerCount: number; isFollowing: boolean }>(
+      `/workspace/${organizationSlug}/follow`
+    );
+    return response.data;
   }
 };

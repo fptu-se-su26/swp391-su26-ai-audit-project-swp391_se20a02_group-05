@@ -117,7 +117,9 @@ public class WorkspaceController : ControllerBase
                 workspaces,
                 signedBannerUrl,
                 signedLogoUrl,
-                signedGalleryUrls
+                signedGalleryUrls,
+                org.FollowerCount,
+                false
             ));
         }
 
@@ -137,7 +139,9 @@ public class WorkspaceController : ControllerBase
                     workspaces,
                     signedBannerUrl,
                     signedLogoUrl,
-                    signedGalleryUrls
+                    signedGalleryUrls,
+                    org.FollowerCount,
+                    false
                 ));
             }
 
@@ -159,7 +163,9 @@ public class WorkspaceController : ControllerBase
                 workspaces,
                 signedBannerUrl,
                 signedLogoUrl,
-                signedGalleryUrls
+                signedGalleryUrls,
+                org.FollowerCount,
+                false
             ));
         }
 
@@ -168,6 +174,8 @@ public class WorkspaceController : ControllerBase
         if (!isAuthorized)
         {
             // Authenticated but not authorized to view workspace (treat as public viewer)
+            var isFollowingPublic = await _context.OrganizationFollowers
+                .AnyAsync(f => f.UserId == userId && f.OrganizationId == org.Id);
             return Ok(MapToWorkspaceDetailsDto(
                 org,
                 null,
@@ -176,7 +184,9 @@ public class WorkspaceController : ControllerBase
                 workspaces,
                 signedBannerUrl,
                 signedLogoUrl,
-                signedGalleryUrls
+                signedGalleryUrls,
+                org.FollowerCount,
+                isFollowingPublic
             ));
         }
 
@@ -187,6 +197,8 @@ public class WorkspaceController : ControllerBase
         if (membership == null || membership.Status != "active")
         {
             // Fallback for safety (treat as public viewer)
+            var isFollowingFallback = await _context.OrganizationFollowers
+                .AnyAsync(f => f.UserId == userId && f.OrganizationId == org.Id);
             return Ok(MapToWorkspaceDetailsDto(
                 org,
                 null,
@@ -195,7 +207,9 @@ public class WorkspaceController : ControllerBase
                 workspaces,
                 signedBannerUrl,
                 signedLogoUrl,
-                signedGalleryUrls
+                signedGalleryUrls,
+                org.FollowerCount,
+                isFollowingFallback
             ));
         }
 
@@ -216,6 +230,9 @@ public class WorkspaceController : ControllerBase
             .Select(om => new LinkedOrganizationDto(om.Organization.Name, om.Organization.Username))
             .ToListAsync();
 
+        var isFollowingMember = await _context.OrganizationFollowers
+            .AnyAsync(f => f.UserId == userId && f.OrganizationId == org.Id, HttpContext.RequestAborted);
+
         return Ok(MapToWorkspaceDetailsDto(
             org,
             membership.Role,
@@ -224,7 +241,9 @@ public class WorkspaceController : ControllerBase
             workspaces,
             signedBannerUrl,
             signedLogoUrl,
-            signedGalleryUrls
+            signedGalleryUrls,
+            org.FollowerCount,
+            isFollowingMember
         ));
     }
 
@@ -372,6 +391,63 @@ public class WorkspaceController : ControllerBase
         return Ok(responseDto);
     }
 
+    [HttpPost("{organizationSlug}/follow")]
+    [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(FollowToggleResponseDto))]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> ToggleFollowWorkspace(string organizationSlug, CancellationToken cancellationToken)
+    {
+        var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier);
+        if (userIdClaim == null || !Guid.TryParse(userIdClaim.Value, out var userId))
+        {
+            return Unauthorized();
+        }
+
+        // Business accounts cannot follow organizations
+        var actorTypeClaim = User.FindFirst("actor_type")?.Value;
+        if (string.Equals(actorTypeClaim, "business", StringComparison.OrdinalIgnoreCase))
+        {
+            return Unauthorized();
+        }
+
+        var org = await _context.Organizations
+            .FirstOrDefaultAsync(o => o.Username.ToLower() == organizationSlug.ToLower() && o.DeletedAt == null, cancellationToken);
+
+        if (org == null)
+        {
+            return NotFound(new { message = "Organization not found" });
+        }
+
+        var existing = await _context.OrganizationFollowers
+            .FirstOrDefaultAsync(f => f.UserId == userId && f.OrganizationId == org.Id, cancellationToken);
+
+        bool isFollowing;
+        if (existing == null)
+        {
+            // Follow
+            _context.OrganizationFollowers.Add(new OrganizationFollower
+            {
+                UserId = userId,
+                OrganizationId = org.Id,
+                FollowedAt = DateTimeOffset.UtcNow
+            });
+            org.FollowerCount = Math.Max(0, org.FollowerCount + 1);
+            isFollowing = true;
+        }
+        else
+        {
+            // Unfollow
+            _context.OrganizationFollowers.Remove(existing);
+            org.FollowerCount = Math.Max(0, org.FollowerCount - 1);
+            isFollowing = false;
+        }
+
+        org.UpdatedAt = DateTimeOffset.UtcNow;
+        await _context.SaveChangesAsync(cancellationToken);
+
+        return Ok(new FollowToggleResponseDto(org.FollowerCount, isFollowing));
+    }
+
     private WorkspaceDetailsDto MapToWorkspaceDetailsDto(
         Organization org,
         string? userRole,
@@ -380,7 +456,9 @@ public class WorkspaceController : ControllerBase
         List<WorkspaceDto> workspaces,
         string? signedBannerUrl,
         string? signedLogoUrl,
-        List<string> signedGalleryUrls)
+        List<string> signedGalleryUrls,
+        int followerCount = 0,
+        bool isFollowing = false)
     {
         return new WorkspaceDetailsDto(
             org.Id,
@@ -409,7 +487,9 @@ public class WorkspaceController : ControllerBase
             org.FacebookUrl,
             org.TwitterUrl,
             org.Website,
-            org.TaxCode
+            org.TaxCode,
+            followerCount,
+            isFollowing
         );
     }
 
