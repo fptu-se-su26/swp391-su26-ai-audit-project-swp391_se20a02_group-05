@@ -822,4 +822,96 @@ public class WorkspaceController : ControllerBase
 
         return Ok(new WorkspaceAvatarUploadResponse(signedUrl));
     }
+
+    [HttpPost("{organizationSlug}/media/upload")]
+    [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(List<string>))]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> UploadMedia(
+        string organizationSlug,
+        [FromForm] List<IFormFile> files,
+        CancellationToken cancellationToken)
+    {
+        if (files == null || files.Count == 0)
+        {
+            return BadRequest("No files uploaded.");
+        }
+
+        if (files.Count > 5)
+        {
+            return BadRequest("Cannot upload more than 5 images at once.");
+        }
+
+        foreach (var file in files)
+        {
+            if (file.Length > StorageConstants.MaxProfileSize)
+            {
+                return BadRequest($"File '{file.FileName}' size exceeds the maximum allowed limit of {StorageConstants.MaxProfileSize / (1024 * 1024)}MB.");
+            }
+
+            if (!StorageConstants.AllowedImageTypes.Contains(file.ContentType))
+            {
+                return BadRequest($"MIME type '{file.ContentType}' is not supported for file '{file.FileName}'. Only JPEG, PNG, WebP, and GIF are allowed.");
+            }
+        }
+
+        var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier);
+        if (userIdClaim == null || !Guid.TryParse(userIdClaim.Value, out var userId))
+        {
+            return Unauthorized();
+        }
+
+        var org = await _context.Organizations
+            .FirstOrDefaultAsync(o => o.Username.ToLower() == organizationSlug.ToLower() && o.DeletedAt == null, cancellationToken);
+
+        if (org == null)
+        {
+            return NotFound(new { message = "Organization not found" });
+        }
+
+        var actorTypeClaim = User.FindFirst("actor_type")?.Value;
+        bool isBusiness = string.Equals(actorTypeClaim, "business", StringComparison.OrdinalIgnoreCase);
+
+        if (isBusiness)
+        {
+            if (org.Id != userId)
+            {
+                return Forbid();
+            }
+        }
+        else
+        {
+            var isMember = await _context.OrganizationMemberships
+                .AnyAsync(om => om.OrganizationId == org.Id && om.UserId == userId && om.Status == "active", cancellationToken);
+            
+            if (!isMember)
+            {
+                return Forbid();
+            }
+        }
+
+        var uploadedUrls = new List<string>();
+        foreach (var file in files)
+        {
+            using var fileStream = file.OpenReadStream();
+            var uploadedFile = await _storageService.UploadFileAsync(
+                fileStream,
+                file.FileName,
+                file.ContentType,
+                StorageModule.Profile,
+                null,
+                cancellationToken);
+
+            var signedUrl = await _storageService.GetSignedUrlAsync(
+                uploadedFile.ObjectKey,
+                TimeSpan.FromDays(7),
+                cancellationToken);
+
+            uploadedUrls.Add(signedUrl);
+        }
+
+        return Ok(uploadedUrls);
+    }
 }

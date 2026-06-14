@@ -6,6 +6,7 @@ import { Card } from "@/components/ui/card";
 import { Typography, Chip, toast } from "@heroui/react";
 import { useWorkspaceStore } from "@/features/workspace/store/use-workspace-store";
 import { useAuthStore } from "@/features/auth/store/use-auth-store";
+import { workspaceService } from "@/features/workspace/services/workspace.service";
 import {
   ThumbsUp,
   MessageSquare,
@@ -16,7 +17,8 @@ import {
   Heart,
   Check,
   X,
-  Plus
+  Plus,
+  Upload
 } from "lucide-react";
 
 interface Comment {
@@ -149,7 +151,9 @@ export default function WorkspacePostsTab() {
   const [showCreatePostModal, setShowCreatePostModal] = useState(false);
   const [newPostContent, setNewPostContent] = useState("");
   const [newPostCategory, setNewPostCategory] = useState<"Announcement" | "Engineering" | "Recruitment">("Announcement");
-  const [newPostImages, setNewPostImages] = useState("");
+  const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   if (!workspaceDetails) return null;
 
@@ -168,36 +172,47 @@ export default function WorkspacePostsTab() {
   };
 
   // Handle local form submission for post creation
-  const handleCreatePostSubmit = (e: React.FormEvent) => {
+  const handleCreatePostSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newPostContent.trim()) {
       toast.danger("Vui lòng nhập nội dung thông báo!");
       return;
     }
 
-    const created: Post = {
-      id: `post-new-${Date.now()}`,
-      category: newPostCategory,
-      author: user?.fullName || "Manager",
-      authorRole: workspaceDetails.userRole || "Administrator",
-      date: "Just now",
-      content: newPostContent.trim(),
-      images: newPostImages.trim()
-        ? newPostImages.split(",").map((s) => s.trim()).filter(Boolean)
-        : [],
-      likes: 0,
-      sharesCount: 0,
-      comments: []
-    };
+    setIsSubmitting(true);
+    let uploadedUrls: string[] = [];
+    try {
+      if (selectedFiles.length > 0) {
+        uploadedUrls = await workspaceService.uploadWorkspaceMedia(organizationSlug, selectedFiles);
+      }
 
-    setPosts([created, ...posts]);
-    toast.success("Đăng thông báo thành công!");
+      const created: Post = {
+        id: `post-new-${Date.now()}`,
+        category: newPostCategory,
+        author: user?.fullName || "Manager",
+        authorRole: workspaceDetails.userRole || "Administrator",
+        date: "Just now",
+        content: newPostContent.trim(),
+        images: uploadedUrls,
+        likes: 0,
+        sharesCount: 0,
+        comments: []
+      };
 
-    // Reset fields
-    setNewPostContent("");
-    setNewPostImages("");
-    setNewPostCategory("Announcement");
-    setShowCreatePostModal(false);
+      setPosts([created, ...posts]);
+      toast.success("Đăng thông báo thành công!");
+
+      // Reset fields
+      setNewPostContent("");
+      setSelectedFiles([]);
+      setNewPostCategory("Announcement");
+      setShowCreatePostModal(false);
+    } catch (error) {
+      console.error(error);
+      toast.danger("Đã xảy ra lỗi khi tải ảnh lên hoặc đăng thông báo!");
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   // Toggle like status (Facebook style)
@@ -883,36 +898,94 @@ export default function WorkspacePostsTab() {
               </div>
 
               {/* Attachment Images */}
-              <div className="space-y-1">
+              <div className="space-y-2">
                 <label className="text-[10px] text-muted uppercase font-semibold">
-                  Hình ảnh đính kèm (Nhập URL hình ảnh, phân tách bằng dấu phẩy)
+                  Hình ảnh đính kèm
                 </label>
-                <input
-                  type="text"
-                  placeholder="Ví dụ: https://images.unsplash.com/..., https://images.unsplash.com/..."
-                  value={newPostImages}
-                  onChange={(e) => setNewPostImages(e.target.value)}
-                  className="w-full bg-card border border-border rounded-lg px-3 py-2 text-xs text-foreground focus:outline-hidden focus:border-accent"
-                />
-                <span className="text-[10px] text-muted-foreground block">
-                  Bạn có thể nhập một hoặc nhiều URL ảnh cách nhau bởi dấu phẩy để hiển thị dưới dạng lưới ảnh Facebook.
-                </span>
+                
+                {/* Drag and drop zone */}
+                <div
+                  onDragOver={(e) => {
+                    e.preventDefault();
+                  }}
+                  onDrop={(e) => {
+                    e.preventDefault();
+                    if (e.dataTransfer.files) {
+                      const filesArray = Array.from(e.dataTransfer.files).filter(f => f.type.startsWith('image/'));
+                      setSelectedFiles(prev => [...prev, ...filesArray]);
+                    }
+                  }}
+                  className="border border-dashed border-border hover:border-accent/40 rounded-lg p-4 flex flex-col items-center justify-center bg-card/10 text-muted transition-colors cursor-pointer select-none text-center"
+                  onClick={() => fileInputRef.current?.click()}
+                >
+                  <Upload className="size-5 text-muted-foreground mb-1" />
+                  <span className="text-[11px] font-semibold text-foreground">
+                    Kéo và thả hình ảnh vào đây hoặc nhấp để chọn
+                  </span>
+                  <span className="text-[9px] text-muted-foreground mt-0.5">
+                    Hỗ trợ định dạng JPEG, PNG, WebP, GIF (tối đa 10MB)
+                  </span>
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    multiple
+                    accept="image/*"
+                    className="hidden"
+                    onChange={(e) => {
+                      if (e.target.files) {
+                        const filesArray = Array.from(e.target.files);
+                        setSelectedFiles(prev => [...prev, ...filesArray]);
+                      }
+                    }}
+                  />
+                </div>
+
+                {/* Thumbnail list with X button */}
+                {selectedFiles.length > 0 && (
+                  <div className="grid grid-cols-4 gap-2 pt-2">
+                    {selectedFiles.map((file, index) => {
+                      const objectUrl = URL.createObjectURL(file);
+                      return (
+                        <div key={index} className="relative aspect-square rounded-md overflow-hidden border border-border/80 group bg-card/20 select-none">
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img
+                            src={objectUrl}
+                            alt={`selected-${index}`}
+                            className="w-full h-full object-cover"
+                          />
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setSelectedFiles(prev => prev.filter((_, i) => i !== index));
+                            }}
+                            className="absolute top-1 right-1 p-1 bg-black/70 hover:bg-black text-white rounded-full transition-colors cursor-pointer border-none"
+                          >
+                            <X className="size-3" />
+                          </button>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
 
               {/* Modal Footer / Actions */}
               <div className="flex justify-end gap-2 pt-4 border-t border-border/40">
                 <button
                   type="button"
+                  disabled={isSubmitting}
                   onClick={() => setShowCreatePostModal(false)}
-                  className="px-4 py-2 rounded-lg border border-border text-muted hover:text-foreground font-semibold hover:bg-card/50 transition-colors cursor-pointer text-xs"
+                  className="px-4 py-2 rounded-lg border border-border text-muted hover:text-foreground font-semibold hover:bg-card/50 transition-colors cursor-pointer text-xs disabled:opacity-55 disabled:cursor-not-allowed"
                 >
                   Hủy
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 rounded-lg bg-accent text-background hover:bg-accent/90 transition-colors font-semibold cursor-pointer text-xs border-none"
+                  disabled={isSubmitting}
+                  className="px-4 py-2 rounded-lg bg-accent text-background hover:bg-accent/90 transition-colors font-semibold cursor-pointer text-xs border-none disabled:opacity-55 disabled:cursor-not-allowed"
                 >
-                  Post Announcement
+                  {isSubmitting ? "Posting..." : "Post Announcement"}
                 </button>
               </div>
             </form>

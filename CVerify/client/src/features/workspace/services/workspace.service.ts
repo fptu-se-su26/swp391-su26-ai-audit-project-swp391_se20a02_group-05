@@ -75,5 +75,20 @@ export const workspaceService = {
       `/workspace/${organizationSlug}/follow`
     );
     return response.data;
+  },
+
+  async uploadWorkspaceMedia(organizationSlug: string, files: File[]): Promise<string[]> {
+    const formData = new FormData();
+    files.forEach((file) => formData.append("files", file));
+    const response = await axiosClient.post<string[]>(
+      `/workspace/${organizationSlug}/media/upload`,
+      formData,
+      {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      }
+    );
+    return response.data;
   }
 };

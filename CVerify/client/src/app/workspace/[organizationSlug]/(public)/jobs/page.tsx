@@ -1,11 +1,12 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useRef } from "react";
 import { useParams } from "next/navigation";
 import { Card } from "@/components/ui/card";
 import { Typography, Chip, toast } from "@heroui/react";
 import { Button } from "@/components/ui/button";
 import { useWorkspaceStore } from "@/features/workspace/store/use-workspace-store";
+import { workspaceService } from "@/features/workspace/services/workspace.service";
 import {
   Briefcase,
   MapPin,
@@ -20,7 +21,8 @@ import {
   BookOpen,
   Search,
   Plus,
-  X
+  X,
+  Upload
 } from "lucide-react";
 
 interface Job {
@@ -226,7 +228,9 @@ export default function WorkspaceJobsTab() {
   const [newJobDesc, setNewJobDesc] = useState("");
   const [newJobReq, setNewJobReq] = useState("");
   const [newJobBen, setNewJobBen] = useState("");
-  const [newJobImages, setNewJobImages] = useState<string[]>([""]);
+  const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   if (!workspaceDetails) return null;
 
@@ -248,65 +252,74 @@ export default function WorkspaceJobsTab() {
   };
 
   // Handle local form submission for job creation
-  const handleCreateJobSubmit = (e: React.FormEvent) => {
+  const handleCreateJobSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newJobTitle.trim()) {
       toast.danger("Vui lòng nhập tiêu đề công việc!");
       return;
     }
 
-    const validImages = newJobImages.map(url => url.trim()).filter(Boolean);
-    if (validImages.length === 0) {
+    if (selectedFiles.length < 1) {
       toast.danger("Vui lòng thêm ít nhất 1 hình ảnh tuyển dụng!");
       return;
     }
-    if (validImages.length > 5) {
+    if (selectedFiles.length > 5) {
       toast.danger("Chỉ được nhập tối đa 5 hình ảnh tuyển dụng!");
       return;
     }
 
-    const created: Job = {
-      id: `job-new-${Date.now()}`,
-      title: newJobTitle.trim(),
-      department: newJobDept,
-      location: newJobLoc.trim() || `${newJobCity}, Vietnam (${newJobWorkplace})`,
-      workplaceType: newJobWorkplace,
-      city: newJobCity,
-      type: newJobType,
-      posted: "Just now",
-      deadline: newJobDeadline.trim() || "30/09/2026",
-      salary: newJobSalary.trim() || "Negotiable",
-      salaryMinMax: newJobSalaryMinMax.trim() || "Thỏa thuận",
-      headcount: 1,
-      gender: "Không yêu cầu",
-      experience: "Yêu cầu kinh nghiệm phù hợp",
-      degree: "Đại học",
-      category: "Phát triển phần mềm, Công nghệ thông tin",
-      description: newJobDesc.trim() ? newJobDesc.split("\n").filter(Boolean) : ["Thực hiện các công việc theo yêu cầu chuyên môn."],
-      requirements: newJobReq.trim() ? newJobReq.split("\n").filter(Boolean) : ["Có kinh nghiệm làm việc ở vị trí tương đương."],
-      benefits: newJobBen.trim() ? newJobBen.split("\n").filter(Boolean) : ["Hưởng đầy đủ chế độ bảo hiểm và phúc lợi công ty."],
-      tags: newJobTags.trim() ? newJobTags.split(",").map(s => s.trim()).filter(Boolean) : [newJobDept],
-      skills: newJobSkills.trim() ? newJobSkills.split(",").map(s => s.trim()).filter(Boolean) : [newJobDept],
-      coverUrl: validImages[0],
-      images: validImages
-    };
+    setIsSubmitting(true);
+    try {
+      const uploadedUrls = await workspaceService.uploadWorkspaceMedia(organizationSlug, selectedFiles);
 
-    setJobList([created, ...jobsList]);
-    toast.success("Đăng tin tuyển dụng thành công!");
+      const created: Job = {
+        id: `job-new-${Date.now()}`,
+        title: newJobTitle.trim(),
+        department: newJobDept,
+        location: newJobLoc.trim() || `${newJobCity}, Vietnam (${newJobWorkplace})`,
+        workplaceType: newJobWorkplace,
+        city: newJobCity,
+        type: newJobType,
+        posted: "Just now",
+        deadline: newJobDeadline.trim() || "30/09/2026",
+        salary: newJobSalary.trim() || "Negotiable",
+        salaryMinMax: newJobSalaryMinMax.trim() || "Thỏa thuận",
+        headcount: 1,
+        gender: "Không yêu cầu",
+        experience: "Yêu cầu kinh nghiệm phù hợp",
+        degree: "Đại học",
+        category: "Phát triển phần mềm, Công nghệ thông tin",
+        description: newJobDesc.trim() ? newJobDesc.split("\n").filter(Boolean) : ["Thực hiện các công việc theo yêu cầu chuyên môn."],
+        requirements: newJobReq.trim() ? newJobReq.split("\n").filter(Boolean) : ["Có kinh nghiệm làm việc ở vị trí tương đương."],
+        benefits: newJobBen.trim() ? newJobBen.split("\n").filter(Boolean) : ["Hưởng đầy đủ chế độ bảo hiểm và phúc lợi công ty."],
+        tags: newJobTags.trim() ? newJobTags.split(",").map(s => s.trim()).filter(Boolean) : [newJobDept],
+        skills: newJobSkills.trim() ? newJobSkills.split(",").map(s => s.trim()).filter(Boolean) : [newJobDept],
+        coverUrl: uploadedUrls[0],
+        images: uploadedUrls
+      };
 
-    // Reset Form
-    setNewJobTitle("");
-    setNewJobLoc("");
-    setNewJobSalary("");
-    setNewJobSalaryMinMax("");
-    setNewJobDeadline("");
-    setNewJobSkills("");
-    setNewJobTags("");
-    setNewJobDesc("");
-    setNewJobReq("");
-    setNewJobBen("");
-    setNewJobImages([""]);
-    setShowCreateModal(false);
+      setJobList([created, ...jobsList]);
+      toast.success("Đăng tin tuyển dụng thành công!");
+
+      // Reset Form
+      setNewJobTitle("");
+      setNewJobLoc("");
+      setNewJobSalary("");
+      setNewJobSalaryMinMax("");
+      setNewJobDeadline("");
+      setNewJobSkills("");
+      setNewJobTags("");
+      setNewJobDesc("");
+      setNewJobReq("");
+      setNewJobBen("");
+      setSelectedFiles([]);
+      setShowCreateModal(false);
+    } catch (error) {
+      console.error(error);
+      toast.danger("Đã xảy ra lỗi khi tải ảnh tuyển dụng lên!");
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   // Filter unique lists
@@ -1078,47 +1091,70 @@ export default function WorkspaceJobsTab() {
                   <label className="text-[10px] text-muted uppercase font-semibold">
                     Hình ảnh tuyển dụng * (Tối thiểu 1, Tối đa 5 ảnh)
                   </label>
-                  {newJobImages.length < 5 && (
+                  {selectedFiles.length < 5 && (
                     <button
                       type="button"
-                      onClick={() => setNewJobImages([...newJobImages, ""])}
+                      onClick={() => fileInputRef.current?.click()}
                       className="text-[10px] text-accent font-semibold flex items-center gap-0.5 hover:underline cursor-pointer border-none bg-transparent"
                     >
                       <Plus className="size-3" /> Thêm ảnh
                     </button>
                   )}
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    multiple
+                    accept="image/*"
+                    className="hidden"
+                    onChange={(e) => {
+                      if (e.target.files) {
+                        const filesArray = Array.from(e.target.files);
+                        setSelectedFiles(prev => [...prev, ...filesArray].slice(0, 5));
+                      }
+                    }}
+                  />
                 </div>
-                
-                <div className="space-y-2">
-                  {newJobImages.map((imgUrl, index) => (
-                    <div key={index} className="flex gap-2 items-center">
-                      <input
-                        type="text"
-                        required
-                        placeholder={`Nhập URL hình ảnh tuyển dụng ${index + 1}...`}
-                        value={imgUrl}
-                        onChange={(e) => {
-                          const updated = [...newJobImages];
-                          updated[index] = e.target.value;
-                          setNewJobImages(updated);
-                        }}
-                        className="flex-1 bg-card border border-border rounded-lg px-3 py-2 text-xs text-foreground focus:outline-hidden focus:border-accent"
-                      />
-                      {newJobImages.length > 1 && (
-                        <button
-                          type="button"
-                          onClick={() => {
-                            const updated = newJobImages.filter((_, i) => i !== index);
-                            setNewJobImages(updated);
-                          }}
-                          className="p-2 bg-card hover:bg-card/85 text-muted hover:text-red-500 border border-border rounded-lg cursor-pointer transition-colors"
-                        >
-                          <X className="size-3.5" />
-                        </button>
-                      )}
-                    </div>
-                  ))}
-                </div>
+
+                {selectedFiles.length === 0 ? (
+                  <div
+                    onClick={() => fileInputRef.current?.click()}
+                    className="border border-dashed border-border hover:border-accent/40 rounded-lg p-6 flex flex-col items-center justify-center bg-card/10 text-muted transition-colors cursor-pointer select-none text-center"
+                  >
+                    <Upload className="size-5 text-muted-foreground mb-1" />
+                    <span className="text-[11px] font-semibold text-foreground">
+                      Tải lên hình ảnh tuyển dụng
+                    </span>
+                    <span className="text-[9px] text-muted-foreground mt-0.5">
+                      Chọn từ 1 đến 5 ảnh (JPEG, PNG, WebP, GIF)
+                    </span>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-5 gap-2">
+                    {selectedFiles.map((file, index) => {
+                      const objectUrl = URL.createObjectURL(file);
+                      return (
+                        <div key={index} className="relative aspect-square rounded-md overflow-hidden border border-border/80 group bg-card/20 select-none">
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img
+                            src={objectUrl}
+                            alt={`selected-job-${index}`}
+                            className="w-full h-full object-cover"
+                          />
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setSelectedFiles(prev => prev.filter((_, i) => i !== index));
+                            }}
+                            className="absolute top-1 right-1 p-1 bg-black/70 hover:bg-black text-white rounded-full transition-colors cursor-pointer border-none"
+                          >
+                            <X className="size-3" />
+                          </button>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
                 <span className="text-[10px] text-muted-foreground block">
                   Cung cấp ít nhất 1 ảnh làm ảnh bìa chính (và tối đa 5 ảnh) để tạo uy tín cho bài đăng tuyển dụng.
                 </span>
@@ -1128,16 +1164,18 @@ export default function WorkspaceJobsTab() {
               <div className="pt-2 border-t border-border flex justify-end gap-2">
                 <button
                   type="button"
+                  disabled={isSubmitting}
                   onClick={() => setShowCreateModal(false)}
-                  className="font-semibold text-xs border border-border text-muted hover:text-foreground cursor-pointer bg-transparent rounded-lg px-4 py-2 transition-colors"
+                  className="font-semibold text-xs border border-border text-muted hover:text-foreground cursor-pointer bg-transparent rounded-lg px-4 py-2 transition-colors disabled:opacity-55 disabled:cursor-not-allowed"
                 >
                   Hủy
                 </button>
                 <button
                   type="submit"
-                  className="bg-[#8A532B] hover:bg-[#724320] text-white font-semibold text-xs px-4 py-2 rounded-lg cursor-pointer transition-colors border-none"
+                  disabled={isSubmitting}
+                  className="bg-[#8A532B] hover:bg-[#724320] text-white font-semibold text-xs px-4 py-2 rounded-lg cursor-pointer transition-colors border-none disabled:opacity-55 disabled:cursor-not-allowed"
                 >
-                  Đăng tuyển dụng
+                  {isSubmitting ? "Đang đăng..." : "Đăng tuyển dụng"}
                 </button>
               </div>
             </form>
