@@ -1,5 +1,5 @@
 import { axiosClient } from '@/services/axios-client';
-import { type WorkspaceDetails, type PaginatedWorkspaceMembers, type LinkedOrganization } from '../types/workspace.types';
+import { type WorkspaceDetails, type PaginatedWorkspaceMembers, type LinkedOrganization, type Post, type Job } from '../types/workspace.types';
 
 export const workspaceService = {
   async getUserOrganizations(): Promise<LinkedOrganization[]> {
@@ -89,6 +89,29 @@ export const workspaceService = {
         },
       }
     );
+    return response.data;
+  },
+
+  async getWorkspacePosts(organizationSlug: string): Promise<Post[]> {
+    const response = await axiosClient.get<Post[]>(`/workspace/${organizationSlug}/posts`);
+    return response.data;
+  },
+
+  async createWorkspacePost(
+    organizationSlug: string,
+    post: { category: string; content: string; images?: string[]; imageUrls?: string[] }
+  ): Promise<Post> {
+    const response = await axiosClient.post<Post>(`/workspace/${organizationSlug}/posts`, post);
+    return response.data;
+  },
+
+  async getWorkspaceJobs(organizationSlug: string): Promise<Job[]> {
+    const response = await axiosClient.get<Job[]>(`/workspace/${organizationSlug}/jobs`);
+    return response.data;
+  },
+
+  async createWorkspaceJob(organizationSlug: string, job: Partial<Job>): Promise<Job> {
+    const response = await axiosClient.post<Job>(`/workspace/${organizationSlug}/jobs`, job);
     return response.data;
   }
 };

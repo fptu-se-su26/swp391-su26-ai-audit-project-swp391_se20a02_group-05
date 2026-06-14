@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { type WorkspaceDetails, type LinkedOrganization } from '../types/workspace.types';
+import { type WorkspaceDetails, type LinkedOrganization, type Post, type Job } from '../types/workspace.types';
 import { workspaceService } from '../services/workspace.service';
 import { rolesService } from '../services/roles.service';
 import type {
@@ -40,6 +40,20 @@ interface WorkspaceState {
   revokeRole: (orgSlug: string, dto: AssignScopedRoleDto) => Promise<boolean>;
   fetchAvailablePermissions: (orgSlug: string) => Promise<PermissionDto[] | null>;
   fetchAuditLogs: (orgSlug: string, page?: number, pageSize?: number) => Promise<PaginatedAuditLogsResponseDto | null>;
+
+  // Posts & Jobs State
+  posts: Record<string, Post[]>;
+  postsLoading: Record<string, boolean>;
+  postsErrors: Record<string, string | null>;
+  jobs: Record<string, Job[]>;
+  jobsLoading: Record<string, boolean>;
+  jobsErrors: Record<string, string | null>;
+
+  // Posts & Jobs Actions
+  fetchPosts: (orgSlug: string) => Promise<Post[] | null>;
+  createPostAction: (orgSlug: string, postPayload: { category: string; content: string; images?: string[]; imageUrls?: string[] }) => Promise<Post | null>;
+  fetchJobs: (orgSlug: string) => Promise<Job[] | null>;
+  createJobAction: (orgSlug: string, jobPayload: Partial<Job>) => Promise<Job | null>;
 }
 
 const DEFAULT_DETAILS = {
@@ -69,6 +83,14 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
   auditLogs: {},
   rolesLoading: {},
   rolesErrors: {},
+
+  // Posts & Jobs initial state
+  posts: {},
+  postsLoading: {},
+  postsErrors: {},
+  jobs: {},
+  jobsLoading: {},
+  jobsErrors: {},
 
   fetchMyOrganizations: async () => {
     try {
@@ -327,6 +349,90 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
       return logs;
     } catch (err) {
       console.error('[Workspace Store] Failed to fetch audit logs', err);
+      return null;
+    }
+  },
+
+  fetchPosts: async (orgSlug: string) => {
+    set((state) => ({
+      postsLoading: { ...state.postsLoading, [orgSlug]: true },
+      postsErrors: { ...state.postsErrors, [orgSlug]: null }
+    }));
+    try {
+      const posts = await workspaceService.getWorkspacePosts(orgSlug);
+      set((state) => ({
+        posts: { ...state.posts, [orgSlug]: posts },
+        postsLoading: { ...state.postsLoading, [orgSlug]: false }
+      }));
+      return posts;
+    } catch (err) {
+      const errorObject = err as { response?: { data?: { message?: string } }; message?: string };
+      const errMsg = errorObject?.response?.data?.message || errorObject?.message || 'Failed to load posts';
+      set((state) => ({
+        postsErrors: { ...state.postsErrors, [orgSlug]: errMsg },
+        postsLoading: { ...state.postsLoading, [orgSlug]: false }
+      }));
+      return null;
+    }
+  },
+
+  createPostAction: async (orgSlug: string, postPayload: { category: string; content: string; images?: string[]; imageUrls?: string[] }) => {
+    try {
+      const newPost = await workspaceService.createWorkspacePost(orgSlug, postPayload);
+      set((state) => {
+        const currentPosts = state.posts[orgSlug] || [];
+        return {
+          posts: {
+            ...state.posts,
+            [orgSlug]: [newPost, ...currentPosts]
+          }
+        };
+      });
+      return newPost;
+    } catch (err) {
+      console.error('[Workspace Store] Failed to create post', err);
+      return null;
+    }
+  },
+
+  fetchJobs: async (orgSlug: string) => {
+    set((state) => ({
+      jobsLoading: { ...state.jobsLoading, [orgSlug]: true },
+      jobsErrors: { ...state.jobsErrors, [orgSlug]: null }
+    }));
+    try {
+      const jobs = await workspaceService.getWorkspaceJobs(orgSlug);
+      set((state) => ({
+        jobs: { ...state.jobs, [orgSlug]: jobs },
+        jobsLoading: { ...state.jobsLoading, [orgSlug]: false }
+      }));
+      return jobs;
+    } catch (err) {
+      const errorObject = err as { response?: { data?: { message?: string } }; message?: string };
+      const errMsg = errorObject?.response?.data?.message || errorObject?.message || 'Failed to load jobs';
+      set((state) => ({
+        jobsErrors: { ...state.jobsErrors, [orgSlug]: errMsg },
+        jobsLoading: { ...state.jobsLoading, [orgSlug]: false }
+      }));
+      return null;
+    }
+  },
+
+  createJobAction: async (orgSlug: string, jobPayload: Partial<Job>) => {
+    try {
+      const newJob = await workspaceService.createWorkspaceJob(orgSlug, jobPayload);
+      set((state) => {
+        const currentJobs = state.jobs[orgSlug] || [];
+        return {
+          jobs: {
+            ...state.jobs,
+            [orgSlug]: [newJob, ...currentJobs]
+          }
+        };
+      });
+      return newJob;
+    } catch (err) {
+      console.error('[Workspace Store] Failed to create job', err);
       return null;
     }
   }

@@ -1,12 +1,13 @@
 "use client";
 
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useEffect, useMemo } from "react";
 import { useParams } from "next/navigation";
 import { Card } from "@/components/ui/card";
 import { Typography, Chip, toast } from "@heroui/react";
 import { useWorkspaceStore } from "@/features/workspace/store/use-workspace-store";
 import { useAuthStore } from "@/features/auth/store/use-auth-store";
 import { workspaceService } from "@/features/workspace/services/workspace.service";
+import { formatDate } from "@/lib/utils/format";
 import {
   ThumbsUp,
   MessageSquare,
@@ -18,7 +19,8 @@ import {
   Check,
   X,
   Plus,
-  Upload
+  Upload,
+  Building
 } from "lucide-react";
 
 interface Comment {
@@ -32,14 +34,15 @@ interface Comment {
 interface Post {
   id: string;
   category: "Announcement" | "Engineering" | "Recruitment";
-  author: string;
-  authorRole: string;
-  date: string;
   content: string;
   images: string[];
   likes: number;
-  comments: Comment[];
   sharesCount: number;
+  createdAt: string;
+  authorName?: string;
+  authorAvatar?: string;
+  authorRole?: string;
+  comments: Comment[];
 }
 
 export default function WorkspacePostsTab() {
@@ -48,98 +51,65 @@ export default function WorkspacePostsTab() {
 
   const workspaceDetails = useWorkspaceStore((s) => s.workspaces[organizationSlug]);
   const user = useAuthStore((s) => s.user);
+  const allPosts = useWorkspaceStore((s) => s.posts);
+  const allPostsLoading = useWorkspaceStore((s) => s.postsLoading);
+  const allPostsErrors = useWorkspaceStore((s) => s.postsErrors);
+  const fetchPosts = useWorkspaceStore((s) => s.fetchPosts);
+  const createPostAction = useWorkspaceStore((s) => s.createPostAction);
 
-  // Mock Posts with realistic Unsplash corporate/technical image arrays
-  const [posts, setPosts] = useState<Post[]>([
-    {
-      id: "post-1",
-      category: "Engineering",
-      author: "Hoang Nguyen",
-      authorRole: "Tech Lead",
-      date: "12 May at 10:14",
-      content: "Chúng tôi vô cùng tự hào thông báo rằng quy trình đánh giá và xác thực lập trình viên trên CVerify đã chính thức tích hợp chữ ký mật mã hóa (cryptographic credential signatures)! Việc này giúp tự động hóa 100% quy trình kiểm thử năng lực thực tế từ kho lưu trữ mã nguồn của ứng viên.\n\nĐặc biệt, đại diện CVerify cùng đối tác đã ký kết biên bản ghi nhớ hợp tác chiến lược nhằm xây dựng cộng đồng kỹ sư công nghệ chất lượng cao, bảo mật và đáng tin cậy. Dưới đây là một số hình ảnh sự kiện ký kết và hoạt động triển khai thực tế của đội ngũ kỹ sư tại văn phòng Đà Nẵng.",
-      images: [
-        "https://images.unsplash.com/photo-1542744173-8e7e53415bb0?q=80&w=800",
-        "https://images.unsplash.com/photo-1531538606174-0f90ff5dce83?q=80&w=800",
-        "https://images.unsplash.com/photo-1517245386807-bb43f82c33c4?q=80&w=800",
-        "https://images.unsplash.com/photo-1522071820081-009f0129c71c?q=80&w=800",
-        "https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?q=80&w=800",
-        "https://images.unsplash.com/photo-1497366216548-37526070297c?q=80&w=800"
-      ],
-      likes: 88,
-      sharesCount: 14,
-      comments: [
-        {
-          id: "c-1",
-          authorName: "Nguyễn Hoàng Ngọc Ánh",
-          content: "Sự kiện ký kết hoành tráng quá ạ! Chúc mừng CVerify và đối tác.",
-          date: "2h ago"
-        },
-        {
-          id: "c-2",
-          authorName: "Lê Minh",
-          content: "Great progress, keep up the outstanding work team! Tính năng mới rất thực tế.",
-          date: "1h ago"
-        },
-        {
-          id: "c-3",
-          authorName: "Trần Tuấn",
-          content: "Xác thực repo github chạy cực kỳ nhanh và mượt nha mọi người.",
-          date: "30m ago"
-        }
-      ]
-    },
-    {
-      id: "post-2",
-      category: "Recruitment",
-      author: "Trang Pham",
-      authorRole: "HR Lead",
-      date: "9 May at 15:30",
-      content: "WE ARE HIRING! GIA NHẬP ĐỘI NGŨ CÔNG NGHỆ CỦA CHÚNG TÔI.\n\nNhằm mở rộng quy mô dự án và đáp ứng nhu cầu tăng trưởng trong giai đoạn mới, chúng tôi tìm kiếm các đồng nghiệp tài năng ở các vị trí:\n1. Senior Full-Stack Developer (.NET & React)\n2. Automated QA Engineer\n3. DevOps Engineer (Platform Team)\n\nChúng tôi mang đến môi trường làm việc Hybrid linh hoạt, chế độ đãi ngộ cạnh tranh, hỗ trợ thiết bị làm việc hiện đại hàng đầu cùng cơ hội phát triển bản thân vượt trội. Hãy truy cập ngay tab 'Jobs' để xem chi tiết mô tả công việc và ứng tuyển trực tiếp bằng hồ sơ đã xác thực nhé!",
-      images: [
-        "https://images.unsplash.com/photo-1521737711867-e3b90473bd58?q=80&w=800"
-      ],
-      likes: 42,
-      sharesCount: 5,
-      comments: [
-        {
-          id: "c-4",
-          authorName: "Trần Quốc Bảo",
-          content: "Bên mình có nhận Intern Web (.NET/React) chưa tốt nghiệp không chị ơi?",
-          date: "2d ago"
-        },
-        {
-          id: "c-5",
-          authorName: "Trang Pham",
-          content: "@Trần Quốc Bảo Có em nhé, bên mình đang mở đợt tuyển thực tập sinh có lương. Em cứ gửi CV đã xác thực qua hệ thống nha.",
-          date: "1d ago"
-        }
-      ]
-    },
-    {
-      id: "post-3",
-      category: "Announcement",
-      author: "Minh Le",
-      authorRole: "CEO",
-      date: "3 May at 09:00",
-      content: "Chính thức đạt chứng nhận doanh nghiệp uy tín cấp độ Level 3 (Verified Enterprise status) trên cổng CVerify!\n\nChúng tôi đã hoàn thành các bước kiểm tra nghiêm ngặt về quyền sở hữu tên miền, giấy phép đăng ký kinh doanh và chữ ký số của đại diện pháp luật. Mọi thông tin cốt lõi đều được hashing mật mã hóa và ghi nhận tin cậy. Đây là cột mốc khẳng định cam kết tuyệt đối về tính minh bạch và uy tín công nghệ của doanh nghiệp đối với mọi khách hàng và đối tác.",
-      images: [
-        "https://images.unsplash.com/photo-1454165804606-c3d57bc86b40?q=80&w=800",
-        "https://images.unsplash.com/photo-1556761175-b413da4baf72?q=80&w=800",
-        "https://images.unsplash.com/photo-1497215728101-856f4ea42174?q=80&w=800"
-      ],
-      likes: 56,
-      sharesCount: 8,
-      comments: [
-        {
-          id: "c-6",
-          authorName: "Hoàng Nguyễn",
-          content: "Cột mốc rất ý nghĩa! Tự hào là một phần của hành trình công nghệ này.",
-          date: "1w ago"
-        }
-      ]
+  const postsFromStore = useMemo(() => allPosts[organizationSlug] ?? [], [allPosts, organizationSlug]);
+  const loadingPosts = allPostsLoading[organizationSlug] ?? false;
+  const postsError = allPostsErrors[organizationSlug];
+  const posts = postsFromStore;
+  const errorPosts = !!postsError;
+
+  const [commentsState, setCommentsState] = useState<Record<string, Comment[]>>({});
+
+  useEffect(() => {
+    if (organizationSlug) {
+      fetchPosts(organizationSlug);
     }
-  ]);
+  }, [organizationSlug, fetchPosts]);
+
+  useEffect(() => {
+    if (postsFromStore.length > 0) {
+      setCommentsState((prev) => {
+        const updated = { ...prev };
+        postsFromStore.forEach((p) => {
+          if (!updated[p.id]) {
+            let initialComments: Comment[] = [];
+            if (p.category === "Engineering") {
+              initialComments = [
+                {
+                  id: "c-1",
+                  authorName: "Nguyễn Hoàng Ngọc Ánh",
+                  content: "Sự kiện ký kết hoành tráng quá ạ! Chúc mừng CVerify và đối tác.",
+                  date: "2h ago"
+                },
+                {
+                  id: "c-2",
+                  authorName: "Lê Minh",
+                  content: "Great progress, keep up the outstanding work team! Tính năng mới rất thực tế.",
+                  date: "1h ago"
+                }
+              ];
+            } else if (p.category === "Recruitment") {
+              initialComments = [
+                {
+                  id: "c-4",
+                  authorName: "Trần Quốc Bảo",
+                  content: "Bên mình có nhận Intern Web (.NET/React) chưa tốt nghiệp không chị ơi?",
+                  date: "2d ago"
+                }
+              ];
+            }
+            updated[p.id] = initialComments;
+          }
+        });
+        return updated;
+      });
+    }
+  }, [postsFromStore]);
 
   const [likedPosts, setLikedPosts] = useState<string[]>([]);
   const [expandedPosts, setExpandedPosts] = useState<string[]>([]);
@@ -186,27 +156,22 @@ export default function WorkspacePostsTab() {
         uploadedUrls = await workspaceService.uploadWorkspaceMedia(organizationSlug, selectedFiles);
       }
 
-      const created: Post = {
-        id: `post-new-${Date.now()}`,
+      const createdPost = await createPostAction(organizationSlug, {
         category: newPostCategory,
-        author: user?.fullName || "Manager",
-        authorRole: workspaceDetails.userRole || "Administrator",
-        date: "Just now",
         content: newPostContent.trim(),
-        images: uploadedUrls,
-        likes: 0,
-        sharesCount: 0,
-        comments: []
-      };
+        imageUrls: uploadedUrls
+      });
 
-      setPosts([created, ...posts]);
-      toast.success("Đăng thông báo thành công!");
-
-      // Reset fields
-      setNewPostContent("");
-      setSelectedFiles([]);
-      setNewPostCategory("Announcement");
-      setShowCreatePostModal(false);
+      if (createdPost) {
+        toast.success("Đăng thông báo thành công!");
+        // Reset fields
+        setNewPostContent("");
+        setSelectedFiles([]);
+        setNewPostCategory("Announcement");
+        setShowCreatePostModal(false);
+      } else {
+        toast.danger("Đăng thông báo thất bại!");
+      }
     } catch (error) {
       console.error(error);
       toast.danger("Đã xảy ra lỗi khi tải ảnh lên hoặc đăng thông báo!");
@@ -219,14 +184,8 @@ export default function WorkspacePostsTab() {
   const handleLike = (postId: string) => {
     if (likedPosts.includes(postId)) {
       setLikedPosts(likedPosts.filter((id) => id !== postId));
-      setPosts(
-        posts.map((p) => (p.id === postId ? { ...p, likes: p.likes - 1 } : p))
-      );
     } else {
       setLikedPosts([...likedPosts, postId]);
-      setPosts(
-        posts.map((p) => (p.id === postId ? { ...p, likes: p.likes + 1 } : p))
-      );
     }
   };
 
@@ -268,16 +227,10 @@ export default function WorkspacePostsTab() {
       date: "Just now"
     };
 
-    setPosts(
-      posts.map((p) =>
-        p.id === postId
-          ? {
-              ...p,
-              comments: [...p.comments, newComment]
-            }
-          : p
-      )
-    );
+    setCommentsState((prev) => ({
+      ...prev,
+      [postId]: [...(prev[postId] || []), newComment]
+    }));
 
     // Clear input
     setCommentInputs({
@@ -388,14 +341,15 @@ export default function WorkspacePostsTab() {
       {/* ── Main Feed Column ── */}
       <div className="lg:col-span-2 space-y-6">
         {/* "What's on your mind?" announcement widget */}
+        {/* "What's on your mind?" announcement widget */}
         {hasPermission("organization:posts:write") && (
-          <Card className="p-4 bg-surface border border-border rounded-xl flex items-center gap-3">
-            <div className="w-10 h-10 rounded-full bg-accent/10 border border-border flex items-center justify-center text-accent font-semibold text-sm shrink-0 select-none overflow-hidden">
-              {user?.avatarUrl ? (
+          <Card className="p-4 bg-surface border border-border rounded-xl flex items-center gap-3 w-full">
+            <div className="w-10 h-10 rounded-full bg-accent/10 border border-border flex items-center justify-center text-accent font-semibold text-sm shrink-0 flex-shrink-0 select-none overflow-hidden">
+              {orgLogo ? (
                 // eslint-disable-next-line @next/next/no-img-element
-                <img src={user.avatarUrl} alt={user.fullName} className="w-full h-full object-cover" />
+                <img src={orgLogo} alt={`${orgName} Logo`} className="w-full h-full object-cover" />
               ) : (
-                user?.fullName?.substring(0, 1).toUpperCase() || "M"
+                <Building className="size-5 text-accent" />
               )}
             </div>
             <button
@@ -407,7 +361,41 @@ export default function WorkspacePostsTab() {
           </Card>
         )}
 
-        {posts.map((post) => {
+        {loadingPosts && (
+          <div className="space-y-4">
+            {[1, 2].map((n) => (
+              <Card key={n} className="p-4 bg-surface border border-border rounded-xl space-y-4 animate-pulse">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-full bg-accent/10 shrink-0" />
+                  <div className="space-y-2 flex-1">
+                    <div className="h-4 bg-accent/10 rounded w-1/4" />
+                    <div className="h-3 bg-accent/10 rounded w-1/6" />
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <div className="h-3 bg-accent/10 rounded w-full" />
+                  <div className="h-3 bg-accent/10 rounded w-5/6" />
+                </div>
+              </Card>
+            ))}
+          </div>
+        )}
+
+        {errorPosts && !loadingPosts && (
+          <Card className="p-6 bg-surface border border-border rounded-xl flex flex-col items-center justify-center text-muted select-none text-center">
+            <span className="text-xs font-medium italic text-danger">Đã xảy ra lỗi khi tải danh sách thông báo. Vui lòng thử lại sau.</span>
+          </Card>
+        )}
+
+        {!loadingPosts && !errorPosts && posts.length === 0 && (
+          <Card className="p-8 bg-surface border border-border rounded-xl flex flex-col items-center justify-center text-muted select-none text-center">
+            <Building className="size-8 text-accent/40 mb-2" />
+            <span className="text-xs font-semibold text-foreground">Không có bài viết hoặc thông báo nào</span>
+            <span className="text-[10px] text-muted-foreground mt-0.5">Doanh nghiệp chưa đăng tải thông báo nào trên bảng tin này.</span>
+          </Card>
+        )}
+
+        {!loadingPosts && !errorPosts && posts.map((post) => {
           const isLiked = likedPosts.includes(post.id);
 
           // Truncate logic
@@ -416,7 +404,7 @@ export default function WorkspacePostsTab() {
           const displayText = shouldTruncate ? `${post.content.slice(0, 250)}...` : post.content;
 
           // Comments list visibility logic
-          const commentsList = post.comments;
+          const commentsList = commentsState[post.id] || [];
           const hasManyComments = commentsList.length > 3;
           const showingAll = showAllComments[post.id];
           const visibleComments = showingAll ? commentsList : commentsList.slice(0, 3);
@@ -427,12 +415,12 @@ export default function WorkspacePostsTab() {
               <div className="flex justify-between items-center">
                 <div className="flex items-center gap-3">
                   {/* Organization Avatar */}
-                  <div className="w-10 h-10 rounded-full bg-accent/10 border border-border flex items-center justify-center text-accent font-semibold text-sm select-none overflow-hidden shrink-0">
+                  <div className="w-10 h-10 rounded-full bg-accent/10 border border-border flex items-center justify-center text-accent font-semibold text-sm select-none overflow-hidden shrink-0 flex-shrink-0">
                     {orgLogo ? (
                       // eslint-disable-next-line @next/next/no-img-element
                       <img src={orgLogo} alt={`${orgName} Logo`} className="w-full h-full object-cover" />
                     ) : (
-                      orgName.substring(0, 1).toUpperCase()
+                      <Building className="size-5 text-accent" />
                     )}
                   </div>
 
@@ -450,9 +438,16 @@ export default function WorkspacePostsTab() {
                       </span>
                     </div>
 
+                    {/* Admin Badge */}
+                    {post.authorName && (
+                      <div className="text-[10px] text-accent font-medium mt-0.5 select-none">
+                        Posted by: {post.authorName} ({post.authorRole || "Member"})
+                      </div>
+                    )}
+
                     {/* Subtitle with date & Globe icon */}
-                    <div className="flex items-center gap-1 text-[11px] text-muted font-normal select-none">
-                      <span>{post.date}</span>
+                    <div className="flex items-center gap-1 text-[11px] text-muted font-normal select-none mt-0.5">
+                      <span>{formatDate(post.createdAt, { dateStyle: "medium", timeStyle: "short" })}</span>
                       <span>·</span>
                       <span title="Public"><Globe className="size-3" /></span>
                     </div>

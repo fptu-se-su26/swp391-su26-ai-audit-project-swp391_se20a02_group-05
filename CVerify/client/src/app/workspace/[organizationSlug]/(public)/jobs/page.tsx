@@ -1,12 +1,13 @@
 "use client";
 
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useEffect, useMemo } from "react";
 import { useParams } from "next/navigation";
 import { Card } from "@/components/ui/card";
 import { Typography, Chip, toast } from "@heroui/react";
 import { Button } from "@/components/ui/button";
 import { useWorkspaceStore } from "@/features/workspace/store/use-workspace-store";
 import { workspaceService } from "@/features/workspace/services/workspace.service";
+import { type Job } from "@/features/workspace/types/workspace.types";
 import {
   Briefcase,
   MapPin,
@@ -25,180 +26,29 @@ import {
   Upload
 } from "lucide-react";
 
-interface Job {
-  id: string;
-  title: string;
-  department: string;
-  location: string;
-  workplaceType: "Hybrid" | "Remote" | "On-site";
-  city: string;
-  type: string;
-  posted: string;
-  deadline: string;
-  salary: string;
-  salaryMinMax: string;
-  headcount: number;
-  gender: string;
-  experience: string;
-  degree: string;
-  category: string;
-  description: string[];
-  requirements: string[];
-  benefits: string[];
-  tags: string[];
-  skills: string[];
-  coverUrl: string;
-  images?: string[];
-}
-
 export default function WorkspaceJobsTab() {
   const params = useParams();
   const organizationSlug = typeof params?.organizationSlug === "string" ? params.organizationSlug : "";
 
   const workspaceDetails = useWorkspaceStore((s) => s.workspaces[organizationSlug]);
 
-  // Mock Jobs list containing high fidelity details
-  const mockJobs: Job[] = [
-    {
-      id: "job-1",
-      title: "Senior Full-Stack Developer (.NET & React)",
-      department: "Engineering",
-      location: "Hanoi, Vietnam (Hybrid)",
-      workplaceType: "Hybrid",
-      city: "Hanoi",
-      type: "Full-Time",
-      posted: "2 days ago",
-      deadline: "20/07/2026",
-      salary: "$ 2,000 - 4,500 USD",
-      salaryMinMax: "50 - 110 triệu",
-      headcount: 3,
-      gender: "Không yêu cầu",
-      experience: "5+ năm kinh nghiệm",
-      degree: "Đại học / Kỹ sư",
-      category: "Phát triển phần mềm, Công nghệ thông tin",
-      description: [
-        "Thiết kế và phát triển kiến trúc hệ thống backend microservices bằng .NET Core 8 và cơ sở dữ liệu PostgreSQL.",
-        "Xây dựng giao diện ứng dụng web Single Page Application (SPA) hiệu năng cao, mượt mà bằng React, TypeScript và quản lý trạng thái qua Zustand/Redux.",
-        "Tối ưu hóa các truy vấn SQL nâng cao và cấu hình bộ nhớ cache Redis phân tán.",
-        "Viết mã nguồn kiểm thử tự động (Unit Test / Integration Test) đảm bảo độ ổn định cao trước khi bàn giao hệ thống.",
-        "Tham gia hướng dẫn kỹ thuật, code review và hỗ trợ các thành viên junior trong đội ngũ."
-      ],
-      requirements: [
-        "Tốt nghiệp đại học chuyên ngành Công nghệ thông tin, Khoa học máy tính hoặc tương đương.",
-        "Tối thiểu 5 năm kinh nghiệm thực chiến phát triển ứng dụng web, có kiến thức sâu rộng về lập trình hướng đối tượng OOP và các Design Pattern.",
-        "Thành thạo ngôn ngữ C#, ASP.NET Core, Entity Framework Core và lập trình bất đồng bộ.",
-        "Kinh nghiệm làm việc sâu sắc với ReactJS, Hooks, state management và thư viện CSS như Tailwind/Vanilla CSS.",
-        "Kinh nghiệm thiết kế API RESTful chất lượng, hiểu biết tốt về CI/CD và Git."
-      ],
-      benefits: [
-        "Lương thưởng hấp dẫn lên tới $4,500 USD cùng tháng lương thứ 13 và thưởng hiệu suất cuối năm.",
-        "Được cung cấp đầy đủ trang thiết bị làm việc hiện đại cao cấp (MacBook Pro / Dell XPS và màn hình phụ).",
-        "Gói bảo hiểm chăm sóc sức khỏe cao cấp toàn diện cho bản thân và gia đình.",
-        "Hưởng 15 ngày phép có lương trong năm và chế độ nghỉ lễ tết theo luật lao động.",
-        "Tham gia các chương trình đào tạo kỹ năng chuyên sâu và chứng chỉ công nghệ quốc tế miễn phí."
-      ],
-      tags: ["React", "TypeScript", ".NET Core", "C#", "Microservices"],
-      skills: ["C#", ".NET Core", "React", "TypeScript", "PostgreSQL", "Zustand"],
-      coverUrl: "https://images.unsplash.com/photo-1555066931-4365d14bab8c?q=80&w=600",
-      images: [
-        "https://images.unsplash.com/photo-1555066931-4365d14bab8c?q=80&w=600",
-        "https://images.unsplash.com/photo-1542744173-8e7e53415bb0?q=80&w=600",
-        "https://images.unsplash.com/photo-1517245386807-bb43f82c33c4?q=80&w=600"
-      ]
-    },
-    {
-      id: "job-2",
-      title: "Automated Verification QA Engineer",
-      department: "Quality Assurance",
-      location: "Remote",
-      workplaceType: "Remote",
-      city: "Da Nang",
-      type: "Contract",
-      posted: "5 days ago",
-      deadline: "15/07/2026",
-      salary: "$ 1,200 - 2,500 USD",
-      salaryMinMax: "30 - 62 triệu",
-      headcount: 2,
-      gender: "Không yêu cầu",
-      experience: "3+ năm kinh nghiệm",
-      degree: "Đại học / Cao đẳng",
-      category: "Kiểm thử phần mềm, Quality Assurance",
-      description: [
-        "Thiết kế, xây dựng và duy trì các kịch bản kiểm thử tự động (Automated Test Scripts) cho hệ thống xác thực cryptographic của CVerify.",
-        "Viết và tối ưu hóa các bộ test suite kiểm tra hiệu năng (Performance Test) và độ tin cậy của chuỗi dữ liệu băm.",
-        "Tích hợp các bài kiểm thử tự động vào hệ thống CI/CD thông qua GitHub Actions.",
-        "Phối hợp chặt chẽ với đội ngũ phát triển sản phẩm để tìm kiếm, phân tích và theo dõi các lỗi phát sinh.",
-        "Tạo các báo cáo kiểm thử chi tiết và đề xuất các giải pháp nâng cao chất lượng sản phẩm."
-      ],
-      requirements: [
-        "Tối thiểu 3 năm kinh nghiệm làm kỹ sư kiểm thử tự động (Auto QA).",
-        "Thành thạo ít nhất một trong các công cụ viết test tự động: Playwright, Cypress hoặc Selenium.",
-        "Có kinh nghiệm làm việc với ngôn ngữ lập trình JavaScript/TypeScript hoặc Python.",
-        "Có kiến thức căn bản về mật mã học, mã băm (hashing), chữ ký số là một lợi thế lớn.",
-        "Tư duy phân tích lỗi tốt, cẩn thận, tỉ mỉ và giao tiếp hiệu quả."
-      ],
-      benefits: [
-        "Mức lương thỏa thuận cạnh tranh cao tương xứng theo năng lực thực tế.",
-        "Làm việc từ xa (Remote) 100% giúp chủ động cân bằng thời gian và cuộc sống.",
-        "Được cung cấp gói ngân sách hỗ trợ nâng cấp thiết bị cá nhân hàng năm.",
-        "Tham gia hoạt động teambuilding thường niên cùng công ty tại các resort đẳng cấp.",
-        "Được tài trợ chi phí thi các chứng chỉ quốc tế chuyên ngành kiểm thử (ISTQB...)."
-      ],
-      tags: ["Automation", "Playwright", "Cypress", "QA", "CI/CD"],
-      skills: ["Playwright", "Cypress", "QA Testing", "TypeScript", "CI/CD"],
-      coverUrl: "https://images.unsplash.com/photo-1516321318423-f06f85e504b3?q=80&w=600",
-      images: [
-        "https://images.unsplash.com/photo-1516321318423-f06f85e504b3?q=80&w=600",
-        "https://images.unsplash.com/photo-1531403009284-440f080d1e12?q=80&w=600"
-      ]
-    },
-    {
-      id: "job-3",
-      title: "Lead UI/UX Product Designer",
-      department: "Design",
-      location: "Hanoi, Vietnam (On-site)",
-      workplaceType: "On-site",
-      city: "Hanoi",
-      type: "Full-Time",
-      posted: "1 week ago",
-      deadline: "30/06/2026",
-      salary: "$ 1,500 - 3,200 USD",
-      salaryMinMax: "38 - 80 triệu",
-      headcount: 1,
-      gender: "Không yêu cầu",
-      experience: "4+ năm kinh nghiệm",
-      degree: "Đại học / Cao đẳng Mỹ thuật",
-      category: "Thiết kế đồ họa, UI/UX Design",
-      description: [
-        "Chịu trách nhiệm thiết kế giao diện (UI) và xây dựng trải nghiệm người dùng (UX) cho các hệ thống phần mềm của CVerify.",
-        "Xây dựng wireframe, prototype và sơ đồ luồng trải nghiệm người dùng (user flow) dựa trên hoạt động nghiên cứu hành vi khách hàng.",
-        "Tổ chức, thiết lập và mở rộng hệ thống thiết kế (Design System) của công ty trên Figma đảm bảo tính nhất quán cao.",
-        "Hợp tác chặt chẽ cùng Product Manager và Tech Lead để thẩm định thiết kế trước khi chuyển giao lập trình.",
-        "Thực hiện đo lường, phân tích hành vi và phản hồi từ người dùng thực tế để liên tục cải tiến sản phẩm."
-      ],
-      requirements: [
-        "Tối thiểu 4 năm kinh nghiệm thiết kế giao diện ứng dụng web dashboard, nền tảng SaaS phức tạp.",
-        "Kỹ năng sử dụng Figma xuất sắc (thành thạo Auto-layout, Variables, Components, Prototyping nâng cao).",
-        "Có tư duy logic tốt về trải nghiệm người dùng (UX), khả năng phân tích và giải quyết các bài toán thiết kế khó.",
-        "Có portfolio chất lượng cao trình bày chi tiết tư duy thiết kế qua các dự án thực tế.",
-        "Hiểu biết căn bản về HTML/CSS là lợi thế lớn giúp phối hợp ăn ý với đội ngũ frontend."
-      ],
-      benefits: [
-        "Mức lương cạnh tranh hấp dẫn cùng các phụ cấp ăn trưa, đi lại tại văn phòng.",
-        "Môi trường làm việc năng động, không gian văn phòng hạng A hiện đại và rộng rãi.",
-        "Thưởng hiệu suất công việc định kỳ và xét tăng lương định kỳ 2 lần/năm.",
-        "Chương trình khám sức khỏe tổng quát định kỳ hàng năm tại hệ thống bệnh viện quốc tế.",
-        "Hỗ trợ 100% chi phí tham gia các khóa học chuyên sâu nâng cao chuyên môn tự chọn."
-      ],
-      tags: ["Figma", "UI/UX", "Product Design", "Design System", "Wireframing"],
-      skills: ["Figma", "UI/UX", "Product Design", "Design System", "Wireframing"],
-      coverUrl: "https://images.unsplash.com/photo-1581291518633-83b4ebd1d83e?q=80&w=600",
-      images: [
-        "https://images.unsplash.com/photo-1581291518633-83b4ebd1d83e?q=80&w=600",
-        "https://images.unsplash.com/photo-1586717791821-3f44a563fa4c?q=80&w=600"
-      ]
+  const allJobs = useWorkspaceStore((s) => s.jobs);
+  const allJobsLoading = useWorkspaceStore((s) => s.jobsLoading);
+  const allJobsErrors = useWorkspaceStore((s) => s.jobsErrors);
+  const fetchJobs = useWorkspaceStore((s) => s.fetchJobs);
+  const createJobAction = useWorkspaceStore((s) => s.createJobAction);
+
+  const jobsFromStore = useMemo(() => allJobs[organizationSlug] ?? [], [allJobs, organizationSlug]);
+  const loadingJobs = allJobsLoading[organizationSlug] ?? false;
+  const jobsError = allJobsErrors[organizationSlug];
+
+  useEffect(() => {
+    if (organizationSlug) {
+      fetchJobs(organizationSlug);
     }
-  ];
+  }, [organizationSlug, fetchJobs]);
+
+  const jobsList = jobsFromStore;
 
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedDept, setSelectedDept] = useState("All");
@@ -208,9 +58,6 @@ export default function WorkspaceJobsTab() {
   const [activeJob, setActiveJob] = useState<Job | null>(null);
   const [appliedJobs, setAppliedJobs] = useState<string[]>([]);
   const [savedJobs, setSavedJobs] = useState<string[]>([]);
-
-  // Jobs state & creation modal state
-  const [jobsList, setJobList] = useState<Job[]>(mockJobs);
   const [showCreateModal, setShowCreateModal] = useState(false);
 
   // Form fields for creating a job
@@ -251,7 +98,7 @@ export default function WorkspaceJobsTab() {
     return workspaceDetails.permissions?.includes(permissionKey) || false;
   };
 
-  // Handle local form submission for job creation
+  // Handle form submission for job creation
   const handleCreateJobSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newJobTitle.trim()) {
@@ -272,15 +119,13 @@ export default function WorkspaceJobsTab() {
     try {
       const uploadedUrls = await workspaceService.uploadWorkspaceMedia(organizationSlug, selectedFiles);
 
-      const created: Job = {
-        id: `job-new-${Date.now()}`,
+      const jobPayload: Partial<Job> = {
         title: newJobTitle.trim(),
         department: newJobDept,
         location: newJobLoc.trim() || `${newJobCity}, Vietnam (${newJobWorkplace})`,
         workplaceType: newJobWorkplace,
         city: newJobCity,
         type: newJobType,
-        posted: "Just now",
         deadline: newJobDeadline.trim() || "30/09/2026",
         salary: newJobSalary.trim() || "Negotiable",
         salaryMinMax: newJobSalaryMinMax.trim() || "Thỏa thuận",
@@ -298,22 +143,26 @@ export default function WorkspaceJobsTab() {
         images: uploadedUrls
       };
 
-      setJobList([created, ...jobsList]);
-      toast.success("Đăng tin tuyển dụng thành công!");
+      const created = await createJobAction(organizationSlug, jobPayload);
 
-      // Reset Form
-      setNewJobTitle("");
-      setNewJobLoc("");
-      setNewJobSalary("");
-      setNewJobSalaryMinMax("");
-      setNewJobDeadline("");
-      setNewJobSkills("");
-      setNewJobTags("");
-      setNewJobDesc("");
-      setNewJobReq("");
-      setNewJobBen("");
-      setSelectedFiles([]);
-      setShowCreateModal(false);
+      if (created) {
+        toast.success("Đăng tin tuyển dụng thành công!");
+        // Reset Form
+        setNewJobTitle("");
+        setNewJobLoc("");
+        setNewJobSalary("");
+        setNewJobSalaryMinMax("");
+        setNewJobDeadline("");
+        setNewJobSkills("");
+        setNewJobTags("");
+        setNewJobDesc("");
+        setNewJobReq("");
+        setNewJobBen("");
+        setSelectedFiles([]);
+        setShowCreateModal(false);
+      } else {
+        toast.danger("Đăng tin tuyển dụng thất bại!");
+      }
     } catch (error) {
       console.error(error);
       toast.danger("Đã xảy ra lỗi khi tải ảnh tuyển dụng lên!");
@@ -423,13 +272,13 @@ export default function WorkspaceJobsTab() {
           <div className="p-6 grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
             {/* Left Column (Job Specifications & Lists) */}
             <div className="lg:col-span-2 space-y-6">
-              
+
               {/* ── Thông tin tuyển dụng (Grid Card) ── */}
               <div className="p-4 rounded-xl border border-border bg-card/10 space-y-3 font-normal">
                 <span className="text-[10px] text-foreground uppercase tracking-wider block font-semibold border-b border-border/40 pb-1.5">
                   Thông tin tuyển dụng
                 </span>
-                
+
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-[11px] text-muted-foreground">
                   <div className="flex items-center gap-2">
                     <Briefcase className="size-3.5 text-accent shrink-0" />
@@ -590,7 +439,7 @@ export default function WorkspaceJobsTab() {
 
             {/* Right Column (Widget cards & actions) */}
             <div className="space-y-5">
-              
+
               {/* Apply card box */}
               <Card className="p-4 bg-amber-500/5 border border-accent/30 rounded-xl text-center space-y-3 font-normal">
                 <Typography type="body-xs" className="text-muted leading-relaxed text-[11px] font-normal">
@@ -601,11 +450,10 @@ export default function WorkspaceJobsTab() {
                   disabled={appliedJobs.includes(activeJob.id)}
                   variant="solid"
                   size="sm"
-                  className={`w-full font-semibold text-xs py-2 h-9 rounded-lg cursor-pointer border-none transition-colors ${
-                    appliedJobs.includes(activeJob.id)
+                  className={`w-full font-semibold text-xs py-2 h-9 rounded-lg cursor-pointer border-none transition-colors ${appliedJobs.includes(activeJob.id)
                       ? "bg-success/20 text-success cursor-default"
                       : "bg-accent text-background hover:bg-accent/90"
-                  }`}
+                    }`}
                 >
                   {appliedJobs.includes(activeJob.id) ? "Đã ứng tuyển thành công" : "Ứng tuyển ngay"}
                 </Button>
@@ -700,7 +548,7 @@ export default function WorkspaceJobsTab() {
                 className="bg-[#8A532B] hover:bg-[#724320] text-white font-semibold text-xs px-4 py-2.5 rounded-lg cursor-pointer flex items-center gap-1.5 transition-all shadow-md active:scale-95 border-none"
               >
                 <Plus className="size-4" />
-                <span>+ Đăng tuyển dụng</span>
+                <span> Đăng tuyển dụng</span>
               </button>
             </div>
           )}
@@ -770,7 +618,30 @@ export default function WorkspaceJobsTab() {
 
           {/* Jobs Listing */}
           <div className="space-y-4">
-            {filteredJobs.length === 0 ? (
+            {loadingJobs && (
+              <div className="space-y-4">
+                {[1, 2, 3].map((n) => (
+                  <Card key={n} className="p-5 bg-surface border border-border rounded-xl space-y-4 animate-pulse">
+                    <div className="flex gap-4 items-start w-full pr-8">
+                      <div className="w-20 h-20 md:w-24 md:h-24 rounded-lg bg-accent/10 shrink-0" />
+                      <div className="flex-1 space-y-2">
+                        <div className="h-4 bg-accent/10 rounded w-1/3" />
+                        <div className="h-3 bg-accent/10 rounded w-1/4" />
+                        <div className="h-3 bg-accent/10 rounded w-1/2" />
+                      </div>
+                    </div>
+                  </Card>
+                ))}
+              </div>
+            )}
+
+            {jobsError && !loadingJobs && (
+              <Card className="p-6 bg-surface border border-border rounded-xl flex flex-col items-center justify-center text-muted select-none text-center">
+                <span className="text-xs font-medium italic text-danger">Đã xảy ra lỗi khi tải danh sách tin tuyển dụng. Vui lòng thử lại sau.</span>
+              </Card>
+            )}
+
+            {!loadingJobs && !jobsError && filteredJobs.length === 0 && (
               <Card className="border border-dashed border-border/80 rounded-xl p-12 text-center select-none bg-surface">
                 <Typography type="h4" className="font-semibold text-foreground mb-1">
                   Không tìm thấy vị trí tuyển dụng phù hợp
@@ -779,7 +650,9 @@ export default function WorkspaceJobsTab() {
                   Thử thay đổi từ khóa tìm kiếm hoặc điều chỉnh lại các bộ lọc phòng ban, địa điểm để tìm kiếm cơ hội khác nhé.
                 </Typography>
               </Card>
-            ) : (
+            )}
+
+            {!loadingJobs && !jobsError && filteredJobs.length > 0 && (
               filteredJobs.map((job) => {
                 const isApplied = appliedJobs.includes(job.id);
                 const isSaved = savedJobs.includes(job.id);
@@ -863,11 +736,10 @@ export default function WorkspaceJobsTab() {
                               e.stopPropagation();
                               handleApply(job.id);
                             }}
-                            className={`text-xs font-semibold px-6 py-2 rounded-lg cursor-pointer transition-colors border-none whitespace-nowrap min-w-[120px] md:min-w-[140px] text-center ${
-                              isApplied
+                            className={`text-xs font-semibold px-6 py-2 rounded-lg cursor-pointer transition-colors border-none whitespace-nowrap min-w-[120px] md:min-w-[140px] text-center ${isApplied
                                 ? "bg-success/20 text-success cursor-default"
                                 : "bg-accent text-background hover:bg-accent/90"
-                            }`}
+                              }`}
                           >
                             {isApplied ? "Đã ứng tuyển" : "Ứng tuyển ngay"}
                           </button>

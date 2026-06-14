@@ -155,3 +155,46 @@ export interface PaginatedInvitations {
 export const getTagLabel = (tag: string): string => {
   return TAG_TRANSLATIONS[tag] || tag;
 };
+
+export interface Post {
+  id: string;
+  category: string;
+  content: string;
+  images: string[];
+  likes: number;
+  sharesCount: number;
+  createdAt: string;
+  authorName?: string;
+  authorAvatar?: string;
+  authorRole?: string;
+}
+
+export interface Job {
+  id: string;
+  organizationId?: string;
+  title: string;
+  department: string;
+  location?: string;
+  workplaceType: "Hybrid" | "Remote" | "On-site";
+  city: string;
+  type: string;
+  posted?: string;
+  deadline?: string;
+  salary: string;
+  salaryMinMax: string;
+  headcount: number;
+  gender: string;
+  experience: string;
+  degree: string;
+  category: string;
+  description: string[];
+  requirements: string[];
+  benefits: string[];
+  tags: string[];
+  skills: string[];
+  coverUrl: string;
+  images?: string[];
+  isActive?: boolean;
+  createdAt?: string;
+  updatedAt?: string;
+}

@@ -125,6 +125,8 @@ public class ApplicationDbContext : DbContext
     public DbSet<OrganizationInvitation> OrganizationInvitations => Set<OrganizationInvitation>();
     public DbSet<OrganizationInvitationRole> OrganizationInvitationRoles => Set<OrganizationInvitationRole>();
     public DbSet<RoleAssignment> RoleAssignments => Set<RoleAssignment>();
+    public DbSet<WorkspacePost> WorkspacePosts => Set<WorkspacePost>();
+    public DbSet<JobVacancy> JobVacancies => Set<JobVacancy>();
 
     public DbSet<ActivityEvent> ActivityEvents => Set<ActivityEvent>();
     public DbSet<InAppNotification> InAppNotifications => Set<InAppNotification>();
@@ -208,6 +210,8 @@ public class ApplicationDbContext : DbContext
         modelBuilder.Entity<Workspace>().Property(w => w.Id).ValueGeneratedNever();
         modelBuilder.Entity<WorkspaceMember>().Property(wm => wm.Id).ValueGeneratedNever();
         modelBuilder.Entity<RoleAssignment>().Property(ra => ra.Id).ValueGeneratedNever();
+        modelBuilder.Entity<WorkspacePost>().Property(wp => wp.Id).ValueGeneratedNever();
+        modelBuilder.Entity<JobVacancy>().Property(jv => jv.Id).ValueGeneratedNever();
         modelBuilder.Entity<AdminMember>().Property(am => am.Id).ValueGeneratedNever();
         modelBuilder.Entity<AdminInvitation>().Property(ai => ai.Id).ValueGeneratedNever();
         modelBuilder.Entity<AdminInvitationRole>().Property(air => air.Id).ValueGeneratedNever();

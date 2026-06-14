@@ -13,6 +13,12 @@ public record MemberDto(
     string? AvatarUrl = null
 );
 
+public record MemberProfileDataDto(
+    Guid UserId,
+    string? Headline,
+    string? Username
+);
+
 public record LinkedOrganizationDto(
     string Name,
     string Slug
@@ -89,4 +95,74 @@ public record PaginatedMembersResponseDto(
 public record FollowToggleResponseDto(
     int FollowerCount,
     bool IsFollowing
+);
+
+public record WorkspacePostDto(
+    Guid Id,
+    string Category,
+    string Content,
+    List<string> Images,
+    int Likes,
+    int SharesCount,
+    DateTimeOffset CreatedAt,
+    string? AuthorName = null,
+    string? AuthorAvatar = null,
+    string? AuthorRole = null
+);
+
+public record CreateWorkspacePostRequestDto(
+    string Category,
+    string Content,
+    List<string>? Images = null,
+    List<string>? ImageUrls = null
+);
+
+public record JobVacancyDto(
+    Guid Id,
+    Guid OrganizationId,
+    string Title,
+    string Department,
+    string WorkplaceType,
+    string City,
+    string Type,
+    string Salary,
+    string SalaryMinMax,
+    int Headcount,
+    string Gender,
+    string Experience,
+    string Degree,
+    string Category,
+    List<string> Description,
+    List<string> Requirements,
+    List<string> Benefits,
+    List<string> Tags,
+    List<string> Skills,
+    string CoverUrl,
+    List<string> Images,
+    bool IsActive,
+    DateTimeOffset CreatedAt,
+    DateTimeOffset UpdatedAt
+);
+
+public record CreateJobRequestDto(
+    string Title,
+    string Department,
+    string WorkplaceType,
+    string City,
+    string Type,
+    string Salary,
+    string SalaryMinMax,
+    int Headcount,
+    string Gender,
+    string Experience,
+    string Degree,
+    string Category,
+    List<string> Description,
+    List<string> Requirements,
+    List<string> Benefits,
+    List<string> Tags,
+    List<string> Skills,
+    string CoverUrl,
+    List<string>? Images = null,
+    List<string>? ImageUrls = null
 );
