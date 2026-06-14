@@ -134,7 +134,7 @@ Tối ưu hóa layout hiển thị ảnh đại diện và thêm nút "Back to D
 
 | Loại minh chứng | Nhãn | Nội dung |
 |---|---|---|
-| Source Code | members/page.tsx, use-workspace-store.ts | Đồng bộ giao diện danh sách thành viên |
+| Source Code | members/page.tsx, use-workspace-store.ts | Giao diện danh sách thành viên |
 
 #### 4.6. Nhận xét cá nhân/nhóm
 

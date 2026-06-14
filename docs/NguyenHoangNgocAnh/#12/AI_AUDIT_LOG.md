@@ -33,7 +33,7 @@
 
 ## 3. Mục tiêu sử dụng AI
 
-### Mô tả mục tiêu sử dụng AI
+### Mục tiêu sử dụng AI
 
 ```text
 Phát triển hoàn thiện hệ thống Trang cá nhân doanh nghiệp (Business Public Profile) bao gồm hai cấu phần chính: Đăng tin tức/thông báo (Workspace Announcements/Posts) và Đăng tuyển dụng (Job Vacancies). Sử dụng AI để thiết lập các thực thể database mới, tạo các file dịch chuyển DB (Migrations), viết các API Endpoint CRUD cho bài viết và tin tuyển tuyển dụng kèm kiểm tra phân quyền sở hữu. Đồng thời, xây dựng giao diện tương tác phía Client hỗ trợ tạo/hiển thị bài đăng, đăng ký ứng tuyển/lưu công việc và quản lý dữ liệu qua Zustand store.
@@ -125,7 +125,7 @@ AI sinh mã Migration chuẩn xác và đồng bộ hoàn toàn với snapshot c
 #### 4.3. Phần sinh viên/nhóm đã sử dụng từ AI
 
 ```text
-- Cấu trúc giao diện layout các trang `jobs/page.tsx` và `posts/page.tsx`.
+- Giao diện các trang `jobs/page.tsx` và `posts/page.tsx`.
 - Zustand store action `fetchPosts`, `createPost`, `fetchJobs`, `createJob`, `applyJob` và `saveJob`.
 ```
 

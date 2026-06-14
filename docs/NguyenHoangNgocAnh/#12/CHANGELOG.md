@@ -37,7 +37,7 @@ Nguyên tắc ghi changelog:
 
 | Phiên bản/Giai đoạn | Thời gian | Nội dung chính | Trạng thái |
 |---|---|---|---|
-| Phase 01 | 05/06/2026 | Sửa lỗi build hệ thống và bổ dung tùy chọn Career Preferences | Completed |
+| Phase 01 | 05/06/2026 | Sửa lỗi build hệ thống và bổ sung tùy chọn Career Preferences | Completed |
 | Phase 02 | 06/06/2026 | Mở rộng sở thích nghề nghiệp & Chuẩn hóa dữ liệu | Completed |
 | Phase 03 | 09/06/2026 | Tinh chỉnh UI/UX, Bố cục lưới Responsive, Tiền tệ động và Thanh thay đổi chưa lưu | Completed |
 | Phase 04 | 13/06/2026 | Trang hồ sơ doanh nghiệp công khai, quản lý thư viện ảnh và tích hợp thông tin tổ chức | Completed |

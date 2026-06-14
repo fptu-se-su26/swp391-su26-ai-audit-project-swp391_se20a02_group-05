@@ -44,7 +44,7 @@ Nút quay lại bảng điều khiển ("Back to Dashboard") và tab điều hư
 ### 3.2. Những khó khăn/thử thách đã vượt qua
 
 ```text
-Thử thách lớn nhất là cấu hình cơ chế Left Join trong Linq (dùng DefaultIfEmpty) để API thành viên không bị crash khi có tài khoản chưa điền thông tin Profile (dữ liệu Profile bị null). Việc gán các giá trị mặc định cho avatar và headline khi các giá trị này không tồn tại đã giải quyết triệt để vấn đề này, đảm bảo giao diện hiển thị ổn định.
+Khó khăn lớn nhất là cấu hình cơ chế Left Join trong Linq (dùng DefaultIfEmpty) để API thành viên không bị crash khi có tài khoản chưa điền thông tin Profile (dữ liệu Profile bị null). Việc gán các giá trị mặc định cho avatar và headline khi các giá trị này không tồn tại đã giải quyết triệt để vấn đề này, đảm bảo giao diện hiển thị ổn định.
 ```
 
 ---
