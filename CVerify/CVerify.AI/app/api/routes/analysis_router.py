@@ -6,6 +6,8 @@ from fastapi.responses import StreamingResponse, JSONResponse
 from pydantic import BaseModel
 from app.core.middleware.hmac_auth import verify_hmac_signature
 from app.pipelines.repository.orchestrators.github_analysis_orchestrator import GitHubAnalysisOrchestrator
+from app.pipelines.candidate.orchestrator import CandidateEvaluationOrchestrator, is_line2_task
+from app.pipelines.jd.orchestrator import JdMatchingOrchestrator, is_line3_task
 
 router = APIRouter()
 logger = logging.getLogger("analysis_router")
@@ -124,21 +126,39 @@ async def execute_task(
                 "events": []
             }
             
-    # Fallback to legacy task execution
-    extra_log = {"correlation_id": correlation_id, "job_id": request_data.jobId, "task_type": request_data.taskType}
+    # Fallback to legacy task execution — route by pipeline prefix
+    task_type = request_data.taskType or ""
+    extra_log = {"correlation_id": correlation_id, "job_id": request_data.jobId, "task_type": task_type}
     logger.info(f"Received legacy execute task request", extra=extra_log)
-    
-    orchestrator = GitHubAnalysisOrchestrator()
-    result = await orchestrator.execute_task(
-        task_type=request_data.taskType or "",
-        job_id=request_data.jobId,
-        repository_id=request_data.repositoryId or "",
-        repo_owner=request_data.repoOwner or "",
-        repo_name=request_data.repoName or "",
-        encrypted_token=request_data.encryptedToken or "",
-        default_branch=request_data.defaultBranch or "main",
-        correlation_id=correlation_id
-    )
+
+    if is_line2_task(task_type):
+        orchestrator_l2 = CandidateEvaluationOrchestrator()
+        result = await orchestrator_l2.execute_task(
+            task_type=task_type,
+            job_id=request_data.jobId,
+            inputs=request_data.inputs or {},
+            correlation_id=correlation_id
+        )
+    elif is_line3_task(task_type):
+        orchestrator_l3 = JdMatchingOrchestrator()
+        result = await orchestrator_l3.execute_task(
+            task_type=task_type,
+            job_id=request_data.jobId,
+            inputs=request_data.inputs or {},
+            correlation_id=correlation_id
+        )
+    else:
+        orchestrator = GitHubAnalysisOrchestrator()
+        result = await orchestrator.execute_task(
+            task_type=task_type,
+            job_id=request_data.jobId,
+            repository_id=request_data.repositoryId or "",
+            repo_owner=request_data.repoOwner or "",
+            repo_name=request_data.repoName or "",
+            encrypted_token=request_data.encryptedToken or "",
+            default_branch=request_data.defaultBranch or "main",
+            correlation_id=correlation_id
+        )
     return result
 
 
