@@ -1,13 +1,26 @@
 import json
 import logging
 import time
-from typing import Any, Dict
+from typing import Any, Dict, Optional
 
 from app.core.services.claude_service import ClaudeService
+from app.core.clients.repo_intelligence_client import RepoIntelligenceClient
 from app.pipelines.shared.ai.prompts.candidate_prompt_factory import CandidatePromptFactory
 from app.core.monitoring.observability import trace_stage, TraceContext
+from app.pipelines.candidate.skill_taxonomy import normalize_batch, get_taxonomy_hints
+from app.pipelines.candidate.tendency_rules import get_primary_tendency, score_tendencies
+from app.pipelines.candidate.working_style_rules import get_primary_working_style, score_working_styles
 
 logger = logging.getLogger("candidate_evaluation_orchestrator")
+
+# Line 1 artifact keys that Line 2 fetches from the database.
+# These must NOT be passed as inputs in the request body.
+_LINE1_ARTIFACT_KEYS = frozenset({
+    "repoIntelligenceReport",
+    "skillEvidenceGraph",
+    "commitTimelineData",
+    "commitIntentData",
+})
 
 _CANDIDATE_L2_TASK_NAMES = {
     "SkillTaxonomyMapper", "SkillProficiencyEstimator", "StrengthWeaknessAnalyzer",
@@ -40,9 +53,13 @@ def is_line2_task(task_type: str) -> bool:
 
 
 class CandidateEvaluationOrchestrator:
-    def __init__(self):
+    def __init__(
+        self,
+        repo_intelligence_client: Optional[RepoIntelligenceClient] = None,
+    ) -> None:
         self.claude_service = ClaudeService()
         self.prompt_factory = CandidatePromptFactory()
+        self._repo_client = repo_intelligence_client or RepoIntelligenceClient()
 
     def _extract_json(self, text: str, correlation_id: str) -> dict:
         text = text.strip()
@@ -119,35 +136,61 @@ class CandidateEvaluationOrchestrator:
             "jobId": job_id, "taskType": normalized, "correlationId": correlation_id
         })
 
+        # Guard: reject any caller that still passes Line 1 data directly in inputs.
+        # Line 1 artifacts must come from the database, not from the request body.
+        forbidden = _LINE1_ARTIFACT_KEYS & set(inputs.keys())
+        if forbidden:
+            logger.warning(
+                "Line 2 task %s received Line 1 artifact keys directly in inputs: %s. "
+                "These will be ignored and fetched from the database instead.",
+                normalized, forbidden, extra=extra
+            )
+            inputs = {k: v for k, v in inputs.items() if k not in _LINE1_ARTIFACT_KEYS}
+
+        # Fetch all Line 1 artifacts from the CVerify.Core database.
+        # Tasks that do not need a particular artifact will receive None, which
+        # they handle via .get(..., {}) / .get(..., []) defaults.
+        line1_artifacts = await self._repo_client.fetch_line1_artifacts(job_id)
+        logger.info(
+            "Line 1 artifacts loaded for job %s: %s",
+            job_id,
+            {k: "ok" if v else "missing" for k, v in line1_artifacts.items()},
+            extra=extra,
+        )
+
+        # Merge Line 1 artifacts into the working inputs dict.
+        # Line 2 inter-task data (from previous L2 steps) in `inputs` is preserved.
+        merged_inputs = {**inputs, **{k: v for k, v in line1_artifacts.items() if v is not None}}
+
         try:
             if normalized == "SkillTaxonomyMapper":
-                result = await self._skill_taxonomy_mapper(job_id, inputs, correlation_id)
+                result = await self._skill_taxonomy_mapper(job_id, merged_inputs, correlation_id)
             elif normalized == "SkillProficiencyEstimator":
-                result = await self._skill_proficiency_estimator(job_id, inputs, correlation_id)
+                result = await self._skill_proficiency_estimator(job_id, merged_inputs, correlation_id)
             elif normalized == "StrengthWeaknessAnalyzer":
-                result = await self._strength_weakness_analyzer(job_id, inputs, correlation_id)
+                result = await self._strength_weakness_analyzer(job_id, merged_inputs, correlation_id)
             elif normalized == "CareerLevelMapper":
-                result = await self._career_level_mapper(job_id, inputs, correlation_id)
+                result = await self._career_level_mapper(job_id, merged_inputs, correlation_id)
             elif normalized == "CareerLevelCalibrator":
-                result = await self._career_level_calibrator(job_id, inputs, correlation_id)
+                result = await self._career_level_calibrator(job_id, merged_inputs, correlation_id)
             elif normalized == "CareerLevelGate":
-                result = await self._career_level_gate(job_id, inputs, correlation_id)
+                result = await self._career_level_gate(job_id, merged_inputs, correlation_id)
             elif normalized == "EngineeringMaturityAssessor":
-                result = await self._engineering_maturity_assessor(job_id, inputs, correlation_id)
+                result = await self._engineering_maturity_assessor(job_id, merged_inputs, correlation_id)
             elif normalized == "ProblemSolvingAnalyzer":
-                result = await self._problem_solving_analyzer(job_id, inputs, correlation_id)
+                result = await self._problem_solving_analyzer(job_id, merged_inputs, correlation_id)
             elif normalized == "TechnicalTendencyClassifier":
-                result = await self._technical_tendency_classifier(job_id, inputs, correlation_id)
+                result = await self._technical_tendency_classifier(job_id, merged_inputs, correlation_id)
             elif normalized == "WorkingStyleClassifier":
-                result = await self._working_style_classifier(job_id, inputs, correlation_id)
+                result = await self._working_style_classifier(job_id, merged_inputs, correlation_id)
             elif normalized == "ExperienceConfidenceMultiplier":
-                result = await self._experience_confidence_multiplier(job_id, inputs, correlation_id)
+                result = await self._experience_confidence_multiplier(job_id, merged_inputs, correlation_id)
             elif normalized == "MultiRoleRecommendationEngine":
-                result = await self._multi_role_recommendation(job_id, inputs, correlation_id)
+                result = await self._multi_role_recommendation(job_id, merged_inputs, correlation_id)
             elif normalized == "CandidateSummaryGenerator":
-                result = await self._candidate_summary_generator(job_id, inputs, correlation_id)
+                result = await self._candidate_summary_generator(job_id, merged_inputs, correlation_id)
             elif normalized == "CandidateProfileComposer":
-                result = await self._candidate_profile_composer(job_id, inputs, correlation_id)
+                result = await self._candidate_profile_composer(job_id, merged_inputs, correlation_id)
             else:
                 raise ValueError(f"Unknown Line 2 task type: {task_type}")
             return result
@@ -159,10 +202,46 @@ class CandidateEvaluationOrchestrator:
 
     @trace_stage("SkillTaxonomyMapper")
     async def _skill_taxonomy_mapper(self, job_id: str, inputs: dict, correlation_id: str) -> dict:
+        # Pre-normalize raw skill names from the evidence graph using the taxonomy dictionary
+        skill_graph = inputs.get("skillEvidenceGraph", {})
+        cv_skills = inputs.get("cvSkills", [])
+
+        raw_skill_names: list[str] = []
+        nodes = skill_graph.get("nodes", []) if isinstance(skill_graph, dict) else []
+        for node in nodes:
+            name = node.get("data", {}).get("name") or node.get("id", "")
+            if name:
+                raw_skill_names.append(name)
+        raw_skill_names += [s for s in cv_skills if isinstance(s, str)]
+
+        pre_normalized = normalize_batch(raw_skill_names)
+        taxonomy_hints = get_taxonomy_hints()
+
+        enriched_inputs = {
+            **inputs,
+            "preNormalizedSkills": pre_normalized,
+            "taxonomyHints": taxonomy_hints,
+        }
+
         system = self.prompt_factory.get_system_prompt()
-        user = self.prompt_factory.get_skill_taxonomy_mapper_prompt(inputs)
+        user = self.prompt_factory.get_skill_taxonomy_mapper_prompt(enriched_inputs)
         raw, telemetry = await self.claude_service.analyze_repo_with_telemetry(system, user, correlation_id)
         data = self._extract_json(raw, correlation_id)
+
+        # Merge pre-normalized entries for skills the AI didn't cover
+        ai_mapped_names = {s.get("rawName", "").lower() for s in data.get("mappedSkills", [])}
+        for pre in pre_normalized:
+            if pre["rawName"].lower() not in ai_mapped_names and pre["found"]:
+                data.setdefault("mappedSkills", []).append({
+                    "rawName": pre["rawName"],
+                    "normalizedName": pre["normalizedName"],
+                    "sfiaCategory": pre["sfiaCategory"],
+                    "onetCode": pre["onetCode"],
+                    "evidenceStrength": "weak",
+                    "declaredInCv": pre["rawName"] in cv_skills,
+                    "_source": "taxonomy_dictionary",
+                })
+
         return self._ok(data, telemetry, "SkillTaxonomyMapper")
 
     # ── L2-002 ────────────────────────────────────────────────────────────────
@@ -199,10 +278,39 @@ class CandidateEvaluationOrchestrator:
 
     @trace_stage("CareerLevelCalibrator")
     async def _career_level_calibrator(self, job_id: str, inputs: dict, correlation_id: str) -> dict:
+        candidate_score = float(inputs.get("candidateScore", 0))
+
+        # Deterministic threshold calibration (per spec: score thresholds 20-45/46-65/66-82/83-92/93-100)
+        deterministic_level, deterministic_label = _score_to_level(candidate_score)
+        is_boundary = _is_boundary_score(candidate_score)
+
+        enriched_inputs = {
+            **inputs,
+            "deterministicLevel": deterministic_level,
+            "deterministicLevelLabel": deterministic_label,
+            "isBoundaryCase": is_boundary,
+        }
+
         system = self.prompt_factory.get_system_prompt()
-        user = self.prompt_factory.get_career_level_calibrator_prompt(inputs)
+        user = self.prompt_factory.get_career_level_calibrator_prompt(enriched_inputs)
         raw, telemetry = await self.claude_service.analyze_repo_with_telemetry(system, user, correlation_id)
         data = self._extract_json(raw, correlation_id)
+
+        # Enforce: AI must not violate threshold by more than 1 level unless strong evidence
+        ai_level = data.get("calibratedLevel", deterministic_level)
+        if not _is_adjacent_or_same_level(deterministic_level, ai_level):
+            data["calibratedLevel"] = deterministic_level
+            data["calibratedLevelLabel"] = deterministic_label
+            data["calibratedScore"] = candidate_score
+            data["calibrationNotes"] = (
+                f"AI calibration ({ai_level}) overridden by threshold rule: "
+                f"score {candidate_score:.1f} maps to {deterministic_level}. "
+                + data.get("calibrationNotes", "")
+            )
+
+        data["isBoundaryCase"] = is_boundary
+        data.setdefault("confidenceInLevel", 0.85 if not is_boundary else 0.70)
+
         return self._ok(data, telemetry, "CareerLevelCalibrator")
 
     # ── L2-006 ────────────────────────────────────────────────────────────────
@@ -285,20 +393,109 @@ class CandidateEvaluationOrchestrator:
 
     @trace_stage("TechnicalTendencyClassifier")
     async def _technical_tendency_classifier(self, job_id: str, inputs: dict, correlation_id: str) -> dict:
+        # Rule-based layer: score tendencies from detected technologies and skills
+        repo_report = inputs.get("repoIntelligenceReport", {})
+        tech_stack = repo_report.get("techStack", {}) if isinstance(repo_report, dict) else {}
+        detected_technologies = tech_stack.get("frameworks", []) + [tech_stack.get("primaryLanguage", "")]
+        detected_technologies += tech_stack.get("languages", {}).keys() if isinstance(tech_stack.get("languages"), dict) else []
+
+        skill_proficiencies = inputs.get("skillProficiencies", [])
+        skill_names = [sp.get("skill", "") for sp in (skill_proficiencies if isinstance(skill_proficiencies, list) else [])]
+
+        commit_languages = tech_stack.get("languages", {}) if isinstance(tech_stack.get("languages"), dict) else None
+
+        rule_primary, rule_confidence, rule_ranked = get_primary_tendency(
+            detected_technologies, skill_names, commit_languages
+        )
+
+        # Enrich inputs with rule-based pre-scores for AI refinement
+        enriched_inputs = {
+            **inputs,
+            "ruleBased": {
+                "primaryTendency": rule_primary,
+                "primaryConfidence": round(rule_confidence, 3),
+                "tendencyRanking": rule_ranked[:5],
+            },
+        }
+
         system = self.prompt_factory.get_system_prompt()
-        user = self.prompt_factory.get_technical_tendency_prompt(inputs)
+        user = self.prompt_factory.get_technical_tendency_prompt(enriched_inputs)
         raw, telemetry = await self.claude_service.analyze_repo_with_telemetry(system, user, correlation_id)
         data = self._extract_json(raw, correlation_id)
+
+        # Hybrid merge: if AI confidence is low (<0.5) and rule confidence is high (>0.7),
+        # use rule-based result as the primary
+        ai_confidence = float(data.get("primaryConfidence", 0))
+        if ai_confidence < 0.5 and rule_confidence > 0.7:
+            data["primaryTendency"] = rule_primary
+            data["primaryConfidence"] = round(rule_confidence, 3)
+            data.setdefault("tendencyRanking", rule_ranked)
+            data["_hybridSource"] = "rule_override"
+        else:
+            data["_hybridSource"] = "ai_primary"
+            data["_ruleBasedPrimary"] = rule_primary
+
         return self._ok(data, telemetry, "TechnicalTendencyClassifier")
 
     # ── L2-010 ────────────────────────────────────────────────────────────────
 
     @trace_stage("WorkingStyleClassifier")
     async def _working_style_classifier(self, job_id: str, inputs: dict, correlation_id: str) -> dict:
+        # Rule-based layer: infer working style from commit distribution
+        commit_intent = inputs.get("commitIntentData", {})
+        commit_timeline = inputs.get("commitTimelineData", {})
+
+        # Extract commit messages from both sources
+        commit_messages: list[str] = []
+        if isinstance(commit_intent, dict):
+            commit_messages += commit_intent.get("commitMessages", [])
+            # Also accept flat list of dicts with 'message' key
+            for item in commit_intent.get("commits", []):
+                if isinstance(item, dict):
+                    commit_messages.append(item.get("message", ""))
+        if isinstance(commit_timeline, dict):
+            for item in commit_timeline.get("commits", []):
+                if isinstance(item, dict):
+                    commit_messages.append(item.get("message", ""))
+
+        branch_names: list[str] = []
+        if isinstance(commit_intent, dict):
+            branch_names = commit_intent.get("branchNames", [])
+
+        rule_primary, rule_confidence, rule_distribution = get_primary_working_style(
+            commit_messages, branch_names
+        )
+
+        enriched_inputs = {
+            **inputs,
+            "ruleBased": {
+                "primaryWorkingStyle": rule_primary,
+                "styleConfidence": round(rule_confidence, 3),
+                "styleDistribution": rule_distribution,
+                "analyzedCommitCount": len(commit_messages),
+            },
+        }
+
         system = self.prompt_factory.get_system_prompt()
-        user = self.prompt_factory.get_working_style_prompt(inputs)
+        user = self.prompt_factory.get_working_style_prompt(enriched_inputs)
         raw, telemetry = await self.claude_service.analyze_repo_with_telemetry(system, user, correlation_id)
         data = self._extract_json(raw, correlation_id)
+
+        # If we had enough commits to be confident, trust rule-based primary
+        if len(commit_messages) >= 20 and rule_confidence >= 0.5:
+            ai_style_confidence = float(data.get("styleConfidence", 0))
+            if ai_style_confidence < 0.4:
+                data["primaryWorkingStyle"] = rule_primary
+                data["styleConfidence"] = round(rule_confidence, 3)
+                data.setdefault("styleDistribution", rule_distribution)
+                data["_hybridSource"] = "rule_override"
+            else:
+                data["_hybridSource"] = "ai_primary"
+                data["_ruleBasedStyle"] = rule_primary
+        else:
+            data["_hybridSource"] = "ai_primary_insufficient_commits"
+            data["_ruleBasedStyle"] = rule_primary
+
         return self._ok(data, telemetry, "WorkingStyleClassifier")
 
     # ── L2-011 (deterministic rule-based) ────────────────────────────────────
@@ -428,3 +625,37 @@ def _score_to_label(score: float) -> str:
     if score >= 46:
         return "Middle"
     return "Junior"
+
+
+_LEVEL_ORDER = ["L1", "L2", "L3", "L4", "L5"]
+_LEVEL_LABELS = {"L1": "Junior", "L2": "Middle", "L3": "Senior", "L4": "Staff", "L5": "Principal"}
+
+
+def _score_to_level(score: float) -> tuple[str, str]:
+    """Map a numeric score to (level_code, level_label) per threshold spec."""
+    if score >= 93:
+        level = "L5"
+    elif score >= 83:
+        level = "L4"
+    elif score >= 66:
+        level = "L3"
+    elif score >= 46:
+        level = "L2"
+    else:
+        level = "L1"
+    return level, _LEVEL_LABELS[level]
+
+
+def _is_boundary_score(score: float, margin: float = 3.0) -> bool:
+    """True if the score is within `margin` points of a level boundary."""
+    boundaries = [46.0, 66.0, 83.0, 93.0]
+    return any(abs(score - b) <= margin for b in boundaries)
+
+
+def _is_adjacent_or_same_level(level_a: str, level_b: str) -> bool:
+    """True if the two level codes are the same or one step apart."""
+    if level_a not in _LEVEL_ORDER or level_b not in _LEVEL_ORDER:
+        return True  # unknown level — don't override
+    idx_a = _LEVEL_ORDER.index(level_a)
+    idx_b = _LEVEL_ORDER.index(level_b)
+    return abs(idx_a - idx_b) <= 1
