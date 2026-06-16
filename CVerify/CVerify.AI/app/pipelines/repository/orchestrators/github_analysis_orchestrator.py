@@ -62,8 +62,8 @@ class CvSynthesisContract(BaseModel):
     @classmethod
     def validate_summary_length(cls, v: str) -> str:
         # Hard validation bounds to reject extreme outliers, keeping the orchestrator retry loop safe.
-        if len(v) < 100:
-            raise ValueError("CV summary is too short (must be at least 100 characters).")
+        if len(v) < 25:
+            raise ValueError("CV summary is too short (must be at least 25 characters).")
         if len(v) > 550:
             raise ValueError("CV summary is too long (must be under 550 characters).")
         return v
@@ -108,6 +108,114 @@ class GitHubAnalysisOrchestrator(IGitHubAnalysisOrchestrator):
         self.cv_prompt_factory = CvPromptFactory()
         self.claude_service = ClaudeService()
         self.redis_client = redis.from_url(settings.redis_url, decode_responses=True)
+
+    def _prioritize_skills(self, skills: List[str]) -> List[str]:
+        # Set of common tools, platforms, databases, and infra to deprioritize
+        deprioritized_keywords = {
+            "docker", "kubernetes", "k8s", "git", "github", "gitlab", "ci/cd", "cicd", 
+            "nginx", "eslint", "prettier", "webpack", "vite", "babel", "jest", "cypress", 
+            "npm", "yarn", "pnpm", "cmake", "make", "gradle", "maven", "jenkins", 
+            "github actions", "actions", "terraform", "ansible", "bash", "shell", 
+            "powershell", "sonar", "sonarqube", "husky", "jira", "confluence", "slack"
+        }
+        
+        high_priority = []
+        low_priority = []
+        
+        for skill in skills:
+            if not skill:
+                continue
+            skill_clean = skill.strip()
+            skill_lower = skill_clean.lower()
+            is_low = False
+            for dep in deprioritized_keywords:
+                if dep == skill_lower or f" {dep} " in f" {skill_lower} " or skill_lower.endswith(f" {dep}") or skill_lower.startswith(f"{dep} "):
+                    is_low = True
+                    break
+            
+            if is_low:
+                low_priority.append(skill_clean)
+            else:
+                high_priority.append(skill_clean)
+                
+        # Remove duplicates case-insensitively while preserving order
+        seen = set()
+        ordered = []
+        for s in (high_priority + low_priority):
+            s_lower = s.lower()
+            if s_lower not in seen:
+                seen.add(s_lower)
+                ordered.append(s)
+                
+        return ordered[:8]
+
+    def _normalize_cv_synthesis(self, parsed_data: dict, skills: List[str]) -> dict:
+        # 1. Project summary normalization
+        summary = parsed_data.get("summary", "").strip()
+        if summary:
+            # Keep only the first sentence
+            import re
+            sentences = re.split(r'(?<=[.!?])\s+', summary)
+            if sentences:
+                summary = sentences[0]
+            # Truncate summary if still too long (max 150 characters)
+            if len(summary) > 150:
+                truncated = summary[:147]
+                last_space = truncated.rfind(' ')
+                if last_space > 0:
+                    summary = truncated[:last_space] + "..."
+                else:
+                    summary = truncated + "..."
+            parsed_data["summary"] = summary
+
+        # 2. Highlight/Contribution bullets normalization
+        raw_highlights = parsed_data.get("highlights", [])
+        
+        # Generic/low-value phrases to filter out if we have better ones
+        low_value_patterns = [
+            "updated documentation", "fixed bugs", "configured tooling", "cleaned code",
+            "code cleanup", "minor fixes", "adjusted spacing", "configured eslint",
+            "prettier configuration", "readme update", "maintenance", "refactored imports",
+            "fixed lint", "version bump", "dependency update", "maintain code quality"
+        ]
+        
+        high_value_bullets = []
+        low_value_bullets = []
+        
+        for h in raw_highlights:
+            if not isinstance(h, dict):
+                continue
+            sig = h.get("signal", "").strip()
+            if not sig:
+                continue
+                
+            # Keep only the first sentence
+            import re
+            sentences = re.split(r'(?<=[.!?])\s+', sig)
+            if sentences:
+                sig = sentences[0]
+                
+            sig_lower = sig.lower()
+            is_low_value = any(pat in sig_lower for pat in low_value_patterns)
+            
+            if is_low_value:
+                low_value_bullets.append({"signal": sig, "impact": ""})
+            else:
+                high_value_bullets.append({"signal": sig, "impact": ""})
+                
+        # Combine bullets, prioritizing high value
+        selected_bullets = high_value_bullets + low_value_bullets
+        
+        # Cap at 4 bullet points
+        selected_bullets = selected_bullets[:4]
+        
+        # Fallback if empty
+        if not selected_bullets:
+            selected_bullets = [{"signal": "Contributed to codebase features and implementation.", "impact": ""}]
+            
+        parsed_data["highlights"] = selected_bullets
+        parsed_data["skills"] = skills
+        return parsed_data
 
     async def publish_task_event(self, job_id: str, task_type: str, message: str, level: str = "Info"):
         logger_func = logger.info if level.lower() == "info" else logger.warning if level.lower() == "warning" else logger.error
@@ -1232,6 +1340,9 @@ class GitHubAnalysisOrchestrator(IGitHubAnalysisOrchestrator):
         if not skills:
             skills = meta.get("technologies", [])
 
+        # Prioritize core technologies and cap at 8
+        skills = self._prioritize_skills(skills)
+
         # Read CommitIntelligence result
         commits_file = os.path.join(job_dir, "CommitIntelligence_result.json")
         if os.path.exists(commits_file):
@@ -1274,9 +1385,9 @@ class GitHubAnalysisOrchestrator(IGitHubAnalysisOrchestrator):
         # Safe default values builder function (no LLM fallback path)
         def compile_deterministic_fallback() -> dict:
             fallback_title = f"{classification} Developer" if classification != "Unknown" else "Software Developer"
-            fallback_highlights = [{"signal": f.get("finding", ""), "impact": f.get("impact", "positive")} for f in findings]
+            fallback_highlights = [{"signal": f.get("finding", ""), "impact": ""} for f in findings[:4]]
             if not fallback_highlights:
-                fallback_highlights = [{"signal": "Contributed to repository codebase.", "impact": "positive"}]
+                fallback_highlights = [{"signal": "Contributed to repository codebase.", "impact": ""}]
             return {
                 "schemaVersion": "v2",
                 "title": fallback_title,
@@ -1325,7 +1436,10 @@ class GitHubAnalysisOrchestrator(IGitHubAnalysisOrchestrator):
                 telemetry = attempt_telemetry
                 parsed = self._extract_json(raw_text, correlation_id)
                 
-                # Validation check using Pydantic model (enforces hard validation boundaries: [100, 550])
+                # Apply deterministic formatting safeguards and normalization
+                parsed = self._normalize_cv_synthesis(parsed, skills)
+                
+                # Validation check using Pydantic model
                 CvSynthesisContract.model_validate(parsed)
                 cv_summary = parsed.get("summary", "")
 
@@ -1333,14 +1447,14 @@ class GitHubAnalysisOrchestrator(IGitHubAnalysisOrchestrator):
                 import difflib
                 similarity = difflib.SequenceMatcher(None, general_repo_summary.lower(), cv_summary.lower()).ratio()
 
-                # Soft warning range: Target is [250, 450] characters.
-                is_invalid_length = not (250 <= len(cv_summary) <= 450)
+                # Soft warning range: Target is [30, 200] characters.
+                is_invalid_length = not (30 <= len(cv_summary) <= 200)
                 is_too_similar = similarity > 0.6
 
                 if (is_invalid_length or is_too_similar) and attempt < max_attempts:
                     reasons = []
                     if is_invalid_length:
-                        reasons.append(f"length of {len(cv_summary)} characters is outside target range [250, 450]")
+                        reasons.append(f"length of {len(cv_summary)} characters is outside target range [30, 200]")
                     if is_too_similar:
                         reasons.append(f"similarity ratio of {similarity:.2f} is too high (> 0.6)")
                     
@@ -1352,7 +1466,7 @@ class GitHubAnalysisOrchestrator(IGitHubAnalysisOrchestrator):
                 if is_invalid_length or is_too_similar:
                     reasons = []
                     if is_invalid_length:
-                        reasons.append(f"length {len(cv_summary)} is outside [250, 450]")
+                        reasons.append(f"length {len(cv_summary)} is outside [30, 200]")
                     if is_too_similar:
                         reasons.append(f"similarity {similarity:.2f} is high")
                     logger.warning(
@@ -1366,7 +1480,7 @@ class GitHubAnalysisOrchestrator(IGitHubAnalysisOrchestrator):
                 if attempt < max_attempts:
                     # Append error details to user prompt for self-correction retry
                     user_prompt += f"\n\nYOUR PREVIOUS RESPONSE FAILED VALIDATION: {str(e)}\n"
-                    user_prompt += "Please fix the structure, adjust length to 250-450 characters, and ensure CV summary uses completely different phrasing than any general summary. Return ONLY valid JSON."
+                    user_prompt += "Please fix the structure, adjust length to 30-200 characters, and ensure CV summary uses completely different phrasing than any general summary. Return ONLY valid JSON."
                 else:
                     await self.publish_task_event(job_id, "CvSynthesis", "Validation failed twice. Falling back to deterministic builder.", "Warning")
 
@@ -1427,7 +1541,7 @@ class GitHubAnalysisOrchestrator(IGitHubAnalysisOrchestrator):
     def _empty_result(self, data: dict) -> dict:
         return {"data": data, "telemetry": None, "events": []}
 
-    # ── File path → complexity level taxonomy (research doc §5.3) ────────────
+    # â”€â”€ File path â†’ complexity level taxonomy (research doc Â§5.3) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
     # Ordered by specificity: most specific first so that overlapping patterns
     # resolve to the highest applicable level.
@@ -1459,19 +1573,19 @@ class GitHubAnalysisOrchestrator(IGitHubAnalysisOrchestrator):
                 return label, level
         return "General Code", 1
 
-    # ── L1-003 CommitDiff ────────────────────────────────────────────────────
+    # â”€â”€ L1-003 CommitDiff â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
     @trace_stage("CommitDiff")
     async def analyze_commit_diff(self, job_id: str, encrypted_token: str, correlation_id: str) -> dict:
         """Diff-First pipeline: parse git diffs and map file paths to capability signals.
-        Intentionally avoids using commit messages as the primary signal (§3.6)."""
+        Intentionally avoids using commit messages as the primary signal (Â§3.6)."""
         import subprocess, re
         extra_log = {"correlation_id": correlation_id}
         meta = self._read_meta(job_id)
         clone_dir = self._clone_dir(job_id)
 
         if not meta.get("is_cloned") or not os.path.exists(os.path.join(clone_dir, ".git")):
-            await self.publish_task_event(job_id, "CommitDiff", "No cloned repo — skipping diff parsing.")
+            await self.publish_task_event(job_id, "CommitDiff", "No cloned repo â€” skipping diff parsing.")
             return self._empty_result({"commits": [], "total_parsed": 0, "capability_signals": []})
 
         await self.publish_task_event(job_id, "CommitDiff", "Reading commit hashes (top 50 non-merge commits)...")
@@ -1497,7 +1611,7 @@ class GitHubAnalysisOrchestrator(IGitHubAnalysisOrchestrator):
         for entry in commit_entries[:30]:
             h = entry["hash"]
 
-            # Files changed (structural diff — not message)
+            # Files changed (structural diff â€” not message)
             files_proc = await asyncio.to_thread(subprocess.run,
                 ["git", "diff-tree", "--no-commit-id", "-r", "--name-only", h],
                 cwd=clone_dir, capture_output=True, text=True, errors="ignore"
@@ -1515,7 +1629,7 @@ class GitHubAnalysisOrchestrator(IGitHubAnalysisOrchestrator):
             lines_added = int((re.search(r"(\d+) insertion", stat_line) or ["", 0])[1] or 0)
             lines_deleted = int((re.search(r"(\d+) deletion", stat_line) or ["", 0])[1] or 0)
 
-            # Map files → capability (Diff-First, §3.6 approach)
+            # Map files â†’ capability (Diff-First, Â§3.6 approach)
             commit_capabilities = []
             seen_caps: set[str] = set()
             for f in files_changed:
@@ -1536,7 +1650,7 @@ class GitHubAnalysisOrchestrator(IGitHubAnalysisOrchestrator):
             elif lines_added > 0 and lines_deleted > lines_added * 0.8:
                 inferred_type = "refactor"
 
-            # Cross-validate message vs inferred type (flag mismatch, §3.6)
+            # Cross-validate message vs inferred type (flag mismatch, Â§3.6)
             msg_lower = entry["message"].lower()
             message_type_hint = (
                 "bugfix" if any(w in msg_lower for w in ["fix", "bug", "hotfix", "patch"]) else
@@ -1565,7 +1679,7 @@ class GitHubAnalysisOrchestrator(IGitHubAnalysisOrchestrator):
         )
 
         await self.publish_task_event(job_id, "CommitDiff",
-            f"Parsed {len(analyzed_commits)} commits — {len(capability_signals)} capability signals detected.")
+            f"Parsed {len(analyzed_commits)} commits â€” {len(capability_signals)} capability signals detected.")
 
         return {
             "data": {
@@ -1583,11 +1697,11 @@ class GitHubAnalysisOrchestrator(IGitHubAnalysisOrchestrator):
             }]
         }
 
-    # ── L1-007 CommitTimeline ────────────────────────────────────────────────
+    # â”€â”€ L1-007 CommitTimeline â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
     @trace_stage("CommitTimeline")
     async def analyze_commit_timeline(self, job_id: str, encrypted_token: str, correlation_id: str) -> dict:
-        """Temporal analysis: commit frequency, working patterns, evolution signals (§3.5)."""
+        """Temporal analysis: commit frequency, working patterns, evolution signals (Â§3.5)."""
         import subprocess, re
         from datetime import datetime, timezone
         meta = self._read_meta(job_id)
@@ -1660,7 +1774,7 @@ class GitHubAnalysisOrchestrator(IGitHubAnalysisOrchestrator):
         base_freq = min(100.0, commits_per_week * 10)
         commit_frequency_score = round(max(0.0, base_freq - consistency_penalty), 1)
 
-        # Feature complexity growth: rough proxy — ratio of commits touching >5 files
+        # Feature complexity growth: rough proxy â€” ratio of commits touching >5 files
         multi_file_ratio = 0.0  # populated later by CommitDiff if available
         diff_cache = self._read_task_cache(job_id, "CommitDiff")
         if diff_cache.get("commits"):
@@ -1709,11 +1823,11 @@ class GitHubAnalysisOrchestrator(IGitHubAnalysisOrchestrator):
             }]
         }
 
-    # ── L1-009 CommitIntent ──────────────────────────────────────────────────
+    # â”€â”€ L1-009 CommitIntent â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
     @trace_stage("CommitIntent")
     async def analyze_commit_intent(self, job_id: str, encrypted_token: str, correlation_id: str) -> dict:
-        """AI inference of developer intent from diff content only (Diff-First §3.6)."""
+        """AI inference of developer intent from diff content only (Diff-First Â§3.6)."""
         meta = self._read_meta(job_id)
         if not meta.get("is_cloned"):
             return self._empty_result({"intents": [], "dominant_intent": "unknown", "capability_profile": []})
@@ -1727,7 +1841,7 @@ class GitHubAnalysisOrchestrator(IGitHubAnalysisOrchestrator):
 
         await self.publish_task_event(job_id, "CommitIntent", "Inferring developer intent from diff patterns (AI)...")
 
-        # Compact diff summary for LLM — capped to avoid token bloat
+        # Compact diff summary for LLM â€” capped to avoid token bloat
         diff_summary_lines = []
         for c in commits[:15]:
             files = ", ".join(c.get("files_changed", [])[:5])
@@ -1742,10 +1856,10 @@ class GitHubAnalysisOrchestrator(IGitHubAnalysisOrchestrator):
         user_prompt = (
             f"Repository: {meta.get('repo_owner','?')}/{meta.get('repo_name','?')}\n"
             f"Tech stack: {', '.join(meta.get('technologies', []))}\n\n"
-            f"COMMIT DIFF SUMMARY (top 15 commits, classified from file paths — NOT from messages):\n{diff_summary}\n\n"
+            f"COMMIT DIFF SUMMARY (top 15 commits, classified from file paths â€” NOT from messages):\n{diff_summary}\n\n"
             f"Detected capability signals (by frequency): {top_caps}\n\n"
             "Based ONLY on the file paths, lines changed, and capability signals above "
-            "(ignore commit messages — they are unreliable), produce a JSON report:\n"
+            "(ignore commit messages â€” they are unreliable), produce a JSON report:\n"
             "{\n"
             '  "dominant_intent": "<feature_builder|system_designer|problem_solver|maintenance|performance|research>",\n'
             '  "confidence": <0.0-1.0>,\n'
@@ -1780,11 +1894,11 @@ class GitHubAnalysisOrchestrator(IGitHubAnalysisOrchestrator):
             }]
         }
 
-    # ── L1-010 Complexity ────────────────────────────────────────────────────
+    # â”€â”€ L1-010 Complexity â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
     @trace_stage("Complexity")
     async def analyze_complexity(self, job_id: str, encrypted_token: str, correlation_id: str) -> dict:
-        """Cyclomatic + Cognitive Complexity per function/method via lizard AST walker (§5.3).
+        """Cyclomatic + Cognitive Complexity per function/method via lizard AST walker (Â§5.3).
         Aggregates to module-level and repo-level scores."""
         meta = self._read_meta(job_id)
         clone_dir = self._clone_dir(job_id)
@@ -1801,7 +1915,7 @@ class GitHubAnalysisOrchestrator(IGitHubAnalysisOrchestrator):
         try:
             import lizard
         except ImportError:
-            await self.publish_task_event(job_id, "Complexity", "lizard not installed — skipping AST analysis.")
+            await self.publish_task_event(job_id, "Complexity", "lizard not installed â€” skipping AST analysis.")
             return self._empty_result({
                 "avg_cyclomatic": 0, "avg_cognitive": 0,
                 "high_complexity_functions": [], "module_scores": {},
@@ -1828,7 +1942,7 @@ class GitHubAnalysisOrchestrator(IGitHubAnalysisOrchestrator):
 
             for func in file_info.function_list:
                 cc = func.cyclomatic_complexity
-                # lizard does not expose cognitive complexity directly — approximate
+                # lizard does not expose cognitive complexity directly â€” approximate
                 # as CC + nesting_depth * 2 (simplified proxy matching SonarQube heuristic)
                 cognitive = cc + getattr(func, "max_nesting_depth", 0) * 2
 
@@ -1904,11 +2018,11 @@ class GitHubAnalysisOrchestrator(IGitHubAnalysisOrchestrator):
             }]
         }
 
-    # ── L1-012 GitBlame ──────────────────────────────────────────────────────
+    # â”€â”€ L1-012 GitBlame â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
     @trace_stage("GitBlame")
     async def analyze_git_blame(self, job_id: str, encrypted_token: str, correlation_id: str) -> dict:
-        """Per-file authorship via git blame on the most-changed files (§4.2 cregit approach)."""
+        """Per-file authorship via git blame on the most-changed files (Â§4.2 cregit approach)."""
         import subprocess
         meta = self._read_meta(job_id)
         clone_dir = self._clone_dir(job_id)
@@ -2010,7 +2124,7 @@ class GitHubAnalysisOrchestrator(IGitHubAnalysisOrchestrator):
             }]
         }
 
-    # ── L1-013 CloneDetection ────────────────────────────────────────────────
+    # â”€â”€ L1-013 CloneDetection â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
     # Source code extensions to fingerprint (exclude generated/binary files)
     _CODE_EXTENSIONS = {
@@ -2021,7 +2135,7 @@ class GitHubAnalysisOrchestrator(IGitHubAnalysisOrchestrator):
 
     @trace_stage("CloneDetection")
     async def analyze_clone_detection(self, job_id: str, encrypted_token: str, correlation_id: str) -> dict:
-        """SimHash / MinHash LSH clone detection on source code content (§4.4 spec).
+        """SimHash / MinHash LSH clone detection on source code content (Â§4.4 spec).
         Detects near-duplicate blocks, Type-2/3 clones, and inter-file copy-paste.
         Falls back to commit-pattern heuristics when datasketch is unavailable."""
         import subprocess, re
@@ -2043,7 +2157,7 @@ class GitHubAnalysisOrchestrator(IGitHubAnalysisOrchestrator):
                 "flags": flags, "clone_pairs": [], "clone_similarity_score": 0.0
             })
 
-        # ── Stage 1: commit-pattern pre-filter (fast, no library dependency) ──
+        # â”€â”€ Stage 1: commit-pattern pre-filter (fast, no library dependency) â”€â”€
         log_proc = await asyncio.to_thread(subprocess.run,
             ["git", "log", "--no-merges", "--format=%H", "--reverse"],
             cwd=clone_dir, capture_output=True, text=True, errors="ignore"
@@ -2084,7 +2198,7 @@ class GitHubAnalysisOrchestrator(IGitHubAnalysisOrchestrator):
             flags.append(f"high_commit_velocity:{max_day_commits}_commits_one_day")
             risk_score += 20.0
 
-        # ── Stage 2: MinHash LSH on code content (SimHash-equivalent for text) ──
+        # â”€â”€ Stage 2: MinHash LSH on code content (SimHash-equivalent for text) â”€â”€
         await self.publish_task_event(job_id, "CloneDetection",
             "Building MinHash fingerprints for source files...")
 
@@ -2189,11 +2303,11 @@ class GitHubAnalysisOrchestrator(IGitHubAnalysisOrchestrator):
             }]
         }
 
-    # ── L1-014 AiGeneratedCode ───────────────────────────────────────────────
+    # â”€â”€ L1-014 AiGeneratedCode â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
     @trace_stage("AiGeneratedCode")
     async def analyze_ai_generated_code(self, job_id: str, encrypted_token: str, correlation_id: str) -> dict:
-        """Detect AI-generated code indicators: large single-burst commits, no revision history (§6.5)."""
+        """Detect AI-generated code indicators: large single-burst commits, no revision history (Â§6.5)."""
         meta = self._read_meta(job_id)
         diff_cache = self._read_task_cache(job_id, "CommitDiff")
         commits = diff_cache.get("commits", [])
@@ -2213,7 +2327,7 @@ class GitHubAnalysisOrchestrator(IGitHubAnalysisOrchestrator):
                     "flag": "large_single_burst",
                     "commit": c["hash"],
                     "lines_added": c.get("lines_added", 0),
-                    "note": "Large addition with minimal revision — potential AI dump"
+                    "note": "Large addition with minimal revision â€” potential AI dump"
                 })
 
         # Signal 2: zero revision on large features (added, never touched again)
@@ -2229,17 +2343,17 @@ class GitHubAnalysisOrchestrator(IGitHubAnalysisOrchestrator):
                 flags.append({
                     "flag": "high_single_touch_ratio",
                     "ratio": single_touch_ratio,
-                    "note": f"{single_touch_ratio:.0%} of files touched only once — suggests copy-paste or AI generation"
+                    "note": f"{single_touch_ratio:.0%} of files touched only once â€” suggests copy-paste or AI generation"
                 })
 
-        # Signal 3: intent conflicts from CommitDiff (message ≠ diff)
+        # Signal 3: intent conflicts from CommitDiff (message â‰  diff)
         intent_conflicts = [c for c in commits if c.get("intent_conflict")]
         if len(intent_conflicts) > 3:
             ai_risk_score += min(20.0, len(intent_conflicts) * 4.0)
             flags.append({
                 "flag": "intent_message_conflicts",
                 "count": len(intent_conflicts),
-                "note": "Commit messages don't match diff content — possible obfuscation"
+                "note": "Commit messages don't match diff content â€” possible obfuscation"
             })
 
         ai_risk_score = min(100.0, ai_risk_score)
@@ -2264,36 +2378,36 @@ class GitHubAnalysisOrchestrator(IGitHubAnalysisOrchestrator):
             }]
         }
 
-    # ── L1-015 Ownership ────────────────────────────────────────────────────
+    # â”€â”€ L1-015 Ownership â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
-    # Weights for the 4-component ownership formula (§4.3 spec)
-    # AuthorshipRatio×w1 + (1−CloneSimilarity)×w2 + OriginalityScore×w3 + MaintenanceContribution×w4
-    _OWNERSHIP_W1 = 0.40  # AuthorshipRatio — git blame line ownership
-    _OWNERSHIP_W2 = 0.25  # (1 − CloneSimilarity) — penalise near-duplicate code
-    _OWNERSHIP_W3 = 0.20  # OriginalityScore — commit-based originality
-    _OWNERSHIP_W4 = 0.15  # MaintenanceContribution — refactor/fix commits
+    # Weights for the 4-component ownership formula (Â§4.3 spec)
+    # AuthorshipRatioÃ—w1 + (1âˆ’CloneSimilarity)Ã—w2 + OriginalityScoreÃ—w3 + MaintenanceContributionÃ—w4
+    _OWNERSHIP_W1 = 0.40  # AuthorshipRatio â€” git blame line ownership
+    _OWNERSHIP_W2 = 0.25  # (1 âˆ’ CloneSimilarity) â€” penalise near-duplicate code
+    _OWNERSHIP_W3 = 0.20  # OriginalityScore â€” commit-based originality
+    _OWNERSHIP_W4 = 0.15  # MaintenanceContribution â€” refactor/fix commits
 
     @trace_stage("Ownership")
     async def analyze_ownership(self, job_id: str, encrypted_token: str, correlation_id: str) -> dict:
-        """Ownership Score = AuthorshipRatio×w1 + (1−CloneSimilarity)×w2 +
-        OriginalityScore×w3 + MaintenanceContribution×w4  (§4.3 spec formula)."""
+        """Ownership Score = AuthorshipRatioÃ—w1 + (1âˆ’CloneSimilarity)Ã—w2 +
+        OriginalityScoreÃ—w3 + MaintenanceContributionÃ—w4  (Â§4.3 spec formula)."""
         meta = self._read_meta(job_id)
         blame_cache = self._read_task_cache(job_id, "GitBlame")
         commit_cache = self._read_task_cache(job_id, "CommitIntelligence")
         clone_cache = self._read_task_cache(job_id, "CloneDetection")
         timeline_cache = self._read_task_cache(job_id, "CommitTimeline")
 
-        # ── w1: AuthorshipRatio — from git blame ──────────────────────────────
+        # â”€â”€ w1: AuthorshipRatio â€” from git blame â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
         authorship_ratio = float(
             blame_cache.get("overall_author_ratio",
                             meta.get("user_commit_ratio", 1.0))
         )
 
-        # ── w2: (1 − CloneSimilarity) — from MinHash clone detection ─────────
+        # â”€â”€ w2: (1 âˆ’ CloneSimilarity) â€” from MinHash clone detection â”€â”€â”€â”€â”€â”€â”€â”€â”€
         clone_similarity = float(clone_cache.get("clone_similarity_score", 0.0))
         originality_from_clone = 1.0 - clone_similarity
 
-        # ── w3: OriginalityScore — commit-authored lines vs total ─────────────
+        # â”€â”€ w3: OriginalityScore â€” commit-authored lines vs total â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
         commit_ratio = float(
             (commit_cache.get("ownership") or {}).get(
                 "user_commit_ratio", meta.get("user_commit_ratio", authorship_ratio)
@@ -2304,12 +2418,12 @@ class GitHubAnalysisOrchestrator(IGitHubAnalysisOrchestrator):
             commit_ratio *= 0.5
         originality_score = min(1.0, commit_ratio)
 
-        # ── w4: MaintenanceContribution — voluntary refactor/fix ratio ───────
+        # â”€â”€ w4: MaintenanceContribution â€” voluntary refactor/fix ratio â”€â”€â”€â”€â”€â”€â”€
         refactor_initiative = float(timeline_cache.get("refactor_initiative", 0.0))
         bug_fix_ratio = float(timeline_cache.get("bug_to_fix_ratio", 0.0))
         maintenance_contribution = min(1.0, (refactor_initiative + bug_fix_ratio) * 2.0)
 
-        # ── Weighted ownership score ──────────────────────────────────────────
+        # â”€â”€ Weighted ownership score â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
         raw_ownership = (
             authorship_ratio       * self._OWNERSHIP_W1 +
             originality_from_clone * self._OWNERSHIP_W2 +
@@ -2318,7 +2432,7 @@ class GitHubAnalysisOrchestrator(IGitHubAnalysisOrchestrator):
         )
         ownership_score = round(max(0.0, min(1.0, raw_ownership)), 4)
 
-        # ── Module-level ownership from GitBlame ──────────────────────────────
+        # â”€â”€ Module-level ownership from GitBlame â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
         module_ownership: dict[str, float] = {}
         module_count: dict[str, int] = {}
         for fa in blame_cache.get("file_authorship", []):
@@ -2372,11 +2486,11 @@ class GitHubAnalysisOrchestrator(IGitHubAnalysisOrchestrator):
             }]
         }
 
-    # ── L1-017 SkillGraph ────────────────────────────────────────────────────
+    # â”€â”€ L1-017 SkillGraph â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
     @trace_stage("SkillGraph")
     async def analyze_skill_graph(self, job_id: str, encrypted_token: str, correlation_id: str) -> dict:
-        """Build Skill Evidence Graph: nodes=skills, edges=evidence links (§8.3 schema)."""
+        """Build Skill Evidence Graph: nodes=skills, edges=evidence links (Â§8.3 schema)."""
         meta = self._read_meta(job_id)
         if not meta.get("is_cloned"):
             return self._empty_result({"nodes": [], "edges": [], "skill_count": 0})
@@ -2467,9 +2581,9 @@ class GitHubAnalysisOrchestrator(IGitHubAnalysisOrchestrator):
             }]
         }
 
-    # ── L1-018 TrustScore ────────────────────────────────────────────────────
+    # â”€â”€ L1-018 TrustScore â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
-    # Trust Score formula weights per spec (§6.4):
+    # Trust Score formula weights per spec (Â§6.4):
     # Ownership 30% + Code Quality 25% + Complexity 20% + Commit Integrity 25%
     _TRUST_W_OWNERSHIP = 0.30
     _TRUST_W_QUALITY   = 0.25
@@ -2478,7 +2592,7 @@ class GitHubAnalysisOrchestrator(IGitHubAnalysisOrchestrator):
 
     @trace_stage("TrustScore")
     async def analyze_trust_score(self, job_id: str, encrypted_token: str, correlation_id: str) -> dict:
-        """Trust Score = Ownership×30% + CodeQuality×25% + Complexity×20% + CommitIntegrity×25% (§6.4)."""
+        """Trust Score = OwnershipÃ—30% + CodeQualityÃ—25% + ComplexityÃ—20% + CommitIntegrityÃ—25% (Â§6.4)."""
         meta = self._read_meta(job_id)
 
         ownership_cache  = self._read_task_cache(job_id, "Ownership")
@@ -2489,8 +2603,8 @@ class GitHubAnalysisOrchestrator(IGitHubAnalysisOrchestrator):
         ai_code_cache    = self._read_task_cache(job_id, "AiGeneratedCode")
         intent_cache     = self._read_task_cache(job_id, "CommitIntent")
 
-        # ── Dimension 1: Ownership (30%) ─────────────────────────────────────
-        # Raw ownership score from L1-015 (already 0–1 scale); convert to 0–100
+        # â”€â”€ Dimension 1: Ownership (30%) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+        # Raw ownership score from L1-015 (already 0â€“1 scale); convert to 0â€“100
         ownership_raw = float(ownership_cache.get("ownership_score", meta.get("user_commit_ratio", 0.7)))
         clone_risk = float(clone_cache.get("clone_risk_score", 0.0))
         ai_risk = float(ai_code_cache.get("ai_risk_score", 0.0))
@@ -2498,13 +2612,13 @@ class GitHubAnalysisOrchestrator(IGitHubAnalysisOrchestrator):
             ownership_raw * 100 - clone_risk * 0.4 - ai_risk * 0.3
         )), 1)
 
-        # ── Dimension 2: Code Quality (25%) ──────────────────────────────────
+        # â”€â”€ Dimension 2: Code Quality (25%) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
         # Derive from L1-011 CodeQuality cache: test coverage proxy + code smells
         quality_score_raw = float((quality_cache.get("quality_score") or quality_cache.get("overall_score") or 65))
         has_tests = bool((quality_cache.get("testing") or {}).get("has_tests", False))
         quality_dim = round(min(100.0, quality_score_raw * (1.1 if has_tests else 0.85)), 1)
 
-        # ── Dimension 3: Complexity Appropriateness (20%) ────────────────────
+        # â”€â”€ Dimension 3: Complexity Appropriateness (20%) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
         # Reward moderate complexity (not trivially simple, not unreadably complex)
         repo_level = complexity_cache.get("repo_complexity_level", "medium")
         avg_cc = float(complexity_cache.get("avg_cyclomatic", 5.0))
@@ -2525,7 +2639,7 @@ class GitHubAnalysisOrchestrator(IGitHubAnalysisOrchestrator):
         complexity_penalty = min(25.0, high_ratio * 100)
         complexity_dim = round(max(0.0, complexity_base - complexity_penalty), 1)
 
-        # ── Dimension 4: Commit Integrity (25%) ──────────────────────────────
+        # â”€â”€ Dimension 4: Commit Integrity (25%) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
         # Combines timeline consistency + intent inference confidence + anti-farming signals
         freq_score = float(timeline_cache.get("commit_frequency_score", 50.0))
         burst_count = len(timeline_cache.get("burst_days", []))
@@ -2542,7 +2656,7 @@ class GitHubAnalysisOrchestrator(IGitHubAnalysisOrchestrator):
             (freq_score * 0.5 + intent_confidence * 0.5) - burst_penalty - integrity_adversarial
         )), 1)
 
-        # ── Weighted Trust Score ──────────────────────────────────────────────
+        # â”€â”€ Weighted Trust Score â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
         raw_trust = (
             ownership_dim       * self._TRUST_W_OWNERSHIP +
             quality_dim         * self._TRUST_W_QUALITY +
@@ -2594,11 +2708,11 @@ class GitHubAnalysisOrchestrator(IGitHubAnalysisOrchestrator):
             }]
         }
 
-    # ── L1-005 FeatureExtraction ─────────────────────────────────────────────
+    # â”€â”€ L1-005 FeatureExtraction â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
     @trace_stage("FeatureExtraction")
     async def analyze_feature_extraction(self, job_id: str, encrypted_token: str, correlation_id: str) -> dict:
-        """NLP-based feature identification from code structure + commit context (§1B spec).
+        """NLP-based feature identification from code structure + commit context (Â§1B spec).
         Combines file structure patterns, diff capability signals, and LLM inference."""
         meta = self._read_meta(job_id)
         if not meta.get("is_cloned"):
@@ -2678,11 +2792,11 @@ class GitHubAnalysisOrchestrator(IGitHubAnalysisOrchestrator):
             }]
         }
 
-    # ── L1-008 ArchitectureChange ────────────────────────────────────────────
+    # â”€â”€ L1-008 ArchitectureChange â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
     @trace_stage("ArchitectureChange")
     async def analyze_architecture_change(self, job_id: str, encrypted_token: str, correlation_id: str) -> dict:
-        """Detect major refactors and architectural changes from commit diffs (§1C spec).
+        """Detect major refactors and architectural changes from commit diffs (Â§1C spec).
         Evaluates before/after structural metrics to assess decision quality."""
         import subprocess, re
         meta = self._read_meta(job_id)
@@ -2742,7 +2856,7 @@ class GitHubAnalysisOrchestrator(IGitHubAnalysisOrchestrator):
                 # Assess change quality: renames + multi-module = proactive architecture improvement
                 quality = "improvement" if len(renames) >= 2 or file_count >= 10 else "neutral"
                 if "fix" in msg.lower() and file_count > 15:
-                    quality = "emergency_refactor"  # large change driven by bug — riskier
+                    quality = "emergency_refactor"  # large change driven by bug â€” riskier
 
                 arch_changes.append({
                     "hash": h[:8],
@@ -2788,11 +2902,11 @@ class GitHubAnalysisOrchestrator(IGitHubAnalysisOrchestrator):
             }]
         }
 
-    # ── L1-016 RepoIntelligenceReport ───────────────────────────────────────
+    # â”€â”€ L1-016 RepoIntelligenceReport â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
     @trace_stage("RepoIntelligenceReport")
     async def analyze_repo_intelligence_report(self, job_id: str, encrypted_token: str, correlation_id: str) -> dict:
-        """Aggregate all 1A–1E outputs into the final Repository Intelligence Report JSON (§1F spec).
+        """Aggregate all 1Aâ€“1E outputs into the final Repository Intelligence Report JSON (Â§1F spec).
         This is the primary output of Line 1 and the input for Line 2 (Candidate Evaluation)."""
         meta = self._read_meta(job_id)
 
@@ -2816,7 +2930,7 @@ class GitHubAnalysisOrchestrator(IGitHubAnalysisOrchestrator):
         trust       = self._read_task_cache(job_id, "TrustScore")
 
         await self.publish_task_event(job_id, "RepoIntelligenceReport",
-            "Composing Repository Intelligence Report from all 1A–1E outputs...")
+            "Composing Repository Intelligence Report from all 1Aâ€“1E outputs...")
 
         # Top capability signals for display
         top_capabilities = sorted(
@@ -2825,14 +2939,14 @@ class GitHubAnalysisOrchestrator(IGitHubAnalysisOrchestrator):
         )[:10]
 
         report = {
-            # ── Identity ──────────────────────────────────────────────────────
+            # â”€â”€ Identity â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
             "repo_id": f"{meta.get('repo_owner','')}/{meta.get('repo_name','')}",
             "repo_url": meta.get("repo_url", ""),
             "repo_type": meta.get("repo_type", "ORIGINAL_WORK"),
             "generated_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
             "schema_version": "2.0",
 
-            # ── 1A: Repo Ingestion ────────────────────────────────────────────
+            # â”€â”€ 1A: Repo Ingestion â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
             "ingestion": {
                 "language_distribution": meta.get("language_distribution", {}),
                 "file_count": meta.get("file_count", 0),
@@ -2842,7 +2956,7 @@ class GitHubAnalysisOrchestrator(IGitHubAnalysisOrchestrator):
                 "repo_size_kb": meta.get("repo_size_kb", 0),
             },
 
-            # ── 1B: Tech Stack + Features ─────────────────────────────────────
+            # â”€â”€ 1B: Tech Stack + Features â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
             "tech_stack": {
                 "technologies": meta.get("technologies", []),
                 "frameworks": (tech.get("frameworks") or []),
@@ -2861,7 +2975,7 @@ class GitHubAnalysisOrchestrator(IGitHubAnalysisOrchestrator):
                 "architectural_changes_count": arch_change.get("change_count", 0),
             },
 
-            # ── 1C: Commit Context ────────────────────────────────────────────
+            # â”€â”€ 1C: Commit Context â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
             "commit_analysis": {
                 "dominant_intent": intent.get("dominant_intent", "unknown"),
                 "intent_confidence": intent.get("confidence", 0),
@@ -2873,7 +2987,7 @@ class GitHubAnalysisOrchestrator(IGitHubAnalysisOrchestrator):
                 "working_patterns": timeline.get("working_patterns", {}),
             },
 
-            # ── 1D: Code Quality + Complexity ─────────────────────────────────
+            # â”€â”€ 1D: Code Quality + Complexity â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
             "code_quality": {
                 "overall_score": (quality.get("quality_score") or quality.get("overall_score") or 0),
                 "has_tests": (quality.get("testing") or {}).get("has_tests", False),
@@ -2886,7 +3000,7 @@ class GitHubAnalysisOrchestrator(IGitHubAnalysisOrchestrator):
                 "high_complexity_functions_count": len(complexity.get("high_complexity_functions", [])),
             },
 
-            # ── 1E: Ownership + Anti-Fraud ────────────────────────────────────
+            # â”€â”€ 1E: Ownership + Anti-Fraud â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
             "ownership": {
                 "ownership_score": ownership.get("ownership_score", 0),
                 "is_primary_author": ownership.get("is_primary_author", False),
@@ -2901,7 +3015,7 @@ class GitHubAnalysisOrchestrator(IGitHubAnalysisOrchestrator):
                 "ai_code_risk_level": ai_code.get("risk_level", "low"),
             },
 
-            # ── 1F: Outputs ───────────────────────────────────────────────────
+            # â”€â”€ 1F: Outputs â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
             "skill_evidence_graph": {
                 "skill_count": skill_graph.get("skill_count", 0),
                 "skills_summary": skill_graph.get("skills_summary", {}),
@@ -2914,7 +3028,7 @@ class GitHubAnalysisOrchestrator(IGitHubAnalysisOrchestrator):
             },
         }
 
-        # Eligibility gate (S-001 prerequisite: Ownership ≥ 30%, Commits ≥ 5, no heavy clone)
+        # Eligibility gate (S-001 prerequisite: Ownership â‰¥ 30%, Commits â‰¥ 5, no heavy clone)
         eligibility_passed = (
             ownership.get("ownership_score", 0) >= 0.30 and
             meta.get("total_commits", 0) >= 5 and

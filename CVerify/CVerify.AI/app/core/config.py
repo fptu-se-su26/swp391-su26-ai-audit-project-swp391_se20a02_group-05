@@ -15,7 +15,7 @@ class Settings(BaseSettings):
     client_id: str = Field("cverify-core", validation_alias="CLIENT_ID")
     host: str = Field("0.0.0.0", validation_alias="HOST")
     port: int = Field(8000, validation_alias="PORT")
-    redis_url: str = Field("redis://redis:6379/0", validation_alias="REDIS_URL")
+    redis_url: str = Field("redis://redis:6379/0", validation_alias="REDIS_URL")  # default to redis container hostname for compose
     claude_model: str = Field("claude-3-5-sonnet-20241022", validation_alias="CLAUDE_MODEL")
     ai_debug_tokens: bool = Field(False, validation_alias="AI_DEBUG_TOKENS")
     # URL of the CVerify.Core (.NET) backend — used by Line 2 to fetch Line 1 artifacts from DB

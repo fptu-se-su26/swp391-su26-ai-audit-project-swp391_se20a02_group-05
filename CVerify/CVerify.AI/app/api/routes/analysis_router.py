@@ -1,6 +1,6 @@
 import json
 import logging
-from typing import Optional
+from typing import Optional, List
 from fastapi import APIRouter, Depends
 from fastapi.responses import StreamingResponse, JSONResponse
 from pydantic import BaseModel
@@ -46,6 +46,12 @@ class AggregationRequest(BaseModel):
     partialResults: dict
     deleteWorkspace: bool = False
 
+
+class CandidateAssessmentRequest(BaseModel):
+    cv: dict
+    repositoryAssessments: List[dict]
+    backgroundRepositories: Optional[List[dict]] = None
+
 @router.post("/api/v1/analysis/orchestrate/stream")
 async def orchestrate_stream(
     request_data: AnalysisRequest,
@@ -70,6 +76,40 @@ async def orchestrate_stream(
             yield "data: [DONE]\n\n"
         except Exception as e:
             logger.error(f"Error during repository analysis flow: {e}", extra=extra_log)
+            err_payload = {
+                "status": "Failed",
+                "step": "Failed",
+                "message": str(e)
+            }
+            yield f"data: {json.dumps(err_payload)}\n\n"
+
+    return StreamingResponse(sse_generator(), media_type="text/event-stream")
+
+
+@router.post("/api/v1/candidate/assess/stream")
+async def assess_candidate_stream(
+    request_data: CandidateAssessmentRequest,
+    correlation_id: str = Depends(verify_hmac_signature)
+):
+    extra_log = {"correlation_id": correlation_id}
+    cv_id = request_data.cv.get("cvId", "unknown")
+    logger.info(f"Initiated candidate assessment stream request for CV: {cv_id}", extra=extra_log)
+
+    from app.pipelines.candidate.orchestrate_stream import CandidateAssessmentStreamOrchestrator
+    orchestrator = CandidateAssessmentStreamOrchestrator()
+
+    async def sse_generator():
+        try:
+            async for progress_event in orchestrator.orchestrate_async(
+                cv=request_data.cv,
+                repository_assessments=request_data.repositoryAssessments,
+                background_repositories=request_data.backgroundRepositories,
+                correlation_id=correlation_id
+            ):
+                yield f"data: {json.dumps(progress_event)}\n\n"
+            yield "data: [DONE]\n\n"
+        except Exception as e:
+            logger.error(f"Error during candidate assessment flow: {e}", extra=extra_log)
             err_payload = {
                 "status": "Failed",
                 "step": "Failed",
@@ -188,4 +228,85 @@ async def aggregate_results(
             status_code=400,
             content={"status": "Failed", "errorMessage": str(e)}
         )
+
+
+class RepositoryAssessRequest(BaseModel):
+    jobId: str
+    repositoryId: str
+
+
+@router.post("/api/v1/repository/assess")
+async def assess_repository(
+    request_data: RepositoryAssessRequest,
+    correlation_id: str = Depends(verify_hmac_signature)
+):
+    extra_log = {"correlation_id": correlation_id, "job_id": request_data.jobId}
+    logger.info(f"Initiated repository L2 assessment for job: {request_data.jobId}", extra=extra_log)
+
+    from app.core.clients.repo_intelligence_client import RepoIntelligenceClient
+    from app.core.services.claude_service import ClaudeService
+    from app.pipelines.shared.ai.prompts.candidate_prompt_factory import CandidatePromptFactory
+
+    client = RepoIntelligenceClient()
+    claude = ClaudeService()
+    prompt_factory = CandidatePromptFactory()
+
+    try:
+        # Fetch L1 artifacts
+        artifacts = await client.fetch_line1_artifacts(request_data.jobId)
+        
+        # Prepare inputs
+        inputs = {
+            **artifacts,
+            "repositoryId": request_data.repositoryId,
+            "jobId": request_data.jobId
+        }
+
+        system = prompt_factory.get_system_prompt()
+        user = prompt_factory.get_repository_assessment_prompt(inputs)
+
+        # Call AI
+        raw, telemetry = await claude.analyze_repo_with_telemetry(system, user, correlation_id)
+        
+        # Parse output JSON
+        def extract_json(text: str) -> dict:
+            text = text.strip()
+            first_brace = text.find('{')
+            last_brace = text.rfind('}')
+            if first_brace != -1 and last_brace != -1 and last_brace > first_brace:
+                candidate = text[first_brace:last_brace + 1]
+                try:
+                    return json.loads(candidate)
+                except Exception:
+                    pass
+            try:
+                import json_repair
+                repaired = json_repair.repair_json(text[first_brace:] if first_brace != -1 else text)
+                return json.loads(repaired)
+            except Exception as e:
+                raise ValueError(f"Failed to parse Claude JSON output: {e}")
+
+        data = extract_json(raw)
+
+        # Ensure repositoryId, repositoryName and verifiedCommitSha are populated if missing
+        if "repositoryId" not in data or not data["repositoryId"]:
+            data["repositoryId"] = request_data.repositoryId
+            
+        repo_report = artifacts.get("repoIntelligenceReport") or {}
+        if "repositoryName" not in data or not data["repositoryName"]:
+            meta = repo_report.get("meta", {})
+            data["repositoryName"] = meta.get("repo_name", "unknown")
+            
+        if "verifiedCommitSha" not in data or not data["verifiedCommitSha"]:
+            meta = repo_report.get("meta", {})
+            data["verifiedCommitSha"] = meta.get("commit_sha", "unknown")
+
+        return data
+    except Exception as e:
+        logger.exception(f"Error during repository assessment: {e}", extra=extra_log)
+        return JSONResponse(
+            status_code=400,
+            content={"status": "Failed", "errorMessage": str(e)}
+        )
+
 

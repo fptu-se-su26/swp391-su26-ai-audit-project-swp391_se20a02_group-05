@@ -29,6 +29,8 @@ public class ProfileService : IProfileService
     private readonly IUsernameService _usernameService;
     private readonly TimeProvider _timeProvider;
     private readonly IAppLogger _logger;
+    private readonly IProjectService _projectService;
+    private readonly ICvRepositoryIndexer _cvRepositoryIndexer;
 
     public ProfileService(
         ApplicationDbContext context,
@@ -36,7 +38,9 @@ public class ProfileService : IProfileService
         IStorageService storageService,
         IUsernameService usernameService,
         TimeProvider timeProvider,
-        IAppLogger logger)
+        IAppLogger logger,
+        IProjectService projectService,
+        ICvRepositoryIndexer cvRepositoryIndexer)
     {
         _context = context;
         _cacheService = cacheService;
@@ -44,6 +48,8 @@ public class ProfileService : IProfileService
         _usernameService = usernameService;
         _timeProvider = timeProvider;
         _logger = logger;
+        _projectService = projectService;
+        _cvRepositoryIndexer = cvRepositoryIndexer;
     }
 
     public async Task<ProfileResponse> GetProfileByUserIdAsync(Guid userId, CancellationToken cancellationToken = default)
@@ -126,6 +132,7 @@ public class ProfileService : IProfileService
         profile.RecruiterVisibility = request.RecruiterVisibility;
         profile.AiTalentDiscovery = request.AiTalentDiscovery;
         profile.UpdatedAt = DateTimeOffset.UtcNow;
+        profile.LastProfileUpdateAt = DateTimeOffset.UtcNow;
 
         var newSocialUrls = new List<string>();
         if (request.SocialLinks != null)
@@ -162,6 +169,15 @@ public class ProfileService : IProfileService
         catch (DbUpdateConcurrencyException ex)
         {
             throw new ProfileException(ProfileErrorCodes.ProfileConcurrencyConflict, "A concurrency conflict occurred. Please try again.", ex);
+        }
+
+        try
+        {
+            await _cvRepositoryIndexer.IndexUserCvRepositoriesAsync(userId, cancellationToken);
+        }
+        catch (Exception ex)
+        {
+            _logger.Log(LogLevel.Warning, "Profile", $"Failed to index CV repositories during profile update for user {userId}.", ex);
         }
 
         return MapToResponse(profile, newSocialUrls);
@@ -315,14 +331,23 @@ public class ProfileService : IProfileService
                   AND r.latest_analysis_status = 'Completed'
                   AND r.is_private = FALSE
                   AND r.is_enabled = TRUE
+                  AND r.is_accessible = TRUE
                 ORDER BY r.latest_analysis_completed_at_utc DESC", 
                 profile.UserId)
             .ToListAsync(cancellationToken);
 
+        var latestAssessment = await _context.CandidateAssessments
+            .Where(ca => ca.UserId == profile.UserId && ca.Status == "Completed")
+            .OrderByDescending(ca => ca.CompletedAtUtc)
+            .FirstOrDefaultAsync(cancellationToken);
+
+        bool hasCompletedAssessment = latestAssessment != null;
+        DateTimeOffset? lastAssessmentDate = latestAssessment?.CompletedAtUtc;
+
         double? avgTrustScore = null;
-        if (publicRepos.Any())
+        if (hasCompletedAssessment && latestAssessment != null)
         {
-            avgTrustScore = publicRepos.Average(r => r.TrustScore);
+            avgTrustScore = latestAssessment.OverallScore;
         }
 
         var publicRepoDtos = publicRepos.Select(r => new PublicRepositoryDto(
@@ -338,6 +363,147 @@ public class ProfileService : IProfileService
             r.LatestAnalysisCompletedAtUtc
         )).ToList();
 
+        await _projectService.UpgradeRepositoryLinkedProjectsAsync(profile.UserId, cancellationToken);
+
+        var projects = await _context.ProjectEntries
+            .Include(p => p.RepositoryLinks)
+                .ThenInclude(l => l.SourceCodeRepository)
+            .Include(p => p.Technologies)
+            .Include(p => p.Contributions)
+            .Where(p => p.UserId == profile.UserId)
+            .OrderBy(p => p.DisplayOrder)
+            .ToListAsync(cancellationToken);
+
+        var publicProjectDtos = projects.Select(p => new PublicProjectDto(
+            p.Id,
+            p.Name,
+            p.Role,
+            p.Description,
+            p.StartDate,
+            p.EndDate,
+            p.IsCurrentlyWorking,
+            p.VerificationLevel,
+            p.VerificationStatus,
+            p.VerifiedAt,
+            p.VerificationMetadataJson,
+            p.DisplayOrder,
+            p.RepositoryLinks.Select(l => new PublicProjectRepositoryLinkDto(
+                l.Id,
+                l.SourceCodeRepositoryId,
+                l.SourceCodeRepository?.Name ?? string.Empty,
+                l.SourceCodeRepository?.Owner ?? string.Empty,
+                l.SourceCodeRepository?.HtmlUrl
+            )).ToList(),
+            p.Technologies.Select(t => t.Name).ToList(),
+            p.Contributions.Select(c => c.Content).ToList()
+        )).ToList();
+
+        // Retrieve Experiences (optimized N+1 query)
+        var experiences = await _context.WorkExperiences
+            .Include(we => we.Achievements)
+            .Include(we => we.Technologies)
+            .Include(we => we.Links)
+            .Where(we => we.UserId == profile.UserId && we.DeletedAt == null)
+            .OrderBy(we => we.DisplayOrder)
+            .ThenByDescending(we => we.StartDate)
+            .ToListAsync(cancellationToken);
+
+        var experienceResponses = experiences.Select(we => new WorkExperienceResponse(
+            we.Id,
+            we.UserId,
+            we.JobTitle,
+            we.Company,
+            (int)we.ExperienceCategory,
+            (int)we.EmploymentType,
+            we.Location,
+            we.StartDate,
+            we.EndDate,
+            we.IsCurrentlyWorking,
+            we.Description,
+            we.DisplayOrder,
+            we.Achievements.Select(a => new WorkExperienceAchievementDto(a.Title, a.Description)).ToList(),
+            we.Technologies.Select(t => t.Name).ToList(),
+            we.Links.Select(l => new WorkExperienceLinkDto((int)l.LinkType, l.Url)).ToList(),
+            we.IsLeadership
+        )).ToList();
+
+        // Retrieve Educations
+        var educations = await _context.EducationEntries
+            .Where(ee => ee.UserId == profile.UserId && ee.DeletedAt == null)
+            .OrderBy(ee => ee.DisplayOrder)
+            .ThenByDescending(ee => ee.StartDate)
+            .ToListAsync(cancellationToken);
+
+        var educationResponses = educations.Select(ee => new EducationEntryResponse(
+            ee.Id,
+            ee.UserId,
+            ee.Label,
+            ee.SchoolName,
+            ee.Degree,
+            ee.Major,
+            ee.GPA,
+            ee.GPAScale,
+            ee.Description,
+            ee.StartDate,
+            ee.EndDate,
+            ee.IsCurrentlyStudying,
+            ee.DisplayOrder
+        )).ToList();
+
+        // Retrieve AcademicAchievements & related ProfileAttachments (optimized batch query)
+        var achievements = await _context.AcademicAchievements
+            .Where(aa => aa.UserId == profile.UserId && aa.DeletedAt == null)
+            .OrderBy(aa => aa.DisplayOrder)
+            .ThenByDescending(aa => aa.IssueDate)
+            .ToListAsync(cancellationToken);
+
+        var achievementIds = achievements.Select(aa => aa.Id).ToList();
+
+        var attachments = await _context.ProfileAttachments
+            .Where(pa => pa.UserId == profile.UserId && pa.EntityType == "AcademicAchievement" && pa.EntityId.HasValue && achievementIds.Contains(pa.EntityId.Value) && pa.DeletedAt == null)
+            .ToListAsync(cancellationToken);
+
+        var achievementResponses = new List<AcademicAchievementResponse>();
+        foreach (var aa in achievements)
+        {
+            var att = attachments.FirstOrDefault(pa => pa.EntityId == aa.Id);
+            AttachmentResponse? attResponse = null;
+
+            if (att != null)
+            {
+                string signedUrl;
+                try
+                {
+                    signedUrl = await _storageService.GetSignedUrlAsync(att.FilePath, TimeSpan.FromHours(1), cancellationToken);
+                }
+                catch
+                {
+                    signedUrl = string.Empty;
+                }
+
+                attResponse = new AttachmentResponse(
+                    att.Id,
+                    att.FileName,
+                    att.FileSize,
+                    att.FileType,
+                    signedUrl,
+                    att.CreatedAt
+                );
+            }
+
+            achievementResponses.Add(new AcademicAchievementResponse(
+                aa.Id,
+                aa.UserId,
+                aa.Title,
+                aa.Issuer,
+                aa.IssueDate,
+                aa.Description,
+                aa.CredentialUrl,
+                aa.DisplayOrder,
+                attResponse
+            ));
+        }
+
         return new PublicProfileResponse(
             profile.UserId,
             profile.Username ?? profile.User?.Username ?? string.Empty,
@@ -350,7 +516,13 @@ public class ProfileService : IProfileService
             socialLinks,
             publicCareerPreference,
             avgTrustScore,
-            publicRepoDtos
+            publicRepoDtos,
+            publicProjectDtos,
+            experienceResponses,
+            educationResponses,
+            achievementResponses,
+            hasCompletedAssessment,
+            lastAssessmentDate
         );
     }
 

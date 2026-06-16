@@ -313,6 +313,10 @@ public class WorkspaceController : ControllerBase
         org.FacebookUrl = dto.FacebookUrl;
         org.TwitterUrl = dto.TwitterUrl;
         org.Website = dto.Website;
+        org.Mission = dto.Mission;
+        org.Vision = dto.Vision;
+        org.CoreValues = dto.CoreValues;
+        org.Founded = dto.Founded;
         org.UpdatedAt = DateTimeOffset.UtcNow;
 
         await _context.SaveChangesAsync(cancellationToken);
@@ -488,6 +492,10 @@ public class WorkspaceController : ControllerBase
             org.TwitterUrl,
             org.Website,
             org.TaxCode,
+            org.Mission,
+            org.Vision,
+            org.CoreValues,
+            org.Founded,
             followerCount,
             isFollowing
         );
@@ -653,7 +661,7 @@ public class WorkspaceController : ControllerBase
         if (memberUserIds.Count > 0)
         {
             var profiles = await _context.Database.SqlQueryRaw<MemberProfileDataDto>(
-                "SELECT user_id as \"UserId\", headline as \"Headline\", username as \"Username\" FROM user_profiles WHERE user_id = ANY({0})",
+                "SELECT user_id, headline, username FROM user_profiles WHERE user_id = ANY({0})",
                 memberUserIds.ToArray()
             ).ToListAsync();
             
@@ -1101,45 +1109,6 @@ public class WorkspaceController : ControllerBase
 
         var postsList = await postsQuery.ToListAsync(cancellationToken);
 
-        if (postsList.Count == 0)
-        {
-            var mockUser = await _context.Users.FirstOrDefaultAsync(cancellationToken);
-            var mockUserId = mockUser?.Id ?? Guid.NewGuid();
-            var mockPosts = new List<WorkspacePost>
-            {
-                new WorkspacePost
-                {
-                    Id = Guid.CreateVersion7(),
-                    OrganizationId = org.Id,
-                    CreatedByUserId = mockUserId,
-                    Category = "Engineering",
-                    Content = "Chúng tôi vô cùng tự hào thông báo rằng quy trình đánh giá và xác thực lập trình viên trên CVerify đã chính thức tích hợp chữ ký mật mã hóa (cryptographic credential signatures)! Việc này giúp tự động hóa 100% quy trình kiểm thử năng lực thực tế từ kho lưu trữ mã nguồn của ứng viên.\n\nĐặc biệt, đại diện CVerify cùng đối tác đã ký kết biên bản ghi nhớ hợp tác chiến lược nhằm xây dựng cộng đồng kỹ sư công nghệ chất lượng cao, bảo mật và đáng tin cậy. Dưới đây là một số hình ảnh sự kiện ký kết và hoạt động triển khai thực tế của đội ngũ kỹ sư tại văn phòng Đà Nẵng.",
-                    Images = new List<string>
-                    {
-                        "https://images.unsplash.com/photo-1542744173-8e7e53415bb0?q=80&w=800",
-                        "https://images.unsplash.com/photo-1531538606174-0f90ff5dce83?q=80&w=800"
-                    },
-                    Likes = 88,
-                    SharesCount = 14,
-                    CreatedAt = DateTimeOffset.UtcNow.AddHours(-1)
-                },
-                new WorkspacePost
-                {
-                    Id = Guid.CreateVersion7(),
-                    OrganizationId = org.Id,
-                    CreatedByUserId = mockUserId,
-                    Category = "Recruitment",
-                    Content = "WE ARE HIRING! GIA NHẬP ĐỘI NGŨ CÔNG NGHỆ CỦA CHÚNG TÔI.\n\nNhằm mở rộng quy mô dự án và đáp ứng nhu cầu tăng trưởng trong giai đoạn mới, chúng tôi tìm kiếm các đồng nghiệp tài năng ở các vị trí:\n1. Senior Full-Stack Developer (.NET & React)\n2. Automated QA Engineer\n3. DevOps Engineer (Platform Team)\n\nChúng tôi mang đến môi trường làm việc Hybrid linh hoạt, chế độ đãi ngộ cạnh tranh, hỗ trợ thiết bị làm việc hiện đại hàng đầu cùng cơ hội phát triển bản thân vượt trội. Hãy truy cập ngay tab 'Jobs' để xem chi tiết mô tả công việc và ứng tuyển trực tiếp bằng hồ sơ đã xác thực nhé!",
-                    Images = new List<string> { "https://images.unsplash.com/photo-1521737711867-e3b90473bd58?q=80&w=800" },
-                    Likes = 42,
-                    SharesCount = 5,
-                    CreatedAt = DateTimeOffset.UtcNow.AddDays(-2)
-                }
-            };
-            _context.WorkspacePosts.AddRange(mockPosts);
-            await _context.SaveChangesAsync(cancellationToken);
-            postsList = await postsQuery.ToListAsync(cancellationToken);
-        }
 
         var dtoList = new List<WorkspacePostDto>();
         foreach (var post in postsList)
@@ -1281,178 +1250,6 @@ public class WorkspaceController : ControllerBase
             .OrderByDescending(jv => jv.CreatedAt)
             .ToListAsync(cancellationToken);
 
-        if (jobsList.Count == 0)
-        {
-            // Seed default mock jobs for this organization
-            var mockJobs = new List<JobVacancy>
-            {
-                new JobVacancy
-                {
-                    Id = Guid.CreateVersion7(),
-                    OrganizationId = org.Id,
-                    Title = "Senior Full-Stack Developer (.NET & React)",
-                    Department = "Engineering",
-                    WorkplaceType = "Hybrid",
-                    City = "Hà Nội",
-                    Type = "Full-Time",
-                    Salary = "$ 2,000 - 4,500 USD",
-                    SalaryMinMax = "50 - 110 triệu",
-                    Headcount = 3,
-                    Gender = "Không yêu cầu",
-                    Experience = "5+ năm kinh nghiệm",
-                    Degree = "Đại học / Kỹ sư",
-                    Category = "Phát triển phần mềm, Công nghệ thông tin",
-                    Description = new List<string>
-                    {
-                        "Thiết kế và phát triển kiến trúc hệ thống backend microservices bằng .NET Core 8 và cơ sở dữ liệu PostgreSQL.",
-                        "Xây dựng giao diện ứng dụng web Single Page Application (SPA) hiệu năng cao, mượt mà bằng React, TypeScript và quản lý trạng thái qua Zustand/Redux.",
-                        "Tối ưu hóa các truy vấn SQL nâng cao và cấu hình bộ nhớ cache Redis phân tán.",
-                        "Viết mã nguồn kiểm thử tự động (Unit Test / Integration Test) đảm bảo độ ổn định cao trước khi bàn giao hệ thống.",
-                        "Tham gia hướng dẫn kỹ thuật, code review và hỗ trợ các thành viên junior trong đội ngũ."
-                    },
-                    Requirements = new List<string>
-                    {
-                        "Tốt nghiệp đại học chuyên ngành Công nghệ thông tin, Khoa học máy tính hoặc tương đương.",
-                        "Tối thiểu 5 năm kinh nghiệm thực chiến phát triển ứng dụng web, có kiến thức sâu rộng về lập trình hướng đối tượng OOP và các Design Pattern.",
-                        "Thành thạo ngôn ngữ C#, ASP.NET Core, Entity Framework Core và lập trình bất đồng bộ.",
-                        "Kinh nghiệm làm việc sâu sắc với ReactJS, Hooks, state management và thư viện CSS như Tailwind/Vanilla CSS.",
-                        "Kinh nghiệm thiết kế API RESTful chất lượng, hiểu biết tốt về CI/CD và Git."
-                    },
-                    Benefits = new List<string>
-                    {
-                        "Lương thưởng hấp dẫn lên tới $4,500 USD cùng tháng lương thứ 13 và thưởng hiệu suất cuối năm.",
-                        "Được cung cấp đầy đủ trang thiết bị làm việc hiện đại cao cấp (MacBook Pro / Dell XPS và màn hình phụ).",
-                        "Gói bảo hiểm chăm sóc sức khỏe cao cấp toàn diện cho bản thân và gia đình.",
-                        "Hưởng 15 ngày phép có lương trong năm và chế độ nghỉ lễ tết theo luật lao động.",
-                        "Tham gia các chương trình đào tạo kỹ năng chuyên sâu và chứng chỉ công nghệ quốc tế miễn phí."
-                    },
-                    Tags = new List<string> { "React", "TypeScript", ".NET Core", "C#", "Microservices" },
-                    Skills = new List<string> { "C#", ".NET Core", "React", "TypeScript", "PostgreSQL", "Zustand" },
-                    CoverUrl = "https://images.unsplash.com/photo-1555066931-4365d14bab8c?q=80&w=600",
-                    Images = new List<string>
-                    {
-                        "https://images.unsplash.com/photo-1555066931-4365d14bab8c?q=80&w=600",
-                        "https://images.unsplash.com/photo-1542744173-8e7e53415bb0?q=80&w=600",
-                        "https://images.unsplash.com/photo-1517245386807-bb43f82c33c4?q=80&w=600"
-                    },
-                    IsActive = true,
-                    CreatedAt = DateTimeOffset.UtcNow.AddHours(-1),
-                    UpdatedAt = DateTimeOffset.UtcNow.AddHours(-1)
-                },
-                new JobVacancy
-                {
-                    Id = Guid.CreateVersion7(),
-                    OrganizationId = org.Id,
-                    Title = "Automated Verification QA Engineer",
-                    Department = "Quality Assurance",
-                    WorkplaceType = "Remote",
-                    City = "Đà Nẵng",
-                    Type = "Contract",
-                    Salary = "$ 1,200 - 2,500 USD",
-                    SalaryMinMax = "30 - 62 triệu",
-                    Headcount = 2,
-                    Gender = "Không yêu cầu",
-                    Experience = "3+ năm kinh nghiệm",
-                    Degree = "Đại học / Cao đẳng",
-                    Category = "Kiểm thử phần mềm, Quality Assurance",
-                    Description = new List<string>
-                    {
-                        "Thiết kế, xây dựng và duy trì các kịch bản kiểm thử tự động (Automated Test Scripts) cho hệ thống xác thực cryptographic của CVerify.",
-                        "Viết và tối ưu hóa các bộ test suite kiểm tra hiệu năng (Performance Test) và độ tin cậy của chuỗi dữ liệu băm.",
-                        "Tích hợp các bài kiểm thử tự động vào hệ thống CI/CD thông qua GitHub Actions.",
-                        "Phối hợp chặt chẽ với đội ngũ phát triển sản phẩm để tìm kiếm, phân tích và theo dõi các lỗi phát sinh.",
-                        "Tạo các báo cáo kiểm thử chi tiết và đề xuất các giải pháp nâng cao chất lượng sản phẩm."
-                    },
-                    Requirements = new List<string>
-                    {
-                        "Tối thiểu 3 năm kinh nghiệm làm kỹ sư kiểm thử tự động (Auto QA).",
-                        "Thành thạo ít nhất một trong các công cụ viết test tự động: Playwright, Cypress hoặc Selenium.",
-                        "Có kinh nghiệm làm việc với ngôn ngữ lập trình JavaScript/TypeScript hoặc Python.",
-                        "Có kiến thức căn bản về mật mã học, mã băm (hashing), chữ ký số là một lợi thế lớn.",
-                        "Tư duy phân tích lỗi tốt, cẩn thận, tỉ mỉ và giao tiếp hiệu quả."
-                    },
-                    Benefits = new List<string>
-                    {
-                        "Mức lương thỏa thuận cạnh tranh cao tương xứng theo năng lực thực tế.",
-                        "Làm việc từ xa (Remote) 100% giúp chủ động cân bằng thời gian và cuộc sống.",
-                        "Được cung cấp gói ngân sách hỗ trợ nâng cấp thiết bị cá nhân hàng năm.",
-                        "Tham gia hoạt động teambuilding thường niên cùng công ty tại các resort đẳng cấp.",
-                        "Được tài trợ chi phí thi các chứng chỉ quốc tế chuyên ngành kiểm thử (ISTQB...)."
-                    },
-                    Tags = new List<string> { "Automation", "Playwright", "Cypress", "QA", "CI/CD" },
-                    Skills = new List<string> { "Playwright", "Cypress", "QA Testing", "TypeScript", "CI/CD" },
-                    CoverUrl = "https://images.unsplash.com/photo-1516321318423-f06f85e504b3?q=80&w=600",
-                    Images = new List<string>
-                    {
-                        "https://images.unsplash.com/photo-1516321318423-f06f85e504b3?q=80&w=600",
-                        "https://images.unsplash.com/photo-1531403009284-440f080d1e12?q=80&w=600"
-                    },
-                    IsActive = true,
-                    CreatedAt = DateTimeOffset.UtcNow.AddDays(-2),
-                    UpdatedAt = DateTimeOffset.UtcNow.AddDays(-2)
-                },
-                new JobVacancy
-                {
-                    Id = Guid.CreateVersion7(),
-                    OrganizationId = org.Id,
-                    Title = "Lead UI/UX Product Designer",
-                    Department = "Design",
-                    WorkplaceType = "On-site",
-                    City = "Hà Nội",
-                    Type = "Full-Time",
-                    Salary = "$ 1,500 - 3,200 USD",
-                    SalaryMinMax = "38 - 80 triệu",
-                    Headcount = 1,
-                    Gender = "Không yêu cầu",
-                    Experience = "4+ năm kinh nghiệm",
-                    Degree = "Đại học / Cao đẳng Mỹ thuật",
-                    Category = "Thiết kế đồ họa, UI/UX Design",
-                    Description = new List<string>
-                    {
-                        "Chịu trách nhiệm thiết kế giao diện (UI) và xây dựng trải nghiệm người dùng (UX) cho các hệ thống phần mềm của CVerify.",
-                        "Xây dựng wireframe, prototype và sơ đồ luồng trải nghiệm người dùng (user flow) dựa trên hoạt động nghiên cứu hành vi khách hàng.",
-                        "Tổ chức, thiết lập và mở rộng hệ thống thiết kế (Design System) của công ty trên Figma đảm bảo tính nhất quán cao.",
-                        "Hợp tác chặt chẽ cùng Product Manager và Tech Lead để thẩm định thiết kế trước khi chuyển giao lập trình.",
-                        "Thực hiện đo lường, phân tích hành vi và phản hồi từ người dùng thực tế để liên tục cải tiến sản phẩm."
-                    },
-                    Requirements = new List<string>
-                    {
-                        "Tối thiểu 4 năm kinh nghiệm thiết kế giao diện ứng dụng web dashboard, nền tảng SaaS phức tạp.",
-                        "Kỹ năng sử dụng Figma xuất sắc (thành thạo Auto-layout, Variables, Components, Prototyping nâng cao).",
-                        "Có tư duy logic tốt về trải nghiệm người dùng (UX), khả năng phân tích và giải quyết các bài toán thiết kế khó.",
-                        "Có portfolio chất lượng cao trình bày chi tiết tư duy thiết kế qua các dự án thực tế.",
-                        "Hiểu biết căn bản về HTML/CSS là lợi thế lớn giúp phối hợp ăn ý với đội ngũ frontend."
-                    },
-                    Benefits = new List<string>
-                    {
-                        "Mức lương cạnh tranh hấp dẫn cùng các phụ cấp ăn trưa, đi lại tại văn phòng.",
-                        "Môi trường làm việc năng động, không gian văn phòng hạng A hiện đại và rộng rãi.",
-                        "Thưởng hiệu suất công việc định kỳ và xét tăng lương định kỳ 2 lần/năm.",
-                        "Chương trình khám sức khỏe tổng quát định kỳ hàng năm tại hệ thống bệnh viện quốc tế.",
-                        "Hỗ trợ 100% chi phí tham gia các khóa học chuyên sâu nâng cao chuyên môn tự chọn."
-                    },
-                    Tags = new List<string> { "Figma", "UI/UX", "Product Design", "Design System", "Wireframing" },
-                    Skills = new List<string> { "Figma", "UI/UX", "Product Design", "Design System", "Wireframing" },
-                    CoverUrl = "https://images.unsplash.com/photo-1581291518633-83b4ebd1d83e?q=80&w=600",
-                    Images = new List<string>
-                    {
-                        "https://images.unsplash.com/photo-1581291518633-83b4ebd1d83e?q=80&w=600",
-                        "https://images.unsplash.com/photo-1586717791821-3f44a563fa4c?q=80&w=600"
-                    },
-                    IsActive = true,
-                    CreatedAt = DateTimeOffset.UtcNow.AddDays(-5),
-                    UpdatedAt = DateTimeOffset.UtcNow.AddDays(-5)
-                }
-            };
-
-            _context.JobVacancies.AddRange(mockJobs);
-            await _context.SaveChangesAsync(cancellationToken);
-
-            jobsList = await _context.JobVacancies
-                .Where(jv => jv.OrganizationId == org.Id && jv.IsActive)
-                .OrderByDescending(jv => jv.CreatedAt)
-                .ToListAsync(cancellationToken);
-        }
 
         var dtoList = new List<JobVacancyDto>();
         foreach (var job in jobsList)
