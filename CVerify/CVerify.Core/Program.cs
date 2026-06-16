@@ -421,6 +421,7 @@ builder.Services.AddScoped<ISourceCodeProviderService, SourceCodeProviderService
 builder.Services.AddSingleton<IRepositorySyncQueue, BackgroundRepositorySyncQueue>();
 builder.Services.AddScoped<IRepositoryAnalysisService, RepositoryAnalysisService>();
 builder.Services.AddScoped<IJdService, JdService>();
+builder.Services.AddScoped<IJdMatchingService, JdMatchingService>();
 builder.Services.AddSingleton<IRepositoryAnalysisQueue, BackgroundRepositoryAnalysisQueue>();
 builder.Services.AddScoped<ICandidateRepositoryProvider, CandidateRepositoryProvider>();
 builder.Services.AddScoped<CVerify.API.Pipelines.Shared.Storage.IArtifactStorageProvider, CVerify.API.Pipelines.Shared.Storage.ArtifactStorageProvider>();

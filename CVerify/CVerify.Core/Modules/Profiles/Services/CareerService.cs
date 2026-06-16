@@ -124,6 +124,16 @@ public class CareerService : ICareerService
             }, "Minimum expected salary cannot exceed the maximum expected salary.");
         }
 
+        decimal? finalMinimumAcceptable = request.MinimumAcceptableSalary ?? career.MinimumAcceptableSalary;
+        decimal? finalDesired = request.DesiredSalary ?? career.DesiredSalary;
+        if (finalMinimumAcceptable.HasValue && finalDesired.HasValue && finalMinimumAcceptable.Value > finalDesired.Value)
+        {
+            throw new ValidationException(new Dictionary<string, string[]>
+            {
+                { nameof(request.MinimumAcceptableSalary), new[] { "Minimum acceptable salary must be less than or equal to desired salary." } }
+            }, "Minimum acceptable salary cannot exceed desired salary.");
+        }
+
         // Validate and normalize tags against registries where relevant
         var preferredWorkEnvironments = ValidateAndNormalizeTags(request.PreferredWorkEnvironments ?? career.PreferredWorkEnvironments, nameof(request.PreferredWorkEnvironments));
         var workStyles = ValidateAndNormalizeTags(request.WorkStyles ?? career.WorkStyles, nameof(request.WorkStyles));
@@ -158,6 +168,8 @@ public class CareerService : ICareerService
         
         if (request.ExpectedSalaryMin.HasValue) career.ExpectedSalaryMin = request.ExpectedSalaryMin;
         if (request.ExpectedSalaryMax.HasValue) career.ExpectedSalaryMax = request.ExpectedSalaryMax;
+        if (request.DesiredSalary.HasValue) career.DesiredSalary = request.DesiredSalary;
+        if (request.MinimumAcceptableSalary.HasValue) career.MinimumAcceptableSalary = request.MinimumAcceptableSalary;
         if (request.ExpectedSalaryCurrency != null) career.ExpectedSalaryCurrency = request.ExpectedSalaryCurrency;
         if (request.ExpectedSalaryType != null) career.ExpectedSalaryType = request.ExpectedSalaryType;
         if (request.ExpectedSalaryNegotiable.HasValue) career.ExpectedSalaryNegotiable = request.ExpectedSalaryNegotiable.Value;
@@ -347,6 +359,8 @@ public class CareerService : ICareerService
             career.CompanyValues ?? new List<string>(),
             career.ExpectedSalaryMin,
             career.ExpectedSalaryMax,
+            career.DesiredSalary,
+            career.MinimumAcceptableSalary,
             career.ExpectedSalaryCurrency,
             career.ExpectedSalaryType,
             career.ExpectedSalaryNegotiable,

@@ -49,6 +49,81 @@ export type StoredJd = {
   storageStatus: string;
 };
 
+export type CandidateSkillEvidence = {
+  skill: string;
+  proficiency: number;
+  evidenceStrength?: string;
+};
+
+export type JdMatchRequest = {
+  normalizedJd: JdFormData;
+  candidateSkills: CandidateSkillEvidence[];
+  candidateResponsibilities: string[];
+  candidateLevel: string;
+  desiredSalary?: number | null;
+  minimumAcceptableSalary?: number | null;
+  salaryCurrency: Currency;
+  candidateRoleTendency?: string;
+  candidateWorkingStyles?: string[];
+};
+
+export type ApplicationQualityGate = {
+  qualityGateStatus: 'clear' | 'requires_confirmation';
+  canApply: boolean;
+  requiresExplicitConfirmation: boolean;
+  confirmationRequiredReasons: string[];
+  warnings: string[];
+};
+
+export type SkillMatchItem = {
+  skill: string;
+  matched: boolean;
+  matchType: 'exact' | 'semantic' | 'partial' | 'none' | string;
+  candidateProficiency: number;
+  evidenceStrength: string;
+};
+
+export type GapAnalysis = {
+  gapSeverity: 'critical' | 'significant' | 'minor' | 'none';
+  skillGaps: string[];
+  responsibilityGaps: string[];
+  seniorityGap?: string | null;
+  salaryMismatch?: string | null;
+  improvementSuggestions: string[];
+  overallGapSummary: string;
+};
+
+export type HiringRecommendation = {
+  verdict: 'Yes' | 'Conditional' | 'No';
+  confidence: number;
+  oneParaSummary: string;
+  keyReasons: string[];
+  hiringRisk: 'low' | 'medium' | 'high';
+};
+
+export type JdMatchResponse = {
+  matchScore: number;
+  matchScorePercent: number;
+  cappedMatchScorePercent: number;
+  matchLabel: string;
+  skillMatchScore: number;
+  responsibilityMatchScore: number;
+  seniorityMatchScore: number;
+  salaryMatchScore: number;
+  cultureFitScore: number;
+  requiredSkillsMatch: SkillMatchItem[];
+  preferredSkillsMatch: SkillMatchItem[];
+  missingRequiredSkills: string[];
+  uncoveredResponsibilities: string[];
+  seniorityFlag: string;
+  levelGap: number;
+  salaryMatchType: string;
+  activeFlags: string[];
+  gapAnalysis: GapAnalysis;
+  qualityGate: ApplicationQualityGate;
+  hiringRecommendation: HiringRecommendation;
+};
+
 export type JdCreateState =
   | { step: 'form' }
   | { step: 'validating' }

@@ -3068,6 +3068,8 @@ public static class DbInitializer
         // Resolve seeding policy
         var resolvedEnv = hostEnvironment ?? serviceProvider?.GetService<Microsoft.Extensions.Hosting.IHostEnvironment>();
         var seedingPolicy = SeedingPolicyResolver.Resolve(resolvedEnv);
+        var loggerFactory = ResolveLoggerFactory(context, serviceProvider);
+        var seederLogger = loggerFactory.CreateLogger("DbInitializer");
 
         // Check system_metadata environment marker
         try
@@ -3098,6 +3100,7 @@ public static class DbInitializer
         }
 
         // Invoke modular seeders
+        seedingPolicy = await ApplyDemoSeedingSafetyAsync(context, seedingPolicy, seederLogger);
         await SuperAdminSeeder.SeedAsync(context, config.SuperAdmin, seedingPolicy);
         await PermissionSeeder.SeedAsync(context, seedingPolicy);
         await RoleSeeder.SeedAsync(context, seedingPolicy);
@@ -3105,25 +3108,20 @@ public static class DbInitializer
         await BusinessAccountSeeder.SeedAsync(context, config.Seeding, seedingPolicy);
 
         global::System.Collections.Generic.IEnumerable<IPublicWorkspaceModuleSeeder> moduleSeeders;
-        Microsoft.Extensions.Logging.ILoggerFactory loggerFactory;
 
         if (serviceProvider != null)
         {
             moduleSeeders = serviceProvider.GetService<global::System.Collections.Generic.IEnumerable<IPublicWorkspaceModuleSeeder>>() 
                 ?? global::System.Linq.Enumerable.Empty<IPublicWorkspaceModuleSeeder>();
-            loggerFactory = serviceProvider.GetService<Microsoft.Extensions.Logging.ILoggerFactory>() 
-                ?? Microsoft.Extensions.Logging.Abstractions.NullLoggerFactory.Instance;
         }
         else
         {
             moduleSeeders = context.GetService<global::System.Collections.Generic.IEnumerable<IPublicWorkspaceModuleSeeder>>() 
                 ?? global::System.Linq.Enumerable.Empty<IPublicWorkspaceModuleSeeder>();
-            loggerFactory = context.GetService<Microsoft.Extensions.Logging.ILoggerFactory>() 
-                ?? Microsoft.Extensions.Logging.Abstractions.NullLoggerFactory.Instance;
         }
 
-        var seederLogger = loggerFactory.CreateLogger("PublicWorkspaceSeeder");
-        await PublicWorkspaceSeeder.SeedAsync(context, config.Seeding, moduleSeeders, seederLogger, seedingPolicy);
+        var publicSeederLogger = loggerFactory.CreateLogger("PublicWorkspaceSeeder");
+        await PublicWorkspaceSeeder.SeedAsync(context, config.Seeding, moduleSeeders, publicSeederLogger, seedingPolicy);
 
         // One-time compatibility migration for Google OAuth users created under the old normalization rules
         await MigrateLegacyGoogleEmailsAsync(context);
@@ -3134,6 +3132,67 @@ public static class DbInitializer
 
         // One-time compatibility migration to backfill repository classification & authenticity columns
         await MigrateLegacyRepositoryMetadataAsync(context);
+    }
+
+    private static Microsoft.Extensions.Logging.ILoggerFactory ResolveLoggerFactory(
+        ApplicationDbContext context,
+        IServiceProvider? serviceProvider)
+    {
+        if (serviceProvider != null)
+        {
+            return serviceProvider.GetService<Microsoft.Extensions.Logging.ILoggerFactory>()
+                ?? Microsoft.Extensions.Logging.Abstractions.NullLoggerFactory.Instance;
+        }
+
+        return context.GetService<Microsoft.Extensions.Logging.ILoggerFactory>()
+            ?? Microsoft.Extensions.Logging.Abstractions.NullLoggerFactory.Instance;
+    }
+
+    private static async Task<SeedingPolicy> ApplyDemoSeedingSafetyAsync(
+        ApplicationDbContext context,
+        SeedingPolicy policy,
+        Microsoft.Extensions.Logging.ILogger logger)
+    {
+        if (!policy.SeedDemoContent)
+        {
+            return policy;
+        }
+
+        var env = Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT") ?? "Development";
+        if (string.Equals(env, "Production", StringComparison.OrdinalIgnoreCase))
+        {
+            throw new InvalidOperationException("Fatal: Demo seeding cannot run in the Production environment.");
+        }
+
+        var connString = context.Database.GetDbConnection().ConnectionString;
+        if (string.IsNullOrEmpty(connString))
+        {
+            throw new InvalidOperationException("Fatal: Database Connection String is empty.");
+        }
+
+        var lowerConn = connString.ToLowerInvariant();
+        if (lowerConn.Contains(".database.windows.net") ||
+            lowerConn.Contains(".rds.amazonaws.com") ||
+            lowerConn.Contains("rds.amazonaws.com") ||
+            lowerConn.Contains(".googleapis.com") ||
+            lowerConn.Contains("cockroachlabs.cloud"))
+        {
+            throw new InvalidOperationException("Fatal: Production cloud database host detected in Connection String. Demo seeding aborted for safety.");
+        }
+
+        var hasNonTestUsers = await context.Users.AnyAsync(u =>
+            !u.Email.EndsWith("@testbusiness.com") &&
+            !u.Email.EndsWith("@cverify.dev") &&
+            !u.Email.EndsWith("@system.com") &&
+            !u.Email.EndsWith("@test.com"));
+
+        if (!hasNonTestUsers)
+        {
+            return policy;
+        }
+
+        logger.LogWarning("[Seeder Safeguard] Demo content seeding skipped because users with non-test domains already exist in this database.");
+        return policy with { SeedDemoContent = false };
     }
 
     private static async Task MigrateLegacyGoogleEmailsAsync(ApplicationDbContext context)

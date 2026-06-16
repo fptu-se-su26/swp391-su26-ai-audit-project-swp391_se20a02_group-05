@@ -4,9 +4,12 @@ using System.Text;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using CVerify.API.Modules.Jd.DTOs;
+using CVerify.API.Modules.Jd.Entities;
 using CVerify.API.Modules.Shared.Configuration;
+using CVerify.API.Modules.Shared.Persistence;
 using CVerify.API.Modules.Shared.System.Services;
 
 namespace CVerify.API.Modules.Jd.Services;
@@ -16,6 +19,7 @@ public sealed class JdService : IJdService
     private readonly IHttpClientFactory _httpClientFactory;
     private readonly IHmacSignatureService _hmacService;
     private readonly EnvConfiguration _envConfig;
+    private readonly ApplicationDbContext _context;
     private readonly ILogger<JdService> _logger;
 
     private static readonly JsonSerializerOptions _jsonOpts = new() { PropertyNameCaseInsensitive = true };
@@ -24,11 +28,13 @@ public sealed class JdService : IJdService
         IHttpClientFactory httpClientFactory,
         IHmacSignatureService hmacService,
         EnvConfiguration envConfig,
+        ApplicationDbContext context,
         ILogger<JdService> logger)
     {
         _httpClientFactory = httpClientFactory;
         _hmacService = hmacService;
         _envConfig = envConfig;
+        _context = context;
         _logger = logger;
     }
 
@@ -73,6 +79,25 @@ public sealed class JdService : IJdService
             ? satProp.GetString()
             : DateTimeOffset.UtcNow.ToString("O");
 
+        var structuredJson = JsonSerializer.Serialize(normalizedJd);
+        var entity = new StandardizedJd
+        {
+            Id = jobId,
+            OwnerUserId = userId,
+            JobTitle = request.JobTitle.Trim(),
+            Seniority = request.Seniority.Trim(),
+            Currency = request.Currency.Trim().ToUpperInvariant(),
+            SalaryMin = request.SalaryMin,
+            SalaryMax = request.SalaryMax,
+            StructuredJson = structuredJson,
+            HumanReadableText = generatedText,
+            CreatedAt = DateTimeOffset.UtcNow,
+            UpdatedAt = DateTimeOffset.UtcNow
+        };
+
+        _context.StandardizedJds.Add(entity);
+        await _context.SaveChangesAsync(cancellationToken);
+
         return new JdCreateResponse(
             JdId: jobId,
             IsValid: true,
@@ -81,6 +106,72 @@ public sealed class JdService : IJdService
             GeneratedJdText: generatedText,
             WordCount: wordCount,
             StoredAt: storedAt);
+    }
+
+    public async Task<IReadOnlyList<JdSummaryResponse>> ListJdsAsync(Guid userId, CancellationToken cancellationToken = default)
+    {
+        return await _context.StandardizedJds
+            .AsNoTracking()
+            .Where(jd => jd.OwnerUserId == userId)
+            .OrderByDescending(jd => jd.CreatedAt)
+            .Select(jd => new JdSummaryResponse(
+                jd.Id,
+                jd.JobTitle,
+                jd.Seniority,
+                jd.SalaryMin,
+                jd.SalaryMax,
+                jd.Currency,
+                jd.CreatedAt.ToString("O"),
+                jd.UpdatedAt.ToString("O")))
+            .ToListAsync(cancellationToken);
+    }
+
+    public async Task<JdDetailResponse?> GetJdAsync(Guid userId, string jdId, CancellationToken cancellationToken = default)
+    {
+        var entity = await _context.StandardizedJds
+            .AsNoTracking()
+            .FirstOrDefaultAsync(jd => jd.OwnerUserId == userId && jd.Id == jdId, cancellationToken);
+
+        return entity == null ? null : MapDetail(entity);
+    }
+
+    public async Task<JdDetailResponse?> UpdateJdAsync(Guid userId, string jdId, JdUpdateRequest request, CancellationToken cancellationToken = default)
+    {
+        var entity = await _context.StandardizedJds
+            .FirstOrDefaultAsync(jd => jd.OwnerUserId == userId && jd.Id == jdId, cancellationToken);
+
+        if (entity == null) return null;
+
+        if (request.NormalizedJd != null)
+        {
+            entity.JobTitle = request.NormalizedJd.JobTitle.Trim();
+            entity.Seniority = request.NormalizedJd.Seniority.Trim();
+            entity.Currency = request.NormalizedJd.Currency.Trim().ToUpperInvariant();
+            entity.SalaryMin = request.NormalizedJd.SalaryMin;
+            entity.SalaryMax = request.NormalizedJd.SalaryMax;
+            entity.StructuredJson = JsonSerializer.Serialize(request.NormalizedJd);
+        }
+
+        if (!string.IsNullOrWhiteSpace(request.GeneratedJdText))
+        {
+            entity.HumanReadableText = request.GeneratedJdText.Trim();
+        }
+
+        entity.UpdatedAt = DateTimeOffset.UtcNow;
+        await _context.SaveChangesAsync(cancellationToken);
+        return MapDetail(entity);
+    }
+
+    public async Task<bool> DeleteJdAsync(Guid userId, string jdId, CancellationToken cancellationToken = default)
+    {
+        var entity = await _context.StandardizedJds
+            .FirstOrDefaultAsync(jd => jd.OwnerUserId == userId && jd.Id == jdId, cancellationToken);
+
+        if (entity == null) return false;
+
+        _context.StandardizedJds.Remove(entity);
+        await _context.SaveChangesAsync(cancellationToken);
+        return true;
     }
 
     private async Task<JsonElement> ExecuteTaskAsync(string jobId, string taskType, object inputs, CancellationToken cancellationToken)
@@ -125,5 +216,16 @@ public sealed class JdService : IJdService
 
         using var doc = JsonDocument.Parse(taskResponse.ResultData);
         return doc.RootElement.Clone();
+    }
+
+    private static JdDetailResponse MapDetail(StandardizedJd entity)
+    {
+        using var doc = JsonDocument.Parse(entity.StructuredJson);
+        return new JdDetailResponse(
+            entity.Id,
+            doc.RootElement.Clone(),
+            entity.HumanReadableText,
+            entity.CreatedAt.ToString("O"),
+            entity.UpdatedAt.ToString("O"));
     }
 }
