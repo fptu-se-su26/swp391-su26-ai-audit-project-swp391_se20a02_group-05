@@ -1,7 +1,5 @@
-import json
 import logging
 import asyncio
-import os
 import time
 import random
 from typing import AsyncGenerator
@@ -275,34 +273,6 @@ class ClaudeService:
                 "durationMs": duration,
                 "tokenMismatchFlag": normalized.token_mismatch_detected
             }
-
-            # Write per-job token debug file when AI_DEBUG_TOKENS=true
-            if settings.ai_debug_tokens and job_id:
-                try:
-                    temp_dir_base = os.path.abspath(
-                        os.path.join(os.path.dirname(__file__), "..", "..", "pipelines", "repository", "temp_clones")
-                    )
-                    job_dir = os.path.join(temp_dir_base, job_id)
-                    if os.path.exists(job_dir):
-                        debug_path = os.path.join(job_dir, "token_debug.jsonl")
-                        debug_entry = {
-                            "ts": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
-                            "task": task_type,
-                            "model": settings.claude_model,
-                            "prompt_tokens": normalized.prompt_tokens,
-                            "completion_tokens": normalized.completion_tokens,
-                            "cache_read_tokens": normalized.cache_read_tokens,
-                            "cache_write_tokens": normalized.cache_write_tokens,
-                            "total_tokens": normalized.total_tokens,
-                            "estimated_cost_usd": float(cost),
-                            "duration_ms": duration,
-                            "mismatch_flag": normalized.token_mismatch_detected,
-                            "prompt_preview": user_prompt[:300] if debug_mode else None
-                        }
-                        with open(debug_path, "a", encoding="utf-8") as dbg:
-                            dbg.write(json.dumps(debug_entry) + "\n")
-                except Exception as dbg_err:
-                    logger.debug(f"Token debug write failed (non-critical): {dbg_err}")
 
             logger.info(
                 f"Claude telemetry call successful. Tokens: In={normalized.prompt_tokens} (CacheWrite={normalized.cache_write_tokens}, CacheRead={normalized.cache_read_tokens}), Out={normalized.completion_tokens}, Total={normalized.total_tokens}, Cost=${cost:.6f}, Duration={duration}ms",

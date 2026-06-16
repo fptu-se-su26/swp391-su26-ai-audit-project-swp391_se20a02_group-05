@@ -17,6 +17,7 @@ using CVerify.API.Modules.Auth.Services;
 using CVerify.API.Modules.Auth.Services.OtpPolicies;
 using CVerify.API.Modules.Auth.Services.PasswordPolicies;
 using CVerify.API.Modules.Profiles.Services;
+using CVerify.API.Modules.Profiles.BackgroundWorkers;
 using CVerify.API.Modules.Recovery.BackgroundWorkers;
 using CVerify.API.Modules.Recovery.Services;
 using CVerify.API.Modules.Shared.Configuration;
@@ -38,6 +39,7 @@ using CVerify.API.Modules.Shared.System.BackgroundWorkers;
 using CVerify.API.Modules.SourceCode.Services;
 using CVerify.API.Modules.SourceCode.BackgroundWorkers;
 using CVerify.API.Modules.Shared.Domain.Services;
+using CVerify.API.Modules.SourceCode.Clients;
 using CVerify.API.Modules.Shared.Domain.Resolvers;
 using CVerify.API.Modules.Shared.Hubs;
 
@@ -208,7 +210,10 @@ builder.Services.AddControllers()
         options.JsonSerializerOptions.Converters.Add(
             new System.Text.Json.Serialization.JsonStringEnumConverter());
     });
-builder.Services.AddSignalR();
+builder.Services.AddSignalR(options =>
+{
+    options.EnableDetailedErrors = true;
+});
 builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
 builder.Services.AddProblemDetails();
 builder.Services.AddHttpContextAccessor();
@@ -399,12 +404,23 @@ builder.Services.AddScoped<ICareerReadinessEngine, CareerReadinessEngine>();
 builder.Services.AddScoped<ICareerService, CareerService>();
 builder.Services.AddScoped<IAttachmentService, AttachmentService>();
 builder.Services.AddScoped<IWorkExperienceService, WorkExperienceService>();
+builder.Services.AddScoped<IProjectService, ProjectService>();
+builder.Services.AddScoped<ICvRepositoryIndexer, CvRepositoryIndexer>();
+builder.Services.AddScoped<ICandidateAssessmentService, CandidateAssessmentService>();
+builder.Services.AddSingleton<ICandidateAssessmentQueue, BackgroundCandidateAssessmentQueue>();
+
+// Register Public Workspace Seeder Plugins
+builder.Services.AddScoped<IPublicWorkspaceModuleSeeder, JobVacancyModuleSeeder>();
+builder.Services.AddScoped<IPublicWorkspaceModuleSeeder, WorkspacePostModuleSeeder>();
 
 // Register Source Code Provider Services
+builder.Services.AddScoped<ISourceCodeClient, GitHubSourceCodeClient>();
+builder.Services.AddScoped<ISourceCodeClient, GitLabSourceCodeClient>();
 builder.Services.AddScoped<ISourceCodeProviderService, SourceCodeProviderService>();
 builder.Services.AddSingleton<IRepositorySyncQueue, BackgroundRepositorySyncQueue>();
 builder.Services.AddScoped<IRepositoryAnalysisService, RepositoryAnalysisService>();
 builder.Services.AddSingleton<IRepositoryAnalysisQueue, BackgroundRepositoryAnalysisQueue>();
+builder.Services.AddScoped<ICandidateRepositoryProvider, CandidateRepositoryProvider>();
 builder.Services.AddScoped<CVerify.API.Pipelines.Shared.Storage.IArtifactStorageProvider, CVerify.API.Pipelines.Shared.Storage.ArtifactStorageProvider>();
 builder.Services.AddScoped<CVerify.API.Pipelines.Shared.Artifacts.IArtifactRegistry, CVerify.API.Pipelines.Shared.Artifacts.ArtifactRegistry>();
 builder.Services.AddScoped<CVerify.API.Pipelines.RepositoryIntelligence.Readers.IRepositoryArtifactReader, CVerify.API.Pipelines.RepositoryIntelligence.Readers.RepositoryArtifactReader>();
@@ -438,6 +454,9 @@ builder.Services.AddHostedService<OtpCleanupBackgroundWorker>();
 builder.Services.AddHostedService<BackgroundRepositorySyncProcessor>();
 builder.Services.AddHostedService<AnalysisQueueRecoverySweeper>();
 builder.Services.AddHostedService<BackgroundRepositoryAnalysisProcessor>();
+builder.Services.AddHostedService<BackgroundCandidateAssessmentProcessor>();
+builder.Services.AddHostedService<BackgroundCandidateAssessmentBackfillProcessor>();
+
 
 builder.Services.AddHostedService<RedisNotificationSubscriberWorker>();
 builder.Services.AddHostedService<ActivityEventProjectionWorker>();
@@ -523,13 +542,17 @@ using (var scope = app.Services.CreateScope())
         }
 
         logger.LogInformation("Initializing database schema and checking synchronization...");
-        await DbInitializer.InitializeAsync(context, usernameService, envConfig);
+        await DbInitializer.InitializeAsync(context, services, usernameService, envConfig, app.Environment);
         logger.LogInformation("Database schema initialized and synchronized successfully.");
     }
     catch (Exception ex)
     {
         var logger = services.GetRequiredService<ILogger<Program>>();
         logger.LogError(ex, "An error occurred while initializing the database schema.");
+        if (ex.Message.Contains("Fatal") || ex is InvalidOperationException)
+        {
+            throw;
+        }
     }
 }
 

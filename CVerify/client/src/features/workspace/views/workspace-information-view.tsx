@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { useWorkspaceStore } from "../store/use-workspace-store";
 import { Card } from "@/components/ui/card";
 import { Typography, Chip, Input, TextArea, toast } from "@heroui/react";
@@ -121,11 +122,14 @@ export function sanitizeMapUrl(url: string): { url: string; error?: string } {
 export const WorkspaceInformationView: React.FC<WorkspaceInformationViewProps> = ({
   organizationSlug,
 }) => {
+  const router = useRouter();
   const fetchWorkspace = useWorkspaceStore((s) => s.fetchWorkspace);
   const workspaceDetails = useWorkspaceStore((s) => s.workspaces[organizationSlug]);
   const isDetailsLoading = useWorkspaceStore((s) => s.loading[organizationSlug]);
   const detailsError = useWorkspaceStore((s) => s.errors[organizationSlug]);
   const updateWorkspaceDetails = useWorkspaceStore((s) => s.updateWorkspaceDetails);
+  const fetchMyOrganizations = useWorkspaceStore((s) => s.fetchMyOrganizations);
+  const myOrganizations = useWorkspaceStore((s) => s.myOrganizations);
 
   const [isEditing, setIsEditing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -160,29 +164,34 @@ export const WorkspaceInformationView: React.FC<WorkspaceInformationViewProps> =
   useEffect(() => {
     if (organizationSlug) {
       fetchWorkspace(organizationSlug);
+      fetchMyOrganizations();
     }
-  }, [organizationSlug, fetchWorkspace]);
+  }, [organizationSlug, fetchWorkspace, fetchMyOrganizations]);
 
   useEffect(() => {
     if (workspaceDetails) {
-      setDescription(workspaceDetails.description || "");
-      setWebsite(workspaceDetails.website || "");
-      setCompanyType(workspaceDetails.companyType || "");
-      setCompanySize(workspaceDetails.companySize || "");
-      setBranchCount(workspaceDetails.branchCount || 0);
-      setTaxCode(workspaceDetails.taxCode || "");
-      setIndustryTags(workspaceDetails.industryTags || []);
-      setBenefitTags(workspaceDetails.benefitTags || []);
-      setContactName(workspaceDetails.contactName || "");
-      setContactPhone(workspaceDetails.contactPhone || "");
-      setContactEmail(workspaceDetails.contactEmail || "");
-      setCity(workspaceDetails.city || "");
-      setDetailAddress(workspaceDetails.detailAddress || "");
-      setGoogleMapsEmbedUrl(workspaceDetails.googleMapsEmbedUrl || "");
-      setLinkedinUrl(workspaceDetails.linkedinUrl || "");
-      setFacebookUrl(workspaceDetails.facebookUrl || "");
-      setTwitterUrl(workspaceDetails.twitterUrl || "");
-      setMapError(null);
+      const initForm = async () => {
+        await Promise.resolve();
+        setDescription(workspaceDetails.description || "");
+        setWebsite(workspaceDetails.website || "");
+        setCompanyType(workspaceDetails.companyType || "");
+        setCompanySize(workspaceDetails.companySize || "");
+        setBranchCount(workspaceDetails.branchCount || 0);
+        setTaxCode(workspaceDetails.taxCode || "");
+        setIndustryTags(workspaceDetails.industryTags || []);
+        setBenefitTags(workspaceDetails.benefitTags || []);
+        setContactName(workspaceDetails.contactName || "");
+        setContactPhone(workspaceDetails.contactPhone || "");
+        setContactEmail(workspaceDetails.contactEmail || "");
+        setCity(workspaceDetails.city || "");
+        setDetailAddress(workspaceDetails.detailAddress || "");
+        setGoogleMapsEmbedUrl(workspaceDetails.googleMapsEmbedUrl || "");
+        setLinkedinUrl(workspaceDetails.linkedinUrl || "");
+        setFacebookUrl(workspaceDetails.facebookUrl || "");
+        setTwitterUrl(workspaceDetails.twitterUrl || "");
+        setMapError(null);
+      };
+      initForm();
     }
   }, [workspaceDetails]);
 
@@ -213,6 +222,42 @@ export const WorkspaceInformationView: React.FC<WorkspaceInformationViewProps> =
               ? "You do not have permission to access this organization workspace. Please verify your membership credentials or switch accounts."
               : detailsError || "Organization not found"}
           </Typography>
+          <div className="flex gap-4 justify-center mb-2">
+            <button
+              onClick={() => router.push("/user")}
+              className="px-4 py-2 bg-foreground text-background font-bold rounded-xl text-xs cursor-pointer"
+            >
+              Back to Home
+            </button>
+          </div>
+          {myOrganizations && myOrganizations.length > 0 && (
+            <div className="mt-6 border-t border-separator/40 pt-6 text-left w-full">
+              <span className="text-[10px] text-muted font-bold uppercase tracking-wider mb-3 block text-center">
+                Select a Workspace to Switch
+              </span>
+              <div className="grid grid-cols-1 gap-2.5 max-h-48 overflow-y-auto pr-1">
+                {myOrganizations.map((org) => (
+                  <button
+                    key={org.slug}
+                    onClick={() => router.push(`/workspace/${org.slug}/information`)}
+                    className="flex items-center gap-3 w-full p-3.5 rounded-xl border border-border bg-surface-secondary/40 hover:bg-surface-secondary hover:border-accent/30 text-left transition-colors duration-200 group cursor-pointer"
+                  >
+                    <div className="w-8 h-8 rounded-lg bg-accent/10 text-accent flex items-center justify-center group-hover:bg-accent group-hover:text-background transition-colors duration-200">
+                      <Building2 size={16} />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <span className="block text-xs font-bold text-foreground truncate group-hover:text-accent transition-colors duration-200">
+                        {org.name}
+                      </span>
+                      <span className="block text-[10px] text-muted font-mono truncate">
+                        @{org.slug}
+                      </span>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
         </Card>
       </div>
     );

@@ -49,7 +49,7 @@ public class JobVacancy
 
     [Required]
     [MaxLength(50)]
-    public string Gender { get; set; } = "Không yêu cầu";
+    public string Gender { get; set; } = "KhÃ´ng yÃªu cáº§u";
 
     [Required]
     [MaxLength(100)]

@@ -24,19 +24,27 @@ class CandidatePromptFactory:
     def get_skill_taxonomy_mapper_prompt(self, inputs: Dict[str, Any]) -> str:
         skill_graph = inputs.get("skillEvidenceGraph", {})
         cv_skills = inputs.get("cvSkills", [])
+        cv = inputs.get("cv", {})
+        projects = cv.get("projects", [])
+        experiences = cv.get("experiences", [])
         return (
-            f"Map the raw skill evidence from the Skill Evidence Graph to the SFIA 9 / O*NET standard taxonomy.\n\n"
-            f"RAW SKILL EVIDENCE GRAPH:\n{json.dumps(skill_graph, indent=2)}\n\n"
+            f"Map the raw skill evidence from the Skill Evidence Graph and CV declarations to the SFIA 9 / O*NET standard taxonomy.\n\n"
+            f"RAW SKILL EVIDENCE GRAPH (VERIFIED):\n{json.dumps(skill_graph, indent=2)}\n\n"
+            f"CV PORTFOLIO PROJECTS & WORK EXPERIENCE (SELF-DECLARED):\n"
+            f"Projects: {json.dumps(projects, indent=2)}\n"
+            f"Experiences: {json.dumps(experiences, indent=2)}\n\n"
             f"CV DECLARED SKILLS: {json.dumps(cv_skills)}\n\n"
             f"TASK:\n"
-            f"1. For each detected skill node, map it to the closest SFIA 9 skill category and O*NET occupation.\n"
+            f"1. For each detected skill node or CV declared skill, map it to the closest SFIA 9 skill category and O*NET occupation.\n"
             f"2. Normalize skill names (e.g., ReactJS → React, Spring Boot → Spring Framework).\n"
-            f"3. Cross-reference CV declared skills with evidence graph. Flag declared-but-unproven skills.\n\n"
+            f"3. Cross-reference CV declared skills with code evidence. Mark declared-but-unproven skills. If a skill has no code evidence "
+            f"in the graph but is used in self-declared CV projects or work experience, set evidenceStrength to 'weak' (or 'self_declared') "
+            f"and set declaredInCv to true.\n\n"
             f"Return JSON:\n"
             f'{{"mappedSkills": [{{"rawName": "string", "normalizedName": "string", '
             f'"sfiaCategory": "string", "onetCode": "string", "evidenceStrength": "none|weak|moderate|strong", '
             f'"declaredInCv": true}}], '
-            f'"unmatchedCvSkills": ["list of skills declared in CV but not found in code evidence"]}}'
+            f'"unmatchedCvSkills": ["list of skills declared in CV but not found in code evidence or CV projects"]}}'
         )
 
     # ── L2-002 Skill Proficiency Estimator ───────────────────────────────────
@@ -44,20 +52,29 @@ class CandidatePromptFactory:
     def get_skill_proficiency_estimator_prompt(self, inputs: Dict[str, Any]) -> str:
         mapped_skills = inputs.get("mappedSkills", [])
         skill_graph = inputs.get("skillEvidenceGraph", {})
+        cv = inputs.get("cv", {})
+        projects = cv.get("projects", [])
+        experiences = cv.get("experiences", [])
         return (
-            f"Estimate proficiency level for each skill based on depth and breadth of code evidence.\n\n"
+            f"Estimate proficiency level for each skill based on depth and breadth of code evidence and CV portfolio declarations.\n\n"
             f"MAPPED SKILLS:\n{json.dumps(mapped_skills, indent=2)}\n\n"
-            f"SKILL EVIDENCE GRAPH:\n{json.dumps(skill_graph, indent=2)}\n\n"
+            f"SKILL EVIDENCE GRAPH (VERIFIED CODE EVIDENCE):\n{json.dumps(skill_graph, indent=2)}\n\n"
+            f"CV PORTFOLIO PROJECTS (SELF-DECLARED):\n{json.dumps(projects, indent=2)}\n\n"
+            f"CV WORK EXPERIENCE (SELF-DECLARED):\n{json.dumps(experiences, indent=2)}\n\n"
             f"PROFICIENCY SCALE (SFIA-aligned):\n"
             f"1 = Awareness: Has used the technology but limited depth\n"
             f"2 = Working: Applies it in standard scenarios with guidance\n"
             f"3 = Practitioner: Independently applies in complex scenarios\n"
             f"4 = Expert: Deep mastery, can architect and mentor\n\n"
-            f"TASK: For each skill, assign proficiency level 1-4 with evidence rationale.\n\n"
+            f"TASK: For each skill, assign proficiency level 1-4 with evidence rationale.\n"
+            f"- If there is verified code evidence in SKILL EVIDENCE GRAPH, estimate based on it.\n"
+            f"- If there is no code evidence, but the skill is declared and used in CV PORTFOLIO PROJECTS or WORK EXPERIENCE, "
+            f"estimate based on the descriptions, duration, and achievements declared. Explicitly state in the rationale "
+            f"that it is evaluated from CV declarations.\n\n"
             f"Return JSON:\n"
             f'{{"skillProficiencies": [{{"skill": "string", "proficiencyLevel": 1, '
             f'"proficiencyLabel": "Awareness|Working|Practitioner|Expert", '
-            f'"evidenceRationale": "specific code files/patterns cited", '
+            f'"evidenceRationale": "specific code files/patterns or CV projects cited", '
             f'"confidenceScore": 0.85}}]}}'
         )
 
@@ -88,6 +105,9 @@ class CandidatePromptFactory:
         repo_report = inputs.get("repoIntelligenceReport", {})
         skill_proficiencies = inputs.get("skillProficiencies", [])
         strongest_domains = inputs.get("strongestDomains", [])
+        cv = inputs.get("cv", {})
+        projects = cv.get("projects", [])
+        experiences = cv.get("experiences", [])
         return (
             f"Map candidate evidence to career level definitions.\n\n"
             f"CAREER LEVEL FRAMEWORK:\n"
@@ -102,9 +122,17 @@ class CandidatePromptFactory:
             f"L3: Architecture patterns (DI, CQRS, Hexagonal), system design decisions, 2+ year maintenance\n"
             f"L4: Infrastructure/platform code, cross-service orchestration, OSS contributions\n"
             f"L5: Novel algorithm/framework, research citations, industry-recognized patterns\n\n"
-            f"REPOSITORY INTELLIGENCE REPORT:\n{json.dumps(repo_report, indent=2)}\n\n"
+            f"REPOSITORY INTELLIGENCE REPORT (VERIFIED):\n{json.dumps(repo_report, indent=2)}\n\n"
+            f"CV PORTFOLIO PROJECTS & WORK EXPERIENCE (SELF-DECLARED):\n"
+            f"Projects: {json.dumps(projects, indent=2)}\n"
+            f"Experiences: {json.dumps(experiences, indent=2)}\n\n"
             f"SKILL PROFICIENCIES:\n{json.dumps(skill_proficiencies, indent=2)}\n\n"
             f"STRONGEST DOMAINS:\n{json.dumps(strongest_domains, indent=2)}\n\n"
+            f"TASK:\n"
+            f"- Evaluate the career level score (20-100) using both verified repository reports (when available) "
+            f"and self-declared CV portfolio projects and work experience.\n"
+            f"- If no verified repository report is available (i.e. empty report), base the career level evaluation "
+            f"entirely on the self-declared projects and work experiences in the CV.\n\n"
             f"Return JSON:\n"
             f'{{"candidateScore": 72.5, "estimatedLevel": "L3", "estimatedLevelLabel": "Senior", '
             f'"scoreBreakdown": {{"skillDepth": 0.35, "ownershipScore": 0.25, "architectureScore": 0.20, '
@@ -167,17 +195,27 @@ class CandidatePromptFactory:
         repo_report = inputs.get("repoIntelligenceReport", {})
         commit_data = inputs.get("commitTimelineData", {})
         quality_data = inputs.get("codeQualityData", {})
+        cv = inputs.get("cv", {})
+        projects = cv.get("projects", [])
+        experiences = cv.get("experiences", [])
         return (
             f"Assess engineering maturity: code quality habits, refactoring discipline, documentation, testing.\n\n"
-            f"REPOSITORY REPORT:\n{json.dumps(repo_report, indent=2)}\n\n"
+            f"REPOSITORY REPORT (VERIFIED):\n{json.dumps(repo_report, indent=2)}\n\n"
             f"COMMIT TIMELINE:\n{json.dumps(commit_data, indent=2)}\n\n"
             f"CODE QUALITY DATA:\n{json.dumps(quality_data, indent=2)}\n\n"
+            f"CV PORTFOLIO PROJECTS & WORK EXPERIENCE (SELF-DECLARED):\n"
+            f"Projects: {json.dumps(projects, indent=2)}\n"
+            f"Experiences: {json.dumps(experiences, indent=2)}\n\n"
             f"MATURITY SIGNALS TO ASSESS:\n"
             f"- Proactive refactoring (not just feature/bug commits)\n"
             f"- Test coverage discipline (test files added alongside features)\n"
             f"- Documentation quality (READMEs, comments, API docs)\n"
             f"- Error handling discipline (specific try/catch, not bare except)\n"
             f"- Code smell awareness (complexity reduction over time)\n\n"
+            f"TASK:\n"
+            f"- Assess engineering maturity using verified repository metrics and commit data when available.\n"
+            f"- If verified metrics are not available, evaluate maturity indicators based on self-declared CV "
+            f"project descriptions, achievements, and responsibilities.\n\n"
             f"Return JSON:\n"
             f'{{"engineeringMaturityScore": 75.0, "maturityLevel": "Practitioner", '
             f'"signals": [{{"signal": "proactive_refactoring", "observed": true, '
@@ -190,15 +228,25 @@ class CandidatePromptFactory:
     def get_problem_solving_prompt(self, inputs: Dict[str, Any]) -> str:
         commit_timeline = inputs.get("commitTimelineData", {})
         commit_intent_data = inputs.get("commitIntentData", {})
+        cv = inputs.get("cv", {})
+        projects = cv.get("projects", [])
+        experiences = cv.get("experiences", [])
         return (
-            f"Analyze problem solving patterns from commit history: bug-fix quality, time-to-fix, recurrence.\n\n"
-            f"COMMIT TIMELINE DATA:\n{json.dumps(commit_timeline, indent=2)}\n\n"
-            f"COMMIT INTENT DATA:\n{json.dumps(commit_intent_data, indent=2)}\n\n"
+            f"Analyze problem solving patterns from commit history and CV project details.\n\n"
+            f"COMMIT TIMELINE DATA (VERIFIED):\n{json.dumps(commit_timeline, indent=2)}\n\n"
+            f"COMMIT INTENT DATA (VERIFIED):\n{json.dumps(commit_intent_data, indent=2)}\n\n"
+            f"CV PORTFOLIO PROJECTS & WORK EXPERIENCE (SELF-DECLARED):\n"
+            f"Projects: {json.dumps(projects, indent=2)}\n"
+            f"Experiences: {json.dumps(experiences, indent=2)}\n\n"
             f"ANALYSIS TASKS:\n"
             f"1. Time-to-fix: How quickly does the developer resolve reported bugs?\n"
             f"2. Fix quality: Are fixes comprehensive (root cause) or band-aid (symptom)?\n"
-            f"3. Recurrence rate: Do the same areas get fixed repeatedly? (high = poor root cause analysis)\n"
+            f"3. Recurrence rate: Do the same areas get fixed repeatedly?\n"
             f"4. Complexity handling: Are complex bugs fixed with proportional solution quality?\n\n"
+            f"TASK:\n"
+            f"- Analyze problem solving patterns using verified commit timeline and commit intent data when available.\n"
+            f"- If verified data is not available, evaluate problem solving capability based on self-declared "
+            f"achievements, debugging descriptions, and complex bug resolution details listed in the CV.\n\n"
             f"Return JSON:\n"
             f'{{"problemSolvingScore": 78.0, '
             f'"avgTimeToFixDays": 2.5, "rootCauseFixRatio": 0.72, '
@@ -244,6 +292,9 @@ class CandidatePromptFactory:
             f"- Maintenance Engineer: Primarily chore/refactor/docs commits, stabilization focus\n"
             f"- Performance Optimizer: Profiling evidence, perf-focused refactors\n"
             f"- Research-Oriented: Experimental branches, proof-of-concept patterns\n\n"
+            f"CRITICAL REQUIREMENTS:\n"
+            f"- You MUST classify primaryWorkingStyle strictly into one of the 6 options listed above. Do NOT output 'Unclassifiable', 'None', or any other value.\n"
+            f"- If the candidate's signals are mixed or unclear, choose the closest style and assign a lower confidence score (e.g., <= 0.4) to represent a neutral/mixed band.\n\n"
             f"COMMIT TIMELINE:\n{json.dumps(commit_timeline, indent=2)}\n\n"
             f"COMMIT INTENT:\n{json.dumps(commit_intent, indent=2)}\n\n"
             f"STRONGEST DOMAINS:\n{json.dumps(strongest_domains, indent=2)}\n\n"
@@ -263,6 +314,8 @@ class CandidatePromptFactory:
         final_level_label = inputs.get("finalLevelLabel", "Middle")
         strongest_domains = inputs.get("strongestDomains", [])
         working_style = inputs.get("primaryWorkingStyle", "")
+        bg_repos = inputs.get("backgroundRepositories", [])
+        bg_repos_str = json.dumps([{"repositoryName": r.get("repositoryName"), "techStack": r.get("techStack"), "overallScore": r.get("overallScore")} for r in bg_repos], indent=2)
         return (
             f"Generate role recommendations based on technical tendency, career level, and working style.\n\n"
             f"CANDIDATE PROFILE:\n"
@@ -271,16 +324,21 @@ class CandidatePromptFactory:
             f"- Working Style: {working_style}\n"
             f"- Tendency Ranking: {json.dumps(tendency_ranking)}\n"
             f"- Strongest Domains: {json.dumps(strongest_domains)}\n\n"
+            f"BACKGROUND REPOSITORIES (Not attached to CV, do NOT use for scoring or core profile):\n"
+            f"{bg_repos_str}\n\n"
             f"TASK:\n"
             f"1. Recommend Top 1 best-fit role with specific job titles.\n"
-            f"2. Suggest 5-10 additional matching positions with confidence scores.\n"
-            f"3. Generate suggested CV role titles the candidate should use.\n\n"
+            f"2. Suggest 5-10 additional matching positions with confidence scores. Each suggested role item MUST include a detailed, evidence-grounded 'rationale' string explaining the match.\n"
+            f"3. Generate suggested CV role titles the candidate should use.\n"
+            f"4. If any background repositories have strong relevant tech stacks that are not attached to CV projects, generate suggestions advising the candidate to link them to show proof of those skills.\n\n"
             f"Return JSON:\n"
             f'{{"topMatch": {{"roleTitle": "Senior Backend Engineer", "confidence": 0.91, '
             f'"rationale": "string"}}, '
             f'"suggestedRoles": [{{"roleTitle": "string", "confidence": 0.75, '
-            f'"domain": "string", "levelFit": "exact|stretch|underqualified"}}], '
-            f'"suggestedCvTitles": ["Senior Python Developer", "Backend Engineer | FastAPI | PostgreSQL"]}}'
+            f'"domain": "string", "levelFit": "exact|stretch|underqualified", '
+            f'"rationale": "explicit reasoning grounded in repository + CV signals"}}], '
+            f'"suggestedCvTitles": ["Senior Python Developer", "Backend Engineer | FastAPI | PostgreSQL"], '
+            f'"cvImprovementSuggestions": [{{"suggestion": "Link repository Kaivian/CVerify to prove C# expertise.", "repositoryName": "Kaivian/CVerify", "reason": "Contains advanced C# patterns matching your target role."}}]}}'
         )
 
     # ── L2-013 Candidate Summary Generator ───────────────────────────────────
@@ -312,8 +370,65 @@ class CandidatePromptFactory:
             f"- Must cite specific technical evidence, not generic statements\n"
             f"- Must mention level, tendency, and top 2-3 skills\n\n"
             f"Return JSON:\n"
-            f'{{"recruiterHeadline": "Senior Backend Engineer with 3+ years of Python/FastAPI expertise", '
-            f'"fullSummary": "paragraph 400-700 chars", '
-            f'"keyStrengths": ["Distributed system design", "API architecture", "PostgreSQL optimization"], '
-            f'"watchPoints": ["Limited frontend exposure", "No mobile development evidence"]}}'
+            f'  "recruiterHeadline": "Senior Backend Engineer with 3+ years of Python/FastAPI expertise", \n'
+            f'  "fullSummary": "paragraph 400-700 chars", \n'
+            f'  "keyStrengths": ["Distributed system design", "API architecture", "PostgreSQL optimization"], \n'
+            f'  "watchPoints": ["Limited frontend exposure", "No mobile development evidence"]\n'
+            f'}}'
+        )
+
+    # ── Repository Assessment ────────────────────────────────────────────────
+
+    def get_repository_assessment_prompt(self, inputs: Dict[str, Any]) -> str:
+        repo_report = inputs.get("repoIntelligenceReport", {})
+        skill_graph = inputs.get("skillEvidenceGraph", {})
+        commit_timeline = inputs.get("commitTimelineData", {})
+        commit_intent = inputs.get("commitIntentData", {})
+        
+        # Calculate default values
+        ownership = repo_report.get("ownership", {}) if isinstance(repo_report, dict) else {}
+        ownership_score = ownership.get("ownership_score", 0.0) if isinstance(ownership, dict) else 0.0
+        
+        fraud = repo_report.get("fraud_signals", {}) if isinstance(repo_report, dict) else {}
+        clone_classification = fraud.get("clone_classification") or repo_report.get("clone_classification", "clean") if isinstance(repo_report, dict) else "clean"
+        
+        tech_stack = repo_report.get("techStack", {}) if isinstance(repo_report, dict) else {}
+        primary_languages = tech_stack.get("languages", {}) if isinstance(tech_stack, dict) else {}
+        detected_frameworks = tech_stack.get("frameworks", []) if isinstance(tech_stack, dict) else []
+        
+        return (
+            f"Perform an L2 Repository Assessment for the following repository. "
+            f"Your output must be a single, valid, normalized JSON object representing the Repository Capability Profile.\n\n"
+            f"RAW REPOSITORY INTELLIGENCE REPORT:\n{json.dumps(repo_report, indent=2)}\n\n"
+            f"SKILL EVIDENCE GRAPH:\n{json.dumps(skill_graph, indent=2)}\n\n"
+            f"COMMIT TIMELINE DATA:\n{json.dumps(commit_timeline, indent=2)}\n\n"
+            f"COMMIT INTENT DATA:\n{json.dumps(commit_intent, indent=2)}\n\n"
+            f"CONTEXT AND DEFAULT METRICS:\n"
+            f"- Default Ownership Score: {ownership_score}\n"
+            f"- Default Clone Risk: {clone_classification}\n"
+            f"- Primary Languages: {json.dumps(primary_languages)}\n"
+            f"- Detected Frameworks: {json.dumps(detected_frameworks)}\n\n"
+            f"CRITICAL REQUIREMENTS:\n"
+            f"1. Evaluate and compute 'ownershipScore' (0.0 to 1.0) and 'complexityScore' (0.0 to 100.0) based on code quality and patterns.\n"
+            f"2. Evaluate 'qualityScore' (0.0 to 100.0) reflecting architecture cleanliness, test coverage, and documentation.\n"
+            f"3. Classify clone risk into 'cloneRiskClassification' (clean, low_risk, medium_risk, high_risk).\n"
+            f"4. Identify 'verifiedPatterns' (e.g. CQRS, Repository Pattern) and 'keyStrengths'/'identifiedGaps'.\n"
+            f"5. Return a clean JSON structure only. Do not truncate the JSON or include markdown formatting blocks.\n\n"
+            f"EXPECTED JSON SCHEMA:\n"
+            f"{{\n"
+            f"  \"repositoryId\": \"string\",\n"
+            f"  \"repositoryName\": \"string\",\n"
+            f"  \"verifiedCommitSha\": \"string\",\n"
+            f"  \"ownershipScore\": 0.85,\n"
+            f"  \"complexityScore\": 76.5,\n"
+            f"  \"qualityScore\": 82.0,\n"
+            f"  \"cloneRiskClassification\": \"clean\",\n"
+            f"  \"primaryLanguages\": {{\n"
+            f"    \"C#\": 85.0\n"
+            f"  }},\n"
+            f"  \"detectedFrameworks\": [\"ASP.NET Core\"],\n"
+            f"  \"verifiedPatterns\": [\"CQRS\"],\n"
+            f"  \"keyStrengths\": [\"string\"],\n"
+            f"  \"identifiedGaps\": [\"string\"]\n"
+            f"}}\n"
         )
