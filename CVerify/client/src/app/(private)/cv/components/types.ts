@@ -103,6 +103,8 @@ export interface PreferencesDraft {
   employmentPreferences: string[];
   expectedSalaryMin: number | null;
   expectedSalaryMax: number | null;
+  desiredSalary: number | null;
+  minimumAcceptableSalary: number | null;
   expectedSalaryCurrency: string;
   expectedSalaryType: string;
   expectedSalaryNegotiable: boolean;

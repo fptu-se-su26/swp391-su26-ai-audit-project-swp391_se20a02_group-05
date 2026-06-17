@@ -50,6 +50,12 @@ export const routesConfig: Record<string, RouteMetadata> = {
     fallbackLabel: 'Partner Console',
     icon: Building2,
   },
+  '/jd': {
+    path: '/jd',
+    translationKey: 'common:dashboard.jdManagement',
+    fallbackLabel: 'JD Management',
+    icon: FileText,
+  },
   '/admin': {
     path: '/admin',
     translationKey: 'common:dashboard.systemAdmin',

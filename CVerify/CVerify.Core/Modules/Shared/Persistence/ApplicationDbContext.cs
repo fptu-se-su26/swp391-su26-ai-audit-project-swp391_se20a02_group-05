@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using Npgsql;
 using CVerify.API.Modules.AiChat.Entities;
 using CVerify.API.Modules.Auth.Entities;
+using CVerify.API.Modules.Jd.Entities;
 using CVerify.API.Modules.Profiles.Entities;
 using CVerify.API.Modules.Recovery.Entities;
 using CVerify.API.Modules.Shared.Domain.Entities;
@@ -127,6 +128,7 @@ public class ApplicationDbContext : DbContext
     public DbSet<RoleAssignment> RoleAssignments => Set<RoleAssignment>();
     public DbSet<WorkspacePost> WorkspacePosts => Set<WorkspacePost>();
     public DbSet<JobVacancy> JobVacancies => Set<JobVacancy>();
+    public DbSet<StandardizedJd> StandardizedJds => Set<StandardizedJd>();
 
     public DbSet<ActivityEvent> ActivityEvents => Set<ActivityEvent>();
     public DbSet<InAppNotification> InAppNotifications => Set<InAppNotification>();
@@ -235,6 +237,7 @@ public class ApplicationDbContext : DbContext
         modelBuilder.Entity<RoleAssignment>().Property(ra => ra.Id).ValueGeneratedNever();
         modelBuilder.Entity<WorkspacePost>().Property(wp => wp.Id).ValueGeneratedNever();
         modelBuilder.Entity<JobVacancy>().Property(jv => jv.Id).ValueGeneratedNever();
+        modelBuilder.Entity<StandardizedJd>().Property(jd => jd.Id).ValueGeneratedNever();
         modelBuilder.Entity<AdminMember>().Property(am => am.Id).ValueGeneratedNever();
         modelBuilder.Entity<AdminInvitation>().Property(ai => ai.Id).ValueGeneratedNever();
         modelBuilder.Entity<AdminInvitationRole>().Property(air => air.Id).ValueGeneratedNever();
@@ -263,6 +266,15 @@ public class ApplicationDbContext : DbContext
         modelBuilder.Entity<RepositoryDomain>().Property(x => x.Id).ValueGeneratedNever();
         modelBuilder.Entity<RepositoryIntelligenceSignal>().Property(x => x.Id).ValueGeneratedNever();
 
+        modelBuilder.Entity<StandardizedJd>(entity =>
+        {
+            entity.ToTable("standardized_jds");
+            entity.HasIndex(jd => new { jd.OwnerUserId, jd.CreatedAt });
+            entity.HasOne(jd => jd.OwnerUser)
+                .WithMany()
+                .HasForeignKey(jd => jd.OwnerUserId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
 
         // Enable PostgreSQL Extensions
         modelBuilder.HasPostgresExtension("citext");
@@ -599,6 +611,10 @@ public class ApplicationDbContext : DbContext
             entity.HasOne(m => m.SourceCodeRepository)
                   .WithMany()
                   .HasForeignKey(m => m.SourceCodeRepositoryId)
+                  .OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne<User>()
+                  .WithMany()
+                  .HasForeignKey(m => m.UserId)
                   .OnDelete(DeleteBehavior.Cascade);
             entity.HasIndex(m => m.UserId).HasDatabaseName("idx_cv_repository_mappings_user_id");
             entity.HasIndex(m => m.SourceCodeRepositoryId).HasDatabaseName("idx_cv_repository_mappings_repo_id");

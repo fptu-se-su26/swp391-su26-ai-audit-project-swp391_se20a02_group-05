@@ -119,6 +119,8 @@ export interface DeclaredCareerPreference {
   companyValues: string[];
   expectedSalaryMin?: number | null;
   expectedSalaryMax?: number | null;
+  desiredSalary?: number | null;
+  minimumAcceptableSalary?: number | null;
   expectedSalaryCurrency?: string | null;
   expectedSalaryType?: string | null;
   expectedSalaryNegotiable: boolean;
@@ -187,6 +189,8 @@ export interface UpdateCareerPreferenceRequest {
   employmentPreferences?: string[];
   expectedSalaryMin?: number | null;
   expectedSalaryMax?: number | null;
+  desiredSalary?: number | null;
+  minimumAcceptableSalary?: number | null;
   expectedSalaryCurrency?: string | null;
   expectedSalaryType?: string | null;
   expectedSalaryNegotiable?: boolean;
@@ -216,6 +220,8 @@ export interface PublicCareerPreference {
   desiredJobPositions: string[];
   expectedSalaryMin?: number | null;
   expectedSalaryMax?: number | null;
+  desiredSalary?: number | null;
+  minimumAcceptableSalary?: number | null;
   expectedSalaryCurrency?: string | null;
   expectedSalaryType?: string | null;
   expectedSalaryNegotiable: boolean;

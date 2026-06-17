@@ -66,6 +66,14 @@ export const navigationConfig: NavigationNode[] = [
         href: '/business',
         icon: Building2,
       },
+      {
+        id: 'jd-management',
+        type: 'item',
+        label: 'JD Management',
+        translationKey: 'common:dashboard.jdManagement',
+        href: '/jd',
+        icon: FileText,
+      },
     ],
   },
   {

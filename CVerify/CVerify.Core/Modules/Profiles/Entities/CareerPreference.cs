@@ -55,6 +55,12 @@ public class CareerPreference
     [Column(TypeName = "decimal(18,2)")]
     public decimal? ExpectedSalaryMax { get; set; }
 
+    [Column(TypeName = "decimal(18,2)")]
+    public decimal? DesiredSalary { get; set; }
+
+    [Column(TypeName = "decimal(18,2)")]
+    public decimal? MinimumAcceptableSalary { get; set; }
+
     [MaxLength(10)]
     public string? ExpectedSalaryCurrency { get; set; }
 

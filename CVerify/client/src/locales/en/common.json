@@ -83,7 +83,8 @@
     "jobBoard": "Job Board",
     "cv": "My CV",
     "candidateDashboard": "Candidate Dashboard",
-    "businessDashboard": "Business Dashboard"
+    "businessDashboard": "Business Dashboard",
+    "jdManagement": "JD Management"
   },
   "admin": {
     "dashboard": "Admin",

@@ -690,6 +690,106 @@ namespace CVerify.API.Migrations
                     b.ToTable("verification_tokens", (string)null);
                 });
 
+            modelBuilder.Entity("CVerify.API.Modules.Jd.Entities.StandardizedJd", b =>
+                {
+                    b.Property<string>("Id")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("id");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<string>("Currency")
+                        .IsRequired()
+                        .HasMaxLength(10)
+                        .HasColumnType("character varying(10)")
+                        .HasColumnName("currency");
+
+                    b.Property<string>("HumanReadableText")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("human_readable_text");
+
+                    b.Property<string>("JobTitle")
+                        .IsRequired()
+                        .HasMaxLength(255)
+                        .HasColumnType("character varying(255)")
+                        .HasColumnName("job_title");
+
+                    b.Property<Guid>("OwnerUserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("owner_user_id");
+
+                    b.Property<decimal>("SalaryMax")
+                        .HasColumnType("decimal(18,2)")
+                        .HasColumnName("salary_max");
+
+                    b.Property<decimal>("SalaryMin")
+                        .HasColumnType("decimal(18,2)")
+                        .HasColumnName("salary_min");
+
+                    b.Property<string>("Seniority")
+                        .IsRequired()
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)")
+                        .HasColumnName("seniority");
+
+                    b.Property<string>("Department")
+                        .IsRequired()
+                        .HasMaxLength(120)
+                        .HasColumnType("character varying(120)")
+                        .HasColumnName("department");
+
+                    b.Property<string>("EmploymentType")
+                        .IsRequired()
+                        .HasMaxLength(80)
+                        .HasColumnType("character varying(80)")
+                        .HasColumnName("employment_type");
+
+                    b.Property<string>("HiringPriority")
+                        .IsRequired()
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)")
+                        .HasColumnName("hiring_priority");
+
+                    b.Property<string>("Industry")
+                        .IsRequired()
+                        .HasMaxLength(120)
+                        .HasColumnType("character varying(120)")
+                        .HasColumnName("industry");
+
+                    b.Property<string>("Location")
+                        .IsRequired()
+                        .HasMaxLength(255)
+                        .HasColumnType("character varying(255)")
+                        .HasColumnName("location");
+
+                    b.Property<string>("WorkMode")
+                        .IsRequired()
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)")
+                        .HasColumnName("work_mode");
+
+                    b.Property<string>("StructuredJson")
+                        .IsRequired()
+                        .HasColumnType("jsonb")
+                        .HasColumnName("structured_json");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.HasKey("Id")
+                        .HasName("pk_standardized_jds");
+
+                    b.HasIndex("OwnerUserId", "CreatedAt")
+                        .HasDatabaseName("ix_standardized_jds_owner_user_id_created_at");
+
+                    b.ToTable("standardized_jds", (string)null);
+                });
+
             modelBuilder.Entity("CVerify.API.Modules.Profiles.Entities.AcademicAchievement", b =>
                 {
                     b.Property<Guid>("Id")
@@ -1279,6 +1379,10 @@ namespace CVerify.API.Migrations
                         .HasColumnType("text[]")
                         .HasColumnName("desired_job_positions");
 
+                    b.Property<decimal?>("DesiredSalary")
+                        .HasColumnType("decimal(18,2)")
+                        .HasColumnName("desired_salary");
+
                     b.PrimitiveCollection<List<string>>("EmploymentPreferences")
                         .IsRequired()
                         .HasColumnType("varchar(50)[]")
@@ -1319,6 +1423,10 @@ namespace CVerify.API.Migrations
                         .IsRequired()
                         .HasColumnType("text")
                         .HasColumnName("leadership_track");
+
+                    b.Property<decimal?>("MinimumAcceptableSalary")
+                        .HasColumnType("decimal(18,2)")
+                        .HasColumnName("minimum_acceptable_salary");
 
                     b.Property<bool>("OpenToRelocation")
                         .HasColumnType("boolean")
@@ -1399,6 +1507,46 @@ namespace CVerify.API.Migrations
                     NpgsqlIndexBuilderExtensions.HasMethod(b.HasIndex("TargetSkills"), "gin");
 
                     b.ToTable("career_preferences", (string)null);
+                });
+
+            modelBuilder.Entity("CVerify.API.Modules.Profiles.Entities.CvRepositoryMapping", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTimeOffset>("IndexedAtUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("indexed_at_utc");
+
+                    b.Property<Guid?>("ReferenceEntityId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("reference_entity_id");
+
+                    b.Property<string>("ReferenceSource")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("reference_source");
+
+                    b.Property<Guid>("SourceCodeRepositoryId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("source_code_repository_id");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("user_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_cv_repository_mappings");
+
+                    b.HasIndex("SourceCodeRepositoryId")
+                        .HasDatabaseName("idx_cv_repository_mappings_repo_id");
+
+                    b.HasIndex("UserId")
+                        .HasDatabaseName("idx_cv_repository_mappings_user_id");
+
+                    b.ToTable("cv_repository_mappings", (string)null);
                 });
 
             modelBuilder.Entity("CVerify.API.Modules.Profiles.Entities.EducationEntry", b =>
@@ -5518,6 +5666,18 @@ namespace CVerify.API.Migrations
                     b.Navigation("User");
                 });
 
+            modelBuilder.Entity("CVerify.API.Modules.Jd.Entities.StandardizedJd", b =>
+                {
+                    b.HasOne("CVerify.API.Modules.Shared.Domain.Entities.User", "OwnerUser")
+                        .WithMany()
+                        .HasForeignKey("OwnerUserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_standardized_jds_users_owner_user_id");
+
+                    b.Navigation("OwnerUser");
+                });
+
             modelBuilder.Entity("CVerify.API.Modules.Profiles.Entities.AcademicAchievement", b =>
                 {
                     b.HasOne("CVerify.API.Modules.Shared.Domain.Entities.User", "User")
@@ -5636,6 +5796,25 @@ namespace CVerify.API.Migrations
                         .HasConstraintName("fk_career_preferences_users_user_id");
 
                     b.Navigation("User");
+                });
+
+            modelBuilder.Entity("CVerify.API.Modules.Profiles.Entities.CvRepositoryMapping", b =>
+                {
+                    b.HasOne("CVerify.API.Modules.SourceCode.Entities.SourceCodeRepository", "SourceCodeRepository")
+                        .WithMany()
+                        .HasForeignKey("SourceCodeRepositoryId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_cv_repository_mappings_source_code_repositories_source_code");
+
+                    b.HasOne("CVerify.API.Modules.Shared.Domain.Entities.User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_cv_repository_mappings_users_user_id");
+
+                    b.Navigation("SourceCodeRepository");
                 });
 
             modelBuilder.Entity("CVerify.API.Modules.Profiles.Entities.EducationEntry", b =>
