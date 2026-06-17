@@ -123,16 +123,16 @@ const SALARY_TYPE_OPTIONS = [
 ];
 
 const WORK_STATUS_OPTIONS = [
-  { value: "active", label: "Active Search" },
+  { value: "active", label: "Active Job Search" },
   { value: "casual", label: "Casual Browsing" },
   { value: "closed", label: "Not Open to Work" },
 ];
 
 const REMOTE_PREFERENCE_OPTIONS = [
-  { value: "remote", label: "Remote Only" },
+  { value: "remote", label: "Remote" },
   { value: "hybrid", label: "Hybrid" },
-  { value: "onsite", label: "Onsite Only" },
-  { value: "any", label: "Open to Any" },
+  { value: "onsite", label: "Onsite" },
+  { value: "any", label: "Any" },
 ];
 
 const LEADERSHIP_TRACK_OPTIONS = [
@@ -173,9 +173,7 @@ const careerSchema = z
     remotePreference: z.enum(["remote", "hybrid", "onsite", "any"]),
     openToRelocation: z.boolean(),
     preferredLocations: z.array(z.string()),
-    employmentPreferences: z
-      .array(z.string())
-      .min(1, "Select at least one employment preference"),
+    employmentPreferences: z.array(z.string()),
     expectedSalaryMin: salarySchema,
     expectedSalaryMax: salarySchema,
     desiredSalary: salarySchema,
@@ -333,7 +331,7 @@ export const CareerTab: React.FC<CareerTabProps> = ({
     if (career && !methods.formState.isDirty) {
       const declared = career.declaredPreferences;
       reset({
-        availableForHire: declared.availableForHire,
+        availableForHire: declared.availableForHire ?? true,
         openToWorkStatus: declared.openToWorkStatus || "casual",
         preferredLanguage: (declared.preferredLanguage as any) || "en",
         remotePreference: (declared.remotePreference as any) || "any",
@@ -371,7 +369,7 @@ export const CareerTab: React.FC<CareerTabProps> = ({
     if (career) {
       const declared = career.declaredPreferences;
       reset({
-        availableForHire: declared.availableForHire,
+        availableForHire: declared.availableForHire ?? true,
         openToWorkStatus: declared.openToWorkStatus || "casual",
         preferredLanguage: (declared.preferredLanguage as any) || "en",
         remotePreference: (declared.remotePreference as any) || "any",
@@ -822,14 +820,14 @@ export const CareerTab: React.FC<CareerTabProps> = ({
                 />
               </div>
 
-              {/* Desired Job Positions Chip list */}
+              {/* Target Roles Chip list */}
               <div className="flex flex-col gap-1.5 text-left">
                 <Controller
                   control={control}
                   name="desiredJobPositions"
                   render={({ field: { value, onChange } }) => (
                     <TagChipMultiSelect
-                      label="Desired Job Positions"
+                      label="Target Roles"
                       description="Select one or more standardized roles that you are qualified for and wish to target next."
                       options={ROLES_OPTIONS}
                       value={value || []}
@@ -1035,6 +1033,7 @@ export const CareerTab: React.FC<CareerTabProps> = ({
                           placeholder={salaryPlaceholderMin}
                           value={value === null || value === undefined ? "" : value.toString()}
                           onChange={onChange}
+                          disabled={currentValues.expectedSalaryNegotiable}
                         />
                         <InputGroup.Suffix>{currencyCode}</InputGroup.Suffix>
                       </InputGroup>
@@ -1063,6 +1062,7 @@ export const CareerTab: React.FC<CareerTabProps> = ({
                           placeholder={salaryPlaceholderMax}
                           value={value === null || value === undefined ? "" : value.toString()}
                           onChange={onChange}
+                          disabled={currentValues.expectedSalaryNegotiable}
                         />
                         <InputGroup.Suffix>{currencyCode}</InputGroup.Suffix>
                       </InputGroup>
@@ -1086,6 +1086,7 @@ export const CareerTab: React.FC<CareerTabProps> = ({
                         value={value || "USD"}
                         onChange={onChange}
                         options={CURRENCY_OPTIONS}
+                        isDisabled={currentValues.expectedSalaryNegotiable}
                       />
                     )}
                   />
@@ -1102,6 +1103,7 @@ export const CareerTab: React.FC<CareerTabProps> = ({
                         value={value || "Monthly"}
                         onChange={onChange}
                         options={SALARY_TYPE_OPTIONS}
+                        isDisabled={currentValues.expectedSalaryNegotiable}
                       />
                     )}
                   />

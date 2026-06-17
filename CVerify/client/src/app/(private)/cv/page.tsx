@@ -49,6 +49,7 @@ import { useAuth } from "@/features/auth/hooks/use-auth";
 import { useCandidateAssessment } from "@/hooks/use-candidate-assessment";
 import { isDeepEqual } from "@/components/ui/unsaved-changes-bar";
 import { parseDate } from "@internationalized/date";
+import { useProfileStore } from "@/stores/use-profile-store";
 
 import {
   type CvDraftState,
@@ -258,6 +259,12 @@ export default function CvManagementCenter() {
     disconnectProgressStream,
     fetchDetails,
     stages,
+    realtimeScore,
+    realtimeLevel,
+    realtimeLevelLabel,
+    realtimeDimensions,
+    realtimeRecommendations,
+    realtimeSignals,
   } = useCandidateAssessment();
 
   const [isProgressModalOpen, setIsProgressModalOpen] = useState(false);
@@ -696,7 +703,10 @@ export default function CvManagementCenter() {
         const payload = drafts["skills"];
         const response = await updateCareer({
           targetSkills: payload.targetSkills,
-          version: career?.declaredPreferences?.version || 0,
+          version:
+            useProfileStore.getState().career?.declaredPreferences?.version ??
+            career?.declaredPreferences?.version ??
+            0,
         });
 
         const updatedSkills: SkillsDraft = { targetSkills: response.declaredPreferences.targetSkills || [] };
@@ -730,7 +740,10 @@ export default function CvManagementCenter() {
           workStyles: payload.workStyles,
           companyValues: payload.companyValues,
           workPreferenceNotes: payload.workPreferenceNotes,
-          version: career?.declaredPreferences?.version || 0,
+          version:
+            useProfileStore.getState().career?.declaredPreferences?.version ??
+            career?.declaredPreferences?.version ??
+            0,
         });
 
         const declared = response.declaredPreferences || {};
@@ -1011,7 +1024,7 @@ export default function CvManagementCenter() {
         try {
           const parsed = typeof item.evidenceSources === 'string' ? JSON.parse(item.evidenceSources) : item.evidenceSources;
           reasoningText = parsed.rationale || "";
-        } catch (e) {}
+        } catch (e) { }
       }
       return {
         ...item,
@@ -1027,7 +1040,7 @@ export default function CvManagementCenter() {
         try {
           const parsed = typeof item.evidence === 'string' ? JSON.parse(item.evidence) : item.evidence;
           rationale = parsed.rationale || "";
-        } catch (e) {}
+        } catch (e) { }
       }
       const reasonsList = Array.isArray(item.reasons)
         ? item.reasons
@@ -1064,8 +1077,8 @@ export default function CvManagementCenter() {
           </div>
           <div className="flex flex-wrap items-center gap-2 self-start sm:self-auto">
             <span className={`px-2.5 py-0.5 rounded-full text-[9px] font-extrabold uppercase tracking-wide ${readiness?.requiresReassessment
-                ? "bg-warning/15 text-warning border border-warning/30"
-                : "bg-success/15 text-success border border-success/30"
+              ? "bg-warning/15 text-warning border border-warning/30"
+              : "bg-success/15 text-success border border-success/30"
               }`}>
               {readiness?.requiresReassessment ? "Outdated" : "Verified & Up-to-date"}
             </span>
@@ -1684,6 +1697,78 @@ export default function CvManagementCenter() {
               *Progress bar represents stage completion milestones. AI processing on active stage may require extra processing time.
             </span>
 
+            {/* Real-Time Live Scorecard Card */}
+            {(realtimeScore !== null || realtimeLevelLabel !== null || Object.keys(realtimeDimensions).length > 0) && (
+              <div className="p-4 border border-border/80 bg-surface-secondary/30 rounded-2xl flex flex-col gap-3 shrink-0 shadow-xs">
+                <div className="flex items-center justify-between">
+                  <span className="text-[10px] text-muted-foreground font-black uppercase tracking-wider">Live Evaluation Vector</span>
+                  {realtimeLevelLabel && (
+                    <Chip size="sm" color="accent" variant="soft" className="text-[10px] font-black uppercase px-2 h-5.5 bg-accent/15 text-accent border-none">
+                      {realtimeLevelLabel}
+                    </Chip>
+                  )}
+                </div>
+                <div className="w-full h-px bg-border/5" />
+                <div className="flex items-center justify-between gap-4">
+                  {realtimeScore !== null && (
+                    <div className="flex flex-col items-center justify-center p-3 border border-border/40 bg-surface rounded-2xl shrink-0 min-w-[90px]">
+                      <span className="text-[9px] text-muted-foreground uppercase font-black tracking-wide">Live Score</span>
+                      <span className="text-2xl font-black text-foreground">{Math.round(realtimeScore)}</span>
+                    </div>
+                  )}
+                  {/* Real-time Dimensions list */}
+                  <div className="flex-1 grid grid-cols-2 sm:grid-cols-3 gap-2">
+                    {Object.entries(realtimeDimensions).map(([dim, val]) => {
+                      const dimLabelMap: Record<string, string> = {
+                        skillDepth: "Skill Depth",
+                        ownership: "Ownership",
+                        architecture: "Architecture",
+                        problemSolving: "Problem Solving",
+                        impact: "Business Impact"
+                      };
+                      return (
+                        <div key={dim} className="flex flex-col border border-border/20 bg-surface-secondary/20 p-2 rounded-xl text-left">
+                          <span className="text-[8px] text-muted-foreground font-extrabold uppercase line-clamp-1">{dimLabelMap[dim] || dim}</span>
+                          <span className="text-xs font-black text-foreground">{val}</span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Real-Time Observations / Gaps */}
+                {realtimeSignals.length > 0 && (
+                  <div className="flex flex-col gap-1.5 mt-1 border-t border-border/5 pt-2">
+                    <span className="text-[9px] text-muted-foreground font-black uppercase">Detected Improvement Gaps</span>
+                    <div className="flex flex-wrap gap-1.5">
+                      {realtimeSignals.map((sig, idx) => (
+                        <Chip key={idx} size="sm" color="danger" variant="soft" className="text-[8px] font-extrabold uppercase px-1.5 h-4.5 bg-danger/10 text-danger border-none">
+                          {sig}
+                        </Chip>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Real-Time Actionable Recommendations */}
+                {realtimeRecommendations.length > 0 && (
+                  <div className="flex flex-col gap-1.5 border-t border-border/5 pt-2">
+                    <span className="text-[9px] text-muted-foreground font-black uppercase">Generated Recommendations ({realtimeRecommendations.length})</span>
+                    <div className="max-h-[80px] overflow-y-auto flex flex-col gap-1.5 pr-1 scrollbar-thin scrollbar-thumb-border">
+                      {realtimeRecommendations.map((rec) => (
+                        <div key={rec.id} className="flex items-start gap-2 p-2 border border-border/20 bg-surface rounded-xl text-[10px] leading-relaxed">
+                          <Chip size="sm" color={rec.priority === 'High' ? 'danger' : 'warning'} variant="soft" className="text-[8px] font-black uppercase shrink-0 px-1 h-4.5 border-none">
+                            {rec.id}
+                          </Chip>
+                          <span className="font-light text-foreground/80">{rec.action}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
             {/* Detailed Failure Information Card */}
             {streamStatus === 'failed' && (
               <div className="p-4 border border-danger/30 bg-danger/5 rounded-xl space-y-3 shrink-0">
@@ -2242,8 +2327,8 @@ export default function CvManagementCenter() {
                       <Button
                         size="sm"
                         className={`rounded-xl font-bold text-xs select-none h-9 flex-1 border-none cursor-pointer ${latestAssessment?.status === 'Running' || latestAssessment?.status === 'Queued'
-                            ? "bg-warning text-warning-foreground"
-                            : "bg-accent text-accent-foreground"
+                          ? "bg-warning text-warning-foreground"
+                          : "bg-accent text-accent-foreground"
                           }`}
                         onPress={
                           latestAssessment?.status === 'Running' || latestAssessment?.status === 'Queued'
@@ -2284,7 +2369,10 @@ export default function CvManagementCenter() {
                     size="sm"
                     variant="secondary"
                     className="rounded-xl font-bold text-xs select-none w-full border-border/30 bg-surface hover:bg-surface-secondary transition-colors cursor-pointer"
-                    onPress={() => setIsA4PreviewOpen(true)}
+                    onPress={() => {
+                      setViewState("editor");
+                      setEditorMode("preview");
+                    }}
                   >
                     Open A4 Preview
                   </Button>
