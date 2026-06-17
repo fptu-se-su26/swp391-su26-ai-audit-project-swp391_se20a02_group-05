@@ -86,6 +86,12 @@ public sealed class JdService : IJdService
             OwnerUserId = userId,
             JobTitle = request.JobTitle.Trim(),
             Seniority = request.Seniority.Trim(),
+            Department = request.Department?.Trim() ?? string.Empty,
+            EmploymentType = request.EmploymentType?.Trim() ?? string.Empty,
+            Location = request.Location.Trim(),
+            WorkMode = ResolveWorkMode(request),
+            Industry = request.Industry?.Trim() ?? string.Empty,
+            HiringPriority = request.HiringPriority?.Trim() ?? string.Empty,
             Currency = request.Currency.Trim().ToUpperInvariant(),
             SalaryMin = request.SalaryMin,
             SalaryMax = request.SalaryMax,
@@ -122,7 +128,13 @@ public sealed class JdService : IJdService
                 jd.SalaryMax,
                 jd.Currency,
                 jd.CreatedAt.ToString("O"),
-                jd.UpdatedAt.ToString("O")))
+                jd.UpdatedAt.ToString("O"),
+                jd.Department,
+                jd.EmploymentType,
+                jd.Location,
+                jd.WorkMode,
+                jd.Industry,
+                jd.HiringPriority))
             .ToListAsync(cancellationToken);
     }
 
@@ -146,6 +158,12 @@ public sealed class JdService : IJdService
         {
             entity.JobTitle = request.NormalizedJd.JobTitle.Trim();
             entity.Seniority = request.NormalizedJd.Seniority.Trim();
+            entity.Department = request.NormalizedJd.Department?.Trim() ?? string.Empty;
+            entity.EmploymentType = request.NormalizedJd.EmploymentType?.Trim() ?? string.Empty;
+            entity.Location = request.NormalizedJd.Location.Trim();
+            entity.WorkMode = ResolveWorkMode(request.NormalizedJd);
+            entity.Industry = request.NormalizedJd.Industry?.Trim() ?? string.Empty;
+            entity.HiringPriority = request.NormalizedJd.HiringPriority?.Trim() ?? string.Empty;
             entity.Currency = request.NormalizedJd.Currency.Trim().ToUpperInvariant();
             entity.SalaryMin = request.NormalizedJd.SalaryMin;
             entity.SalaryMax = request.NormalizedJd.SalaryMax;
@@ -191,7 +209,7 @@ public sealed class JdService : IJdService
         request.Headers.Add("X-Correlation-Id", jobId);
         request.Headers.Add("X-Signature", signature);
 
-        var httpClient = _httpClientFactory.CreateClient("AiService");
+        var httpClient = _httpClientFactory.CreateClient("AiServiceClient");
         using var response = await httpClient.SendAsync(request, cancellationToken);
 
         var responseJson = await response.Content.ReadAsStringAsync(cancellationToken);
@@ -227,5 +245,12 @@ public sealed class JdService : IJdService
             entity.HumanReadableText,
             entity.CreatedAt.ToString("O"),
             entity.UpdatedAt.ToString("O"));
+    }
+
+    private static string ResolveWorkMode(JdFormRequest request)
+    {
+        return !string.IsNullOrWhiteSpace(request.WorkMode)
+            ? request.WorkMode.Trim()
+            : request.WorkingModel.Trim();
     }
 }

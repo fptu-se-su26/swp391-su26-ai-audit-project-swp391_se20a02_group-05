@@ -72,6 +72,13 @@
 
     </ItemGroup>
 
+    <!-- Copy seed resource files to output folder -->
+    <ItemGroup>
+        <None Update="resources\**\*">
+            <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+        </None>
+    </ItemGroup>
+
     <!-- Copy physical email templates to output folder during builds -->
     <ItemGroup>
         <None Update="Modules\Shared\Email\Templates\**\*.html">

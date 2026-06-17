@@ -6,6 +6,7 @@ import { FileText, Sparkles } from 'lucide-react';
 import { JdInputForm } from '../components/jd-input-form';
 import { JdPreview } from '../components/jd-preview';
 import { jdService } from '../services/jd.service';
+import { normalizeError } from '@/infrastructure/http/error-normalizer';
 import type { JdFormData, JdCreateState } from '../types/jd.types';
 
 export function JdCreateView() {
@@ -32,10 +33,8 @@ export function JdCreateView() {
         wordCount: result.wordCount,
       });
     } catch (err) {
-      setState({
-        step: 'error',
-        message: err instanceof Error ? err.message : 'An unexpected error occurred.',
-      });
+      const { message } = normalizeError(err);
+      setState({ step: 'error', message });
     }
   };
 

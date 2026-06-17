@@ -3106,6 +3106,7 @@ public static class DbInitializer
         await RoleSeeder.SeedAsync(context, seedingPolicy);
         await MembershipMigrationSeeder.SeedAsync(context, seedingPolicy);
         await BusinessAccountSeeder.SeedAsync(context, config.Seeding, seedingPolicy);
+        await StandardizedJdSeeder.SeedAsync(context, config.Seeding, seedingPolicy);
 
         global::System.Collections.Generic.IEnumerable<IPublicWorkspaceModuleSeeder> moduleSeeders;
 

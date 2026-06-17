@@ -1,13 +1,22 @@
 export type Seniority = 'Junior' | 'Middle' | 'Senior' | 'Staff' | 'Principal';
 export type WorkingModel = 'remote' | 'hybrid' | 'onsite';
 export type Currency = 'USD' | 'VND';
+export type HiringPriority = 'Low' | 'Medium' | 'High' | 'Urgent';
 
 export type JdFormData = {
   jobTitle: string;
+  department: string;
   seniority: Seniority;
+  employmentType: string;
+  location: string;
+  workMode: WorkingModel;
+  workingModel: WorkingModel;
   requiredSkills: string[];
   preferredSkills: string[];
   responsibilities: string[];
+  mustHave: string[];
+  niceToHave: string[];
+  techStack: string[];
   experienceYearsMin: number;
   experienceYearsMax: number;
   educationRequirement: string;
@@ -15,8 +24,9 @@ export type JdFormData = {
   salaryMin: number;
   salaryMax: number;
   currency: Currency;
-  location: string;
-  workingModel: WorkingModel;
+  languages: string[];
+  industry: string;
+  hiringPriority: HiringPriority;
 };
 
 export type NormalizedJd = JdFormData & {
@@ -49,6 +59,31 @@ export type StoredJd = {
   storageStatus: string;
 };
 
+export type JdSummary = {
+  jdId: string;
+  jobTitle: string;
+  seniority: Seniority | string;
+  salaryMin: number;
+  salaryMax: number;
+  currency: Currency | string;
+  createdAt: string;
+  updatedAt: string;
+  department?: string | null;
+  employmentType?: string | null;
+  location?: string | null;
+  workMode?: string | null;
+  industry?: string | null;
+  hiringPriority?: string | null;
+};
+
+export type JdDetail = {
+  jdId: string;
+  normalizedJd: JdFormData;
+  generatedJdText: string;
+  createdAt: string;
+  updatedAt: string;
+};
+
 export type CandidateSkillEvidence = {
   skill: string;
   proficiency: number;
@@ -56,7 +91,11 @@ export type CandidateSkillEvidence = {
 };
 
 export type JdMatchRequest = {
-  normalizedJd: JdFormData;
+  normalizedJd?: JdFormData;
+  jobDescription?: JdFormData;
+  candidate?: Record<string, unknown>;
+  repositoryAnalysis?: Record<string, unknown>;
+  trustScore?: Record<string, unknown>;
   candidateSkills: CandidateSkillEvidence[];
   candidateResponsibilities: string[];
   candidateLevel: string;
@@ -111,6 +150,18 @@ export type JdMatchResponse = {
   seniorityMatchScore: number;
   salaryMatchScore: number;
   cultureFitScore: number;
+  overallMatch: number;
+  skillMatch: number;
+  experienceMatch: number;
+  projectRelevance: number;
+  trustWeightedScore: number;
+  strengths: string[];
+  weaknesses: string[];
+  missingSkills: string[];
+  recommendation: string;
+  riskLevel: string;
+  riskAssessment: string;
+  evidence: string[];
   requiredSkillsMatch: SkillMatchItem[];
   preferredSkillsMatch: SkillMatchItem[];
   missingRequiredSkills: string[];

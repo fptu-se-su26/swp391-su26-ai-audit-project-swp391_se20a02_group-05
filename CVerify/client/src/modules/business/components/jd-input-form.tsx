@@ -10,20 +10,66 @@ import type { JdFormData, Seniority, WorkingModel, Currency } from '../types/jd.
 type Props = {
   onSubmit: (data: JdFormData) => void;
   isLoading: boolean;
+  initialData?: JdFormData;
+  submitLabel?: string;
 };
 
 const SENIORITY_OPTIONS: Seniority[] = ['Junior', 'Middle', 'Senior', 'Staff', 'Principal'];
 const WORKING_MODEL_OPTIONS: WorkingModel[] = ['remote', 'hybrid', 'onsite'];
+const EMPLOYMENT_TYPE_OPTIONS = ['Full-time', 'Part-time', 'Internship', 'Contract'];
 const ENGLISH_LEVEL_OPTIONS = ['Basic', 'Intermediate', 'Upper-Intermediate', 'Advanced', 'Fluent', 'Native'];
 const EDUCATION_OPTIONS = ['High School', 'Associate Degree', "Bachelor's Degree", "Master's Degree", 'PhD', 'No Requirement'];
 const CURRENCY_OPTIONS: Currency[] = ['USD', 'VND'];
+const HIRING_PRIORITY_OPTIONS = ['Low', 'Medium', 'High', 'Urgent'] as const;
+const SKILL_CATEGORIES: { label: string; skills: string[] }[] = [
+  {
+    label: 'Programming Languages',
+    skills: ['Java', 'C#', 'JavaScript', 'TypeScript', 'Python', 'Go', 'PHP'],
+  },
+  {
+    label: 'Frontend',
+    skills: ['React', 'Next.js', 'Angular', 'Vue.js', 'Tailwind CSS'],
+  },
+  {
+    label: 'Backend',
+    skills: ['ASP.NET Core', 'Node.js', 'Spring Boot', 'Express.js', 'NestJS'],
+  },
+  {
+    label: 'Database',
+    skills: ['SQL Server', 'PostgreSQL', 'MySQL', 'MongoDB', 'Redis'],
+  },
+  {
+    label: 'Cloud',
+    skills: ['Azure', 'AWS', 'Google Cloud'],
+  },
+  {
+    label: 'DevOps',
+    skills: ['Docker', 'Kubernetes', 'CI/CD', 'GitHub Actions'],
+  },
+  {
+    label: 'Soft Skills',
+    skills: ['Communication', 'Teamwork', 'Problem Solving', 'Leadership'],
+  },
+  {
+    label: 'Certifications',
+    skills: ['Azure Developer', 'AWS Associate', 'Scrum Master', 'ISTQB'],
+  },
+];
 
 const DEFAULT_FORM: JdFormData = {
   jobTitle: '',
+  department: '',
   seniority: 'Middle',
+  employmentType: 'Full-time',
+  location: '',
+  workMode: 'hybrid',
+  workingModel: 'hybrid',
   requiredSkills: [],
   preferredSkills: [],
   responsibilities: [],
+  mustHave: [],
+  niceToHave: [],
+  techStack: [],
   experienceYearsMin: 0,
   experienceYearsMax: 3,
   educationRequirement: "Bachelor's Degree",
@@ -31,12 +77,13 @@ const DEFAULT_FORM: JdFormData = {
   salaryMin: 1000,
   salaryMax: 2000,
   currency: 'USD',
-  location: '',
-  workingModel: 'hybrid',
+  languages: ['English'],
+  industry: 'Technology',
+  hiringPriority: 'Medium',
 };
 
-export function JdInputForm({ onSubmit, isLoading }: Props) {
-  const [form, setForm] = useState<JdFormData>(DEFAULT_FORM);
+export function JdInputForm({ onSubmit, isLoading, initialData, submitLabel = 'Validate & Generate JD' }: Props) {
+  const [form, setForm] = useState<JdFormData>(() => ({ ...DEFAULT_FORM, ...initialData }));
   const [errors, setErrors] = useState<Partial<Record<keyof JdFormData, string>>>({});
 
   const set = <K extends keyof JdFormData>(key: K, value: JdFormData[K]) => {
@@ -47,6 +94,7 @@ export function JdInputForm({ onSubmit, isLoading }: Props) {
   const validate = (): boolean => {
     const newErrors: Partial<Record<keyof JdFormData, string>> = {};
     if (!form.jobTitle.trim()) newErrors.jobTitle = 'Job title is required';
+    if (!form.department.trim()) newErrors.department = 'Department is required';
     if (form.requiredSkills.length === 0) newErrors.requiredSkills = 'At least one required skill';
     if (form.responsibilities.length === 0) newErrors.responsibilities = 'At least one responsibility';
     if (!form.location.trim()) newErrors.location = 'Location is required';
@@ -59,6 +107,14 @@ export function JdInputForm({ onSubmit, isLoading }: Props) {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (validate()) onSubmit(form);
+  };
+
+  const toggleSkill = (skill: string, target: 'requiredSkills' | 'preferredSkills') => {
+    const current = form[target];
+    const next = current.includes(skill)
+      ? current.filter((item) => item !== skill)
+      : [...current, skill];
+    set(target, next);
   };
 
   return (
@@ -77,6 +133,16 @@ export function JdInputForm({ onSubmit, isLoading }: Props) {
             />
           </Field>
 
+          <Field label="Department" required error={errors.department}>
+            <input
+              type="text"
+              value={form.department}
+              onChange={(e) => set('department', e.target.value)}
+              placeholder="e.g. Engineering"
+              className={fieldClass(!!errors.department)}
+            />
+          </Field>
+
           <Field label="Seniority Level" required>
             <select
               value={form.seniority}
@@ -85,6 +151,18 @@ export function JdInputForm({ onSubmit, isLoading }: Props) {
             >
               {SENIORITY_OPTIONS.map((s) => (
                 <option key={s} value={s}>{s}</option>
+              ))}
+            </select>
+          </Field>
+
+          <Field label="Employment Type" required>
+            <select
+              value={form.employmentType}
+              onChange={(e) => set('employmentType', e.target.value)}
+              className={fieldClass(false)}
+            >
+              {EMPLOYMENT_TYPE_OPTIONS.map((type) => (
+                <option key={type} value={type}>{type}</option>
               ))}
             </select>
           </Field>
@@ -101,12 +179,37 @@ export function JdInputForm({ onSubmit, isLoading }: Props) {
 
           <Field label="Working Model" required>
             <select
-              value={form.workingModel}
-              onChange={(e) => set('workingModel', e.target.value as WorkingModel)}
+              value={form.workMode}
+              onChange={(e) => {
+                const value = e.target.value as WorkingModel;
+                setForm((prev) => ({ ...prev, workMode: value, workingModel: value }));
+              }}
               className={fieldClass(false)}
             >
               {WORKING_MODEL_OPTIONS.map((m) => (
                 <option key={m} value={m}>{m.charAt(0).toUpperCase() + m.slice(1)}</option>
+              ))}
+            </select>
+          </Field>
+
+          <Field label="Industry">
+            <input
+              type="text"
+              value={form.industry}
+              onChange={(e) => set('industry', e.target.value)}
+              placeholder="e.g. Fintech, E-commerce"
+              className={fieldClass(false)}
+            />
+          </Field>
+
+          <Field label="Hiring Priority">
+            <select
+              value={form.hiringPriority}
+              onChange={(e) => set('hiringPriority', e.target.value as JdFormData['hiringPriority'])}
+              className={fieldClass(false)}
+            >
+              {HIRING_PRIORITY_OPTIONS.map((priority) => (
+                <option key={priority} value={priority}>{priority}</option>
               ))}
             </select>
           </Field>
@@ -117,6 +220,37 @@ export function JdInputForm({ onSubmit, isLoading }: Props) {
       <Card glow={false}>
         <Typography type="h3" className="font-bold text-foreground mb-4">Skills</Typography>
         <div className="space-y-4">
+          <div className="space-y-4">
+            {SKILL_CATEGORIES.map((category) => (
+              <div key={category.label}>
+                <p className="text-xs font-semibold text-muted uppercase tracking-wider mb-2">
+                  {category.label}
+                </p>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+                  {category.skills.map((skill) => (
+                    <label
+                      key={skill}
+                      className={[
+                        'flex items-center gap-2 rounded-xl border px-3 py-2 text-xs cursor-pointer transition-colors',
+                        form.requiredSkills.includes(skill)
+                          ? 'border-accent bg-accent/10 text-accent font-semibold'
+                          : 'border-separator bg-surface text-foreground hover:border-accent/50',
+                      ].join(' ')}
+                    >
+                      <input
+                        type="checkbox"
+                        className="accent-accent"
+                        checked={form.requiredSkills.includes(skill)}
+                        onChange={() => toggleSkill(skill, 'requiredSkills')}
+                      />
+                      {skill}
+                    </label>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+
           <TagInput
             label="Required Skills"
             placeholder="e.g. React, Node.js, PostgreSQL"
@@ -132,6 +266,13 @@ export function JdInputForm({ onSubmit, isLoading }: Props) {
             tags={form.preferredSkills}
             onChange={(tags) => set('preferredSkills', tags)}
           />
+
+          <TagInput
+            label="Tech Stack"
+            placeholder="e.g. Next.js, PostgreSQL, Redis"
+            tags={form.techStack}
+            onChange={(tags) => set('techStack', tags)}
+          />
         </div>
       </Card>
 
@@ -146,6 +287,24 @@ export function JdInputForm({ onSubmit, isLoading }: Props) {
           required
         />
         {errors.responsibilities && <p className="text-xs text-danger">{errors.responsibilities}</p>}
+      </Card>
+
+      <Card glow={false}>
+        <Typography type="h3" className="font-bold text-foreground mb-4">Requirement Details</Typography>
+        <div className="space-y-4">
+          <TagInput
+            label="Must-Have Requirements"
+            placeholder="e.g. 3+ years React production experience"
+            tags={form.mustHave}
+            onChange={(tags) => set('mustHave', tags)}
+          />
+          <TagInput
+            label="Nice-To-Have Requirements"
+            placeholder="e.g. Experience with design systems"
+            tags={form.niceToHave}
+            onChange={(tags) => set('niceToHave', tags)}
+          />
+        </div>
       </Card>
 
       {/* Section: Requirements */}
@@ -197,6 +356,16 @@ export function JdInputForm({ onSubmit, isLoading }: Props) {
               ))}
             </select>
           </Field>
+
+          <Field label="Languages">
+            <input
+              type="text"
+              value={form.languages.join(', ')}
+              onChange={(e) => set('languages', e.target.value.split(',').map((item) => item.trim()).filter(Boolean))}
+              placeholder="English, Vietnamese"
+              className={fieldClass(false)}
+            />
+          </Field>
         </div>
       </Card>
 
@@ -245,7 +414,7 @@ export function JdInputForm({ onSubmit, isLoading }: Props) {
           disabled={isLoading}
           className="bg-accent hover:bg-accent/90 border-none min-w-[180px]"
         >
-          {isLoading ? 'Generating JD...' : 'Validate & Generate JD'}
+          {isLoading ? 'Saving JD...' : submitLabel}
         </Button>
       </div>
     </form>

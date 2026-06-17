@@ -38,13 +38,14 @@ public sealed class JdMatchingService : IJdMatchingService
     public MatchScoreResponse CalculateMatch(JdMatchRequest request)
     {
         ArgumentNullException.ThrowIfNull(request);
-        ArgumentNullException.ThrowIfNull(request.NormalizedJd);
+        var jd = request.JobDescription ?? request.NormalizedJd;
+        ArgumentNullException.ThrowIfNull(jd);
 
-        var requiredSkills = request.NormalizedJd.RequiredSkills ?? [];
-        var preferredSkills = request.NormalizedJd.PreferredSkills ?? [];
-        var jdResponsibilities = request.NormalizedJd.Responsibilities ?? [];
-        var candidateSkills = request.CandidateSkills ?? [];
-        var candidateResponsibilities = request.CandidateResponsibilities ?? [];
+        var requiredSkills = jd.RequiredSkills ?? [];
+        var preferredSkills = jd.PreferredSkills ?? [];
+        var jdResponsibilities = jd.Responsibilities ?? [];
+        var candidateSkills = ExtractCandidateSkills(request);
+        var candidateResponsibilities = ExtractCandidateResponsibilities(request);
 
         var requiredMatches = MatchSkills(requiredSkills, candidateSkills);
         var preferredMatches = MatchSkills(preferredSkills, candidateSkills);
@@ -62,21 +63,25 @@ public sealed class JdMatchingService : IJdMatchingService
             : Clamp((jdResponsibilities.Count - uncoveredResponsibilities.Count) /
                 (decimal)jdResponsibilities.Count);
 
-        var (seniorityScore, seniorityFlag, levelGap) = CalculateSeniority(request.CandidateLevel, request.NormalizedJd.Seniority);
+        var (seniorityScore, seniorityFlag, levelGap) = CalculateSeniority(request.CandidateLevel, jd.Seniority);
         var (salaryScore, salaryType) = CalculateSalary(
             request.DesiredSalary ?? 0m,
             request.MinimumAcceptableSalary ?? 0m,
-            request.NormalizedJd.SalaryMax,
+            jd.SalaryMax,
             request.SalaryCurrency,
-            request.NormalizedJd.Currency);
-        var cultureScore = CalculateCultureFit(request);
+            jd.Currency);
+        var cultureScore = CalculateCultureFit(request, jd);
+        var trustScore = ExtractScore(request.TrustScore, ["overallScore", "trustScore", "score", "trustWeightedScore"]);
+        var contributionQualityScore = ExtractScore(request.RepositoryAnalysis, ["contributionQuality", "contributionQualityScore", "qualityScore"]);
+        var riskScore = CalculateRiskScore(salaryScore, skillMatchScore, levelGap);
 
         var matchScore = Clamp(
             skillMatchScore * 0.35m
             + responsibilityMatchScore * 0.25m
-            + seniorityScore * 0.20m
-            + salaryScore * 0.10m
-            + cultureScore * 0.10m);
+            + seniorityScore * 0.15m
+            + contributionQualityScore * 0.10m
+            + trustScore * 0.10m
+            + riskScore * 0.05m);
         var matchScorePercent = Math.Round(matchScore * 100m, 1);
 
         var activeFlags = new List<string>();
@@ -111,6 +116,10 @@ public sealed class JdMatchingService : IJdMatchingService
             activeFlags);
         var qualityGate = BuildQualityGate(cappedScorePercent, activeFlags, missingRequired);
         var recommendation = BuildHiringRecommendation(cappedScorePercent, salaryScore, gapAnalysis, activeFlags);
+        var strengths = BuildStrengths(requiredMatches, preferredMatches, candidateResponsibilities, jdResponsibilities, trustScore);
+        var weaknesses = BuildWeaknesses(missingRequired, uncoveredResponsibilities, seniorityFlag, salaryType);
+        var evidence = BuildEvidence(requiredMatches, preferredMatches, candidateResponsibilities, jdResponsibilities, request.RepositoryAnalysis);
+        var riskLevel = RiskLevelFor(activeFlags, cappedScorePercent);
 
         return new MatchScoreResponse(
             MatchScore: matchScore,
@@ -132,7 +141,19 @@ public sealed class JdMatchingService : IJdMatchingService
             ActiveFlags: activeFlags,
             GapAnalysis: gapAnalysis,
             QualityGate: qualityGate,
-            HiringRecommendation: recommendation);
+            HiringRecommendation: recommendation,
+            OverallMatch: cappedScorePercent,
+            SkillMatch: Math.Round(skillMatchScore * 100m, 1),
+            ExperienceMatch: Math.Round(seniorityScore * 100m, 1),
+            ProjectRelevance: Math.Round(responsibilityMatchScore * 100m, 1),
+            TrustWeightedScore: Math.Round(trustScore * 100m, 1),
+            MissingSkills: missingRequired,
+            Strengths: strengths,
+            Weaknesses: weaknesses,
+            Recommendation: recommendation.Verdict,
+            RiskLevel: riskLevel,
+            RiskAssessment: gapAnalysis.OverallGapSummary,
+            Evidence: evidence);
     }
 
     private static List<SkillMatchItem> MatchSkills(List<string> jdSkills, List<CandidateSkillEvidence> candidateSkills)
@@ -164,6 +185,119 @@ public sealed class JdMatchingService : IJdMatchingService
                 return new SkillMatchItem(skill, false, "none", 0m, "none");
             })
             .ToList();
+    }
+
+    private static List<CandidateSkillEvidence> ExtractCandidateSkills(JdMatchRequest request)
+    {
+        var skills = new List<CandidateSkillEvidence>();
+        if (request.CandidateSkills is { Count: > 0 })
+        {
+            skills.AddRange(request.CandidateSkills);
+        }
+
+        AddSkillsFromJson(skills, request.Candidate, ["skills", "candidateSkills", "technicalSkills"]);
+        AddSkillsFromJson(skills, request.RepositoryAnalysis, ["skills", "detectedSkills", "topSkills", "languages", "frameworks"]);
+
+        return skills
+            .Where(skill => !string.IsNullOrWhiteSpace(skill.Skill))
+            .GroupBy(skill => CanonicalSkill(skill.Skill), StringComparer.OrdinalIgnoreCase)
+            .Select(group => group.OrderByDescending(skill => skill.Proficiency).First())
+            .ToList();
+    }
+
+    private static List<string> ExtractCandidateResponsibilities(JdMatchRequest request)
+    {
+        var responsibilities = new List<string>();
+        if (request.CandidateResponsibilities is { Count: > 0 })
+        {
+            responsibilities.AddRange(request.CandidateResponsibilities);
+        }
+
+        AddStringsFromJson(responsibilities, request.Candidate, ["responsibilities", "experience", "projects"]);
+        AddStringsFromJson(responsibilities, request.RepositoryAnalysis, ["responsibilities", "projectEvidence", "evidence", "projects", "summary"]);
+
+        return responsibilities
+            .Where(value => !string.IsNullOrWhiteSpace(value))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .Take(100)
+            .ToList();
+    }
+
+    private static void AddSkillsFromJson(List<CandidateSkillEvidence> target, System.Text.Json.JsonElement? source, string[] propertyNames)
+    {
+        if (source is null || source.Value.ValueKind != System.Text.Json.JsonValueKind.Object) return;
+
+        foreach (var propertyName in propertyNames)
+        {
+            if (!source.Value.TryGetProperty(propertyName, out var property)) continue;
+
+            if (property.ValueKind == System.Text.Json.JsonValueKind.Array)
+            {
+                foreach (var item in property.EnumerateArray())
+                {
+                    if (item.ValueKind == System.Text.Json.JsonValueKind.String)
+                    {
+                        var skill = item.GetString();
+                        if (!string.IsNullOrWhiteSpace(skill)) target.Add(new CandidateSkillEvidence(skill, 3m, "repository"));
+                    }
+                    else if (item.ValueKind == System.Text.Json.JsonValueKind.Object
+                        && item.TryGetProperty("skill", out var skillProp)
+                        && skillProp.ValueKind == System.Text.Json.JsonValueKind.String)
+                    {
+                        var skill = skillProp.GetString();
+                        var proficiency = item.TryGetProperty("proficiency", out var proficiencyProp)
+                            && proficiencyProp.TryGetDecimal(out var rawProficiency)
+                                ? rawProficiency
+                                : 3m;
+                        var evidence = item.TryGetProperty("evidenceStrength", out var evidenceProp)
+                            && evidenceProp.ValueKind == System.Text.Json.JsonValueKind.String
+                                ? evidenceProp.GetString()
+                                : "repository";
+                        if (!string.IsNullOrWhiteSpace(skill)) target.Add(new CandidateSkillEvidence(skill, proficiency, evidence));
+                    }
+                }
+            }
+        }
+    }
+
+    private static void AddStringsFromJson(List<string> target, System.Text.Json.JsonElement? source, string[] propertyNames)
+    {
+        if (source is null || source.Value.ValueKind != System.Text.Json.JsonValueKind.Object) return;
+
+        foreach (var propertyName in propertyNames)
+        {
+            if (!source.Value.TryGetProperty(propertyName, out var property)) continue;
+
+            if (property.ValueKind == System.Text.Json.JsonValueKind.String)
+            {
+                var value = property.GetString();
+                if (!string.IsNullOrWhiteSpace(value)) target.Add(value);
+            }
+            else if (property.ValueKind == System.Text.Json.JsonValueKind.Array)
+            {
+                target.AddRange(property.EnumerateArray()
+                    .Select(JsonToEvidenceString)
+                    .Where(value => !string.IsNullOrWhiteSpace(value))
+                    .Select(value => value!));
+            }
+        }
+    }
+
+    private static string? JsonToEvidenceString(System.Text.Json.JsonElement item)
+    {
+        if (item.ValueKind == System.Text.Json.JsonValueKind.String) return item.GetString();
+        if (item.ValueKind != System.Text.Json.JsonValueKind.Object) return null;
+
+        foreach (var propertyName in new[] { "summary", "description", "responsibility", "evidence", "name" })
+        {
+            if (item.TryGetProperty(propertyName, out var property)
+                && property.ValueKind == System.Text.Json.JsonValueKind.String)
+            {
+                return property.GetString();
+            }
+        }
+
+        return item.ToString();
     }
 
     private static decimal ScoreSkillItems(List<SkillMatchItem> items)
@@ -222,17 +356,17 @@ public sealed class JdMatchingService : IJdMatchingService
         return (0.0m, "hard_mismatch");
     }
 
-    private static decimal CalculateCultureFit(JdMatchRequest request)
+    private static decimal CalculateCultureFit(JdMatchRequest request, JdFormRequest jd)
     {
         var role = request.CandidateRoleTendency ?? string.Empty;
-        var title = request.NormalizedJd.JobTitle ?? string.Empty;
+        var title = jd.JobTitle ?? string.Empty;
         var roleAligned = !string.IsNullOrWhiteSpace(role)
             && title.Contains(role, StringComparison.OrdinalIgnoreCase);
         var workingStyleAligned = request.CandidateWorkingStyles?.Any(style =>
             !string.IsNullOrWhiteSpace(style)
-            && !string.IsNullOrWhiteSpace(request.NormalizedJd.WorkingModel)
-            && (request.NormalizedJd.WorkingModel.Contains(style, StringComparison.OrdinalIgnoreCase)
-                || style.Contains(request.NormalizedJd.WorkingModel, StringComparison.OrdinalIgnoreCase))) == true;
+            && !string.IsNullOrWhiteSpace(EffectiveWorkMode(jd))
+            && (EffectiveWorkMode(jd).Contains(style, StringComparison.OrdinalIgnoreCase)
+                || style.Contains(EffectiveWorkMode(jd), StringComparison.OrdinalIgnoreCase))) == true;
 
         return (roleAligned, workingStyleAligned) switch
         {
@@ -344,6 +478,128 @@ public sealed class JdMatchingService : IJdMatchingService
         _ => "Poor Match"
     };
 
+    private static decimal ExtractScore(System.Text.Json.JsonElement? source, string[] candidatePropertyNames)
+    {
+        if (source is null) return 0.75m;
+
+        foreach (var propertyName in candidatePropertyNames)
+        {
+            if (source.Value.ValueKind == System.Text.Json.JsonValueKind.Object
+                && source.Value.TryGetProperty(propertyName, out var property)
+                && property.ValueKind is System.Text.Json.JsonValueKind.Number
+                && property.TryGetDecimal(out var raw))
+            {
+                return NormalizeProficiency(raw);
+            }
+        }
+
+        return 0.75m;
+    }
+
+    private static decimal CalculateRiskScore(decimal salaryScore, decimal skillMatchScore, int levelGap)
+    {
+        var riskPenalty = 0m;
+        if (salaryScore == 0m) riskPenalty += 0.45m;
+        if (skillMatchScore < 0.4m) riskPenalty += 0.35m;
+        if (Math.Abs(levelGap) >= 2) riskPenalty += 0.20m;
+        return Clamp(1m - riskPenalty);
+    }
+
+    private static List<string> BuildStrengths(
+        List<SkillMatchItem> requiredMatches,
+        List<SkillMatchItem> preferredMatches,
+        List<string> candidateResponsibilities,
+        List<string> jdResponsibilities,
+        decimal trustScore)
+    {
+        var strengths = requiredMatches
+            .Concat(preferredMatches)
+            .Where(m => m.Matched)
+            .OrderByDescending(m => m.CandidateProficiency)
+            .Take(5)
+            .Select(m => $"Verified {m.MatchType} evidence for {m.Skill}.")
+            .ToList();
+
+        if (jdResponsibilities.Count > 0 && FindUncoveredResponsibilities(jdResponsibilities, candidateResponsibilities).Count == 0)
+        {
+            strengths.Add("Candidate evidence covers all listed JD responsibilities.");
+        }
+
+        if (trustScore >= 0.8m)
+        {
+            strengths.Add("Trust score is strong enough to support the match confidence.");
+        }
+
+        return strengths.Count == 0 ? ["No strong evidence-backed strengths were detected."] : strengths;
+    }
+
+    private static List<string> BuildWeaknesses(
+        List<string> missingSkills,
+        List<string> uncoveredResponsibilities,
+        string seniorityFlag,
+        string salaryType)
+    {
+        var weaknesses = missingSkills.Select(skill => $"Missing required skill evidence: {skill}.")
+            .Concat(uncoveredResponsibilities.Select(r => $"No direct evidence for responsibility: {r}."))
+            .ToList();
+
+        if (seniorityFlag is "underqualified" or "strongly_underqualified")
+        {
+            weaknesses.Add("Candidate seniority is below the JD target.");
+        }
+
+        if (salaryType is "hard_mismatch" or "negotiable")
+        {
+            weaknesses.Add("Salary expectations may not fit the JD budget.");
+        }
+
+        return weaknesses.Count == 0 ? ["No material weaknesses were detected from supplied evidence."] : weaknesses;
+    }
+
+    private static List<string> BuildEvidence(
+        List<SkillMatchItem> requiredMatches,
+        List<SkillMatchItem> preferredMatches,
+        List<string> candidateResponsibilities,
+        List<string> jdResponsibilities,
+        System.Text.Json.JsonElement? repositoryAnalysis)
+    {
+        var evidence = requiredMatches
+            .Concat(preferredMatches)
+            .Where(m => m.Matched)
+            .Select(m => $"{m.Skill}: {m.EvidenceStrengthForDisplay()} evidence, proficiency {m.CandidateProficiency:0.##}.")
+            .Concat(candidateResponsibilities
+                .Where(r => jdResponsibilities.Any(jd => !FindUncoveredResponsibilities([jd], [r]).Contains(jd)))
+                .Take(5)
+                .Select(r => $"Responsibility evidence: {r}"))
+            .ToList();
+
+        if (repositoryAnalysis.HasValue
+            && repositoryAnalysis.Value.ValueKind == System.Text.Json.JsonValueKind.Object
+            && repositoryAnalysis.Value.TryGetProperty("evidence", out var repoEvidence)
+            && repoEvidence.ValueKind == System.Text.Json.JsonValueKind.Array)
+        {
+            evidence.AddRange(repoEvidence.EnumerateArray()
+                .Where(item => item.ValueKind == System.Text.Json.JsonValueKind.String)
+                .Select(item => item.GetString())
+                .Where(value => !string.IsNullOrWhiteSpace(value))
+                .Select(value => value!)
+                .Take(5));
+        }
+
+        return evidence.Count == 0
+            ? ["No repository evidence was supplied for matched skills or responsibilities."]
+            : evidence.Distinct().ToList();
+    }
+
+    private static string RiskLevelFor(List<string> activeFlags, decimal cappedScorePercent)
+    {
+        if (activeFlags.Contains("SALARY_HARD_MISMATCH") || cappedScorePercent < 50m) return "high";
+        return activeFlags.Count > 0 || cappedScorePercent < 75m ? "medium" : "low";
+    }
+
+    private static string EffectiveWorkMode(JdFormRequest jd) =>
+        string.IsNullOrWhiteSpace(jd.WorkMode) ? jd.WorkingModel : jd.WorkMode;
+
     private static string CanonicalSkill(string skill)
     {
         var normalized = skill.Trim().ToLowerInvariant();
@@ -368,4 +624,10 @@ public sealed class JdMatchingService : IJdMatchingService
     }
 
     private static decimal Clamp(decimal value) => Math.Round(Math.Min(1m, Math.Max(0m, value)), 4);
+}
+
+file static class SkillMatchItemExtensions
+{
+    public static string EvidenceStrengthForDisplay(this SkillMatchItem item) =>
+        string.IsNullOrWhiteSpace(item.EvidenceStrength) ? "verified" : item.EvidenceStrength;
 }

@@ -13,6 +13,7 @@ namespace CVerify.API.Modules.Jd.Controllers;
 
 [ApiController]
 [Route("api/jd")]
+[Route("api/jds")]
 [Authorize]
 public sealed class JdController : ControllerBase
 {
@@ -60,10 +61,6 @@ public sealed class JdController : ControllerBase
         try
         {
             var result = await _jdService.CreateJdAsync(CurrentUserId, request, cancellationToken);
-
-            if (!result.IsValid)
-                return BadRequest(new { errors = result.ValidationErrors });
-
             return Ok(result);
         }
         catch (Exception ex)
@@ -121,29 +118,24 @@ public sealed class JdController : ControllerBase
         if (!ModelState.IsValid)
             return BadRequest(ModelState);
 
-        if (request.NormalizedJd is null)
-            return BadRequest(new { error = "normalizedJd is required" });
+        var normalizedJd = request.JobDescription ?? request.NormalizedJd;
+        if (normalizedJd is null)
+            return BadRequest(new { error = "normalizedJd or jobDescription is required" });
 
-        if (request.CandidateSkills is null)
-            return BadRequest(new { error = "candidateSkills is required" });
-
-        if (request.CandidateResponsibilities is null)
-            return BadRequest(new { error = "candidateResponsibilities is required" });
-
-        if (request.CandidateSkills.Count > 200)
+        if (request.CandidateSkills is { Count: > 200 })
             return BadRequest(new { error = "candidateSkills cannot contain more than 200 items" });
 
-        if (request.CandidateResponsibilities.Count > 100)
+        if (request.CandidateResponsibilities is { Count: > 100 })
             return BadRequest(new { error = "candidateResponsibilities cannot contain more than 100 items" });
 
-        if (request.NormalizedJd.RequiredSkills is not { Count: > 0 })
-            return BadRequest(new { error = "normalizedJd.requiredSkills must contain at least one skill" });
+        if (normalizedJd.RequiredSkills is not { Count: > 0 })
+            return BadRequest(new { error = "jobDescription.requiredSkills must contain at least one skill" });
 
-        if (request.NormalizedJd.Responsibilities is null)
-            return BadRequest(new { error = "normalizedJd.responsibilities is required" });
+        if (normalizedJd.Responsibilities is null)
+            return BadRequest(new { error = "jobDescription.responsibilities is required" });
 
-        if (request.NormalizedJd.SalaryMin > request.NormalizedJd.SalaryMax && request.NormalizedJd.SalaryMax > 0)
-            return BadRequest(new { error = "normalizedJd.salaryMin must be less than or equal to salaryMax" });
+        if (normalizedJd.SalaryMin > normalizedJd.SalaryMax && normalizedJd.SalaryMax > 0)
+            return BadRequest(new { error = "jobDescription.salaryMin must be less than or equal to salaryMax" });
 
         var desiredSalary = request.DesiredSalary ?? 0m;
         var minimumAcceptableSalary = request.MinimumAcceptableSalary ?? 0m;

@@ -23,7 +23,16 @@ public sealed record JdFormRequest(
     [property: JsonPropertyName("salaryMax")] decimal SalaryMax,
     [property: JsonPropertyName("currency")] string Currency,
     [property: JsonPropertyName("location")] string Location,
-    [property: JsonPropertyName("workingModel")] string WorkingModel
+    [property: JsonPropertyName("workingModel")] string WorkingModel,
+    [property: JsonPropertyName("department")] string? Department = null,
+    [property: JsonPropertyName("employmentType")] string? EmploymentType = null,
+    [property: JsonPropertyName("workMode")] string? WorkMode = null,
+    [property: JsonPropertyName("mustHave")] List<string>? MustHave = null,
+    [property: JsonPropertyName("niceToHave")] List<string>? NiceToHave = null,
+    [property: JsonPropertyName("techStack")] List<string>? TechStack = null,
+    [property: JsonPropertyName("industry")] string? Industry = null,
+    [property: JsonPropertyName("languages")] List<string>? Languages = null,
+    [property: JsonPropertyName("hiringPriority")] string? HiringPriority = null
 );
 
 public sealed record JdCreateResponse(
@@ -44,7 +53,13 @@ public sealed record JdSummaryResponse(
     [property: JsonPropertyName("salaryMax")] decimal SalaryMax,
     [property: JsonPropertyName("currency")] string Currency,
     [property: JsonPropertyName("createdAt")] string CreatedAt,
-    [property: JsonPropertyName("updatedAt")] string UpdatedAt
+    [property: JsonPropertyName("updatedAt")] string UpdatedAt,
+    [property: JsonPropertyName("department")] string? Department = null,
+    [property: JsonPropertyName("employmentType")] string? EmploymentType = null,
+    [property: JsonPropertyName("location")] string? Location = null,
+    [property: JsonPropertyName("workMode")] string? WorkMode = null,
+    [property: JsonPropertyName("industry")] string? Industry = null,
+    [property: JsonPropertyName("hiringPriority")] string? HiringPriority = null
 );
 
 public sealed record JdDetailResponse(
@@ -70,7 +85,11 @@ public sealed record JdMatchRequest(
     [property: JsonPropertyName("minimumAcceptableSalary")] decimal? MinimumAcceptableSalary,
     [property: JsonPropertyName("salaryCurrency")] string SalaryCurrency,
     [property: JsonPropertyName("candidateRoleTendency")] string? CandidateRoleTendency,
-    [property: JsonPropertyName("candidateWorkingStyles")] List<string>? CandidateWorkingStyles
+    [property: JsonPropertyName("candidateWorkingStyles")] List<string>? CandidateWorkingStyles,
+    [property: JsonPropertyName("candidate")] JsonElement? Candidate = null,
+    [property: JsonPropertyName("repositoryAnalysis")] JsonElement? RepositoryAnalysis = null,
+    [property: JsonPropertyName("trustScore")] JsonElement? TrustScore = null,
+    [property: JsonPropertyName("jobDescription")] JdFormRequest? JobDescription = null
 );
 
 public sealed record CandidateSkillEvidence(
@@ -107,7 +126,19 @@ public sealed record MatchScoreResponse(
     [property: JsonPropertyName("activeFlags")] List<string> ActiveFlags,
     [property: JsonPropertyName("gapAnalysis")] GapAnalysisResponse GapAnalysis,
     [property: JsonPropertyName("qualityGate")] ApplicationQualityGateResponse QualityGate,
-    [property: JsonPropertyName("hiringRecommendation")] HiringRecommendationResponse HiringRecommendation
+    [property: JsonPropertyName("hiringRecommendation")] HiringRecommendationResponse HiringRecommendation,
+    [property: JsonPropertyName("overallMatch")] decimal OverallMatch,
+    [property: JsonPropertyName("skillMatch")] decimal SkillMatch,
+    [property: JsonPropertyName("experienceMatch")] decimal ExperienceMatch,
+    [property: JsonPropertyName("projectRelevance")] decimal ProjectRelevance,
+    [property: JsonPropertyName("trustWeightedScore")] decimal TrustWeightedScore,
+    [property: JsonPropertyName("missingSkills")] List<string> MissingSkills,
+    [property: JsonPropertyName("strengths")] List<string> Strengths,
+    [property: JsonPropertyName("weaknesses")] List<string> Weaknesses,
+    [property: JsonPropertyName("recommendation")] string Recommendation,
+    [property: JsonPropertyName("riskLevel")] string RiskLevel,
+    [property: JsonPropertyName("riskAssessment")] string RiskAssessment,
+    [property: JsonPropertyName("evidence")] List<string> Evidence
 );
 
 public sealed record GapAnalysisResponse(

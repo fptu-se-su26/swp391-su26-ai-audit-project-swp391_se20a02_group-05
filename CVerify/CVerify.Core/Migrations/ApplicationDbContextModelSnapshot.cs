@@ -736,6 +736,42 @@ namespace CVerify.API.Migrations
                         .HasColumnType("character varying(40)")
                         .HasColumnName("seniority");
 
+                    b.Property<string>("Department")
+                        .IsRequired()
+                        .HasMaxLength(120)
+                        .HasColumnType("character varying(120)")
+                        .HasColumnName("department");
+
+                    b.Property<string>("EmploymentType")
+                        .IsRequired()
+                        .HasMaxLength(80)
+                        .HasColumnType("character varying(80)")
+                        .HasColumnName("employment_type");
+
+                    b.Property<string>("HiringPriority")
+                        .IsRequired()
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)")
+                        .HasColumnName("hiring_priority");
+
+                    b.Property<string>("Industry")
+                        .IsRequired()
+                        .HasMaxLength(120)
+                        .HasColumnType("character varying(120)")
+                        .HasColumnName("industry");
+
+                    b.Property<string>("Location")
+                        .IsRequired()
+                        .HasMaxLength(255)
+                        .HasColumnType("character varying(255)")
+                        .HasColumnName("location");
+
+                    b.Property<string>("WorkMode")
+                        .IsRequired()
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)")
+                        .HasColumnName("work_mode");
+
                     b.Property<string>("StructuredJson")
                         .IsRequired()
                         .HasColumnType("jsonb")
