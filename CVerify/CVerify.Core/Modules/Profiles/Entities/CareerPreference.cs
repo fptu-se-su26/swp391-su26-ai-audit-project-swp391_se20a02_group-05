@@ -55,6 +55,12 @@ public class CareerPreference
     [Column(TypeName = "decimal(18,2)")]
     public decimal? ExpectedSalaryMax { get; set; }
 
+    [Column(TypeName = "decimal(18,2)")]
+    public decimal? DesiredSalary { get; set; }
+
+    [Column(TypeName = "decimal(18,2)")]
+    public decimal? MinimumAcceptableSalary { get; set; }
+
     [MaxLength(10)]
     public string? ExpectedSalaryCurrency { get; set; }
 
@@ -68,6 +74,9 @@ public class CareerPreference
     public string? WorkPreferenceNotes { get; set; }
 
     public List<string> DesiredJobPositions { get; set; } = new();
+
+    public List<string> PreferredLocations { get; set; } = new();
+    public List<string> EmploymentPreferences { get; set; } = new();
 
     public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
 

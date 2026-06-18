@@ -186,6 +186,8 @@ public record DeclaredCareerPreferenceDto(
     List<string> CompanyValues,
     decimal? ExpectedSalaryMin,
     decimal? ExpectedSalaryMax,
+    decimal? DesiredSalary,
+    decimal? MinimumAcceptableSalary,
     string? ExpectedSalaryCurrency,
     string? ExpectedSalaryType,
     bool ExpectedSalaryNegotiable,
@@ -270,6 +272,12 @@ public record UpdateCareerPreferenceRequest(
     [Range(0.0, 999999999999.99, ErrorMessage = "Maximum salary cannot be negative.")]
     decimal? ExpectedSalaryMax,
 
+    [Range(0.0, 999999999999.99, ErrorMessage = "Desired salary cannot be negative.")]
+    decimal? DesiredSalary,
+
+    [Range(0.0, 999999999999.99, ErrorMessage = "Minimum acceptable salary cannot be negative.")]
+    decimal? MinimumAcceptableSalary,
+
     [MaxLength(10)] string? ExpectedSalaryCurrency,
     [MaxLength(20)] string? ExpectedSalaryType,
     bool? ExpectedSalaryNegotiable,
@@ -309,6 +317,8 @@ public record CareerPreferenceResponse(
     List<string> DesiredJobPositions,
     decimal? ExpectedSalaryMin,
     decimal? ExpectedSalaryMax,
+    decimal? DesiredSalary,
+    decimal? MinimumAcceptableSalary,
     string? ExpectedSalaryCurrency,
     string? ExpectedSalaryType,
     bool ExpectedSalaryNegotiable,
@@ -354,7 +364,8 @@ public record WorkExperienceRequest(
     [Required, MaxLength(2000)] string Description,
     List<WorkExperienceAchievementDto>? Achievements,
     List<string>? Technologies,
-    List<WorkExperienceLinkDto>? Links
+    List<WorkExperienceLinkDto>? Links,
+    bool IsLeadership = false
 );
 
 public record WorkExperienceResponse(
@@ -372,7 +383,8 @@ public record WorkExperienceResponse(
     int DisplayOrder,
     List<WorkExperienceAchievementDto> Achievements,
     List<string> Technologies,
-    List<WorkExperienceLinkDto> Links
+    List<WorkExperienceLinkDto> Links,
+    bool IsLeadership
 );
 
 

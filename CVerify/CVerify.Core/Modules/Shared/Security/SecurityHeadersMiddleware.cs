@@ -20,7 +20,9 @@ public class SecurityHeadersMiddleware
         "/api/auth/google",
         "/health",
         "/api/system/status",
-        "/api/ai/chat/stream"
+        "/api/ai/chat/stream",
+        "/hubs/notifications/negotiate",
+        "/hubs/admin/negotiate"
     };
 
     public SecurityHeadersMiddleware(RequestDelegate next)
@@ -78,7 +80,8 @@ public class SecurityHeadersMiddleware
             var path = context.Request.Path.Value ?? "";
 
             // Check if the endpoint is explicitly excluded from CSRF checks
-            bool isExcluded = ExcludedMutatingPaths.Any(excluded => path.Equals(excluded, StringComparison.OrdinalIgnoreCase));
+            bool isExcluded = ExcludedMutatingPaths.Any(excluded => path.Equals(excluded, StringComparison.OrdinalIgnoreCase))
+                              || path.StartsWith("/hubs/", StringComparison.OrdinalIgnoreCase);
 
             if (!isExcluded && !envConfig.Auth.DisableCsrf)
             {

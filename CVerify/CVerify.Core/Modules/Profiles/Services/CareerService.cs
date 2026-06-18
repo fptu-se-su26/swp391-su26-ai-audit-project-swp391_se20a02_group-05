@@ -80,15 +80,9 @@ public class CareerService : ICareerService
             .Select(us => us.Skill)
             .ToListAsync(cancellationToken);
 
-        var locations = await _context.UserPreferredLocations
-            .Where(upl => upl.UserId == userId)
-            .Select(upl => upl.Location)
-            .ToListAsync(cancellationToken);
+        var locations = career.PreferredLocations ?? new List<string>();
 
-        var employmentPrefs = await _context.UserEmploymentPreferences
-            .Where(uep => uep.UserId == userId)
-            .Select(uep => uep.PreferenceName)
-            .ToListAsync(cancellationToken);
+        var employmentPrefs = career.EmploymentPreferences ?? new List<string>();
 
         // 4. Calculate Readiness on the fly
         var readinessReport = await _readinessEngine.CalculateReadinessAsync(career, cancellationToken);
@@ -130,6 +124,16 @@ public class CareerService : ICareerService
             }, "Minimum expected salary cannot exceed the maximum expected salary.");
         }
 
+        decimal? finalMinimumAcceptable = request.MinimumAcceptableSalary ?? career.MinimumAcceptableSalary;
+        decimal? finalDesired = request.DesiredSalary ?? career.DesiredSalary;
+        if (finalMinimumAcceptable.HasValue && finalDesired.HasValue && finalMinimumAcceptable.Value > finalDesired.Value)
+        {
+            throw new ValidationException(new Dictionary<string, string[]>
+            {
+                { nameof(request.MinimumAcceptableSalary), new[] { "Minimum acceptable salary must be less than or equal to desired salary." } }
+            }, "Minimum acceptable salary cannot exceed desired salary.");
+        }
+
         // Validate and normalize tags against registries where relevant
         var preferredWorkEnvironments = ValidateAndNormalizeTags(request.PreferredWorkEnvironments ?? career.PreferredWorkEnvironments, nameof(request.PreferredWorkEnvironments));
         var workStyles = ValidateAndNormalizeTags(request.WorkStyles ?? career.WorkStyles, nameof(request.WorkStyles));
@@ -164,6 +168,8 @@ public class CareerService : ICareerService
         
         if (request.ExpectedSalaryMin.HasValue) career.ExpectedSalaryMin = request.ExpectedSalaryMin;
         if (request.ExpectedSalaryMax.HasValue) career.ExpectedSalaryMax = request.ExpectedSalaryMax;
+        if (request.DesiredSalary.HasValue) career.DesiredSalary = request.DesiredSalary;
+        if (request.MinimumAcceptableSalary.HasValue) career.MinimumAcceptableSalary = request.MinimumAcceptableSalary;
         if (request.ExpectedSalaryCurrency != null) career.ExpectedSalaryCurrency = request.ExpectedSalaryCurrency;
         if (request.ExpectedSalaryType != null) career.ExpectedSalaryType = request.ExpectedSalaryType;
         if (request.ExpectedSalaryNegotiable.HasValue) career.ExpectedSalaryNegotiable = request.ExpectedSalaryNegotiable.Value;
@@ -196,42 +202,22 @@ public class CareerService : ICareerService
         // Sync Locations if request locations list was provided
         if (request.PreferredLocations != null)
         {
-            var existingLocations = await _context.UserPreferredLocations
-                .Where(upl => upl.UserId == userId)
-                .ToListAsync(cancellationToken);
-            _context.UserPreferredLocations.RemoveRange(existingLocations);
-
-            foreach (var loc in preferredLocations)
-            {
-                var location = new UserPreferredLocation
-                {
-                    Id = Guid.CreateVersion7(),
-                    UserId = userId,
-                    Location = loc,
-                    CreatedAt = DateTimeOffset.UtcNow
-                };
-                _context.UserPreferredLocations.Add(location);
-            }
+            career.PreferredLocations = preferredLocations;
         }
 
         // Sync Employment Preferences if request employment preferences list was provided
         if (request.EmploymentPreferences != null)
         {
-            var existingEmpPrefs = await _context.UserEmploymentPreferences
-                .Where(uep => uep.UserId == userId)
-                .ToListAsync(cancellationToken);
-            _context.UserEmploymentPreferences.RemoveRange(existingEmpPrefs);
+            career.EmploymentPreferences = employmentPreferences;
+        }
 
-            foreach (var ep in employmentPreferences)
+        if (request.TargetSkills != null || request.Skills != null)
+        {
+            var profile = await _context.UserProfiles.FirstOrDefaultAsync(up => up.UserId == userId, cancellationToken);
+            if (profile != null)
             {
-                var empPref = new UserEmploymentPreference
-                {
-                    Id = Guid.CreateVersion7(),
-                    UserId = userId,
-                    PreferenceName = ep,
-                    CreatedAt = DateTimeOffset.UtcNow
-                };
-                _context.UserEmploymentPreferences.Add(empPref);
+                profile.LastProfileUpdateAt = DateTimeOffset.UtcNow;
+                profile.UpdatedAt = DateTimeOffset.UtcNow;
             }
         }
 
@@ -246,8 +232,8 @@ public class CareerService : ICareerService
 
         // Reload junction tables for mapping
         var finalSkills = request.Skills != null ? skills : await _context.UserSkills.Where(us => us.UserId == userId).Select(us => us.Skill).ToListAsync(cancellationToken);
-        var finalLocations = request.PreferredLocations != null ? preferredLocations : await _context.UserPreferredLocations.Where(upl => upl.UserId == userId).Select(upl => upl.Location).ToListAsync(cancellationToken);
-        var finalEmpPrefs = request.EmploymentPreferences != null ? employmentPreferences : await _context.UserEmploymentPreferences.Where(uep => uep.UserId == userId).Select(uep => uep.PreferenceName).ToListAsync(cancellationToken);
+        var finalLocations = request.PreferredLocations != null ? preferredLocations : career.PreferredLocations ?? new List<string>();
+        var finalEmpPrefs = request.EmploymentPreferences != null ? employmentPreferences : career.EmploymentPreferences ?? new List<string>();
 
         var inferred = await _context.AiInferredPreferences.FirstOrDefaultAsync(ap => ap.UserId == userId, cancellationToken);
         var readinessReport = await _readinessEngine.CalculateReadinessAsync(career, cancellationToken);
@@ -315,6 +301,17 @@ public class CareerService : ICareerService
         if (updated)
         {
             career.UpdatedAt = DateTimeOffset.UtcNow;
+            
+            if (request.AcceptSkills && inferred.InferredSkills != null && inferred.InferredSkills.Any())
+            {
+                var profile = await _context.UserProfiles.FirstOrDefaultAsync(up => up.UserId == userId, cancellationToken);
+                if (profile != null)
+                {
+                    profile.LastProfileUpdateAt = DateTimeOffset.UtcNow;
+                    profile.UpdatedAt = DateTimeOffset.UtcNow;
+                }
+            }
+
             try
             {
                 await _context.SaveChangesAsync(cancellationToken);
@@ -326,8 +323,8 @@ public class CareerService : ICareerService
         }
 
         var skills = await _context.UserSkills.Where(us => us.UserId == userId).Select(us => us.Skill).ToListAsync(cancellationToken);
-        var locations = await _context.UserPreferredLocations.Where(upl => upl.UserId == userId).Select(upl => upl.Location).ToListAsync(cancellationToken);
-        var employmentPrefs = await _context.UserEmploymentPreferences.Where(uep => uep.UserId == userId).Select(uep => uep.PreferenceName).ToListAsync(cancellationToken);
+        var locations = career.PreferredLocations ?? new List<string>();
+        var employmentPrefs = career.EmploymentPreferences ?? new List<string>();
 
         var readinessReport = await _readinessEngine.CalculateReadinessAsync(career, cancellationToken);
 
@@ -362,6 +359,8 @@ public class CareerService : ICareerService
             career.CompanyValues ?? new List<string>(),
             career.ExpectedSalaryMin,
             career.ExpectedSalaryMax,
+            career.DesiredSalary,
+            career.MinimumAcceptableSalary,
             career.ExpectedSalaryCurrency,
             career.ExpectedSalaryType,
             career.ExpectedSalaryNegotiable,

@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using Npgsql;
 using CVerify.API.Modules.AiChat.Entities;
 using CVerify.API.Modules.Auth.Entities;
+using CVerify.API.Modules.Jd.Entities;
 using CVerify.API.Modules.Profiles.Entities;
 using CVerify.API.Modules.Recovery.Entities;
 using CVerify.API.Modules.Shared.Domain.Entities;
@@ -22,6 +23,7 @@ public class ApplicationDbContext : DbContext
     public override async Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
     {
         EnforceImmutableAuditLogs();
+        IncrementConcurrencyVersions();
         try
         {
             return await base.SaveChangesAsync(cancellationToken);
@@ -39,6 +41,7 @@ public class ApplicationDbContext : DbContext
     public override async Task<int> SaveChangesAsync(bool acceptAllChangesOnSuccess, CancellationToken cancellationToken = default)
     {
         EnforceImmutableAuditLogs();
+        IncrementConcurrencyVersions();
         try
         {
             return await base.SaveChangesAsync(acceptAllChangesOnSuccess, cancellationToken);
@@ -64,6 +67,32 @@ public class ApplicationDbContext : DbContext
         }
     }
 
+    private void IncrementConcurrencyVersions()
+    {
+        var entries = ChangeTracker.Entries()
+            .Where(e => e.State == EntityState.Modified);
+        
+        foreach (var entry in entries)
+        {
+            if (entry.Entity is User u)
+            {
+                u.Version++;
+            }
+            else if (entry.Entity is UserProfile up)
+            {
+                up.Version++;
+            }
+            else if (entry.Entity is CareerPreference cp)
+            {
+                cp.Version++;
+            }
+            else if (entry.Entity is AiInferredPreference ap)
+            {
+                ap.Version++;
+            }
+        }
+    }
+
     public DbSet<User> Users => Set<User>();
     public DbSet<Role> Roles => Set<Role>();
     public DbSet<Permission> Permissions => Set<Permission>();
@@ -75,17 +104,15 @@ public class ApplicationDbContext : DbContext
     public DbSet<Conversation> Conversations => Set<Conversation>();
     public DbSet<Message> Messages => Set<Message>();
     public DbSet<AuthProvider> AuthProviders => Set<AuthProvider>();
-    public DbSet<OAuthCredential> OAuthCredentials => Set<OAuthCredential>();
-    public DbSet<PasswordCredential> PasswordCredentials => Set<PasswordCredential>();
     public DbSet<Organization> Organizations => Set<Organization>();
     public DbSet<OrganizationAuthority> OrganizationAuthorities => Set<OrganizationAuthority>();
     public DbSet<OrganizationMembership> OrganizationMemberships => Set<OrganizationMembership>();
+    public DbSet<OrganizationFollower> OrganizationFollowers => Set<OrganizationFollower>();
     public DbSet<OtpVerification> OtpVerifications => Set<OtpVerification>();
     public DbSet<VerificationLink> VerificationLinks => Set<VerificationLink>();
     public DbSet<OrganizationVerification> OrganizationVerifications => Set<OrganizationVerification>();
     public DbSet<Workspace> Workspaces => Set<Workspace>();
     public DbSet<WorkspaceMember> WorkspaceMembers => Set<WorkspaceMember>();
-    public DbSet<RecoveryClaimDocument> RecoveryClaimDocuments => Set<RecoveryClaimDocument>();
     public DbSet<WorkspaceArchiveSnapshot> WorkspaceArchiveSnapshots => Set<WorkspaceArchiveSnapshot>();
     public DbSet<RecoveryExecutionLock> RecoveryExecutionLocks => Set<RecoveryExecutionLock>();
     public DbSet<OrganizationRecoveryClaim> OrganizationRecoveryClaims => Set<OrganizationRecoveryClaim>();
@@ -94,12 +121,26 @@ public class ApplicationDbContext : DbContext
     public DbSet<RepresentativeRotationRequest> RepresentativeRotationRequests => Set<RepresentativeRotationRequest>();
     public DbSet<RepresentativeApprovalVote> RepresentativeApprovalVotes => Set<RepresentativeApprovalVote>();
     public DbSet<RepresentativeAuthorityHistory> RepresentativeAuthorityHistories => Set<RepresentativeAuthorityHistory>();
-    public DbSet<UserEmail> UserEmails => Set<UserEmail>();
     public DbSet<OrganizationCredential> OrganizationCredentials => Set<OrganizationCredential>();
-    public DbSet<WorkspaceInvitation> WorkspaceInvitations => Set<WorkspaceInvitation>();
+    public DbSet<PendingOrganizationOwnership> PendingOrganizationOwnerships => Set<PendingOrganizationOwnership>();
+    public DbSet<OrganizationInvitation> OrganizationInvitations => Set<OrganizationInvitation>();
+    public DbSet<OrganizationInvitationRole> OrganizationInvitationRoles => Set<OrganizationInvitationRole>();
+    public DbSet<RoleAssignment> RoleAssignments => Set<RoleAssignment>();
+    public DbSet<WorkspacePost> WorkspacePosts => Set<WorkspacePost>();
+    public DbSet<JobVacancy> JobVacancies => Set<JobVacancy>();
+    public DbSet<StandardizedJd> StandardizedJds => Set<StandardizedJd>();
+
+    public DbSet<ActivityEvent> ActivityEvents => Set<ActivityEvent>();
+    public DbSet<InAppNotification> InAppNotifications => Set<InAppNotification>();
+    public DbSet<NotificationPreference> NotificationPreferences => Set<NotificationPreference>();
+
+    public DbSet<AdminMember> AdminMembers => Set<AdminMember>();
+    public DbSet<AdminInvitation> AdminInvitations => Set<AdminInvitation>();
+    public DbSet<AdminInvitationRole> AdminInvitationRoles => Set<AdminInvitationRole>();
 
     public DbSet<UserProfile> UserProfiles => Set<UserProfile>();
     public DbSet<PendingAuthProvider> PendingAuthProviders => Set<PendingAuthProvider>();
+    public DbSet<ExternalOrganization> ExternalOrganizations => Set<ExternalOrganization>();
     public DbSet<SourceCodeRepository> SourceCodeRepositories => Set<SourceCodeRepository>();
     public DbSet<AnalysisJob> AnalysisJobs => Set<AnalysisJob>();
     public DbSet<AnalysisJobEvent> AnalysisJobEvents => Set<AnalysisJobEvent>();
@@ -108,20 +149,39 @@ public class ApplicationDbContext : DbContext
     public DbSet<AnalysisTaskResult> AnalysisTaskResults => Set<AnalysisTaskResult>();
     public DbSet<AnalysisTaskEvent> AnalysisTaskEvents => Set<AnalysisTaskEvent>();
     public DbSet<AnalysisExecution> AnalysisExecutions => Set<AnalysisExecution>();
+    public DbSet<CVerify.API.Pipelines.Shared.Orchestration.Entities.PipelineJob> PipelineJobs => Set<CVerify.API.Pipelines.Shared.Orchestration.Entities.PipelineJob>();
+    public DbSet<CVerify.API.Pipelines.Shared.Orchestration.Entities.PipelineTask> PipelineTasks => Set<CVerify.API.Pipelines.Shared.Orchestration.Entities.PipelineTask>();
+    public DbSet<CVerify.API.Pipelines.Shared.AI.Entities.PromptDeployment> PromptDeployments => Set<CVerify.API.Pipelines.Shared.AI.Entities.PromptDeployment>();
+    public DbSet<CVerify.API.Pipelines.Shared.Artifacts.Entities.ArtifactRegistryEntry> ArtifactRegistryEntries => Set<CVerify.API.Pipelines.Shared.Artifacts.Entities.ArtifactRegistryEntry>();
     public DbSet<CareerPreference> CareerPreferences => Set<CareerPreference>();
     public DbSet<AiInferredPreference> AiInferredPreferences => Set<AiInferredPreference>();
     public DbSet<UserSkill> UserSkills => Set<UserSkill>();
-    public DbSet<UserPreferredLocation> UserPreferredLocations => Set<UserPreferredLocation>();
-    public DbSet<UserEmploymentPreference> UserEmploymentPreferences => Set<UserEmploymentPreference>();
-    public DbSet<SocialLink> SocialLinks => Set<SocialLink>();
     public DbSet<EducationEntry> EducationEntries => Set<EducationEntry>();
     public DbSet<AcademicAchievement> AcademicAchievements => Set<AcademicAchievement>();
     public DbSet<ProfileAttachment> ProfileAttachments => Set<ProfileAttachment>();
-    public DbSet<ProfileActivityLog> ProfileActivityLogs => Set<ProfileActivityLog>();
     public DbSet<WorkExperienceEntry> WorkExperiences => Set<WorkExperienceEntry>();
     public DbSet<WorkExperienceAchievement> WorkExperienceAchievements => Set<WorkExperienceAchievement>();
     public DbSet<WorkExperienceTechnology> WorkExperienceTechnologies => Set<WorkExperienceTechnology>();
     public DbSet<WorkExperienceLink> WorkExperienceLinks => Set<WorkExperienceLink>();
+    public DbSet<CandidateAssessment> CandidateAssessments => Set<CandidateAssessment>();
+    public DbSet<CandidateAssessmentArtifact> CandidateAssessmentArtifacts => Set<CandidateAssessmentArtifact>();
+    public DbSet<RepositoryAssessment> RepositoryAssessments => Set<RepositoryAssessment>();
+    public DbSet<RepositoryCapability> RepositoryCapabilities => Set<RepositoryCapability>();
+    public DbSet<RepositorySkillAttribution> RepositorySkillAttributions => Set<RepositorySkillAttribution>();
+    public DbSet<RepositoryDomain> RepositoryDomains => Set<RepositoryDomain>();
+    public DbSet<RepositoryIntelligenceSignal> RepositoryIntelligenceSignals => Set<RepositoryIntelligenceSignal>();
+    public DbSet<CandidateSkill> CandidateSkills => Set<CandidateSkill>();
+    public DbSet<CandidateDomainProfile> CandidateDomainProfiles => Set<CandidateDomainProfile>();
+    public DbSet<CandidateIntelligenceSignal> CandidateIntelligenceSignals => Set<CandidateIntelligenceSignal>();
+    public DbSet<CandidateBestFitRole> CandidateBestFitRoles => Set<CandidateBestFitRole>();
+    public DbSet<CandidateStrengthWeakness> CandidateStrengthsWeaknesses => Set<CandidateStrengthWeakness>();
+
+
+    public DbSet<ProjectEntry> ProjectEntries => Set<ProjectEntry>();
+    public DbSet<ProjectRepositoryLink> ProjectRepositoryLinks => Set<ProjectRepositoryLink>();
+    public DbSet<CvRepositoryMapping> CvRepositoryMappings => Set<CvRepositoryMapping>();
+    public DbSet<ProjectTechnology> ProjectTechnologies => Set<ProjectTechnology>();
+    public DbSet<ProjectContribution> ProjectContributions => Set<ProjectContribution>();
 
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
@@ -139,25 +199,34 @@ public class ApplicationDbContext : DbContext
         modelBuilder.Entity<CareerPreference>().Property(cp => cp.UserId).ValueGeneratedNever();
         modelBuilder.Entity<AiInferredPreference>().Property(ap => ap.UserId).ValueGeneratedNever();
         modelBuilder.Entity<UserSkill>().Property(us => us.Id).ValueGeneratedNever();
-        modelBuilder.Entity<UserPreferredLocation>().Property(upl => upl.Id).ValueGeneratedNever();
-        modelBuilder.Entity<UserEmploymentPreference>().Property(uep => uep.Id).ValueGeneratedNever();
-        modelBuilder.Entity<SocialLink>().Property(sl => sl.Id).ValueGeneratedNever();
         modelBuilder.Entity<EducationEntry>().Property(ee => ee.Id).ValueGeneratedNever();
         modelBuilder.Entity<AcademicAchievement>().Property(aa => aa.Id).ValueGeneratedNever();
         modelBuilder.Entity<ProfileAttachment>().Property(pa => pa.Id).ValueGeneratedNever();
-        modelBuilder.Entity<ProfileActivityLog>().Property(pal => pal.Id).ValueGeneratedNever();
         modelBuilder.Entity<WorkExperienceEntry>().Property(we => we.Id).ValueGeneratedNever();
         modelBuilder.Entity<WorkExperienceAchievement>().Property(wa => wa.Id).ValueGeneratedNever();
         modelBuilder.Entity<WorkExperienceTechnology>().Property(wt => wt.Id).ValueGeneratedNever();
         modelBuilder.Entity<WorkExperienceLink>().Property(wl => wl.Id).ValueGeneratedNever();
+        modelBuilder.Entity<CandidateAssessment>().Property(ca => ca.Id).ValueGeneratedNever();
+        modelBuilder.Entity<CandidateAssessmentArtifact>().Property(caa => caa.Id).ValueGeneratedNever();
+        modelBuilder.Entity<RepositoryAssessment>().Property(ra => ra.Id).ValueGeneratedNever();
         modelBuilder.Entity<ResetPasswordToken>().Property(rt => rt.Id).ValueGeneratedNever();
         modelBuilder.Entity<OutboxMessage>().Property(om => om.Id).ValueGeneratedNever();
         modelBuilder.Entity<AuditLog>().Property(al => al.Id).ValueGeneratedNever();
         modelBuilder.Entity<Conversation>().Property(c => c.Id).ValueGeneratedNever();
         modelBuilder.Entity<Message>().Property(m => m.Id).ValueGeneratedNever();
         modelBuilder.Entity<AuthProvider>().Property(ap => ap.Id).ValueGeneratedNever();
-        modelBuilder.Entity<PasswordCredential>().Property(pc => pc.Id).ValueGeneratedNever();
         modelBuilder.Entity<Organization>().Property(o => o.Id).ValueGeneratedNever();
+
+        // OrganizationFollower â€” composite PK, no auto-generated key
+        modelBuilder.Entity<OrganizationFollower>(entity =>
+        {
+            entity.HasKey(of => new { of.UserId, of.OrganizationId });
+            entity.HasOne(of => of.Organization)
+                  .WithMany()
+                  .HasForeignKey(of => of.OrganizationId)
+                  .OnDelete(DeleteBehavior.Cascade);
+        });
+
         modelBuilder.Entity<OrganizationAuthority>().Property(oa => oa.Id).ValueGeneratedNever();
         modelBuilder.Entity<OrganizationMembership>().Property(om => om.Id).ValueGeneratedNever();
         modelBuilder.Entity<OtpVerification>().Property(ov => ov.Id).ValueGeneratedNever();
@@ -165,7 +234,13 @@ public class ApplicationDbContext : DbContext
         modelBuilder.Entity<OrganizationVerification>().Property(ov => ov.Id).ValueGeneratedNever();
         modelBuilder.Entity<Workspace>().Property(w => w.Id).ValueGeneratedNever();
         modelBuilder.Entity<WorkspaceMember>().Property(wm => wm.Id).ValueGeneratedNever();
-        modelBuilder.Entity<RecoveryClaimDocument>().Property(rcd => rcd.Id).ValueGeneratedNever();
+        modelBuilder.Entity<RoleAssignment>().Property(ra => ra.Id).ValueGeneratedNever();
+        modelBuilder.Entity<WorkspacePost>().Property(wp => wp.Id).ValueGeneratedNever();
+        modelBuilder.Entity<JobVacancy>().Property(jv => jv.Id).ValueGeneratedNever();
+        modelBuilder.Entity<StandardizedJd>().Property(jd => jd.Id).ValueGeneratedNever();
+        modelBuilder.Entity<AdminMember>().Property(am => am.Id).ValueGeneratedNever();
+        modelBuilder.Entity<AdminInvitation>().Property(ai => ai.Id).ValueGeneratedNever();
+        modelBuilder.Entity<AdminInvitationRole>().Property(air => air.Id).ValueGeneratedNever();
         modelBuilder.Entity<WorkspaceArchiveSnapshot>().Property(was => was.Id).ValueGeneratedNever();
         modelBuilder.Entity<RecoveryExecutionLock>().Property(rel => rel.Id).ValueGeneratedNever();
         modelBuilder.Entity<OrganizationRecoveryClaim>().Property(orc => orc.Id).ValueGeneratedNever();
@@ -173,15 +248,33 @@ public class ApplicationDbContext : DbContext
         modelBuilder.Entity<RecoveryToken>().Property(rt => rt.Id).ValueGeneratedNever();
         modelBuilder.Entity<RepresentativeRotationRequest>().Property(r => r.Id).ValueGeneratedNever();
         modelBuilder.Entity<RepresentativeApprovalVote>().Property(v => v.Id).ValueGeneratedNever();
-        modelBuilder.Entity<UserEmail>().Property(ue => ue.Id).ValueGeneratedNever();
         modelBuilder.Entity<OrganizationCredential>().Property(oc => oc.OrganizationId).ValueGeneratedNever();
-        modelBuilder.Entity<WorkspaceInvitation>().Property(wi => wi.Id).ValueGeneratedNever();
+        modelBuilder.Entity<PendingOrganizationOwnership>().Property(po => po.Id).ValueGeneratedNever();
+        modelBuilder.Entity<OrganizationInvitation>().Property(oi => oi.Id).ValueGeneratedNever();
+        modelBuilder.Entity<OrganizationInvitationRole>().Property(oir => oir.Id).ValueGeneratedNever();
         modelBuilder.Entity<AnalysisJob>().Property(j => j.Id).ValueGeneratedNever();
         modelBuilder.Entity<AnalysisJobEvent>().Property(e => e.Id).ValueGeneratedNever();
         modelBuilder.Entity<AnalysisReport>().Property(r => r.Id).ValueGeneratedNever();
         modelBuilder.Entity<AnalysisTask>().Property(t => t.Id).ValueGeneratedNever();
         modelBuilder.Entity<AnalysisTaskResult>().Property(r => r.TaskId).ValueGeneratedNever();
         modelBuilder.Entity<AnalysisTaskEvent>().Property(e => e.Id).ValueGeneratedNever();
+        modelBuilder.Entity<CVerify.API.Pipelines.Shared.Orchestration.Entities.PipelineJob>().Property(j => j.Id).ValueGeneratedNever();
+        modelBuilder.Entity<CVerify.API.Pipelines.Shared.Orchestration.Entities.PipelineTask>().Property(t => t.Id).ValueGeneratedNever();
+        modelBuilder.Entity<CVerify.API.Pipelines.Shared.Artifacts.Entities.ArtifactRegistryEntry>().Property(a => a.Id).ValueGeneratedNever();
+        modelBuilder.Entity<RepositoryCapability>().Property(x => x.Id).ValueGeneratedNever();
+        modelBuilder.Entity<RepositorySkillAttribution>().Property(x => x.Id).ValueGeneratedNever();
+        modelBuilder.Entity<RepositoryDomain>().Property(x => x.Id).ValueGeneratedNever();
+        modelBuilder.Entity<RepositoryIntelligenceSignal>().Property(x => x.Id).ValueGeneratedNever();
+
+        modelBuilder.Entity<StandardizedJd>(entity =>
+        {
+            entity.ToTable("standardized_jds");
+            entity.HasIndex(jd => new { jd.OwnerUserId, jd.CreatedAt });
+            entity.HasOne(jd => jd.OwnerUser)
+                .WithMany()
+                .HasForeignKey(jd => jd.OwnerUserId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
 
         // Enable PostgreSQL Extensions
         modelBuilder.HasPostgresExtension("citext");
@@ -244,20 +337,37 @@ public class ApplicationDbContext : DbContext
             .HasForeignKey(rt => rt.OrganizationId)
             .OnDelete(DeleteBehavior.Cascade);
 
-        // Configure AuditLog -> User (Many-to-One SetNull)
+        // Configure AuditLog relations
         modelBuilder.Entity<AuditLog>()
             .HasOne(al => al.User)
             .WithMany()
             .HasForeignKey(al => al.UserId)
             .OnDelete(DeleteBehavior.SetNull);
 
+        modelBuilder.Entity<AuditLog>()
+            .HasOne(al => al.ActorUser)
+            .WithMany()
+            .HasForeignKey(al => al.ActorUserId)
+            .OnDelete(DeleteBehavior.SetNull);
 
-        // Optimistic Concurrency Control mapping utilizing PostgreSQL xmin system column
+        modelBuilder.Entity<AuditLog>()
+            .HasOne(al => al.TargetUser)
+            .WithMany()
+            .HasForeignKey(al => al.TargetUserId)
+            .OnDelete(DeleteBehavior.SetNull);
+
+        modelBuilder.Entity<AuditLog>()
+            .HasOne(al => al.Organization)
+            .WithMany()
+            .HasForeignKey(al => al.OrganizationId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+
+        // Optimistic Concurrency Control mapping utilizing standard version column
         modelBuilder.Entity<User>()
             .Property(u => u.Version)
-            .HasColumnName("xmin")
-            .HasColumnType("xid")
-            .ValueGeneratedOnAddOrUpdate()
+            .HasColumnName("version")
+            .HasDefaultValue(1u)
             .IsConcurrencyToken();
 
         modelBuilder.Entity<User>()
@@ -301,7 +411,7 @@ public class ApplicationDbContext : DbContext
         // Indexes
         modelBuilder.Entity<User>().HasIndex(u => u.Email).IsUnique().HasFilter("deleted_at IS NULL OR status = 'DELETION_PENDING'");
         modelBuilder.Entity<User>().HasIndex(u => u.Username).IsUnique().HasFilter("deleted_at IS NULL OR status = 'DELETION_PENDING'");
-        modelBuilder.Entity<Role>().HasIndex(r => r.Name).IsUnique();
+        modelBuilder.Entity<Role>().HasIndex(r => r.Name).IsUnique().HasFilter("tenant_id IS NULL");
         modelBuilder.Entity<Permission>().HasIndex(p => p.Name).IsUnique();
 
         // Optimized Hierarchy Index
@@ -357,6 +467,18 @@ public class ApplicationDbContext : DbContext
         modelBuilder.Entity<AuditLog>()
             .HasIndex(al => al.UserId)
             .HasDatabaseName("idx_audit_logs_user_id");
+
+        modelBuilder.Entity<AuditLog>()
+            .HasIndex(al => al.ActorUserId)
+            .HasDatabaseName("idx_audit_logs_actor_user_id");
+
+        modelBuilder.Entity<AuditLog>()
+            .HasIndex(al => al.TargetUserId)
+            .HasDatabaseName("idx_audit_logs_target_user_id");
+
+        modelBuilder.Entity<AuditLog>()
+            .HasIndex(al => al.OrganizationId)
+            .HasDatabaseName("idx_audit_logs_organization_id");
 
         // Configure RefreshToken mapping and indexes explicitly
         modelBuilder.Entity<RefreshToken>(entity =>
@@ -446,14 +568,18 @@ public class ApplicationDbContext : DbContext
                   .OnDelete(DeleteBehavior.Cascade);
         });
 
-        // OAuthCredential configurations
-        modelBuilder.Entity<OAuthCredential>(entity =>
+        // ExternalOrganization configurations
+        modelBuilder.Entity<ExternalOrganization>(entity =>
         {
-            entity.ToTable("oauth_credentials");
-            entity.HasKey(oc => oc.AuthProviderId);
-            entity.HasOne(oc => oc.AuthProvider)
-                  .WithOne(ap => ap.OAuthCredential)
-                  .HasForeignKey<OAuthCredential>(oc => oc.AuthProviderId)
+            entity.ToTable("external_organizations");
+            entity.HasKey(eo => eo.Id);
+            entity.Property(eo => eo.Id).ValueGeneratedNever();
+            entity.HasIndex(eo => new { eo.AuthProviderId, eo.ExternalId })
+                  .IsUnique()
+                  .HasDatabaseName("idx_external_organizations_provider_external_active");
+            entity.HasOne(eo => eo.AuthProvider)
+                  .WithMany()
+                  .HasForeignKey(eo => eo.AuthProviderId)
                   .OnDelete(DeleteBehavior.Cascade);
         });
 
@@ -470,6 +596,28 @@ public class ApplicationDbContext : DbContext
                   .WithMany()
                   .HasForeignKey(r => r.AuthProviderId)
                   .OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(r => r.ExternalOrganization)
+                  .WithMany()
+                  .HasForeignKey(r => r.ExternalOrganizationId)
+                  .OnDelete(DeleteBehavior.SetNull);
+        });
+
+        // CvRepositoryMapping configurations
+        modelBuilder.Entity<CvRepositoryMapping>(entity =>
+        {
+            entity.ToTable("cv_repository_mappings");
+            entity.HasKey(m => m.Id);
+            entity.Property(m => m.Id).ValueGeneratedNever();
+            entity.HasOne(m => m.SourceCodeRepository)
+                  .WithMany()
+                  .HasForeignKey(m => m.SourceCodeRepositoryId)
+                  .OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne<User>()
+                  .WithMany()
+                  .HasForeignKey(m => m.UserId)
+                  .OnDelete(DeleteBehavior.Cascade);
+            entity.HasIndex(m => m.UserId).HasDatabaseName("idx_cv_repository_mappings_user_id");
+            entity.HasIndex(m => m.SourceCodeRepositoryId).HasDatabaseName("idx_cv_repository_mappings_repo_id");
         });
 
         // AnalysisJob configurations
@@ -594,17 +742,6 @@ public class ApplicationDbContext : DbContext
                 .OnDelete(DeleteBehavior.Cascade);
         });
 
-        // PasswordCredential configurations
-        modelBuilder.Entity<PasswordCredential>(entity =>
-        {
-            entity.ToTable("password_credentials");
-            entity.HasQueryFilter(pc => pc.DeletedAt == null);
-            entity.HasOne(pc => pc.User)
-                  .WithMany(u => u.PasswordCredentials)
-                  .HasForeignKey(pc => pc.UserId)
-                  .OnDelete(DeleteBehavior.Cascade);
-        });
-
         // Organization configurations
         modelBuilder.Entity<Organization>(entity =>
         {
@@ -680,15 +817,42 @@ public class ApplicationDbContext : DbContext
             entity.HasIndex(wm => new { wm.WorkspaceId, wm.UserId }).IsUnique();
         });
 
-        // RecoveryClaimDocument configurations
-        modelBuilder.Entity<RecoveryClaimDocument>(entity =>
+        // Role configurations
+        modelBuilder.Entity<Role>(entity =>
         {
-            entity.ToTable("recovery_claim_documents");
-            entity.HasOne<OrganizationRecoveryClaim>()
-                  .WithMany(orc => orc.Documents)
-                  .HasForeignKey(rcd => rcd.RecoveryClaimId)
-                  .OnDelete(DeleteBehavior.Cascade);
+            entity.ToTable("roles");
+            entity.HasOne(r => r.ParentRole)
+                  .WithMany(r => r.ChildRoles)
+                  .HasForeignKey(r => r.ParentRoleId)
+                  .OnDelete(DeleteBehavior.Restrict);
+            entity.Property(r => r.Version)
+                  .HasColumnName("xmin")
+                  .HasColumnType("xid")
+                  .ValueGeneratedOnAddOrUpdate()
+                  .IsConcurrencyToken();
+            entity.HasIndex(r => new { r.TenantId, r.Name })
+                  .IsUnique()
+                  .HasDatabaseName("idx_roles_tenant_id_name");
         });
+
+        // RoleAssignment configurations
+        modelBuilder.Entity<RoleAssignment>(entity =>
+        {
+            entity.ToTable("role_assignments");
+            entity.HasOne(ra => ra.User)
+                  .WithMany(u => u.RoleAssignments)
+                  .HasForeignKey(ra => ra.UserId)
+                  .OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(ra => ra.Role)
+                  .WithMany()
+                  .HasForeignKey(ra => ra.RoleId)
+                  .OnDelete(DeleteBehavior.Cascade);
+            entity.HasIndex(ra => new { ra.UserId, ra.RoleId, ra.ScopeType, ra.ScopeId })
+                  .IsUnique()
+                  .HasDatabaseName("idx_role_assignments_unique");
+        });
+
+
 
         // WorkspaceArchiveSnapshot configurations
         modelBuilder.Entity<WorkspaceArchiveSnapshot>(entity =>
@@ -699,6 +863,53 @@ public class ApplicationDbContext : DbContext
                   .HasForeignKey(was => was.WorkspaceId)
                   .OnDelete(DeleteBehavior.Cascade);
         });
+
+        // AdminMember configurations
+        modelBuilder.Entity<AdminMember>(entity =>
+        {
+            entity.ToTable("admin_members");
+            entity.HasOne(am => am.User)
+                  .WithMany()
+                  .HasForeignKey(am => am.UserId)
+                  .OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(am => am.AssignedByUser)
+                  .WithMany()
+                  .HasForeignKey(am => am.AssignedByUserId)
+                  .OnDelete(DeleteBehavior.SetNull);
+        });
+
+        // AdminInvitation configurations
+        modelBuilder.Entity<AdminInvitation>(entity =>
+        {
+            entity.ToTable("admin_invitations");
+            entity.HasOne(ai => ai.InvitedByUser)
+                  .WithMany()
+                  .HasForeignKey(ai => ai.InvitedByUserId)
+                  .OnDelete(DeleteBehavior.SetNull);
+            entity.HasOne(ai => ai.ConsumedByUser)
+                  .WithMany()
+                  .HasForeignKey(ai => ai.ConsumedByUserId)
+                  .OnDelete(DeleteBehavior.SetNull);
+            entity.HasIndex(ai => ai.TokenHash)
+                  .IsUnique()
+                  .HasDatabaseName("idx_admin_invitations_token_hash");
+        });
+
+        // AdminInvitationRole configurations
+        modelBuilder.Entity<AdminInvitationRole>(entity =>
+        {
+            entity.ToTable("admin_invitation_roles");
+            entity.HasOne(air => air.Invitation)
+                  .WithMany(ai => ai.PreAssignedRoles)
+                  .HasForeignKey(air => air.InvitationId)
+                  .OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(air => air.Role)
+                  .WithMany()
+                  .HasForeignKey(air => air.RoleId)
+                  .OnDelete(DeleteBehavior.Cascade);
+        });
+
+
 
         // RecoveryExecutionLock configurations
         modelBuilder.Entity<RecoveryExecutionLock>(entity =>
@@ -807,9 +1018,8 @@ public class ApplicationDbContext : DbContext
                   .HasFilter("deleted_at IS NULL")
                   .HasDatabaseName("idx_user_profiles_username_active");
             entity.Property(up => up.Version)
-                  .HasColumnName("xmin")
-                  .HasColumnType("xid")
-                  .ValueGeneratedOnAddOrUpdate()
+                  .HasColumnName("version")
+                  .HasDefaultValue(1u)
                   .IsConcurrencyToken();
             entity.HasOne(up => up.User)
                   .WithOne()
@@ -823,9 +1033,8 @@ public class ApplicationDbContext : DbContext
             entity.ToTable("career_preferences");
             entity.HasQueryFilter(cp => cp.DeletedAt == null);
             entity.Property(cp => cp.Version)
-                  .HasColumnName("xmin")
-                  .HasColumnType("xid")
-                  .ValueGeneratedOnAddOrUpdate()
+                  .HasColumnName("version")
+                  .HasDefaultValue(1u)
                   .IsConcurrencyToken();
             entity.HasOne(cp => cp.User)
                   .WithOne()
@@ -841,9 +1050,8 @@ public class ApplicationDbContext : DbContext
             entity.ToTable("ai_inferred_preferences");
             entity.HasQueryFilter(ap => ap.DeletedAt == null);
             entity.Property(ap => ap.Version)
-                  .HasColumnName("xmin")
-                  .HasColumnType("xid")
-                  .ValueGeneratedOnAddOrUpdate()
+                  .HasColumnName("version")
+                  .HasDefaultValue(1u)
                   .IsConcurrencyToken();
             entity.HasOne(ap => ap.User)
                   .WithOne()
@@ -864,38 +1072,18 @@ public class ApplicationDbContext : DbContext
             entity.HasIndex(us => us.Skill).HasDatabaseName("idx_user_skills_name");
         });
 
-        // UserPreferredLocation configurations
-        modelBuilder.Entity<UserPreferredLocation>(entity =>
-        {
-            entity.ToTable("user_preferred_locations");
-            entity.HasOne(upl => upl.User)
-                  .WithMany()
-                  .HasForeignKey(upl => upl.UserId)
-                  .OnDelete(DeleteBehavior.Cascade);
-            entity.HasIndex(upl => upl.UserId).HasDatabaseName("idx_user_preferred_locations_user_id");
-        });
+        // UserProfile.SocialLinks configuration (native varchar array)
+        modelBuilder.Entity<UserProfile>()
+            .Property(up => up.SocialLinks)
+            .HasColumnType("varchar(255)[]");
 
-        // UserEmploymentPreference configurations
-        modelBuilder.Entity<UserEmploymentPreference>(entity =>
+        // CareerPreference location and employment preferences configuration (native varchar arrays)
+        modelBuilder.Entity<CareerPreference>(entity =>
         {
-            entity.ToTable("user_employment_preferences");
-            entity.HasOne(uep => uep.User)
-                  .WithMany()
-                  .HasForeignKey(uep => uep.UserId)
-                  .OnDelete(DeleteBehavior.Cascade);
-            entity.HasIndex(uep => uep.UserId).HasDatabaseName("idx_user_employment_preferences_user_id");
-        });
-
-        // SocialLink configurations
-        modelBuilder.Entity<SocialLink>(entity =>
-        {
-            entity.ToTable("social_links");
-            entity.HasQueryFilter(sl => sl.DeletedAt == null);
-            entity.HasOne(sl => sl.User)
-                  .WithMany()
-                  .HasForeignKey(sl => sl.UserId)
-                  .OnDelete(DeleteBehavior.Cascade);
-            entity.HasIndex(sl => sl.UserId).HasDatabaseName("idx_social_links_user_id");
+            entity.Property(cp => cp.PreferredLocations)
+                .HasColumnType("varchar(100)[]");
+            entity.Property(cp => cp.EmploymentPreferences)
+                .HasColumnType("varchar(50)[]");
         });
 
         // EducationEntry configurations
@@ -964,6 +1152,64 @@ public class ApplicationDbContext : DbContext
             entity.HasIndex(wl => wl.WorkExperienceId).HasDatabaseName("idx_work_experience_links_entry");
         });
 
+        modelBuilder.Entity<CandidateAssessment>(entity =>
+        {
+            entity.ToTable("candidate_assessments");
+            entity.HasOne(ca => ca.User)
+                  .WithMany()
+                  .HasForeignKey(ca => ca.UserId)
+                  .OnDelete(DeleteBehavior.Cascade);
+            entity.HasIndex(ca => ca.UserId).HasDatabaseName("idx_candidate_assessments_user_id");
+            entity.HasIndex(ca => new { ca.UserId, ca.Version }).IsUnique().HasDatabaseName("ux_candidate_assessments_user_version");
+        });
+
+        modelBuilder.Entity<CandidateAssessmentArtifact>(entity =>
+        {
+            entity.ToTable("candidate_assessment_artifacts");
+            entity.HasOne(caa => caa.Assessment)
+                  .WithMany(ca => ca.Artifacts)
+                  .HasForeignKey(caa => caa.AssessmentId)
+                  .OnDelete(DeleteBehavior.Cascade);
+            entity.HasIndex(caa => caa.AssessmentId).HasDatabaseName("idx_candidate_assessment_artifacts_assessment_id");
+            entity.HasIndex(caa => new { caa.AssessmentId, caa.ArtifactType }).IsUnique().HasDatabaseName("ux_candidate_assessment_artifacts_type");
+        });
+
+        modelBuilder.Entity<RepositoryAssessment>(entity =>
+        {
+            entity.ToTable("repository_assessments");
+            entity.HasIndex(ra => ra.RepositoryId).HasDatabaseName("idx_repository_assessments_repo_id");
+            entity.HasIndex(ra => ra.AnalysisJobId).HasDatabaseName("idx_repository_assessments_job_id");
+            entity.HasIndex(ra => new { ra.RepositoryId, ra.CommitSha }).HasDatabaseName("ux_repository_assessments_repo_sha");
+        });
+
+        modelBuilder.Entity<RepositoryCapability>(entity =>
+        {
+            entity.ToTable("repository_capabilities");
+            entity.HasIndex(x => x.RepositoryAssessmentId).HasDatabaseName("idx_repository_capabilities_assessment_id");
+            entity.HasIndex(x => new { x.RepositoryAssessmentId, x.Name }).IsUnique().HasDatabaseName("ux_repository_capabilities_assessment_id_name");
+        });
+
+        modelBuilder.Entity<RepositorySkillAttribution>(entity =>
+        {
+            entity.ToTable("repository_skill_attributions");
+            entity.HasIndex(x => x.RepositoryAssessmentId).HasDatabaseName("idx_repository_skill_attributions_assessment_id");
+            entity.HasIndex(x => new { x.RepositoryAssessmentId, x.SkillName }).IsUnique().HasDatabaseName("ux_repository_skill_attributions_assessment_id_skill");
+        });
+
+        modelBuilder.Entity<RepositoryDomain>(entity =>
+        {
+            entity.ToTable("repository_domains");
+            entity.HasIndex(x => x.RepositoryAssessmentId).HasDatabaseName("idx_repository_domains_assessment_id");
+            entity.HasIndex(x => new { x.RepositoryAssessmentId, x.DomainName }).IsUnique().HasDatabaseName("ux_repository_domains_assessment_id_domain");
+        });
+
+        modelBuilder.Entity<RepositoryIntelligenceSignal>(entity =>
+        {
+            entity.ToTable("repository_intelligence_signals");
+            entity.HasIndex(x => x.RepositoryAssessmentId).IsUnique().HasDatabaseName("ux_repository_intelligence_signals_assessment_id");
+        });
+
+
 
         // ProfileAttachment configurations
         modelBuilder.Entity<ProfileAttachment>(entity =>
@@ -978,26 +1224,46 @@ public class ApplicationDbContext : DbContext
             entity.HasIndex(pa => new { pa.EntityType, pa.EntityId }).HasDatabaseName("idx_profile_attachments_entity");
         });
 
-        // ProfileActivityLog configurations
-        modelBuilder.Entity<ProfileActivityLog>(entity =>
+        // User.LinkedEmails JSONB serialization converter
+        modelBuilder.Entity<User>(entity =>
         {
-            entity.ToTable("profile_activity_logs");
-            entity.HasOne(pal => pal.User)
-                  .WithMany()
-                  .HasForeignKey(pal => pal.UserId)
-                  .OnDelete(DeleteBehavior.Cascade);
-            entity.HasIndex(pal => pal.UserId).HasDatabaseName("idx_profile_activity_logs_user_id");
+            var options = new global::System.Text.Json.JsonSerializerOptions
+            {
+                PropertyNamingPolicy = global::System.Text.Json.JsonNamingPolicy.SnakeCaseLower
+            };
+            var comparer = new Microsoft.EntityFrameworkCore.ChangeTracking.ValueComparer<List<LinkedEmail>>(
+                (c1, c2) => global::System.Text.Json.JsonSerializer.Serialize(c1, options) == global::System.Text.Json.JsonSerializer.Serialize(c2, options),
+                c => c == null ? 0 : global::System.Text.Json.JsonSerializer.Serialize(c, options).GetHashCode(),
+                c => global::System.Text.Json.JsonSerializer.Deserialize<List<LinkedEmail>>(global::System.Text.Json.JsonSerializer.Serialize(c, options), options) ?? new List<LinkedEmail>()
+            );
+            entity.Property(u => u.LinkedEmails)
+                .HasColumnType("jsonb")
+                .HasConversion(
+                    v => global::System.Text.Json.JsonSerializer.Serialize(v, options),
+                    v => global::System.Text.Json.JsonSerializer.Deserialize<List<LinkedEmail>>(v, options) ?? new List<LinkedEmail>(),
+                    comparer
+                );
         });
 
-        // UserEmail configurations
-        modelBuilder.Entity<UserEmail>(entity =>
+        // OrganizationRecoveryClaim.Documents JSONB serialization converter
+        modelBuilder.Entity<OrganizationRecoveryClaim>(entity =>
         {
-            entity.ToTable("user_emails");
-            entity.HasOne(ue => ue.User)
-                  .WithMany(u => u.LinkedEmails)
-                  .HasForeignKey(ue => ue.UserId)
-                  .OnDelete(DeleteBehavior.Cascade);
-            entity.HasIndex(ue => ue.Email).IsUnique();
+            var options = new global::System.Text.Json.JsonSerializerOptions
+            {
+                PropertyNamingPolicy = global::System.Text.Json.JsonNamingPolicy.SnakeCaseLower
+            };
+            var comparer = new Microsoft.EntityFrameworkCore.ChangeTracking.ValueComparer<List<ClaimDocument>>(
+                (c1, c2) => global::System.Text.Json.JsonSerializer.Serialize(c1, options) == global::System.Text.Json.JsonSerializer.Serialize(c2, options),
+                c => c == null ? 0 : global::System.Text.Json.JsonSerializer.Serialize(c, options).GetHashCode(),
+                c => global::System.Text.Json.JsonSerializer.Deserialize<List<ClaimDocument>>(global::System.Text.Json.JsonSerializer.Serialize(c, options), options) ?? new List<ClaimDocument>()
+            );
+            entity.Property(orc => orc.Documents)
+                .HasColumnType("jsonb")
+                .HasConversion(
+                    v => global::System.Text.Json.JsonSerializer.Serialize(v, options),
+                    v => global::System.Text.Json.JsonSerializer.Deserialize<List<ClaimDocument>>(v, options) ?? new List<ClaimDocument>(),
+                    comparer
+                );
         });
 
         // OrganizationCredential configurations
@@ -1016,28 +1282,245 @@ public class ApplicationDbContext : DbContext
                   .HasDatabaseName("idx_organization_credentials_username_active");
         });
 
-        // WorkspaceInvitation configurations
-        modelBuilder.Entity<WorkspaceInvitation>(entity =>
+        // PendingOrganizationOwnership configurations
+        modelBuilder.Entity<PendingOrganizationOwnership>(entity =>
         {
-            entity.ToTable("workspace_invitations");
-            entity.HasKey(wi => wi.Id);
-            entity.Property(wi => wi.Id).ValueGeneratedNever();
-            entity.HasOne(wi => wi.Workspace)
+            entity.ToTable("pending_organization_ownerships");
+            entity.HasKey(po => po.Id);
+            entity.Property(po => po.Id).ValueGeneratedNever();
+            entity.HasOne(po => po.Organization)
                   .WithMany()
-                  .HasForeignKey(wi => wi.WorkspaceId)
+                  .HasForeignKey(po => po.OrganizationId)
                   .OnDelete(DeleteBehavior.Cascade);
-            entity.HasOne(wi => wi.InvitedByUser)
+            entity.HasOne(po => po.ConsumedByUser)
                   .WithMany()
-                  .HasForeignKey(wi => wi.InvitedByUserId)
+                  .HasForeignKey(po => po.ConsumedByUserId)
                   .OnDelete(DeleteBehavior.SetNull);
-            entity.HasOne(wi => wi.ConsumedByUser)
-                  .WithMany()
-                  .HasForeignKey(wi => wi.ConsumedByUserId)
-                  .OnDelete(DeleteBehavior.SetNull);
-            entity.HasIndex(wi => new { wi.WorkspaceId, wi.InviteeEmail })
+            entity.HasIndex(po => new { po.OrganizationId, po.OwnerEmail })
                   .IsUnique()
                   .HasFilter("consumed_at IS NULL")
-                  .HasDatabaseName("idx_workspace_invitations_unique");
+                  .HasDatabaseName("idx_pending_org_ownership_unique");
         });
+
+        // OrganizationInvitation configurations
+        modelBuilder.Entity<OrganizationInvitation>(entity =>
+        {
+            entity.ToTable("organization_invitations");
+            entity.HasKey(oi => oi.Id);
+            entity.Property(oi => oi.Id).ValueGeneratedNever();
+            entity.HasOne(oi => oi.Organization)
+                  .WithMany()
+                  .HasForeignKey(oi => oi.OrganizationId)
+                  .OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(oi => oi.InvitedByUser)
+                  .WithMany()
+                  .HasForeignKey(oi => oi.InvitedByUserId)
+                  .OnDelete(DeleteBehavior.SetNull);
+            entity.HasOne(oi => oi.ConsumedByUser)
+                  .WithMany()
+                  .HasForeignKey(oi => oi.ConsumedByUserId)
+                  .OnDelete(DeleteBehavior.SetNull);
+            entity.HasIndex(oi => new { oi.InviteeEmail, oi.Status })
+                  .HasDatabaseName("idx_org_invitations_email_status");
+            entity.HasIndex(oi => oi.TokenHash)
+                  .IsUnique()
+                  .HasDatabaseName("idx_org_invitations_token_hash");
+        });
+
+        // OrganizationInvitationRole configurations
+        modelBuilder.Entity<OrganizationInvitationRole>(entity =>
+        {
+            entity.ToTable("organization_invitation_roles");
+            entity.HasKey(oir => oir.Id);
+            entity.Property(oir => oir.Id).ValueGeneratedNever();
+            entity.HasOne(oir => oir.Invitation)
+                  .WithMany(oi => oi.PreAssignedRoles)
+                  .HasForeignKey(oir => oir.InvitationId)
+                  .OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(oir => oir.Role)
+                  .WithMany()
+                  .HasForeignKey(oir => oir.RoleId)
+                  .OnDelete(DeleteBehavior.Cascade);
+            entity.HasIndex(oir => oir.InvitationId)
+                  .HasDatabaseName("idx_org_invitation_roles_invite");
+        });
+
+        // ActivityEvent configurations
+        modelBuilder.Entity<ActivityEvent>(entity =>
+        {
+            entity.ToTable("activity_events");
+            entity.HasKey(ae => ae.Id);
+            entity.Property(ae => ae.Id).ValueGeneratedNever();
+            entity.HasOne(ae => ae.Organization)
+                  .WithMany()
+                  .HasForeignKey(ae => ae.OrganizationId)
+                  .OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(ae => ae.ActorUser)
+                  .WithMany()
+                  .HasForeignKey(ae => ae.ActorUserId)
+                  .OnDelete(DeleteBehavior.SetNull);
+            entity.HasIndex(ae => new { ae.OrganizationId, ae.CreatedAt })
+                  .HasDatabaseName("idx_activity_events_org_created");
+            entity.HasIndex(ae => ae.CorrelationId)
+                  .HasDatabaseName("idx_activity_events_correlation");
+        });
+
+        // InAppNotification configurations
+        modelBuilder.Entity<InAppNotification>(entity =>
+        {
+            entity.ToTable("in_app_notifications");
+            entity.HasKey(ian => ian.Id);
+            entity.Property(ian => ian.Id).ValueGeneratedNever();
+            entity.HasOne(ian => ian.User)
+                  .WithMany()
+                  .HasForeignKey(ian => ian.UserId)
+                  .OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(ian => ian.ActivityEvent)
+                  .WithMany()
+                  .HasForeignKey(ian => ian.ActivityEventId)
+                  .OnDelete(DeleteBehavior.SetNull);
+            entity.HasIndex(ian => ian.UserId)
+                  .HasDatabaseName("idx_in_app_notifications_user_id");
+            entity.HasIndex(ian => new { ian.UserId, ian.IsRead })
+                  .HasFilter("deleted_at IS NULL")
+                  .HasDatabaseName("idx_in_app_notifications_user_unread");
+            entity.HasIndex(ian => new { ian.UserId, ian.AggregateKey })
+                  .HasFilter("is_read = FALSE AND deleted_at IS NULL")
+                  .HasDatabaseName("idx_in_app_notifications_aggregate");
+        });
+
+        // NotificationPreference configurations
+        modelBuilder.Entity<NotificationPreference>(entity =>
+        {
+            entity.ToTable("notification_preferences");
+            entity.HasKey(np => np.Id);
+            entity.Property(np => np.Id).ValueGeneratedNever();
+            entity.HasOne(np => np.User)
+                  .WithMany()
+                  .HasForeignKey(np => np.UserId)
+                  .OnDelete(DeleteBehavior.Cascade);
+            entity.HasIndex(np => new { np.UserId, np.NotificationType, np.Channel })
+                  .IsUnique()
+                  .HasDatabaseName("idx_user_notification_prefs");
+        });
+
+        // ProjectEntry configurations
+        modelBuilder.Entity<ProjectEntry>(entity =>
+        {
+            entity.ToTable("project_entries");
+            entity.HasKey(p => p.Id);
+            entity.Property(p => p.Id).ValueGeneratedNever();
+            entity.HasQueryFilter(p => p.DeletedAt == null);
+
+            entity.HasOne(p => p.User)
+                  .WithMany()
+                  .HasForeignKey(p => p.UserId)
+                  .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasIndex(p => p.UserId)
+                  .HasDatabaseName("idx_project_entries_user_id");
+        });
+
+        // ProjectRepositoryLink configurations
+        modelBuilder.Entity<ProjectRepositoryLink>(entity =>
+        {
+            entity.ToTable("project_repository_links");
+            entity.HasKey(prl => prl.Id);
+            entity.Property(prl => prl.Id).ValueGeneratedNever();
+
+            entity.HasOne(prl => prl.ProjectEntry)
+                  .WithMany(p => p.RepositoryLinks)
+                  .HasForeignKey(prl => prl.ProjectEntryId)
+                  .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasOne(prl => prl.SourceCodeRepository)
+                  .WithMany()
+                  .HasForeignKey(prl => prl.SourceCodeRepositoryId)
+                  .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasIndex(prl => new { prl.ProjectEntryId, prl.SourceCodeRepositoryId })
+                  .IsUnique()
+                  .HasDatabaseName("idx_project_repo_links_unique");
+        });
+
+        // ProjectTechnology configurations
+        modelBuilder.Entity<ProjectTechnology>(entity =>
+        {
+            entity.ToTable("project_technologies");
+            entity.HasKey(pt => pt.Id);
+            entity.Property(pt => pt.Id).ValueGeneratedNever();
+
+            entity.HasOne(pt => pt.ProjectEntry)
+                  .WithMany(p => p.Technologies)
+                  .HasForeignKey(pt => pt.ProjectEntryId)
+                  .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasIndex(pt => pt.ProjectEntryId)
+                  .HasDatabaseName("idx_project_technologies_project_id");
+        });
+
+        // ProjectContribution configurations
+        modelBuilder.Entity<ProjectContribution>(entity =>
+        {
+            entity.ToTable("project_contributions");
+            entity.HasKey(pc => pc.Id);
+            entity.Property(pc => pc.Id).ValueGeneratedNever();
+
+            entity.HasOne(pc => pc.ProjectEntry)
+                  .WithMany(p => p.Contributions)
+                  .HasForeignKey(pc => pc.ProjectEntryId)
+                  .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasIndex(pc => pc.ProjectEntryId)
+                  .HasDatabaseName("idx_project_contributions_project_id");
+        });
+    }
+
+    public async Task<User?> FindUserByEmailAsync(string email, CancellationToken cancellationToken = default)
+    {
+        var normalized = email.Trim().ToLowerInvariant();
+        if (Database.ProviderName == "Microsoft.EntityFrameworkCore.InMemory")
+        {
+            await Task.CompletedTask;
+            return Users
+                .AsEnumerable()
+                .FirstOrDefault(u => (u.Email != null && u.Email.ToLower() == normalized) || (u.LinkedEmails != null && u.LinkedEmails.Any(le => le.Email != null && le.Email.ToLower() == normalized)));
+        }
+        var jsonContainment = $"[{{\"email\": \"{normalized}\"}}]";
+        return await Users
+            .FromSqlRaw("SELECT * FROM users WHERE email = {0} OR (linked_emails IS NOT NULL AND linked_emails @> {1}::jsonb)", normalized, jsonContainment)
+            .FirstOrDefaultAsync(cancellationToken);
+    }
+
+    public async Task<User?> FindUserByVerifiedEmailAsync(string email, CancellationToken cancellationToken = default)
+    {
+        var normalized = email.Trim().ToLowerInvariant();
+        if (Database.ProviderName == "Microsoft.EntityFrameworkCore.InMemory")
+        {
+            await Task.CompletedTask;
+            return Users
+                .AsEnumerable()
+                .FirstOrDefault(u => (u.Email != null && u.Email.ToLower() == normalized) || (u.LinkedEmails != null && u.LinkedEmails.Any(le => le.Email != null && le.Email.ToLower() == normalized && le.IsVerified)));
+        }
+        var jsonContainment = $"[{{\"email\": \"{normalized}\", \"is_verified\": true}}]";
+        return await Users
+            .FromSqlRaw("SELECT * FROM users WHERE email = {0} OR (linked_emails IS NOT NULL AND linked_emails @> {1}::jsonb)", normalized, jsonContainment)
+            .FirstOrDefaultAsync(cancellationToken);
+    }
+
+    public async Task<bool> CheckEmailExistsAsync(string email, CancellationToken cancellationToken = default)
+    {
+        var normalized = email.Trim().ToLowerInvariant();
+        if (Database.ProviderName == "Microsoft.EntityFrameworkCore.InMemory")
+        {
+            await Task.CompletedTask;
+            return Users
+                .AsEnumerable()
+                .Any(u => u.DeletedAt == null && ((u.Email != null && u.Email.ToLower() == normalized) || (u.LinkedEmails != null && u.LinkedEmails.Any(le => le.Email != null && le.Email.ToLower() == normalized))));
+        }
+        var jsonContainment = $"[{{\"email\": \"{normalized}\"}}]";
+        return await Users
+            .FromSqlRaw("SELECT * FROM users WHERE (email = {0} OR (linked_emails IS NOT NULL AND linked_emails @> {1}::jsonb)) AND deleted_at IS NULL", normalized, jsonContainment)
+            .AnyAsync(cancellationToken);
     }
 }

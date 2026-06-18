@@ -24,8 +24,19 @@ public static class EnvValidator
         }
 
         // 2. Redis
-        config.Redis.ConnectionString = configuration.GetConnectionString("Redis")?.ResolveEnvironmentVariables()
-            ?? throw new InvalidOperationException("Environment variable 'REDIS_URL' is missing or connection string 'Redis' is not configured.");
+        var redisConn = configuration.GetConnectionString("Redis")?.ResolveEnvironmentVariables();
+        if (redisConn != null)
+        {
+            if (redisConn.EndsWith(",password="))
+            {
+                redisConn = redisConn.Substring(0, redisConn.Length - ",password=".Length);
+            }
+            else if (redisConn.Contains(",password=,"))
+            {
+                redisConn = redisConn.Replace(",password=,", ",");
+            }
+        }
+        config.Redis.ConnectionString = redisConn ?? throw new InvalidOperationException("Environment variable 'REDIS_URL' is missing or connection string 'Redis' is not configured.");
 
         // 3. JWT
         config.Jwt.Key = configuration["Jwt:Key"]?.ResolveEnvironmentVariables() ?? throw new InvalidOperationException("Environment variable 'JWT_KEY' is missing.");
@@ -98,6 +109,33 @@ public static class EnvValidator
 
         // 7. Super Admin Settings
         config.SuperAdmin.Email = (configuration["SuperAdmin:Email"] ?? configuration["SUPER_ADMIN_EMAIL"])?.ResolveEnvironmentVariables()?.Trim('"') ?? config.SuperAdmin.Email;
+        config.SuperAdmin.Username = (configuration["SuperAdmin:Username"] ?? configuration["SUPER_ADMIN_USERNAME"])?.ResolveEnvironmentVariables()?.Trim('"') ?? config.SuperAdmin.Username;
+        config.SuperAdmin.FullName = (configuration["SuperAdmin:FullName"] ?? configuration["SUPER_ADMIN_FULL_NAME"])?.ResolveEnvironmentVariables()?.Trim('"') ?? config.SuperAdmin.FullName;
+        config.SuperAdmin.Password = (configuration["SuperAdmin:Password"] ?? configuration["SUPER_ADMIN_PASSWORD"])?.ResolveEnvironmentVariables()?.Trim('"')
+            ?? throw new InvalidOperationException("Environment variable 'SUPER_ADMIN_PASSWORD' or setting 'SuperAdmin:Password' is missing.");
+
+        if (string.IsNullOrWhiteSpace(config.SuperAdmin.Password) || config.SuperAdmin.Password.Length < 8)
+        {
+            throw new InvalidOperationException("Fatal: SUPER_ADMIN_PASSWORD is required and must be at least 8 characters long.");
+        }
+
+        // 7b. Seeding Settings
+        if (bool.TryParse(configuration["Seeding:SeedTestAccounts"] ?? configuration["SEED_TEST_ACCOUNTS"], out var seedTest))
+        {
+            config.Seeding.SeedTestAccounts = seedTest;
+        }
+
+        config.Seeding.BusinessPassword = (configuration["Seeding:BusinessPassword"] ?? configuration["SEED_BUSINESS_PASSWORD"])?.ResolveEnvironmentVariables()?.Trim('"');
+        config.Seeding.SeedDataPath = (configuration["Seeding:SeedDataPath"] ?? configuration["SEED_DATA_PATH"])?.ResolveEnvironmentVariables()?.Trim('"') ?? config.Seeding.SeedDataPath;
+        config.Seeding.PublicDemoDataPath = (configuration["Seeding:PublicDemoDataPath"] ?? configuration["PUBLIC_DEMO_DATA_PATH"])?.ResolveEnvironmentVariables()?.Trim('"') ?? config.Seeding.PublicDemoDataPath;
+
+        if (config.Seeding.SeedTestAccounts)
+        {
+            if (string.IsNullOrWhiteSpace(config.Seeding.BusinessPassword))
+            {
+                throw new InvalidOperationException("Environment variable 'SEED_BUSINESS_PASSWORD' is required when 'SEED_TEST_ACCOUNTS' is true.");
+            }
+        }
 
         // 8. Cloudflare R2 Settings
         config.R2.AccessKeyId = (configuration["R2:AccessKeyId"] ?? configuration["ACCESS_KEY_ID"])?.ResolveEnvironmentVariables()?.Trim('"')

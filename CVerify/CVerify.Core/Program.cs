@@ -17,6 +17,7 @@ using CVerify.API.Modules.Auth.Services;
 using CVerify.API.Modules.Auth.Services.OtpPolicies;
 using CVerify.API.Modules.Auth.Services.PasswordPolicies;
 using CVerify.API.Modules.Profiles.Services;
+using CVerify.API.Modules.Profiles.BackgroundWorkers;
 using CVerify.API.Modules.Recovery.BackgroundWorkers;
 using CVerify.API.Modules.Recovery.Services;
 using CVerify.API.Modules.Shared.Configuration;
@@ -37,6 +38,11 @@ using CVerify.API.Modules.Shared.Security.Authorization;
 using CVerify.API.Modules.Shared.System.BackgroundWorkers;
 using CVerify.API.Modules.SourceCode.Services;
 using CVerify.API.Modules.SourceCode.BackgroundWorkers;
+using CVerify.API.Modules.Jd.Services;
+using CVerify.API.Modules.Shared.Domain.Services;
+using CVerify.API.Modules.SourceCode.Clients;
+using CVerify.API.Modules.Shared.Domain.Resolvers;
+using CVerify.API.Modules.Shared.Hubs;
 
 
 var builder = WebApplication.CreateBuilder(args);
@@ -92,6 +98,10 @@ if (builder.Environment.IsProduction() || builder.Environment.EnvironmentName.Eq
     if (envConfig.Security.DisableRateLimits)
     {
         throw new InvalidOperationException("Fatal: Rate limits cannot be disabled in the Production environment.");
+    }
+    if (envConfig.Seeding.SeedTestAccounts)
+    {
+        throw new InvalidOperationException("Fatal: Test account seeding cannot be enabled in the Production environment.");
     }
     if (string.IsNullOrWhiteSpace(envConfig.Security.TokenEncryptionKey) ||
         envConfig.Security.TokenEncryptionKey == "DEVELOPMENT_TOKEN_ENCRYPTION_KEY" ||
@@ -201,7 +211,10 @@ builder.Services.AddControllers()
         options.JsonSerializerOptions.Converters.Add(
             new System.Text.Json.Serialization.JsonStringEnumConverter());
     });
-builder.Services.AddSignalR();
+builder.Services.AddSignalR(options =>
+{
+    options.EnableDetailedErrors = true;
+});
 builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
 builder.Services.AddProblemDetails();
 builder.Services.AddHttpContextAccessor();
@@ -360,8 +373,13 @@ builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IWorkspaceProvisioningService, WorkspaceProvisioningService>();
 builder.Services.AddScoped<IWorkspaceMembershipService, WorkspaceMembershipService>();
 builder.Services.AddScoped<IOrganizationAuthorizationService, OrganizationAuthorizationService>();
+builder.Services.AddScoped<IOrganizationBootstrapService, OrganizationBootstrapService>();
+builder.Services.AddScoped<IBusinessRoleService, BusinessRoleService>();
+builder.Services.AddScoped<IOrganizationInvitationService, OrganizationInvitationService>();
 builder.Services.AddScoped<IPasswordRecoveryService, PasswordRecoveryService>();
 builder.Services.AddScoped<IPermissionService, PermissionService>();
+builder.Services.AddScoped<IAdminAuthorizationService, AdminAuthorizationService>();
+builder.Services.AddScoped<IAdminMemberService, AdminMemberService>();
 builder.Services.AddScoped<IIdentityStateResolver, IdentityStateResolver>();
 builder.Services.AddScoped<IRecoveryExecutionEngine, RecoveryExecutionEngine>();
 builder.Services.AddScoped<IRecoveryTokenService, RecoveryTokenService>();
@@ -372,6 +390,13 @@ builder.Services.AddScoped<ILevel2RecoveryService, Level2RecoveryService>();
 builder.Services.AddScoped<IPasswordPolicyService, PasswordPolicyService>();
 builder.Services.AddScoped<IOtpPolicyService, OtpPolicyService>();
 
+// Register Notification Platform Services
+builder.Services.AddScoped<IActivityEventPublisher, ActivityEventPublisher>();
+builder.Services.AddScoped<INotificationRecipientResolver, NotificationRecipientResolver>();
+builder.Services.AddScoped<INotificationDeliveryService, NotificationDeliveryService>();
+builder.Services.AddScoped<INotificationChannel, InAppNotificationChannel>();
+builder.Services.AddSingleton<INotificationDispatcher, RedisNotificationDispatcher>();
+
 // Register Profile Settings Services
 builder.Services.AddScoped<IProfileService, ProfileService>();
 builder.Services.AddScoped<IEducationService, EducationService>();
@@ -380,12 +405,38 @@ builder.Services.AddScoped<ICareerReadinessEngine, CareerReadinessEngine>();
 builder.Services.AddScoped<ICareerService, CareerService>();
 builder.Services.AddScoped<IAttachmentService, AttachmentService>();
 builder.Services.AddScoped<IWorkExperienceService, WorkExperienceService>();
+builder.Services.AddScoped<IProjectService, ProjectService>();
+builder.Services.AddScoped<ICvRepositoryIndexer, CvRepositoryIndexer>();
+builder.Services.AddScoped<ICandidateAssessmentService, CandidateAssessmentService>();
+builder.Services.AddSingleton<ICandidateAssessmentQueue, BackgroundCandidateAssessmentQueue>();
+
+// Register Public Workspace Seeder Plugins
+builder.Services.AddScoped<IPublicWorkspaceModuleSeeder, JobVacancyModuleSeeder>();
+builder.Services.AddScoped<IPublicWorkspaceModuleSeeder, WorkspacePostModuleSeeder>();
 
 // Register Source Code Provider Services
+builder.Services.AddScoped<ISourceCodeClient, GitHubSourceCodeClient>();
+builder.Services.AddScoped<ISourceCodeClient, GitLabSourceCodeClient>();
 builder.Services.AddScoped<ISourceCodeProviderService, SourceCodeProviderService>();
 builder.Services.AddSingleton<IRepositorySyncQueue, BackgroundRepositorySyncQueue>();
 builder.Services.AddScoped<IRepositoryAnalysisService, RepositoryAnalysisService>();
+builder.Services.AddScoped<IJdService, JdService>();
+builder.Services.AddScoped<IJdMatchingService, JdMatchingService>();
 builder.Services.AddSingleton<IRepositoryAnalysisQueue, BackgroundRepositoryAnalysisQueue>();
+builder.Services.AddScoped<ICandidateRepositoryProvider, CandidateRepositoryProvider>();
+builder.Services.AddScoped<CVerify.API.Pipelines.Shared.Storage.IArtifactStorageProvider, CVerify.API.Pipelines.Shared.Storage.ArtifactStorageProvider>();
+builder.Services.AddScoped<CVerify.API.Pipelines.Shared.Artifacts.IArtifactRegistry, CVerify.API.Pipelines.Shared.Artifacts.ArtifactRegistry>();
+builder.Services.AddScoped<CVerify.API.Pipelines.RepositoryIntelligence.Readers.IRepositoryArtifactReader, CVerify.API.Pipelines.RepositoryIntelligence.Readers.RepositoryArtifactReader>();
+builder.Services.AddScoped<CVerify.API.Pipelines.Shared.AI.IPromptRegistry, CVerify.API.Pipelines.Shared.AI.PromptRegistry>();
+builder.Services.AddScoped<CVerify.API.Pipelines.Shared.Queue.IPipelineQueue, CVerify.API.Pipelines.Shared.Queue.PipelineQueue>();
+builder.Services.AddScoped<CVerify.API.Pipelines.Shared.Orchestration.IDagScheduler, CVerify.API.Pipelines.Shared.Orchestration.DagScheduler>();
+
+// Register VietQR Business Registry Client
+builder.Services.AddHttpClient("VietQR", client =>
+{
+    client.BaseAddress = new Uri("https://api.vietqr.io/");
+    client.Timeout = TimeSpan.FromSeconds(10);
+});
 
 // Register AI Service
 builder.Services.AddScoped<IHmacSignatureService, HmacSignatureService>();
@@ -406,6 +457,12 @@ builder.Services.AddHostedService<OtpCleanupBackgroundWorker>();
 builder.Services.AddHostedService<BackgroundRepositorySyncProcessor>();
 builder.Services.AddHostedService<AnalysisQueueRecoverySweeper>();
 builder.Services.AddHostedService<BackgroundRepositoryAnalysisProcessor>();
+builder.Services.AddHostedService<BackgroundCandidateAssessmentProcessor>();
+builder.Services.AddHostedService<BackgroundCandidateAssessmentBackfillProcessor>();
+
+
+builder.Services.AddHostedService<RedisNotificationSubscriberWorker>();
+builder.Services.AddHostedService<ActivityEventProjectionWorker>();
 
 
 // Configure JWT Authentication
@@ -463,14 +520,42 @@ using (var scope = app.Services.CreateScope())
         var context = services.GetRequiredService<ApplicationDbContext>();
         var usernameService = services.GetRequiredService<IUsernameService>();
         var logger = services.GetRequiredService<ILogger<Program>>();
+
+        if (args.Contains("--greenfield-init"))
+        {
+            if (app.Environment.IsProduction() || app.Environment.EnvironmentName.Equals("Production", StringComparison.OrdinalIgnoreCase))
+            {
+                logger.LogCritical("FATAL: Greenfield Schema Initialization is not allowed in Production environment!");
+                throw new InvalidOperationException("Greenfield Schema Initialization is not allowed in Production.");
+            }
+
+            logger.LogWarning("Greenfield Schema Initialization started: dropping and recreating tables...");
+            var sqlPath = Path.Combine(AppContext.BaseDirectory, "schema_init.sql");
+            if (!File.Exists(sqlPath)) sqlPath = "schema_init.sql";
+            if (File.Exists(sqlPath))
+            {
+                var sql = await File.ReadAllTextAsync(sqlPath);
+                await context.Database.ExecuteSqlRawAsync(sql);
+                logger.LogInformation("Greenfield Schema Initialization SQL executed successfully.");
+            }
+            else
+            {
+                logger.LogError("Greenfield SQL script schema_init.sql not found!");
+            }
+        }
+
         logger.LogInformation("Initializing database schema and checking synchronization...");
-        await DbInitializer.InitializeAsync(context, usernameService);
+        await DbInitializer.InitializeAsync(context, services, usernameService, envConfig, app.Environment);
         logger.LogInformation("Database schema initialized and synchronized successfully.");
     }
     catch (Exception ex)
     {
         var logger = services.GetRequiredService<ILogger<Program>>();
         logger.LogError(ex, "An error occurred while initializing the database schema.");
+        if (ex.Message.Contains("Fatal") || ex is InvalidOperationException)
+        {
+            throw;
+        }
     }
 }
 
@@ -498,5 +583,6 @@ app.UseAuthorization();
 app.MapHealthChecks("/health");
 app.MapControllers();
 app.MapHub<CVerify.API.Modules.Admin.Hubs.AdminHub>("/hubs/admin");
+app.MapHub<NotificationHub>("/hubs/notifications");
 
 app.Run();

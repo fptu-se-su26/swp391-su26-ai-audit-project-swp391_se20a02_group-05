@@ -119,6 +119,8 @@ export interface DeclaredCareerPreference {
   companyValues: string[];
   expectedSalaryMin?: number | null;
   expectedSalaryMax?: number | null;
+  desiredSalary?: number | null;
+  minimumAcceptableSalary?: number | null;
   expectedSalaryCurrency?: string | null;
   expectedSalaryType?: string | null;
   expectedSalaryNegotiable: boolean;
@@ -187,6 +189,8 @@ export interface UpdateCareerPreferenceRequest {
   employmentPreferences?: string[];
   expectedSalaryMin?: number | null;
   expectedSalaryMax?: number | null;
+  desiredSalary?: number | null;
+  minimumAcceptableSalary?: number | null;
   expectedSalaryCurrency?: string | null;
   expectedSalaryType?: string | null;
   expectedSalaryNegotiable?: boolean;
@@ -216,11 +220,26 @@ export interface PublicCareerPreference {
   desiredJobPositions: string[];
   expectedSalaryMin?: number | null;
   expectedSalaryMax?: number | null;
+  desiredSalary?: number | null;
+  minimumAcceptableSalary?: number | null;
   expectedSalaryCurrency?: string | null;
   expectedSalaryType?: string | null;
   expectedSalaryNegotiable: boolean;
   isExpectedSalaryVisible: boolean;
   workPreferenceNotes?: string | null;
+}
+
+export interface PublicRepository {
+  id: string;
+  name: string;
+  owner: string;
+  description: string | null;
+  htmlUrl: string | null;
+  primaryLanguage: string | null;
+  trustScore: number;
+  classification: string | null;
+  latestAnalysisStatus: string;
+  latestAnalysisCompletedAtUtc: string | null;
 }
 
 export interface PublicProfileResponse {
@@ -234,6 +253,14 @@ export interface PublicProfileResponse {
   location: string | null;
   socialLinks: string[];
   careerPreference?: PublicCareerPreference | null;
+  trustScore?: number | null;
+  repositories?: PublicRepository[] | null;
+  projects?: PublicProject[] | null;
+  experiences?: WorkExperienceResponse[] | null;
+  educations?: EducationEntryResponse[] | null;
+  achievements?: AcademicAchievementResponse[] | null;
+  hasCompletedAssessment: boolean;
+  lastAssessmentDate: string | null;
 }
 
 export interface WorkExperienceAchievement {
@@ -259,6 +286,7 @@ export interface WorkExperienceRequest {
   achievements: WorkExperienceAchievement[];
   technologies: string[];
   links: WorkExperienceLink[];
+  isLeadership?: boolean;
 }
 
 export interface WorkExperienceResponse {
@@ -277,5 +305,139 @@ export interface WorkExperienceResponse {
   achievements: WorkExperienceAchievement[];
   technologies: string[];
   links: WorkExperienceLink[];
+  isLeadership: boolean;
+}
+
+
+export interface CandidateReadinessDto {
+  isReady: boolean;
+  missingFields: string[];
+  completenessScore: number;
+  requiresReassessment: boolean;
+  lastAssessmentAt: string | null;
+  lastProfileUpdateAt: string;
+  lastRepositoryAnalysisAt: string;
+}
+
+export interface CandidateAssessmentResponse {
+  id: string;
+  userId: string;
+  status: string;
+  overallScore: number;
+  careerLevel: string | null;
+  careerLevelLabel: string | null;
+  primaryTendency: string | null;
+  primaryWorkingStyle: string | null;
+  summaryHeadline: string | null;
+  summaryParagraph: string | null;
+  pipelineVersion: string;
+  assessmentSchemaVersion: string;
+  cvId: string | null;
+  promptVersion: string | null;
+  modelVersion: string | null;
+  lastProfileUpdateAt: string;
+  lastRepositoryAnalysisAt: string;
+  lastAssessmentAt: string | null;
+  failedStage: string | null;
+  failureReason: string | null;
+  createdAtUtc: string;
+  completedAtUtc: string | null;
+}
+
+export interface CandidateAssessmentArtifactDto {
+  id: string;
+  artifactType: string;
+  jsonData: string;
+  createdAtUtc: string;
+}
+
+export interface CandidateAssessmentDetailResponse {
+  assessment: CandidateAssessmentResponse;
+  artifacts: CandidateAssessmentArtifactDto[];
+}
+
+export interface AssessmentStageDto {
+  id: string;
+  name: string;
+  description: string;
+}
+
+export enum ProjectVerificationLevel {
+  AiAnalyzed = 1,
+  RepositoryLinked = 2,
+  Independent = 3,
+}
+
+export enum ProjectVerificationStatus {
+  Verified = 1,
+  Outdated = 2,
+  Disconnected = 3,
+  Unverified = 4,
+}
+
+export interface ProjectRepositoryLinkResponse {
+  id: string;
+  sourceCodeRepositoryId: string;
+  name: string;
+  owner: string;
+  htmlUrl: string | null;
+}
+
+export interface ProjectEntryRequest {
+  name: string;
+  role: string | null;
+  description: string;
+  startDate: string | null;
+  endDate: string | null;
+  isCurrentlyWorking: boolean;
+  verificationLevel: ProjectVerificationLevel;
+  linkedRepositoryIds: string[] | null;
+  technologies: string[] | null;
+  contributions: string[] | null;
+}
+
+export interface ProjectEntryResponse {
+  id: string;
+  userId: string;
+  name: string;
+  role: string | null;
+  description: string;
+  startDate: string | null;
+  endDate: string | null;
+  isCurrentlyWorking: boolean;
+  verificationLevel: ProjectVerificationLevel;
+  verificationStatus: ProjectVerificationStatus;
+  verifiedAt: string | null;
+  verificationMetadataJson: string | null;
+  displayOrder: number;
+  repositoryLinks: ProjectRepositoryLinkResponse[];
+  technologies: string[];
+  contributions: string[];
+}
+
+export interface PublicProjectRepositoryLink {
+  id: string;
+  sourceCodeRepositoryId: string;
+  name: string;
+  owner: string;
+  htmlUrl: string | null;
+}
+
+export interface PublicProject {
+  id: string;
+  name: string;
+  role: string | null;
+  description: string;
+  startDate: string | null;
+  endDate: string | null;
+  isCurrentlyWorking: boolean;
+  verificationLevel: ProjectVerificationLevel;
+  verificationStatus: ProjectVerificationStatus;
+  verifiedAt: string | null;
+  verificationMetadataJson: string | null;
+  displayOrder: number;
+  repositoryLinks: PublicProjectRepositoryLink[];
+  technologies: string[];
+  contributions: string[];
 }
 

@@ -26,6 +26,12 @@ export const routesConfig: Record<string, RouteMetadata> = {
     fallbackLabel: 'Settings',
     icon: Settings,
   },
+  '/cv': {
+    path: '/cv',
+    translationKey: 'common:dashboard.cv',
+    fallbackLabel: 'My CV',
+    icon: FileText,
+  },
   '/user': {
     path: '/user',
     translationKey: 'common:dashboard.travelerHub',
@@ -43,6 +49,12 @@ export const routesConfig: Record<string, RouteMetadata> = {
     translationKey: 'common:dashboard.partnerConsole',
     fallbackLabel: 'Partner Console',
     icon: Building2,
+  },
+  '/jd': {
+    path: '/jd',
+    translationKey: 'common:dashboard.jdManagement',
+    fallbackLabel: 'JD Management',
+    icon: FileText,
   },
   '/admin': {
     path: '/admin',

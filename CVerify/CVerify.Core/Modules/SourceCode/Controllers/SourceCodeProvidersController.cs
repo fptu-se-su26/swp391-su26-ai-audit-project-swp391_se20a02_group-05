@@ -7,7 +7,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using CVerify.API.Modules.SourceCode.Services;
 using CVerify.API.Modules.SourceCode.DTOs;
-using CVerify.API.Modules.Admin.DTOs;
+using CVerify.API.Modules.Shared.System.DTOs;
 
 namespace CVerify.API.Modules.SourceCode.Controllers;
 
@@ -55,6 +55,9 @@ public class SourceCodeProvidersController : ControllerBase
         [FromQuery] string? language,
         [FromQuery] string? sort,
         [FromQuery] string? category,
+        [FromQuery] string? ownerType,
+        [FromQuery] Guid? organizationId,
+        [FromQuery] string? mode = "all",
         [FromQuery] int page = 1,
         [FromQuery] int pageSize = 10,
         CancellationToken cancellationToken = default)
@@ -71,9 +74,21 @@ public class SourceCodeProvidersController : ControllerBase
             language,
             sort,
             category,
+            ownerType,
+            organizationId,
+            mode,
             page,
             pageSize);
 
+        return Ok(result);
+    }
+
+    [HttpGet("organizations")]
+    [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(System.Collections.Generic.IEnumerable<ExternalOrganizationResponseDto>))]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    public async Task<IActionResult> GetOrganizations(CancellationToken cancellationToken)
+    {
+        var result = await _sourceCodeProviderService.GetOrganizationsAsync(CurrentUserId);
         return Ok(result);
     }
 

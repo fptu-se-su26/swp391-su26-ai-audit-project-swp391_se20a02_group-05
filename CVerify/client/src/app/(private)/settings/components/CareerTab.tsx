@@ -16,6 +16,7 @@ import {
   toast,
   Spinner,
   Input,
+  InputGroup,
   TextArea,
   Label,
   FieldError,
@@ -26,8 +27,8 @@ import { useCareerPreferences } from "@/hooks/use-career-preferences";
 import { type UpdateCareerPreferenceRequest } from "@/types/profile.types";
 import { useProfileStore } from "@/stores/use-profile-store";
 import {
-  UnsavedChangesBar,
   isDeepEqual,
+  UnsavedChangesBar,
 } from "@/components/ui/unsaved-changes-bar";
 
 // Taxonomy options
@@ -122,16 +123,16 @@ const SALARY_TYPE_OPTIONS = [
 ];
 
 const WORK_STATUS_OPTIONS = [
-  { value: "active", label: "Active Search" },
+  { value: "active", label: "Active Job Search" },
   { value: "casual", label: "Casual Browsing" },
   { value: "closed", label: "Not Open to Work" },
 ];
 
 const REMOTE_PREFERENCE_OPTIONS = [
-  { value: "remote", label: "Remote Only" },
+  { value: "remote", label: "Remote" },
   { value: "hybrid", label: "Hybrid" },
-  { value: "onsite", label: "Onsite Only" },
-  { value: "any", label: "Open to Any" },
+  { value: "onsite", label: "Onsite" },
+  { value: "any", label: "Any" },
 ];
 
 const LEADERSHIP_TRACK_OPTIONS = [
@@ -172,11 +173,11 @@ const careerSchema = z
     remotePreference: z.enum(["remote", "hybrid", "onsite", "any"]),
     openToRelocation: z.boolean(),
     preferredLocations: z.array(z.string()),
-    employmentPreferences: z
-      .array(z.string())
-      .min(1, "Select at least one employment preference"),
+    employmentPreferences: z.array(z.string()),
     expectedSalaryMin: salarySchema,
     expectedSalaryMax: salarySchema,
+    desiredSalary: salarySchema,
+    minimumAcceptableSalary: salarySchema,
     expectedSalaryCurrency: z.enum(["VND", "USD"]),
     expectedSalaryType: z.enum(["Monthly", "Hourly", "Project-based"]),
     expectedSalaryNegotiable: z.boolean(),
@@ -212,6 +213,23 @@ const careerSchema = z
     {
       message: "Max salary must be greater than or equal to min salary.",
       path: ["expectedSalaryMax"],
+    }
+  )
+  .refine(
+    (data) => {
+      if (
+        data.minimumAcceptableSalary !== null &&
+        data.minimumAcceptableSalary !== undefined &&
+        data.desiredSalary !== null &&
+        data.desiredSalary !== undefined
+      ) {
+        return data.minimumAcceptableSalary <= data.desiredSalary;
+      }
+      return true;
+    },
+    {
+      message: "Minimum acceptable salary must be less than or equal to desired salary.",
+      path: ["minimumAcceptableSalary"],
     }
   )
   .refine(
@@ -268,6 +286,8 @@ export const CareerTab: React.FC<CareerTabProps> = ({
       employmentPreferences: ["full_time"],
       expectedSalaryMin: null,
       expectedSalaryMax: null,
+      desiredSalary: null,
+      minimumAcceptableSalary: null,
       expectedSalaryCurrency: "USD",
       expectedSalaryType: "Monthly",
       expectedSalaryNegotiable: false,
@@ -295,12 +315,23 @@ export const CareerTab: React.FC<CareerTabProps> = ({
 
   const currentValues = useWatch({ control });
 
+  const isVND = currentValues.expectedSalaryCurrency === "VND";
+  const currencySymbol = isVND ? "₫" : "$";
+  const currencyCode = isVND ? "VND" : "USD";
+  const salaryPlaceholderMin = isVND ? "e.g. 50,000,000" : "e.g. 3000";
+  const salaryPlaceholderMax = isVND ? "e.g. 100,000,000" : "e.g. 5000";
+
+  const hasChanges = !isDeepEqual(
+    currentValues,
+    methods.formState.defaultValues
+  );
+
   // Load backend data into React Hook Form
   useEffect(() => {
     if (career && !methods.formState.isDirty) {
       const declared = career.declaredPreferences;
       reset({
-        availableForHire: declared.availableForHire,
+        availableForHire: declared.availableForHire ?? true,
         openToWorkStatus: declared.openToWorkStatus || "casual",
         preferredLanguage: (declared.preferredLanguage as any) || "en",
         remotePreference: (declared.remotePreference as any) || "any",
@@ -309,6 +340,8 @@ export const CareerTab: React.FC<CareerTabProps> = ({
         employmentPreferences: declared.employmentPreferences || [],
         expectedSalaryMin: declared.expectedSalaryMin ?? null,
         expectedSalaryMax: declared.expectedSalaryMax ?? null,
+        desiredSalary: declared.desiredSalary ?? null,
+        minimumAcceptableSalary: declared.minimumAcceptableSalary ?? null,
         expectedSalaryCurrency: (declared.expectedSalaryCurrency as any) || "USD",
         expectedSalaryType: (declared.expectedSalaryType as any) || "Monthly",
         expectedSalaryNegotiable: declared.expectedSalaryNegotiable ?? false,
@@ -329,19 +362,45 @@ export const CareerTab: React.FC<CareerTabProps> = ({
 
   // Track dirty changes to inform parent page navigation guard
   useEffect(() => {
-    const hasChanges = !isDeepEqual(
-      currentValues,
-      methods.formState.defaultValues
-    );
     onDirtyChange(hasChanges);
-  }, [currentValues, methods.formState.defaultValues, onDirtyChange]);
+  }, [hasChanges, onDirtyChange]);
 
   const handleReset = () => {
-    reset();
+    if (career) {
+      const declared = career.declaredPreferences;
+      reset({
+        availableForHire: declared.availableForHire ?? true,
+        openToWorkStatus: declared.openToWorkStatus || "casual",
+        preferredLanguage: (declared.preferredLanguage as any) || "en",
+        remotePreference: (declared.remotePreference as any) || "any",
+        openToRelocation: declared.openToRelocation ?? false,
+        preferredLocations: declared.preferredLocations || [],
+        employmentPreferences: declared.employmentPreferences || [],
+        expectedSalaryMin: declared.expectedSalaryMin ?? null,
+        expectedSalaryMax: declared.expectedSalaryMax ?? null,
+        desiredSalary: declared.desiredSalary ?? null,
+        minimumAcceptableSalary: declared.minimumAcceptableSalary ?? null,
+        expectedSalaryCurrency: (declared.expectedSalaryCurrency as any) || "USD",
+        expectedSalaryType: (declared.expectedSalaryType as any) || "Monthly",
+        expectedSalaryNegotiable: declared.expectedSalaryNegotiable ?? false,
+        isExpectedSalaryVisible: declared.isExpectedSalaryVisible ?? false,
+        desiredJobPositions: declared.desiredJobPositions || [],
+        targetSkills: declared.targetSkills || [],
+        leadershipTrack: declared.leadershipTrack || "undecided",
+        companyStagePreferences: declared.companyStagePreferences || [],
+        preferredIndustries: declared.preferredIndustries || [],
+        preferredWorkEnvironments: declared.preferredWorkEnvironments || [],
+        workStyles: declared.workStyles || [],
+        companyValues: declared.companyValues || [],
+        workPreferenceNotes: declared.workPreferenceNotes || "",
+        version: declared.version || 0,
+      });
+    } else {
+      reset();
+    }
   };
 
   const handleSaveChanges = async () => {
-    // Trigger validation for all fields
     const isValid = await methods.trigger();
     if (!isValid) {
       console.log("[Save Changes] Validation failed");
@@ -469,10 +528,10 @@ export const CareerTab: React.FC<CareerTabProps> = ({
     <FormProvider {...methods}>
       <div className="space-y-8">
         {/* High-level AI Insights & Career Direction Panel */}
-        <div className="grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-6">
-          {/* Left Column: AI Career Trajectory and Recommendations */}
-          <div className="flex flex-col gap-6">
-            <Card className="flex flex-col gap-4">
+        <div className="flex flex-col gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {/* Left Column: AI-Inferred Career Trajectory */}
+            <Card className="flex flex-col gap-4 h-full">
               <div className="flex items-center gap-2 border-b border-border/40 pb-3">
                 <svg
                   className="w-5 h-5 text-accent"
@@ -493,205 +552,220 @@ export const CareerTab: React.FC<CareerTabProps> = ({
               </div>
 
               {career.aiInferredPreferences ? (
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div className="flex flex-col bg-surface-secondary/10 border border-border/40 p-4 rounded-xl">
-                    <span className="text-[10px] text-muted uppercase font-bold tracking-wider">
-                      Primary Role & Seniority
-                    </span>
-                    <span className="text-sm font-bold mt-1">
-                      {career.aiInferredPreferences.inferredSeniority || "Unknown"}{" "}
-                      {career.aiInferredPreferences.inferredPrimaryRole || "Not analyzed"}
-                    </span>
+                <div className="flex flex-col gap-4 flex-1">
+                  <div className="flex flex-wrap gap-1.5 mb-1">
+                    <Chip size="sm" variant="soft" color="success" className="font-bold text-[9px] uppercase">
+                      Repository skill evidence available
+                    </Chip>
+                    <Chip size="sm" variant="soft" color="success" className="font-bold text-[9px] uppercase">
+                      Skills detected from analyzed repositories
+                    </Chip>
+                    <Chip size="sm" variant="soft" color="default" className="font-bold text-[9px] uppercase">
+                      No AI career match score available yet
+                    </Chip>
                   </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="flex flex-col bg-surface-secondary/10 border border-border/40 p-4 rounded-xl justify-center text-left">
+                      <span className="text-[10px] text-muted uppercase font-bold tracking-wider">
+                        Primary Role & Seniority
+                      </span>
+                      <span className="text-sm font-bold mt-1 text-foreground">
+                        {career.aiInferredPreferences.inferredSeniority || "Unknown"}{" "}
+                        {career.aiInferredPreferences.inferredPrimaryRole || "Not analyzed"}
+                      </span>
+                    </div>
 
-                  <div className="flex flex-col bg-surface-secondary/10 border border-border/40 p-4 rounded-xl">
-                    <span className="text-[10px] text-muted uppercase font-bold tracking-wider">
-                      Market Value Range
-                    </span>
-                    <span className="text-sm font-bold mt-1">
-                      {career.aiInferredPreferences.inferredSalaryMin ? (
-                        `${career.aiInferredPreferences.inferredSalaryMin.toLocaleString()} - ${career.aiInferredPreferences.inferredSalaryMax?.toLocaleString()} ${career.aiInferredPreferences.inferredSalaryCurrency}`
-                      ) : (
-                        "Insufficient data"
-                      )}
-                    </span>
-                  </div>
+                    <div className="flex flex-col bg-surface-secondary/10 border border-border/40 p-4 rounded-xl justify-center text-left">
+                      <span className="text-[10px] text-muted uppercase font-bold tracking-wider">
+                        Market Value Range
+                      </span>
+                      <span className="text-sm font-bold mt-1 text-foreground">
+                        {career.aiInferredPreferences.inferredSalaryMin ? (
+                          `${career.aiInferredPreferences.inferredSalaryMin.toLocaleString()} - ${career.aiInferredPreferences.inferredSalaryMax?.toLocaleString()} ${career.aiInferredPreferences.inferredSalaryCurrency}`
+                        ) : (
+                          "Insufficient data"
+                        )}
+                      </span>
+                    </div>
 
-                  <div className="flex flex-col bg-surface-secondary/10 border border-border/40 p-4 rounded-xl sm:col-span-2">
-                    <span className="text-[10px] text-muted uppercase font-bold tracking-wider">
-                      Inferred Skill Core
-                    </span>
-                    <div className="flex flex-wrap gap-1.5 mt-2">
-                      {career.aiInferredPreferences.inferredSkills &&
-                        career.aiInferredPreferences.inferredSkills.length > 0 ? (
-                        career.aiInferredPreferences.inferredSkills.map((s) => (
-                          <Chip
-                            key={s}
-                            size="sm"
-                            variant="soft"
-                            color="default"
-                            className="text-[11px] font-bold"
-                          >
-                            {s}
-                          </Chip>
-                        ))
-                      ) : (
-                        <span className="text-xs text-muted">No skills inferred</span>
-                      )}
+                    <div className="flex flex-col bg-surface-secondary/10 border border-border/40 p-4 rounded-xl sm:col-span-2 justify-center text-left">
+                      <span className="text-[10px] text-muted uppercase font-bold tracking-wider">
+                        Inferred Skill Core
+                      </span>
+                      <div className="flex flex-wrap gap-1.5 mt-2">
+                        {career.aiInferredPreferences.inferredSkills &&
+                          career.aiInferredPreferences.inferredSkills.length > 0 ? (
+                          career.aiInferredPreferences.inferredSkills.map((s) => (
+                            <Chip
+                              key={s}
+                              size="sm"
+                              variant="soft"
+                              color="default"
+                              className="text-[11px] font-bold"
+                            >
+                              {s}
+                            </Chip>
+                          ))
+                        ) : (
+                          <span className="text-xs text-muted">No skills inferred</span>
+                        )}
+                      </div>
                     </div>
                   </div>
                 </div>
               ) : (
-                <div className="text-xs text-muted py-4">
-                  AI analysis has not run yet or did not generate preferences. Link source code
-                  repositories to generate.
+                <div className="text-xs text-muted py-4 flex-1 flex flex-col items-center justify-center gap-2">
+                  <span className="font-semibold text-foreground">No repository analysis available yet</span>
+                  <span className="text-[11px] text-center max-w-[280px]">
+                    Analyze a repository to generate AI-based trust and skill evidence. AI-based score will appear after repository analysis.
+                  </span>
                 </div>
               )}
             </Card>
 
-            {/* AI Suggestions / Recommendations Alert */}
-            {showSuggestions && (
-              <Card className="border-warning/40 bg-warning/5 flex flex-col gap-4">
-                <div className="flex items-center gap-2">
-                  <svg
-                    className="w-5 h-5 text-warning"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
-                    />
-                  </svg>
-                  <Typography
-                    type="body-sm"
-                    className="font-bold text-warning font-outfit uppercase"
-                  >
-                    AI Preference Recommendations
-                  </Typography>
+            {/* Right Column: Discoverability Score Widget */}
+            <Card className="flex flex-col items-center justify-center text-center p-6 gap-4 h-full">
+              <div className="relative w-24 h-24">
+                <svg className="w-full h-full transform -rotate-90">
+                  <circle
+                    cx="48"
+                    cy="48"
+                    r="40"
+                    className="stroke-separator"
+                    strokeWidth="8"
+                    fill="transparent"
+                  />
+                  <circle
+                    cx="48"
+                    cy="48"
+                    r="40"
+                    className="stroke-accent"
+                    strokeWidth="8"
+                    fill="transparent"
+                    strokeDasharray={2 * Math.PI * 40}
+                    strokeDashoffset={
+                      2 * Math.PI * 40 * (1 - (career.readinessReport?.discoverabilityScore ?? 0) / 100)
+                    }
+                    strokeLinecap="round"
+                  />
+                </svg>
+                <div className="absolute inset-0 flex flex-col items-center justify-center">
+                  <span className="text-2xl font-black font-outfit">
+                    {career.readinessReport?.discoverabilityScore ?? 0}%
+                  </span>
                 </div>
+              </div>
 
-                <div className="text-xs leading-relaxed text-foreground/80">
-                  Our AI analysis of your source code has identified matching profiles that are not
-                  in your manual preferences. Would you like to merge these recommendations?
-                  <div className="mt-3 flex flex-col gap-2">
-                    {suggestedRole && (
-                      <div className="flex items-center gap-2">
-                        <span className="inline-block w-1.5 h-1.5 rounded-full bg-warning" />
-                        <span>
-                          Add desired role:{" "}
-                          <strong className="text-foreground">{suggestedRole}</strong>
-                        </span>
-                      </div>
-                    )}
-                    {suggestedSkills.length > 0 && (
-                      <div className="flex items-start gap-2">
-                        <span className="inline-block w-1.5 h-1.5 rounded-full bg-warning mt-1.5" />
-                        <span>
-                          Add target skills:{" "}
-                          <strong className="text-foreground">
-                            {suggestedSkills.join(", ")}
-                          </strong>
-                        </span>
-                      </div>
-                    )}
+              <div className="flex flex-col gap-1 mt-1">
+                <span className="text-[10px] text-muted uppercase font-bold tracking-wider">
+                  Discoverability
+                </span>
+                <Chip
+                  size="sm"
+                  color={
+                    career.readinessReport?.discoverabilityStatus === "High"
+                      ? "success"
+                      : career.readinessReport?.discoverabilityStatus === "Medium"
+                        ? "warning"
+                        : "danger"
+                  }
+                  variant="soft"
+                  className="font-extrabold uppercase text-[10px]"
+                >
+                  {career.readinessReport?.discoverabilityStatus || "Low"}
+                </Chip>
+              </div>
+
+              {/* Discoverability action items */}
+              {career.readinessReport?.actionItems &&
+                career.readinessReport.actionItems.length > 0 && (
+                  <div className="w-full border-t border-border/40 pt-4 mt-2 flex flex-col gap-2.5 text-left">
+                    <span className="text-[9px] text-muted uppercase font-bold tracking-wider">
+                      Action Items to Boost Score
+                    </span>
+                    <div className="flex flex-col gap-2">
+                      {career.readinessReport.actionItems.map((item) => (
+                        <div
+                          key={item.id}
+                          className="flex gap-2 items-start bg-surface-secondary/5 p-2 rounded-lg border border-border/20 text-[11px]"
+                        >
+                          <span className="text-accent font-bold mt-0.5 font-outfit">
+                            +{item.impactScore}
+                          </span>
+                          <span className="text-muted leading-tight">{item.message}</span>
+                        </div>
+                      ))}
+                    </div>
                   </div>
-                </div>
-
-                <div className="flex justify-end gap-3 mt-1 border-t border-border/20 pt-3">
-                  <Button
-                    size="sm"
-                    onPress={handleAcceptSuggestions}
-                    isDisabled={isAcceptingSuggestions}
-                    className="font-bold text-xs bg-warning text-black cursor-pointer hover:bg-warning/90 border-none flex items-center gap-1.5"
-                  >
-                    {isAcceptingSuggestions && <Spinner size="sm" color="current" />}
-                    Accept Recommendations
-                  </Button>
-                </div>
-              </Card>
-            )}
+                )}
+            </Card>
           </div>
 
-          {/* Right Column: Discoverability Score Widget */}
-          <Card className="flex flex-col items-center justify-center text-center p-6 gap-4 h-full">
-            <div className="relative w-24 h-24">
-              <svg className="w-full h-full transform -rotate-90">
-                <circle
-                  cx="48"
-                  cy="48"
-                  r="40"
-                  className="stroke-separator"
-                  strokeWidth="8"
-                  fill="transparent"
-                />
-                <circle
-                  cx="48"
-                  cy="48"
-                  r="40"
-                  className="stroke-accent"
-                  strokeWidth="8"
-                  fill="transparent"
-                  strokeDasharray={2 * Math.PI * 40}
-                  strokeDashoffset={
-                    2 * Math.PI * 40 * (1 - (career.readinessReport?.discoverabilityScore ?? 0) / 100)
-                  }
-                  strokeLinecap="round"
-                />
-              </svg>
-              <div className="absolute inset-0 flex flex-col items-center justify-center">
-                <span className="text-2xl font-black font-outfit">
-                  {career.readinessReport?.discoverabilityScore ?? 0}%
-                </span>
+          {/* AI Suggestions / Recommendations Alert */}
+          {showSuggestions && (
+            <Card className="border-warning/40 bg-warning/5 flex flex-col gap-4">
+              <div className="flex items-center gap-2">
+                <svg
+                  className="w-5 h-5 text-warning"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
+                  />
+                </svg>
+                <Typography
+                  type="body-sm"
+                  className="font-bold text-warning font-outfit uppercase"
+                >
+                  AI Preference Recommendations
+                </Typography>
               </div>
-            </div>
 
-            <div className="flex flex-col gap-1 mt-1">
-              <span className="text-[10px] text-muted uppercase font-bold tracking-wider">
-                Discoverability
-              </span>
-              <Chip
-                size="sm"
-                color={
-                  career.readinessReport?.discoverabilityStatus === "High"
-                    ? "success"
-                    : career.readinessReport?.discoverabilityStatus === "Medium"
-                      ? "warning"
-                      : "danger"
-                }
-                variant="soft"
-                className="font-extrabold uppercase text-[10px]"
-              >
-                {career.readinessReport?.discoverabilityStatus || "Low"}
-              </Chip>
-            </div>
-
-            {/* Discoverability action items */}
-            {career.readinessReport?.actionItems &&
-              career.readinessReport.actionItems.length > 0 && (
-                <div className="w-full border-t border-border/40 pt-4 mt-2 flex flex-col gap-2.5 text-left">
-                  <span className="text-[9px] text-muted uppercase font-bold tracking-wider">
-                    Action Items to Boost Score
-                  </span>
-                  <div className="flex flex-col gap-2">
-                    {career.readinessReport.actionItems.map((item) => (
-                      <div
-                        key={item.id}
-                        className="flex gap-2 items-start bg-surface-secondary/5 p-2 rounded-lg border border-border/20 text-[11px]"
-                      >
-                        <span className="text-accent font-bold mt-0.5 font-outfit">
-                          +{item.impactScore}
-                        </span>
-                        <span className="text-muted leading-tight">{item.message}</span>
-                      </div>
-                    ))}
-                  </div>
+              <div className="text-xs leading-relaxed text-foreground/80">
+                Our AI analysis of your source code has identified matching profiles that are not
+                in your manual preferences. Would you like to merge these recommendations?
+                <div className="mt-3 flex flex-col gap-2">
+                  {suggestedRole && (
+                    <div className="flex items-center gap-2">
+                      <span className="inline-block w-1.5 h-1.5 rounded-full bg-warning" />
+                      <span>
+                        Add desired role:{" "}
+                        <strong className="text-foreground">{suggestedRole}</strong>
+                      </span>
+                    </div>
+                  )}
+                  {suggestedSkills.length > 0 && (
+                    <div className="flex items-start gap-2">
+                      <span className="inline-block w-1.5 h-1.5 rounded-full bg-warning mt-1.5" />
+                      <span>
+                        Add target skills:{" "}
+                        <strong className="text-foreground">
+                          {suggestedSkills.join(", ")}
+                        </strong>
+                      </span>
+                    </div>
+                  )}
                 </div>
-              )}
-          </Card>
+              </div>
+
+              <div className="flex justify-end gap-3 mt-1 border-t border-border/20 pt-3">
+                <Button
+                  size="sm"
+                  onPress={handleAcceptSuggestions}
+                  isDisabled={isAcceptingSuggestions}
+                  className="font-bold text-xs bg-warning text-black cursor-pointer hover:bg-warning/90 border-none flex items-center gap-1.5"
+                >
+                  {isAcceptingSuggestions && <Spinner size="sm" color="current" />}
+                  Accept Recommendations
+                </Button>
+              </div>
+            </Card>
+          )}
         </div>
 
         {/* Section 1: Availability & Search Status */}
@@ -746,19 +820,20 @@ export const CareerTab: React.FC<CareerTabProps> = ({
                 />
               </div>
 
-              {/* Desired Job Positions Chip list */}
+              {/* Target Roles Chip list */}
               <div className="flex flex-col gap-1.5 text-left">
                 <Controller
                   control={control}
                   name="desiredJobPositions"
                   render={({ field: { value, onChange } }) => (
                     <TagChipMultiSelect
-                      label="Desired Job Positions"
+                      label="Target Roles"
                       description="Select one or more standardized roles that you are qualified for and wish to target next."
                       options={ROLES_OPTIONS}
                       value={value || []}
                       onChange={onChange}
                       error={errors.desiredJobPositions?.message}
+                      allowCustom={false}
                     />
                   )}
                 />
@@ -822,7 +897,7 @@ export const CareerTab: React.FC<CareerTabProps> = ({
               {/* Preferred Locations Chip Input */}
               <div className="flex flex-col gap-2 text-left">
                 <Label htmlFor="preferredLocations">Preferred Locations</Label>
-                <div className="flex gap-2">
+                <div className="flex items-center gap-2 max-w-sm">
                   <Input
                     id="preferredLocations"
                     aria-label="Add preferred location"
@@ -835,12 +910,16 @@ export const CareerTab: React.FC<CareerTabProps> = ({
                         handleAddLocation();
                       }
                     }}
-                    className="w-full"
                   />
                   <Button
                     size="md"
                     onPress={handleAddLocation}
-                    className="bg-accent text-accent-foreground font-bold shrink-0"
+                    className={
+                      !newLocation.trim()
+                        ? "bg-white dark:bg-surface border border-border text-muted font-bold shrink-0 opacity-60 cursor-not-allowed disabled:bg-white dark:disabled:bg-surface data-[disabled=true]:bg-white dark:data-[disabled=true]:bg-surface data-[disabled=true]:text-muted data-[disabled=true]:border-border data-[disabled=true]:opacity-60"
+                        : "bg-accent text-accent-foreground font-bold shrink-0 hover:bg-accent/90 cursor-pointer"
+                    }
+                    isDisabled={!newLocation.trim()}
                   >
                     Add
                   </Button>
@@ -940,19 +1019,24 @@ export const CareerTab: React.FC<CareerTabProps> = ({
               <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 items-end text-left">
                 {/* Min Salary */}
                 <div className="flex flex-col gap-2">
-                  <Label htmlFor="expectedSalaryMin">Min Salary</Label>
+                  <Label htmlFor="expectedSalaryMin">Min Salary ({currencyCode})</Label>
                   <Controller
                     control={control}
                     name="expectedSalaryMin"
                     render={({ field: { value, onChange } }) => (
-                      <Input
-                        id="expectedSalaryMin"
-                        aria-label="Minimum Expected Salary"
-                        type="number"
-                        placeholder="e.g. 3000"
-                        value={value === null || value === undefined ? "" : value.toString()}
-                        onChange={onChange}
-                      />
+                      <InputGroup>
+                        <InputGroup.Prefix>{currencySymbol}</InputGroup.Prefix>
+                        <InputGroup.Input
+                          id="expectedSalaryMin"
+                          aria-label="Minimum Expected Salary"
+                          type="number"
+                          placeholder={salaryPlaceholderMin}
+                          value={value === null || value === undefined ? "" : value.toString()}
+                          onChange={onChange}
+                          disabled={currentValues.expectedSalaryNegotiable}
+                        />
+                        <InputGroup.Suffix>{currencyCode}</InputGroup.Suffix>
+                      </InputGroup>
                     )}
                   />
                   {errors.expectedSalaryMin && (
@@ -964,19 +1048,24 @@ export const CareerTab: React.FC<CareerTabProps> = ({
 
                 {/* Max Salary */}
                 <div className="flex flex-col gap-2">
-                  <Label htmlFor="expectedSalaryMax">Max Salary</Label>
+                  <Label htmlFor="expectedSalaryMax">Max Salary ({currencyCode})</Label>
                   <Controller
                     control={control}
                     name="expectedSalaryMax"
                     render={({ field: { value, onChange } }) => (
-                      <Input
-                        id="expectedSalaryMax"
-                        aria-label="Maximum Expected Salary"
-                        type="number"
-                        placeholder="e.g. 5000"
-                        value={value === null || value === undefined ? "" : value.toString()}
-                        onChange={onChange}
-                      />
+                      <InputGroup>
+                        <InputGroup.Prefix>{currencySymbol}</InputGroup.Prefix>
+                        <InputGroup.Input
+                          id="expectedSalaryMax"
+                          aria-label="Maximum Expected Salary"
+                          type="number"
+                          placeholder={salaryPlaceholderMax}
+                          value={value === null || value === undefined ? "" : value.toString()}
+                          onChange={onChange}
+                          disabled={currentValues.expectedSalaryNegotiable}
+                        />
+                        <InputGroup.Suffix>{currencyCode}</InputGroup.Suffix>
+                      </InputGroup>
                     )}
                   />
                   {errors.expectedSalaryMax && (
@@ -997,6 +1086,7 @@ export const CareerTab: React.FC<CareerTabProps> = ({
                         value={value || "USD"}
                         onChange={onChange}
                         options={CURRENCY_OPTIONS}
+                        isDisabled={currentValues.expectedSalaryNegotiable}
                       />
                     )}
                   />
@@ -1013,9 +1103,66 @@ export const CareerTab: React.FC<CareerTabProps> = ({
                         value={value || "Monthly"}
                         onChange={onChange}
                         options={SALARY_TYPE_OPTIONS}
+                        isDisabled={currentValues.expectedSalaryNegotiable}
                       />
                     )}
                   />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 items-end text-left">
+                <div className="flex flex-col gap-2">
+                  <Label htmlFor="desiredSalary">Desired Salary ({currencyCode})</Label>
+                  <Controller
+                    control={control}
+                    name="desiredSalary"
+                    render={({ field: { value, onChange } }) => (
+                      <InputGroup>
+                        <InputGroup.Prefix>{currencySymbol}</InputGroup.Prefix>
+                        <InputGroup.Input
+                          id="desiredSalary"
+                          aria-label="Desired Salary"
+                          type="number"
+                          placeholder={currencyCode === "VND" ? "30000000" : "3000"}
+                          value={value === null || value === undefined ? "" : value.toString()}
+                          onChange={onChange}
+                        />
+                        <InputGroup.Suffix>{currencyCode}</InputGroup.Suffix>
+                      </InputGroup>
+                    )}
+                  />
+                  {errors.desiredSalary && (
+                    <FieldError className="text-danger text-xs mt-1 block">
+                      {errors.desiredSalary.message}
+                    </FieldError>
+                  )}
+                </div>
+
+                <div className="flex flex-col gap-2">
+                  <Label htmlFor="minimumAcceptableSalary">Minimum Acceptable Salary ({currencyCode})</Label>
+                  <Controller
+                    control={control}
+                    name="minimumAcceptableSalary"
+                    render={({ field: { value, onChange } }) => (
+                      <InputGroup>
+                        <InputGroup.Prefix>{currencySymbol}</InputGroup.Prefix>
+                        <InputGroup.Input
+                          id="minimumAcceptableSalary"
+                          aria-label="Minimum Acceptable Salary"
+                          type="number"
+                          placeholder={salaryPlaceholderMin}
+                          value={value === null || value === undefined ? "" : value.toString()}
+                          onChange={onChange}
+                        />
+                        <InputGroup.Suffix>{currencyCode}</InputGroup.Suffix>
+                      </InputGroup>
+                    )}
+                  />
+                  {errors.minimumAcceptableSalary && (
+                    <FieldError className="text-danger text-xs mt-1 block">
+                      {errors.minimumAcceptableSalary.message}
+                    </FieldError>
+                  )}
                 </div>
               </div>
 
@@ -1106,7 +1253,7 @@ export const CareerTab: React.FC<CareerTabProps> = ({
               {/* Target Skills Chip Input */}
               <div className="flex flex-col gap-2 text-left">
                 <Label htmlFor="targetSkills">Target Technology Skills</Label>
-                <div className="flex gap-2">
+                <div className="flex items-center gap-2 max-w-sm">
                   <Input
                     id="targetSkills"
                     aria-label="Add target skill"
@@ -1123,7 +1270,12 @@ export const CareerTab: React.FC<CareerTabProps> = ({
                   <Button
                     size="md"
                     onPress={handleAddSkill}
-                    className="bg-accent text-accent-foreground font-bold shrink-0"
+                    className={
+                      !newSkill.trim()
+                        ? "bg-white dark:bg-surface border border-border text-muted font-bold shrink-0 opacity-60 cursor-not-allowed disabled:bg-white dark:disabled:bg-surface data-[disabled=true]:bg-white dark:data-[disabled=true]:bg-surface data-[disabled=true]:text-muted data-[disabled=true]:border-border data-[disabled=true]:opacity-60"
+                        : "bg-accent text-accent-foreground font-bold shrink-0 hover:bg-accent/90 cursor-pointer"
+                    }
+                    isDisabled={!newSkill.trim()}
                   >
                     Add
                   </Button>
@@ -1196,6 +1348,7 @@ export const CareerTab: React.FC<CareerTabProps> = ({
                       value={value || []}
                       onChange={onChange}
                       error={errors.companyStagePreferences?.message}
+                      allowCustom={false}
                     />
                   )}
                 />
@@ -1214,6 +1367,7 @@ export const CareerTab: React.FC<CareerTabProps> = ({
                       value={value || []}
                       onChange={onChange}
                       error={errors.preferredIndustries?.message}
+                      allowCustom={false}
                     />
                   )}
                 />
@@ -1334,7 +1488,6 @@ export const CareerTab: React.FC<CareerTabProps> = ({
           </Card>
         </SettingsSection>
 
-        {/* Sticky Actions Bar */}
         <UnsavedChangesBar
           message="You have unsaved career preference changes."
           onReset={handleReset}

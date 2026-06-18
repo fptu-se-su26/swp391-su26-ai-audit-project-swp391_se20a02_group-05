@@ -7,7 +7,6 @@ import {
   type EducationEntryRequest,
   type AcademicAchievementResponse,
   type AcademicAchievementRequest,
-  type CareerPreferenceResponse,
   type UpdateCareerPreferenceRequest,
   type AttachmentResponse,
   type PublicProfileResponse,
@@ -15,6 +14,12 @@ import {
   type WorkExperienceResponse,
   type CareerPreferencesDashboardResponse,
   type AcceptAiSuggestionsRequest,
+  type CandidateReadinessDto,
+  type CandidateAssessmentResponse,
+  type CandidateAssessmentDetailResponse,
+  type ProjectEntryRequest,
+  type ProjectEntryResponse,
+  type AssessmentStageDto,
 } from '../types/profile.types';
 
 export const profileApi = {
@@ -160,6 +165,15 @@ export const profileApi = {
     return response.data;
   },
 
+  deleteAvatar: async (): Promise<void> => {
+    await axiosClient.delete('/v1/users/profile/avatar');
+  },
+
+  syncAvatar: async (providerName: string): Promise<{ avatarUrl: string }> => {
+    const response = await axiosClient.post<{ avatarUrl: string }>('/v1/users/profile/avatar/sync', { providerName });
+    return response.data;
+  },
+
   // Work Experience CRUD & reorder
   fetchWorkExperience: async (): Promise<WorkExperienceResponse[]> => {
     const response = await axiosClient.get<WorkExperienceResponse[]>('/v1/users/work-experience');
@@ -182,5 +196,72 @@ export const profileApi = {
 
   reorderWorkExperience: async (orderedIds: string[]): Promise<void> => {
     await axiosClient.put('/v1/users/work-experience/reorder', { orderedIds });
+  },
+
+  // Candidate Assessments
+  fetchCandidateReadiness: async (): Promise<CandidateReadinessDto> => {
+    const response = await axiosClient.get<CandidateReadinessDto>('/v1/candidate-assessments/readiness');
+    return response.data;
+  },
+
+  fetchAssessmentStages: async (): Promise<AssessmentStageDto[]> => {
+    const response = await axiosClient.get<AssessmentStageDto[]>('/v1/candidate-assessments/stages');
+    return response.data;
+  },
+
+  triggerCandidateAssessment: async (): Promise<CandidateAssessmentResponse> => {
+    const response = await axiosClient.post<CandidateAssessmentResponse>('/v1/candidate-assessments');
+    return response.data;
+  },
+
+  fetchLatestCandidateAssessment: async (): Promise<CandidateAssessmentResponse | null> => {
+    const response = await axiosClient.get<CandidateAssessmentResponse | null>('/v1/candidate-assessments/latest');
+    if (response.status === 204) {
+      return null;
+    }
+    return response.data;
+  },
+
+  fetchCandidateAssessmentHistory: async (): Promise<CandidateAssessmentResponse[]> => {
+    const response = await axiosClient.get<CandidateAssessmentResponse[]>('/v1/candidate-assessments/history');
+    return response.data;
+  },
+
+  fetchCandidateAssessmentDetails: async (assessmentId: string): Promise<CandidateAssessmentDetailResponse> => {
+    const response = await axiosClient.get<CandidateAssessmentDetailResponse>(`/v1/candidate-assessments/${assessmentId}/details`);
+    return response.data;
+  },
+
+  // Projects Portfolio CRUD
+  fetchProjects: async (): Promise<ProjectEntryResponse[]> => {
+    const response = await axiosClient.get<ProjectEntryResponse[]>('/v1/users/projects');
+    return response.data;
+  },
+
+  addProject: async (data: ProjectEntryRequest): Promise<ProjectEntryResponse> => {
+    const response = await axiosClient.post<ProjectEntryResponse>('/v1/users/projects', data);
+    return response.data;
+  },
+
+  updateProject: async (id: string, data: ProjectEntryRequest): Promise<ProjectEntryResponse> => {
+    const response = await axiosClient.put<ProjectEntryResponse>(`/v1/users/projects/${id}`, data);
+    return response.data;
+  },
+
+  deleteProject: async (id: string): Promise<void> => {
+    await axiosClient.delete(`/v1/users/projects/${id}`);
+  },
+
+  reorderProjects: async (orderedIds: string[]): Promise<void> => {
+    await axiosClient.put('/v1/users/projects/reorder', { orderedIds });
+  },
+
+  // Public Candidate Assessment
+  fetchPublicCandidateAssessment: async (username: string): Promise<CandidateAssessmentDetailResponse | null> => {
+    const response = await axiosClient.get<CandidateAssessmentDetailResponse | null>(`/v1/candidate-assessments/public/${username}`);
+    if (response.status === 204) {
+      return null;
+    }
+    return response.data;
   },
 };
