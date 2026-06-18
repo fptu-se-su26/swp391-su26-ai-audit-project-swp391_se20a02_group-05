@@ -66,7 +66,8 @@ public static class DbInitializer
                 ('20260615152001_AddProjectEntriesAndLinks', '10.0.0'),
                 ('20260615171115_AddRepositoryAssessments', '10.0.0'),
                 ('20260616080806_AddRepositoryIntelligenceTables', '10.0.0'),
-                ('20260616082519_AddCandidateIntelligenceTablesPhase2', '10.0.0')
+                ('20260616082519_AddCandidateIntelligenceTablesPhase2', '10.0.0'),
+                ('20260616183936_AddLine3JdMatching', '10.0.0')
                 ON CONFLICT (migration_id) DO NOTHING;
             ");
         }
@@ -92,6 +93,7 @@ public static class DbInitializer
                 DROP TABLE IF EXISTS pipeline_jobs CASCADE;
                 DROP TABLE IF EXISTS prompt_deployments CASCADE;
                 DROP TABLE IF EXISTS cv_repository_mappings CASCADE;
+                DROP TABLE IF EXISTS standardized_jds CASCADE;
                 DROP TABLE IF EXISTS repository_skill_attributions CASCADE;
                 DROP TABLE IF EXISTS repository_intelligence_signals CASCADE;
                 DROP TABLE IF EXISTS repository_domains CASCADE;
@@ -217,422 +219,7 @@ public static class DbInitializer
                 END IF;
             END $$;
 
-            -- Safely provision columns to existing tables for backward-compatibility prior to table/index definition
-            DO $$
-            BEGIN
-                -- If users exists but lacks username/last_username_change_at/version, add them
-                IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'users') THEN
-                    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'users' AND column_name = 'username') THEN
-                        ALTER TABLE users ADD COLUMN username CITEXT;
-                    END IF;
-                    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'users' AND column_name = 'last_username_change_at') THEN
-                        ALTER TABLE users ADD COLUMN last_username_change_at TIMESTAMP WITH TIME ZONE;
-                    END IF;
-                    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'users' AND column_name = 'version') THEN
-                        ALTER TABLE users ADD COLUMN version INTEGER NOT NULL DEFAULT 1;
-                    END IF;
-                    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'users' AND column_name = 'linked_emails') THEN
-                        ALTER TABLE users ADD COLUMN linked_emails JSONB NOT NULL DEFAULT '[]'::jsonb;
-                    ELSE
-                        UPDATE users SET linked_emails = '[]'::jsonb WHERE linked_emails IS NULL;
-                        ALTER TABLE users ALTER COLUMN linked_emails SET DEFAULT '[]'::jsonb;
-                        ALTER TABLE users ALTER COLUMN linked_emails SET NOT NULL;
-                    END IF;
-                END IF;
 
-                -- If organizations exists but lacks username, add it with a non-null default
-                IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'organizations') THEN
-                    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'organizations' AND column_name = 'username') THEN
-                        ALTER TABLE organizations ADD COLUMN username VARCHAR(100);
-                        UPDATE organizations SET username = 'org-' || substring(id::text, 1, 8) WHERE username IS NULL;
-                        ALTER TABLE organizations ALTER COLUMN username SET NOT NULL;
-                    END IF;
-                    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'organizations' AND column_name = 'banner_url') THEN
-                        ALTER TABLE organizations ADD COLUMN banner_url VARCHAR(2048);
-                    END IF;
-                    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'organizations' AND column_name = 'logo_url') THEN
-                        ALTER TABLE organizations ADD COLUMN logo_url VARCHAR(2048);
-                    END IF;
-                    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'organizations' AND column_name = 'description') THEN
-                        ALTER TABLE organizations ADD COLUMN description TEXT;
-                    END IF;
-                    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'organizations' AND column_name = 'company_type') THEN
-                        ALTER TABLE organizations ADD COLUMN company_type VARCHAR(100);
-                    END IF;
-                    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'organizations' AND column_name = 'company_size') THEN
-                        ALTER TABLE organizations ADD COLUMN company_size VARCHAR(100);
-                    END IF;
-                    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'organizations' AND column_name = 'branch_count') THEN
-                        ALTER TABLE organizations ADD COLUMN branch_count INTEGER NOT NULL DEFAULT 0;
-                    END IF;
-                    -- industry_tags
-                    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'organizations' AND column_name = 'industry_tags') THEN
-                        ALTER TABLE organizations ADD COLUMN industry_tags VARCHAR(100)[] NOT NULL DEFAULT ARRAY[]::VARCHAR[];
-                    ELSE
-                        UPDATE organizations SET industry_tags = ARRAY[]::VARCHAR[] WHERE industry_tags IS NULL;
-                        ALTER TABLE organizations ALTER COLUMN industry_tags SET DEFAULT ARRAY[]::VARCHAR[];
-                        ALTER TABLE organizations ALTER COLUMN industry_tags SET NOT NULL;
-                    END IF;
-
-                    -- benefit_tags
-                    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'organizations' AND column_name = 'benefit_tags') THEN
-                        ALTER TABLE organizations ADD COLUMN benefit_tags VARCHAR(100)[] NOT NULL DEFAULT ARRAY[]::VARCHAR[];
-                    ELSE
-                        UPDATE organizations SET benefit_tags = ARRAY[]::VARCHAR[] WHERE benefit_tags IS NULL;
-                        ALTER TABLE organizations ALTER COLUMN benefit_tags SET DEFAULT ARRAY[]::VARCHAR[];
-                        ALTER TABLE organizations ALTER COLUMN benefit_tags SET NOT NULL;
-                    END IF;
-
-                    -- gallery_urls
-                    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'organizations' AND column_name = 'gallery_urls') THEN
-                        ALTER TABLE organizations ADD COLUMN gallery_urls VARCHAR(2048)[] NOT NULL DEFAULT ARRAY[]::VARCHAR[];
-                    ELSE
-                        UPDATE organizations SET gallery_urls = ARRAY[]::VARCHAR[] WHERE gallery_urls IS NULL;
-                        ALTER TABLE organizations ALTER COLUMN gallery_urls SET DEFAULT ARRAY[]::VARCHAR[];
-                        ALTER TABLE organizations ALTER COLUMN gallery_urls SET NOT NULL;
-                    END IF;
-                    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'organizations' AND column_name = 'contact_name') THEN
-                        ALTER TABLE organizations ADD COLUMN contact_name VARCHAR(255);
-                    END IF;
-                    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'organizations' AND column_name = 'contact_phone') THEN
-                        ALTER TABLE organizations ADD COLUMN contact_phone VARCHAR(100);
-                    END IF;
-                    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'organizations' AND column_name = 'contact_email') THEN
-                        ALTER TABLE organizations ADD COLUMN contact_email VARCHAR(255);
-                    END IF;
-                    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'organizations' AND column_name = 'city') THEN
-                        ALTER TABLE organizations ADD COLUMN city VARCHAR(255);
-                    END IF;
-                    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'organizations' AND column_name = 'detail_address') THEN
-                        ALTER TABLE organizations ADD COLUMN detail_address VARCHAR(500);
-                    END IF;
-                    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'organizations' AND column_name = 'google_maps_embed_url') THEN
-                        ALTER TABLE organizations ADD COLUMN google_maps_embed_url VARCHAR(2048);
-                    END IF;
-                    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'organizations' AND column_name = 'linkedin_url') THEN
-                        ALTER TABLE organizations ADD COLUMN linkedin_url VARCHAR(2048);
-                    END IF;
-                    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'organizations' AND column_name = 'facebook_url') THEN
-                        ALTER TABLE organizations ADD COLUMN facebook_url VARCHAR(2048);
-                    END IF;
-                    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'organizations' AND column_name = 'twitter_url') THEN
-                        ALTER TABLE organizations ADD COLUMN twitter_url VARCHAR(2048);
-                    END IF;
-                    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'organizations' AND column_name = 'website') THEN
-                        ALTER TABLE organizations ADD COLUMN website VARCHAR(2048);
-                    END IF;
-                    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'organizations' AND column_name = 'mission') THEN
-                        ALTER TABLE organizations ADD COLUMN mission TEXT;
-                    END IF;
-                    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'organizations' AND column_name = 'vision') THEN
-                        ALTER TABLE organizations ADD COLUMN vision TEXT;
-                    END IF;
-                    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'organizations' AND column_name = 'core_values') THEN
-                        ALTER TABLE organizations ADD COLUMN core_values TEXT;
-                    END IF;
-                    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'organizations' AND column_name = 'founded') THEN
-                        ALTER TABLE organizations ADD COLUMN founded VARCHAR(50);
-                    END IF;
-                    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'organizations' AND column_name = 'follower_count') THEN
-                        ALTER TABLE organizations ADD COLUMN follower_count INTEGER NOT NULL DEFAULT 0;
-                    END IF;
-                END IF;
-
-                -- If user_profiles exists but lacks username, add it
-                IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'user_profiles') THEN
-                    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'user_profiles' AND column_name = 'username') THEN
-                        ALTER TABLE user_profiles ADD COLUMN username CITEXT;
-                    END IF;
-                END IF;
-
-                -- If source_code_repositories exists, add external_organization_id, classification and authenticity_type columns if missing
-                IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'source_code_repositories') THEN
-                    -- Ensure external_organizations table is created first if it does not exist
-                    CREATE TABLE IF NOT EXISTS external_organizations (
-                        id UUID PRIMARY KEY,
-                        auth_provider_id UUID NOT NULL,
-                        external_id VARCHAR(255) NOT NULL,
-                        name VARCHAR(255) NOT NULL,
-                        login VARCHAR(255) NOT NULL,
-                        type VARCHAR(50) NOT NULL,
-                        avatar_url VARCHAR(1000),
-                        html_url VARCHAR(1000),
-                        description VARCHAR(2000),
-                        is_active BOOLEAN NOT NULL DEFAULT TRUE,
-                        last_synced_at TIMESTAMP WITH TIME ZONE NOT NULL,
-                        CONSTRAINT fk_external_organizations_auth_provider FOREIGN KEY (auth_provider_id) REFERENCES auth_providers(id) ON DELETE CASCADE
-                    );
-                    CREATE UNIQUE INDEX IF NOT EXISTS idx_external_organizations_provider_external_active ON external_organizations(auth_provider_id, external_id);
-
-                    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'source_code_repositories' AND column_name = 'external_organization_id') THEN
-                        ALTER TABLE source_code_repositories ADD COLUMN external_organization_id UUID NULL REFERENCES external_organizations(id) ON DELETE SET NULL;
-                        CREATE INDEX IF NOT EXISTS ix_source_code_repositories_external_organization_id ON source_code_repositories(external_organization_id);
-                    END IF;
-                    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'source_code_repositories' AND column_name = 'classification') THEN
-                        ALTER TABLE source_code_repositories ADD COLUMN classification VARCHAR(255);
-                    END IF;
-                    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'source_code_repositories' AND column_name = 'authenticity_type') THEN
-                        ALTER TABLE source_code_repositories ADD COLUMN authenticity_type VARCHAR(255);
-                    END IF;
-                    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'source_code_repositories' AND column_name = 'latest_risk_score') THEN
-                        ALTER TABLE source_code_repositories ADD COLUMN latest_risk_score DOUBLE PRECISION NOT NULL DEFAULT 0.0;
-                    END IF;
-                    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'source_code_repositories' AND column_name = 'latest_risk_level') THEN
-                        ALTER TABLE source_code_repositories ADD COLUMN latest_risk_level VARCHAR(50) NOT NULL DEFAULT 'Low';
-                    END IF;
-                    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'source_code_repositories' AND column_name = 'latest_analysis_status') THEN
-                        ALTER TABLE source_code_repositories ADD COLUMN latest_analysis_status VARCHAR(50) NOT NULL DEFAULT 'NeverAnalyzed';
-                    END IF;
-                    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'source_code_repositories' AND column_name = 'latest_analysis_completed_at_utc') THEN
-                        ALTER TABLE source_code_repositories ADD COLUMN latest_analysis_completed_at_utc TIMESTAMP WITH TIME ZONE;
-                    END IF;
-                    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'source_code_repositories' AND column_name = 'latest_risk_factors_json') THEN
-                        ALTER TABLE source_code_repositories ADD COLUMN latest_risk_factors_json JSONB;
-                    END IF;
-                END IF;
-
-                -- If organization_recovery_claims exists, ensure documents column is present, NOT NULL and defaulted
-                IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'organization_recovery_claims') THEN
-                    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'organization_recovery_claims' AND column_name = 'documents') THEN
-                        ALTER TABLE organization_recovery_claims ADD COLUMN documents JSONB NOT NULL DEFAULT '[]'::jsonb;
-                    ELSE
-                        UPDATE organization_recovery_claims SET documents = '[]'::jsonb WHERE documents IS NULL;
-                        ALTER TABLE organization_recovery_claims ALTER COLUMN documents SET DEFAULT '[]'::jsonb;
-                        ALTER TABLE organization_recovery_claims ALTER COLUMN documents SET NOT NULL;
-                    END IF;
-                END IF;
-
-                -- Ensure organization_invitations has declined_at, declined_reason, and discovery_notified_at
-                IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'organization_invitations') THEN
-                    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'organization_invitations' AND column_name = 'declined_at') THEN
-                        ALTER TABLE organization_invitations ADD COLUMN declined_at TIMESTAMP WITH TIME ZONE;
-                    END IF;
-                    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'organization_invitations' AND column_name = 'declined_reason') THEN
-                        ALTER TABLE organization_invitations ADD COLUMN declined_reason VARCHAR(500);
-                    END IF;
-                    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'organization_invitations' AND column_name = 'discovery_notified_at') THEN
-                        ALTER TABLE organization_invitations ADD COLUMN discovery_notified_at TIMESTAMP WITH TIME ZONE;
-                    END IF;
-                END IF;
-
-                -- Ensure pending_organization_ownerships has discovery_notified_at
-                IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'pending_organization_ownerships') THEN
-                    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'pending_organization_ownerships' AND column_name = 'discovery_notified_at') THEN
-                        ALTER TABLE pending_organization_ownerships ADD COLUMN discovery_notified_at TIMESTAMP WITH TIME ZONE;
-                    END IF;
-                END IF;
-
-                -- Ensure candidate_assessments has cv_id, model_version, and prompt_version
-                IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'candidate_assessments') THEN
-                    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'candidate_assessments' AND column_name = 'cv_id') THEN
-                        ALTER TABLE candidate_assessments ADD COLUMN cv_id UUID;
-                    END IF;
-                    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'candidate_assessments' AND column_name = 'model_version') THEN
-                        ALTER TABLE candidate_assessments ADD COLUMN model_version VARCHAR(100);
-                    END IF;
-                    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'candidate_assessments' AND column_name = 'prompt_version') THEN
-                        ALTER TABLE candidate_assessments ADD COLUMN prompt_version VARCHAR(50);
-                    END IF;
-                END IF;
-
-                -- Ensure artifact_registry_entries table has the correct foreign key constraint to analysis_jobs
-                IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'artifact_registry_entries') THEN
-                    -- Check if constraint fk_artifact_registry_pipeline_jobs_job_id exists, drop it
-                    IF EXISTS (SELECT 1 FROM information_schema.table_constraints WHERE constraint_name = 'fk_artifact_registry_pipeline_jobs_job_id') THEN
-                        ALTER TABLE artifact_registry_entries DROP CONSTRAINT fk_artifact_registry_pipeline_jobs_job_id;
-                    END IF;
-                    -- Also check if default PostgreSQL name was used, e.g. artifact_registry_entries_job_id_fkey
-                    IF EXISTS (SELECT 1 FROM information_schema.table_constraints WHERE constraint_name = 'artifact_registry_entries_job_id_fkey') THEN
-                        ALTER TABLE artifact_registry_entries DROP CONSTRAINT artifact_registry_entries_job_id_fkey;
-                    END IF;
-
-                    -- Add the correct foreign key constraint referencing analysis_jobs(id)
-                    IF NOT EXISTS (SELECT 1 FROM information_schema.table_constraints WHERE constraint_name = 'fk_artifact_registry_analysis_jobs_job_id') THEN
-                        ALTER TABLE artifact_registry_entries ADD CONSTRAINT fk_artifact_registry_analysis_jobs_job_id FOREIGN KEY (job_id) REFERENCES analysis_jobs(id) ON DELETE CASCADE;
-                    END IF;
-                END IF;
-            END $$;
-
-            -- Migrate and clean up legacy database tables and columns
-            DO $$
-            BEGIN
-                -- 1. Migrate user_emails to users.linked_emails
-                IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'user_emails') THEN
-                    -- Ensure users table has linked_emails column
-                    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'users' AND column_name = 'linked_emails') THEN
-                        ALTER TABLE users ADD COLUMN linked_emails JSONB NOT NULL DEFAULT '[]'::jsonb;
-                    END IF;
-                    
-                    -- Migrate data by aggregating emails per user
-                    UPDATE users u
-                    SET linked_emails = (
-                        SELECT json_agg(json_build_object(
-                            'Id', ue.id,
-                            'Email', ue.email,
-                            'IsVerified', ue.is_verified,
-                            'VerifiedAt', ue.verified_at,
-                            'CreatedAt', ue.created_at
-                        ))
-                        FROM user_emails ue
-                        WHERE ue.user_id = u.id
-                    )
-                    WHERE EXISTS (SELECT 1 FROM user_emails ue WHERE ue.user_id = u.id);
-                    
-                    -- Drop user_emails table
-                    DROP TABLE user_emails CASCADE;
-                END IF;
-
-                -- 2. Migrate social_links to user_profiles.social_links
-                IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'social_links') THEN
-                    -- Ensure user_profiles table has social_links column
-                    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'user_profiles' AND column_name = 'social_links') THEN
-                        ALTER TABLE user_profiles ADD COLUMN social_links VARCHAR(255)[] NOT NULL DEFAULT ARRAY[]::VARCHAR[];
-                    END IF;
-                    
-                    -- Migrate data by aggregating urls per user
-                    UPDATE user_profiles up
-                    SET social_links = (
-                        SELECT array_agg(sl.url)
-                        FROM social_links sl
-                        WHERE sl.user_id = up.user_id
-                        GROUP BY sl.user_id
-                    )
-                    WHERE EXISTS (SELECT 1 FROM social_links sl WHERE sl.user_id = up.user_id);
-                    
-                    -- Drop social_links table
-                    DROP TABLE social_links CASCADE;
-                END IF;
-
-                -- 3. Migrate user_preferred_locations to career_preferences.preferred_locations
-                IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'user_preferred_locations') THEN
-                    -- Ensure career_preferences has preferred_locations column
-                    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'career_preferences' AND column_name = 'preferred_locations') THEN
-                        ALTER TABLE career_preferences ADD COLUMN preferred_locations VARCHAR(100)[] NOT NULL DEFAULT ARRAY[]::VARCHAR[];
-                    END IF;
-                    
-                    -- Migrate data
-                    UPDATE career_preferences cp
-                    SET preferred_locations = (
-                        SELECT array_agg(upl.location)
-                        FROM user_preferred_locations upl
-                        WHERE upl.user_id = cp.user_id
-                        GROUP BY upl.user_id
-                    )
-                    WHERE EXISTS (SELECT 1 FROM user_preferred_locations upl WHERE upl.user_id = cp.user_id);
-                    
-                    -- Drop user_preferred_locations table
-                    DROP TABLE user_preferred_locations CASCADE;
-                END IF;
-
-                -- 4. Migrate user_employment_preferences to career_preferences.employment_preferences
-                IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'user_employment_preferences') THEN
-                    -- Ensure career_preferences has employment_preferences column
-                    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'career_preferences' AND column_name = 'employment_preferences') THEN
-                        ALTER TABLE career_preferences ADD COLUMN employment_preferences VARCHAR(50)[] NOT NULL DEFAULT ARRAY[]::VARCHAR[];
-                    END IF;
-                    
-                    -- Migrate data
-                    UPDATE career_preferences cp
-                    SET employment_preferences = (
-                        SELECT array_agg(uep.preference_name)
-                        FROM user_employment_preferences uep
-                        WHERE uep.user_id = cp.user_id
-                        GROUP BY uep.user_id
-                    )
-                    WHERE EXISTS (SELECT 1 FROM user_employment_preferences uep WHERE uep.user_id = cp.user_id);
-                    
-                    -- Drop user_employment_preferences table
-                    DROP TABLE user_employment_preferences CASCADE;
-                END IF;
-
-                -- 5. Migrate recovery_claim_documents to organization_recovery_claims.documents
-                IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'recovery_claim_documents') THEN
-                    -- Ensure organization_recovery_claims has documents column
-                    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'organization_recovery_claims' AND column_name = 'documents') THEN
-                        ALTER TABLE organization_recovery_claims ADD COLUMN documents JSONB NOT NULL DEFAULT '[]'::jsonb;
-                    END IF;
-                    
-                    -- Migrate data
-                    UPDATE organization_recovery_claims orc
-                    SET documents = (
-                        SELECT json_agg(json_build_object(
-                            'Id', rcd.id,
-                            'StoragePath', rcd.storage_path,
-                            'FileName', rcd.file_name,
-                            'ContentType', rcd.content_type,
-                            'EncryptionIv', rcd.encryption_iv,
-                            'OcrResultText', rcd.ocr_result_text,
-                            'VirusScanStatus', rcd.virus_scan_status,
-                            'RetentionExpiryDate', rcd.retention_expiry_date,
-                            'CreatedAt', rcd.created_at
-                        ))
-                        FROM recovery_claim_documents rcd
-                        WHERE rcd.recovery_claim_id = orc.id
-                    )
-                    WHERE EXISTS (SELECT 1 FROM recovery_claim_documents rcd WHERE rcd.recovery_claim_id = orc.id);
-                    
-                    -- Drop recovery_claim_documents table
-                    DROP TABLE recovery_claim_documents CASCADE;
-                END IF;
-
-                -- 6. Ensure audit_logs has the unified columns before migrating other logs
-                IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'audit_logs') THEN
-                    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'audit_logs' AND column_name = 'actor_user_id') THEN
-                        ALTER TABLE audit_logs ADD COLUMN actor_user_id UUID REFERENCES users(id) ON DELETE SET NULL;
-                    END IF;
-                    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'audit_logs' AND column_name = 'target_user_id') THEN
-                        ALTER TABLE audit_logs ADD COLUMN target_user_id UUID REFERENCES users(id) ON DELETE SET NULL;
-                    END IF;
-                    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'audit_logs' AND column_name = 'organization_id') THEN
-                        ALTER TABLE audit_logs ADD COLUMN organization_id UUID REFERENCES organizations(id) ON DELETE CASCADE;
-                    END IF;
-                    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'audit_logs' AND column_name = 'target_role_name') THEN
-                        ALTER TABLE audit_logs ADD COLUMN target_role_name VARCHAR(50);
-                    END IF;
-                    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'audit_logs' AND column_name = 'scope_type') THEN
-                        ALTER TABLE audit_logs ADD COLUMN scope_type VARCHAR(30);
-                    END IF;
-                    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'audit_logs' AND column_name = 'scope_id') THEN
-                        ALTER TABLE audit_logs ADD COLUMN scope_id UUID;
-                    END IF;
-                    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'audit_logs' AND column_name = 'details_json') THEN
-                        ALTER TABLE audit_logs ADD COLUMN details_json JSONB;
-                    END IF;
-                    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'audit_logs' AND column_name = 'old_state_json') THEN
-                        ALTER TABLE audit_logs ADD COLUMN old_state_json JSONB;
-                    END IF;
-                    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'audit_logs' AND column_name = 'new_state_json') THEN
-                        ALTER TABLE audit_logs ADD COLUMN new_state_json JSONB;
-                    END IF;
-                END IF;
-
-                -- 7. Migrate profile_activity_logs to audit_logs
-                IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'profile_activity_logs') THEN
-                    INSERT INTO audit_logs (id, user_id, event_type, description, ip_address, user_agent, old_state_json, new_state_json, created_at)
-                    SELECT id, user_id, action_type, 'Profile activity log: ' || action_type, ip_address, user_agent, old_state_json::jsonb, new_state_json::jsonb, created_at
-                    FROM profile_activity_logs;
-                    
-                    DROP TABLE profile_activity_logs CASCADE;
-                END IF;
-
-                -- 8. Migrate admin_audit_logs to audit_logs
-                IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'admin_audit_logs') THEN
-                    INSERT INTO audit_logs (id, actor_user_id, event_type, description, target_role_name, target_user_id, details_json, created_at)
-                    SELECT id, actor_user_id, action, 'Admin action: ' || action, target_role_name, target_user_id, details_json, timestamp
-                    FROM admin_audit_logs;
-                    
-                    DROP TABLE admin_audit_logs CASCADE;
-                END IF;
-
-                -- 9. Migrate business_role_audit_logs to audit_logs
-                IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'business_role_audit_logs') THEN
-                    INSERT INTO audit_logs (id, organization_id, actor_user_id, event_type, description, target_role_name, target_user_id, scope_type, scope_id, details_json, created_at)
-                    SELECT id, organization_id, actor_user_id, action, 'Business role action: ' || action, target_role_name, target_user_id, scope_type, scope_id, details_json, timestamp
-                    FROM business_role_audit_logs;
-                    
-                    DROP TABLE business_role_audit_logs CASCADE;
-                END IF;
-            END $$;
 
              -- Greenfield Pipeline and AI subsystem tables
              CREATE TABLE IF NOT EXISTS pipeline_jobs (
@@ -676,17 +263,6 @@ public static class DbInitializer
                  sha256hash VARCHAR(64) NOT NULL,
                  updated_at_utc TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
              );
-
-             CREATE TABLE IF NOT EXISTS cv_repository_mappings (
-                 id UUID PRIMARY KEY,
-                 user_id UUID NOT NULL,
-                 source_code_repository_id UUID NOT NULL REFERENCES source_code_repositories(id) ON DELETE CASCADE,
-                 reference_source VARCHAR(50) NOT NULL,
-                 reference_entity_id UUID NULL,
-                 indexed_at_utc TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
-             );
-             CREATE INDEX IF NOT EXISTS idx_cv_repository_mappings_user_id ON cv_repository_mappings(user_id);
-             CREATE INDEX IF NOT EXISTS idx_cv_repository_mappings_repo_id ON cv_repository_mappings(source_code_repository_id);
 
             -- Stores user roles for the Role-Based Access Control (RBAC) system
             CREATE TABLE IF NOT EXISTS roles (
@@ -853,6 +429,17 @@ public static class DbInitializer
             CREATE INDEX IF NOT EXISTS idx_source_code_repositories_authenticity_type ON source_code_repositories(authenticity_type) WHERE authenticity_type IS NOT NULL;
             CREATE INDEX IF NOT EXISTS idx_source_code_repositories_latest_risk_score ON source_code_repositories(latest_risk_score);
             CREATE INDEX IF NOT EXISTS idx_source_code_repositories_latest_analysis_status ON source_code_repositories(latest_analysis_status);
+
+            CREATE TABLE IF NOT EXISTS cv_repository_mappings (
+                id UUID PRIMARY KEY,
+                user_id UUID NOT NULL,
+                source_code_repository_id UUID NOT NULL REFERENCES source_code_repositories(id) ON DELETE CASCADE,
+                reference_source VARCHAR(50) NOT NULL,
+                reference_entity_id UUID NULL,
+                indexed_at_utc TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
+            );
+            CREATE INDEX IF NOT EXISTS idx_cv_repository_mappings_user_id ON cv_repository_mappings(user_id);
+            CREATE INDEX IF NOT EXISTS idx_cv_repository_mappings_repo_id ON cv_repository_mappings(source_code_repository_id);
 
             CREATE TABLE IF NOT EXISTS organizations (
                 id UUID PRIMARY KEY,
@@ -1957,12 +1544,37 @@ public static class DbInitializer
                 expected_salary_negotiable BOOLEAN NOT NULL DEFAULT FALSE,
                 is_expected_salary_visible BOOLEAN NOT NULL DEFAULT FALSE,
                 work_preference_notes TEXT,
+                desired_salary DECIMAL(18,2),
+                minimum_acceptable_salary DECIMAL(18,2),
                 version INTEGER NOT NULL DEFAULT 1,
                 created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
                 updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
                 deleted_at TIMESTAMP WITH TIME ZONE,
                 CONSTRAINT fk_career_preferences_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
             );
+
+            -- Standardized JDs table for job description parsing and matching
+            CREATE TABLE IF NOT EXISTS standardized_jds (
+                id VARCHAR(64) PRIMARY KEY,
+                owner_user_id UUID NOT NULL,
+                job_title VARCHAR(255) NOT NULL,
+                seniority VARCHAR(40) NOT NULL,
+                department VARCHAR(120) NOT NULL DEFAULT '',
+                employment_type VARCHAR(80) NOT NULL DEFAULT '',
+                hiring_priority VARCHAR(40) NOT NULL DEFAULT '',
+                industry VARCHAR(120) NOT NULL DEFAULT '',
+                location VARCHAR(255) NOT NULL DEFAULT '',
+                work_mode VARCHAR(40) NOT NULL DEFAULT '',
+                currency VARCHAR(10) NOT NULL,
+                salary_min DECIMAL(18,2) NOT NULL,
+                salary_max DECIMAL(18,2) NOT NULL,
+                structured_json JSONB NOT NULL,
+                human_readable_text TEXT NOT NULL,
+                created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+                updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+                CONSTRAINT fk_standardized_jds_users_owner_user_id FOREIGN KEY (owner_user_id) REFERENCES users(id) ON DELETE CASCADE
+            );
+            CREATE INDEX IF NOT EXISTS ix_standardized_jds_owner_user_id_created_at ON standardized_jds(owner_user_id, created_at);
 
             DO $$
             BEGIN
@@ -2122,6 +1734,22 @@ public static class DbInitializer
                     WHERE table_name = 'career_preferences' AND column_name = 'target_skills'
                 ) THEN
                     ALTER TABLE career_preferences ADD COLUMN target_skills VARCHAR(100)[] DEFAULT ARRAY[]::VARCHAR[] NOT NULL;
+                END IF;
+
+                -- 11. Add desired_salary if missing
+                IF NOT EXISTS (
+                    SELECT 1 FROM information_schema.columns 
+                    WHERE table_name = 'career_preferences' AND column_name = 'desired_salary'
+                ) THEN
+                    ALTER TABLE career_preferences ADD COLUMN desired_salary DECIMAL(18,2);
+                END IF;
+
+                -- 12. Add minimum_acceptable_salary if missing
+                IF NOT EXISTS (
+                    SELECT 1 FROM information_schema.columns 
+                    WHERE table_name = 'career_preferences' AND column_name = 'minimum_acceptable_salary'
+                ) THEN
+                    ALTER TABLE career_preferences ADD COLUMN minimum_acceptable_salary DECIMAL(18,2);
                 END IF;
             END $$;
 
@@ -3103,9 +2731,9 @@ public static class DbInitializer
         seedingPolicy = await ApplyDemoSeedingSafetyAsync(context, seedingPolicy, seederLogger);
         await SuperAdminSeeder.SeedAsync(context, config.SuperAdmin, seedingPolicy);
         await PermissionSeeder.SeedAsync(context, seedingPolicy);
+        await BusinessAccountSeeder.SeedAsync(context, config.Seeding, seedingPolicy);
         await RoleSeeder.SeedAsync(context, seedingPolicy);
         await MembershipMigrationSeeder.SeedAsync(context, seedingPolicy);
-        await BusinessAccountSeeder.SeedAsync(context, config.Seeding, seedingPolicy);
         await StandardizedJdSeeder.SeedAsync(context, config.Seeding, seedingPolicy);
 
         global::System.Collections.Generic.IEnumerable<IPublicWorkspaceModuleSeeder> moduleSeeders;

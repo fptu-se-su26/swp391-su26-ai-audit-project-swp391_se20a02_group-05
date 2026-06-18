@@ -119,8 +119,8 @@ public static class BusinessAccountSeeder
                     vision = COALESCE(@vision, vision),
                     core_values = COALESCE(@coreValues, core_values),
                     founded = COALESCE(@founded, founded),
-                    industry_tags = CASE WHEN @industryTags::jsonb != '[]'::jsonb THEN @industryTags::jsonb ELSE industry_tags END,
-                    benefit_tags = CASE WHEN @benefitTags::jsonb != '[]'::jsonb THEN @benefitTags::jsonb ELSE benefit_tags END,
+                    industry_tags = CASE WHEN @industryTags::jsonb != '[]'::jsonb THEN ARRAY(SELECT jsonb_array_elements_text(@industryTags::jsonb))::varchar(100)[] ELSE industry_tags END,
+                    benefit_tags = CASE WHEN @benefitTags::jsonb != '[]'::jsonb THEN ARRAY(SELECT jsonb_array_elements_text(@benefitTags::jsonb))::varchar(100)[] ELSE benefit_tags END,
                     updated_at = NOW()
                 WHERE id = @id AND deleted_at IS NULL;
             ";

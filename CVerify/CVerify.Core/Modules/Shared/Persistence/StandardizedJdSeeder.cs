@@ -12,7 +12,7 @@ namespace CVerify.API.Modules.Shared.Persistence;
 
 public static class StandardizedJdSeeder
 {
-    private static readonly Guid Tier1OrgId = Guid.Parse("01900000-0000-0000-0000-000000000001");
+    private static readonly Guid Tier1OwnerUserId = Guid.Parse("01900000-0000-0000-0000-000000000002");
 
     private static readonly JsonSerializerOptions _jsonOpts = new()
     {
@@ -42,7 +42,7 @@ public static class StandardizedJdSeeder
             var normalizedId = $"jd-seed-{entry.JobTitle.ToLowerInvariant().Replace(" ", "-")}";
 
             var exists = await context.StandardizedJds
-                .AnyAsync(j => j.Id == normalizedId && j.OwnerUserId == Tier1OrgId);
+                .AnyAsync(j => j.Id == normalizedId && j.OwnerUserId == Tier1OwnerUserId);
 
             if (exists) continue;
 
@@ -53,7 +53,7 @@ public static class StandardizedJdSeeder
             var entity = new StandardizedJd
             {
                 Id = normalizedId,
-                OwnerUserId = Tier1OrgId,
+                OwnerUserId = Tier1OwnerUserId,
                 JobTitle = entry.JobTitle,
                 Seniority = entry.Seniority,
                 Department = entry.Department ?? string.Empty,
