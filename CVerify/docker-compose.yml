@@ -1,5 +1,3 @@
-﻿version: '3.8'
-
 services:
   # 1. DATABASE LAYER: PostgreSQL
   postgres:
@@ -7,15 +5,15 @@ services:
     container_name: cverify-postgres
     restart: always
     environment:
-      POSTGRES_DB: cverify
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: your_secure_password_here
+      POSTGRES_DB: ${DB_NAME:-cverify}
+      POSTGRES_USER: ${DB_USER:-postgres}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD is required}
     ports:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres -d cverify"]
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-postgres} -d ${DB_NAME:-cverify}"]
       interval: 5s
       timeout: 5s
       retries: 5
@@ -25,6 +23,7 @@ services:
     image: redis:7-alpine
     container_name: cverify-redis
     restart: always
+    command: redis-server --save "" --appendonly no --maxmemory 256mb --maxmemory-policy allkeys-lru
     ports:
       - "6379:6379"
     volumes:
@@ -43,17 +42,24 @@ services:
     container_name: cverify-ai
     restart: always
     environment:
-      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
-      - SHARED_SECRET=${AI_SERVICE_SHARED_SECRET:-your_hmac_shared_secret_key_here}
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:?ANTHROPIC_API_KEY is required}
+      - SHARED_SECRET=${AI_SERVICE_SHARED_SECRET:?AI_SERVICE_SHARED_SECRET is required}
       - CLIENT_ID=cverify-core
       - HOST=0.0.0.0
       - PORT=8000
       - REDIS_URL=redis://redis:6379/0
+      - BACKEND_API_URL=http://cverify-core:5000
     ports:
       - "8000:8000"
     depends_on:
       redis:
         condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
 
   # 4. SERVER LAYER: ASP.NET Core v10 Web API Gateway
   cverify-core:
@@ -63,11 +69,14 @@ services:
     container_name: cverify-core
     restart: always
     environment:
-      - ConnectionStrings__DefaultConnection=Host=postgres;Port=5432;Database=cverify;Username=postgres;Password=your_secure_password_here
+      - ConnectionStrings__DefaultConnection=Host=postgres;Port=5432;Database=${DB_NAME:-cverify};Username=${DB_USER:-postgres};Password=${DB_PASSWORD}
       - Redis__ConnectionString=redis:6379
       - AI_SERVICE_URL=http://cverify-ai:8000
-      - AI_SERVICE_SHARED_SECRET=${AI_SERVICE_SHARED_SECRET:-your_hmac_shared_secret_key_here}
+      - AI_SERVICE_SHARED_SECRET=${AI_SERVICE_SHARED_SECRET}
       - AI_SERVICE_CLIENT_ID=cverify-core
+      - JWT_KEY=${JWT_KEY:?JWT_KEY is required}
+      - ASPNETCORE_ENVIRONMENT=${ASPNETCORE_ENVIRONMENT:-Production}
+      - FRONTEND_URL=${FRONTEND_URL:-http://localhost:3000}
     ports:
       - "5000:5000"
     depends_on:
@@ -76,17 +85,21 @@ services:
       redis:
         condition: service_healthy
       cverify-ai:
-        condition: service_started
+        condition: service_healthy
 
   # 5. CLIENT PORTAL LAYER: Next.js 16 Web App
   cverify-client:
     build:
       context: ./client
       dockerfile: Dockerfile
+      args:
+        # NEXT_PUBLIC_* are baked into the JS bundle at build time
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:5000/api}
+        NEXT_PUBLIC_GOOGLE_CLIENT_ID: ${NEXT_PUBLIC_GOOGLE_CLIENT_ID:-}
     container_name: cverify-client
     restart: always
     environment:
-      - NEXT_PUBLIC_API_URL=http://localhost:5000/api
+      - JWT_SECRET=${JWT_SECRET:?JWT_SECRET is required}
     ports:
       - "3000:3000"
     depends_on:

@@ -98,8 +98,8 @@ public static class BusinessAccountSeeder
             );
 
             // Update extended profile fields (idempotent - safe to re-run)
-            var industryTagsJson = global::System.Text.Json.JsonSerializer.Serialize(org.IndustryTags);
-            var benefitTagsJson = global::System.Text.Json.JsonSerializer.Serialize(org.BenefitTags);
+            var industryTags = org.IndustryTags?.ToArray() ?? Array.Empty<string>();
+            var benefitTags = org.BenefitTags?.ToArray() ?? Array.Empty<string>();
             var sqlProfile = @"
                 UPDATE organizations SET
                     description = COALESCE(@description, description),
@@ -119,8 +119,8 @@ public static class BusinessAccountSeeder
                     vision = COALESCE(@vision, vision),
                     core_values = COALESCE(@coreValues, core_values),
                     founded = COALESCE(@founded, founded),
-                    industry_tags = CASE WHEN @industryTags::jsonb != '[]'::jsonb THEN @industryTags::jsonb ELSE industry_tags END,
-                    benefit_tags = CASE WHEN @benefitTags::jsonb != '[]'::jsonb THEN @benefitTags::jsonb ELSE benefit_tags END,
+                    industry_tags = CASE WHEN cardinality(@industryTags::varchar[]) > 0 THEN @industryTags::varchar[] ELSE industry_tags END,
+                    benefit_tags = CASE WHEN cardinality(@benefitTags::varchar[]) > 0 THEN @benefitTags::varchar[] ELSE benefit_tags END,
                     updated_at = NOW()
                 WHERE id = @id AND deleted_at IS NULL;
             ";
@@ -143,8 +143,8 @@ public static class BusinessAccountSeeder
                 new NpgsqlParameter("@vision", (object?)org.Vision ?? DBNull.Value),
                 new NpgsqlParameter("@coreValues", (object?)org.CoreValues ?? DBNull.Value),
                 new NpgsqlParameter("@founded", (object?)org.Founded ?? DBNull.Value),
-                new NpgsqlParameter("@industryTags", industryTagsJson),
-                new NpgsqlParameter("@benefitTags", benefitTagsJson)
+                new NpgsqlParameter("@industryTags", industryTags),
+                new NpgsqlParameter("@benefitTags", benefitTags)
             );
 
             // Seed Organization Credential

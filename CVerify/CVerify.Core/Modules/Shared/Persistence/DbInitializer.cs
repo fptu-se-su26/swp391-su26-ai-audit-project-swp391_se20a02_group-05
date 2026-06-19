@@ -66,7 +66,8 @@ public static class DbInitializer
                 ('20260615152001_AddProjectEntriesAndLinks', '10.0.0'),
                 ('20260615171115_AddRepositoryAssessments', '10.0.0'),
                 ('20260616080806_AddRepositoryIntelligenceTables', '10.0.0'),
-                ('20260616082519_AddCandidateIntelligenceTablesPhase2', '10.0.0')
+                ('20260616082519_AddCandidateIntelligenceTablesPhase2', '10.0.0'),
+                ('20260616183936_AddLine3JdMatching', '10.0.0')
                 ON CONFLICT (migration_id) DO NOTHING;
             ");
         }
@@ -677,17 +678,6 @@ public static class DbInitializer
                  updated_at_utc TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
              );
 
-             CREATE TABLE IF NOT EXISTS cv_repository_mappings (
-                 id UUID PRIMARY KEY,
-                 user_id UUID NOT NULL,
-                 source_code_repository_id UUID NOT NULL REFERENCES source_code_repositories(id) ON DELETE CASCADE,
-                 reference_source VARCHAR(50) NOT NULL,
-                 reference_entity_id UUID NULL,
-                 indexed_at_utc TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
-             );
-             CREATE INDEX IF NOT EXISTS idx_cv_repository_mappings_user_id ON cv_repository_mappings(user_id);
-             CREATE INDEX IF NOT EXISTS idx_cv_repository_mappings_repo_id ON cv_repository_mappings(source_code_repository_id);
-
             -- Stores user roles for the Role-Based Access Control (RBAC) system
             CREATE TABLE IF NOT EXISTS roles (
                 id UUID PRIMARY KEY,
@@ -853,6 +843,17 @@ public static class DbInitializer
             CREATE INDEX IF NOT EXISTS idx_source_code_repositories_authenticity_type ON source_code_repositories(authenticity_type) WHERE authenticity_type IS NOT NULL;
             CREATE INDEX IF NOT EXISTS idx_source_code_repositories_latest_risk_score ON source_code_repositories(latest_risk_score);
             CREATE INDEX IF NOT EXISTS idx_source_code_repositories_latest_analysis_status ON source_code_repositories(latest_analysis_status);
+
+             CREATE TABLE IF NOT EXISTS cv_repository_mappings (
+                 id UUID PRIMARY KEY,
+                 user_id UUID NOT NULL,
+                 source_code_repository_id UUID NOT NULL REFERENCES source_code_repositories(id) ON DELETE CASCADE,
+                 reference_source VARCHAR(50) NOT NULL,
+                 reference_entity_id UUID NULL,
+                 indexed_at_utc TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
+             );
+             CREATE INDEX IF NOT EXISTS idx_cv_repository_mappings_user_id ON cv_repository_mappings(user_id);
+             CREATE INDEX IF NOT EXISTS idx_cv_repository_mappings_repo_id ON cv_repository_mappings(source_code_repository_id);
 
             CREATE TABLE IF NOT EXISTS organizations (
                 id UUID PRIMARY KEY,
@@ -2975,6 +2976,40 @@ public static class DbInitializer
             );
             CREATE INDEX IF NOT EXISTS idx_project_technologies_project_id ON project_technologies(project_entry_id);
 
+            -- Stores standardized job descriptions for Line 3 JD matching
+            CREATE TABLE IF NOT EXISTS standardized_jds (
+                id VARCHAR(64) PRIMARY KEY,
+                owner_user_id UUID NOT NULL,
+                job_title VARCHAR(255) NOT NULL,
+                seniority VARCHAR(40) NOT NULL,
+                department VARCHAR(120) NOT NULL DEFAULT '',
+                employment_type VARCHAR(80) NOT NULL DEFAULT '',
+                hiring_priority VARCHAR(40) NOT NULL DEFAULT '',
+                industry VARCHAR(120) NOT NULL DEFAULT '',
+                location VARCHAR(255) NOT NULL DEFAULT '',
+                work_mode VARCHAR(40) NOT NULL DEFAULT '',
+                currency VARCHAR(10) NOT NULL,
+                salary_min NUMERIC(18,2) NOT NULL,
+                salary_max NUMERIC(18,2) NOT NULL,
+                structured_json JSONB NOT NULL,
+                human_readable_text TEXT NOT NULL,
+                created_at TIMESTAMP WITH TIME ZONE NOT NULL,
+                updated_at TIMESTAMP WITH TIME ZONE NOT NULL
+            );
+            CREATE INDEX IF NOT EXISTS ix_standardized_jds_owner_user_id_created_at ON standardized_jds(owner_user_id, created_at);
+
+            DO $$
+            BEGIN
+                IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'career_preferences') THEN
+                    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'career_preferences' AND column_name = 'desired_salary') THEN
+                        ALTER TABLE career_preferences ADD COLUMN desired_salary NUMERIC(18,2);
+                    END IF;
+                    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'career_preferences' AND column_name = 'minimum_acceptable_salary') THEN
+                        ALTER TABLE career_preferences ADD COLUMN minimum_acceptable_salary NUMERIC(18,2);
+                    END IF;
+                END IF;
+            END $$;
+
             -- Table storing global system metadata and environmental markers
             CREATE TABLE IF NOT EXISTS system_metadata (
                 key VARCHAR(100) PRIMARY KEY,
@@ -2986,6 +3021,18 @@ public static class DbInitializer
         ";
 
         await context.Database.ExecuteSqlRawAsync(sql);
+
+        // Drop FK constraint on standardized_jds.owner_user_id — it referenced users(id) but
+        // business accounts use OrganizationId as their identity, which is not in the users table.
+        try
+        {
+            await context.Database.ExecuteSqlRawAsync(
+                "ALTER TABLE standardized_jds DROP CONSTRAINT IF EXISTS fk_standardized_jds_users_owner_user_id;");
+        }
+        catch (Exception)
+        {
+            // Ignore if table doesn't exist yet (first-run databases)
+        }
 
         // Safely alter user_status enum to add DELETION_PENDING for backward compatibility
         try

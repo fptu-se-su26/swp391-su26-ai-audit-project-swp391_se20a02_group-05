@@ -270,10 +270,6 @@ public class ApplicationDbContext : DbContext
         {
             entity.ToTable("standardized_jds");
             entity.HasIndex(jd => new { jd.OwnerUserId, jd.CreatedAt });
-            entity.HasOne(jd => jd.OwnerUser)
-                .WithMany()
-                .HasForeignKey(jd => jd.OwnerUserId)
-                .OnDelete(DeleteBehavior.Cascade);
         });
 
         // Enable PostgreSQL Extensions

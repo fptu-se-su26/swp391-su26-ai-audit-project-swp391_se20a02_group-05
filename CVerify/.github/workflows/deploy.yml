@@ -1,0 +1,218 @@
+# ==============================================================================
+# CVERIFY CI/CD — Build, Test & Deploy to Production VPS
+# ==============================================================================
+#
+# Triggers:
+#   - Push to `main` branch  → deploy to production
+#   - Pull request to `main` → build + test only (no deploy)
+#
+# Required GitHub Secrets (set in repo Settings → Secrets → Actions):
+#   VPS_HOST          — IP or hostname of your VPS (e.g. 123.45.67.89)
+#   VPS_USER          — SSH user with docker access (e.g. ubuntu or deploy)
+#   VPS_SSH_KEY       — Private SSH key (PEM format, no passphrase)
+#   VPS_SSH_PORT      — SSH port (default 22)
+#   DOMAIN            — Production domain (e.g. cverify.yourdomain.com)
+#   DB_PASSWORD       — PostgreSQL password
+#   JWT_KEY           — JWT signing key (min 32 chars)
+#   JWT_SECRET        — Next.js JWT edge secret
+#   AI_SERVICE_SHARED_SECRET — HMAC shared secret between core ↔ ai
+#   ANTHROPIC_API_KEY — Anthropic Claude API key
+#   SENDGRID_API_KEY  — SendGrid API key
+#   GOOGLE_CLIENT_ID  — Google OAuth client ID
+#   GOOGLE_CLIENT_SECRET — Google OAuth client secret
+#   GITHUB_CLIENT_ID  — (Optional) GitHub OAuth client ID
+#   GITHUB_CLIENT_SECRET — (Optional) GitHub OAuth client secret
+#   TOKEN_ENCRYPTION_KEY — 32-byte AES-256 key
+#   SUPER_ADMIN_EMAIL    — First-boot super-admin email
+#   SUPER_ADMIN_PASSWORD — First-boot super-admin password
+#   ACCESS_KEY_ID     — Cloudflare R2 access key
+#   SECRET_ACCESS_KEY — Cloudflare R2 secret key
+#   R2_ENDPOINT       — Cloudflare R2 endpoint URL
+# ==============================================================================
+
+name: Deploy to Production
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_PREFIX: ${{ github.repository_owner }}/cverify
+
+jobs:
+  # ============================================================================
+  # JOB 1: Build & Test
+  # ============================================================================
+  build-and-test:
+    name: Build & Test
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GitHub Container Registry
+        if: github.event_name == 'push'
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # --- Build images ---
+      - name: Build CVerify.Core image
+        uses: docker/build-push-action@v5
+        with:
+          context: ./CVerify.Core
+          file: ./CVerify.Core/Dockerfile
+          push: ${{ github.event_name == 'push' }}
+          tags: ${{ env.REGISTRY }}/${{ env.IMAGE_PREFIX }}-core:latest,${{ env.REGISTRY }}/${{ env.IMAGE_PREFIX }}-core:${{ github.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Build CVerify.AI image
+        uses: docker/build-push-action@v5
+        with:
+          context: ./CVerify.AI
+          file: ./CVerify.AI/Dockerfile
+          push: ${{ github.event_name == 'push' }}
+          tags: ${{ env.REGISTRY }}/${{ env.IMAGE_PREFIX }}-ai:latest,${{ env.REGISTRY }}/${{ env.IMAGE_PREFIX }}-ai:${{ github.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Build client image
+        uses: docker/build-push-action@v5
+        with:
+          context: ./client
+          file: ./client/Dockerfile
+          push: ${{ github.event_name == 'push' }}
+          # NEXT_PUBLIC_* must be passed at build time
+          build-args: |
+            NEXT_PUBLIC_API_URL=https://${{ secrets.DOMAIN }}/api
+            NEXT_PUBLIC_GOOGLE_CLIENT_ID=${{ secrets.GOOGLE_CLIENT_ID }}
+          tags: ${{ env.REGISTRY }}/${{ env.IMAGE_PREFIX }}-client:latest,${{ env.REGISTRY }}/${{ env.IMAGE_PREFIX }}-client:${{ github.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  # ============================================================================
+  # JOB 2: Deploy to VPS (only on push to main)
+  # ============================================================================
+  deploy:
+    name: Deploy to VPS
+    needs: build-and-test
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Write SSH key
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.VPS_SSH_KEY }}" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          ssh-keyscan -p ${{ secrets.VPS_SSH_PORT || 22 }} ${{ secrets.VPS_HOST }} >> ~/.ssh/known_hosts
+
+      - name: Copy compose files to VPS
+        run: |
+          scp -i ~/.ssh/deploy_key -P ${{ secrets.VPS_SSH_PORT || 22 }} \
+            docker-compose.yml \
+            docker-compose.prod.yml \
+            ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}:~/cverify/
+
+      - name: Copy nginx config to VPS
+        run: |
+          scp -i ~/.ssh/deploy_key -P ${{ secrets.VPS_SSH_PORT || 22 }} \
+            -r nginx/ \
+            ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}:~/cverify/
+
+      - name: Write .env on VPS
+        run: |
+          ssh -i ~/.ssh/deploy_key -p ${{ secrets.VPS_SSH_PORT || 22 }} \
+            ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }} "cat > ~/cverify/.env << 'ENVEOF'
+          DOMAIN=${{ secrets.DOMAIN }}
+          FRONTEND_URL=https://${{ secrets.DOMAIN }}
+          NEXT_PUBLIC_API_URL=https://${{ secrets.DOMAIN }}/api
+          NEXT_PUBLIC_GOOGLE_CLIENT_ID=${{ secrets.GOOGLE_CLIENT_ID }}
+
+          DB_NAME=cverify
+          DB_USER=cverify_user
+          DB_PASSWORD=${{ secrets.DB_PASSWORD }}
+
+          JWT_KEY=${{ secrets.JWT_KEY }}
+          JWT_SECRET=${{ secrets.JWT_SECRET }}
+
+          AI_SERVICE_SHARED_SECRET=${{ secrets.AI_SERVICE_SHARED_SECRET }}
+          ANTHROPIC_API_KEY=${{ secrets.ANTHROPIC_API_KEY }}
+
+          SENDGRID_API_KEY=${{ secrets.SENDGRID_API_KEY }}
+          EMAIL_SENDER_EMAIL=noreply@${{ secrets.DOMAIN }}
+
+          GOOGLE_CLIENT_ID=${{ secrets.GOOGLE_CLIENT_ID }}
+          GOOGLE_CLIENT_SECRET=${{ secrets.GOOGLE_CLIENT_SECRET }}
+          GITHUB_CLIENT_ID=${{ secrets.GITHUB_CLIENT_ID }}
+          GITHUB_CLIENT_SECRET=${{ secrets.GITHUB_CLIENT_SECRET }}
+
+          TOKEN_ENCRYPTION_KEY=${{ secrets.TOKEN_ENCRYPTION_KEY }}
+
+          SUPER_ADMIN_EMAIL=${{ secrets.SUPER_ADMIN_EMAIL }}
+          SUPER_ADMIN_USERNAME=admin
+          SUPER_ADMIN_FULL_NAME=System Administrator
+          SUPER_ADMIN_PASSWORD=${{ secrets.SUPER_ADMIN_PASSWORD }}
+
+          ACCESS_KEY_ID=${{ secrets.ACCESS_KEY_ID }}
+          SECRET_ACCESS_KEY=${{ secrets.SECRET_ACCESS_KEY }}
+          R2_ENDPOINT=${{ secrets.R2_ENDPOINT }}
+          R2_BUCKET=cverify-evidence
+
+          ASPNETCORE_ENVIRONMENT=Production
+          DISABLE_RATE_LIMITS=false
+          RESET_DATABASE=false
+          SEED_TEST_ACCOUNTS=false
+          ALLOW_DEVELOPMENT_SEEDING=false
+          REGISTRY=${{ env.REGISTRY }}
+          IMAGE_PREFIX=${{ env.IMAGE_PREFIX }}
+          IMAGE_TAG=${{ github.sha }}
+          ENVEOF"
+
+      - name: Pull images & restart stack on VPS
+        run: |
+          ssh -i ~/.ssh/deploy_key -p ${{ secrets.VPS_SSH_PORT || 22 }} \
+            ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }} "
+              cd ~/cverify
+
+              # Login to GHCR
+              echo ${{ secrets.GITHUB_TOKEN }} | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+
+              # Pull new images
+              docker compose -f docker-compose.yml -f docker-compose.prod.yml pull
+
+              # Rolling restart (keeps DB and Redis running)
+              docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d \
+                --remove-orphans \
+                --no-deps \
+                cverify-ai cverify-core cverify-client nginx
+
+              # Remove dangling images
+              docker image prune -f
+          "
+
+      - name: Health check
+        run: |
+          sleep 15
+          STATUS=$(curl -s -o /dev/null -w "%{http_code}" https://${{ secrets.DOMAIN }}/health)
+          if [ "$STATUS" != "200" ]; then
+            echo "Health check failed — HTTP $STATUS"
+            exit 1
+          fi
+          echo "Deployment successful — /health returned HTTP 200"

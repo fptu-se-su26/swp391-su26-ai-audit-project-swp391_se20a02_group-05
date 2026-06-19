@@ -1,6 +1,5 @@
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
-using CVerify.API.Modules.Shared.Domain.Entities;
 
 namespace CVerify.API.Modules.Jd.Entities;
 
@@ -10,10 +9,9 @@ public sealed class StandardizedJd
     [MaxLength(64)]
     public string Id { get; set; } = string.Empty;
 
+    // Stores either a UserId (regular users) or an OrganizationId (business accounts).
+    // No FK constraint — business accounts have org IDs that are not in the users table.
     public Guid OwnerUserId { get; set; }
-
-    [ForeignKey(nameof(OwnerUserId))]
-    public User OwnerUser { get; set; } = null!;
 
     [MaxLength(255)]
     public string JobTitle { get; set; } = string.Empty;

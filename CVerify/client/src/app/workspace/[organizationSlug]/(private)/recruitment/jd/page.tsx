@@ -95,13 +95,14 @@ export default function WorkspaceJDManagementPage() {
   }
 
   const permissions = workspaceDetails.permissions || [];
+  const role = workspaceDetails.userRole?.toLowerCase() ?? "";
   const isAuthorized =
     permissions.includes("ai:interview:configure") ||
     permissions.includes("ai:interview:conduct") ||
     permissions.includes("ai:interview:evaluate") ||
-    workspaceDetails.userRole === "OWNER" ||
-    workspaceDetails.userRole === "REPRESENTATIVE" ||
-    workspaceDetails.userRole === "HR";
+    role === "owner" ||
+    role === "representative" ||
+    role === "hr_manager";
 
   if (!isAuthorized) {
     return (

@@ -1,0 +1,47 @@
+# ==============================================================================
+# CVERIFY PRODUCTION OVERRIDE
+# ==============================================================================
+# Usage:
+#   docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d
+#
+# Adds nginx reverse proxy + SSL termination.
+# Removes direct port exposure for core & client (only nginx faces the internet).
+# ==============================================================================
+
+services:
+  # Nginx handles all inbound TLS traffic
+  nginx:
+    image: nginx:1.27-alpine
+    container_name: cverify-nginx
+    restart: always
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - /etc/letsencrypt:/etc/letsencrypt:ro
+    depends_on:
+      - cverify-core
+      - cverify-client
+    environment:
+      - DOMAIN=${DOMAIN}
+
+  # In production, do NOT expose backend ports directly
+  cverify-core:
+    ports: []
+
+  # In production, do NOT expose frontend port directly
+  cverify-client:
+    ports: []
+
+  # Likewise for AI service — only reachable by cverify-core inside the network
+  cverify-ai:
+    ports: []
+
+  # Redis is internal only
+  redis:
+    ports: []
+
+  # Postgres is internal only
+  postgres:
+    ports: []

@@ -12,7 +12,11 @@ WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 ENV NEXT_TELEMETRY_DISABLED=1
-ENV NEXT_PUBLIC_API_URL=http://localhost:5000/api
+# NEXT_PUBLIC_* vars are inlined at compile-time — must be passed as build args
+ARG NEXT_PUBLIC_API_URL=http://localhost:5247/api
+ARG NEXT_PUBLIC_GOOGLE_CLIENT_ID=""
+ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
+ENV NEXT_PUBLIC_GOOGLE_CLIENT_ID=$NEXT_PUBLIC_GOOGLE_CLIENT_ID
 RUN npm run build
 
 FROM node:20-alpine AS runner

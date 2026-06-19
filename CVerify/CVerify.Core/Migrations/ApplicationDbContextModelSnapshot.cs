@@ -5666,18 +5666,6 @@ namespace CVerify.API.Migrations
                     b.Navigation("User");
                 });
 
-            modelBuilder.Entity("CVerify.API.Modules.Jd.Entities.StandardizedJd", b =>
-                {
-                    b.HasOne("CVerify.API.Modules.Shared.Domain.Entities.User", "OwnerUser")
-                        .WithMany()
-                        .HasForeignKey("OwnerUserId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired()
-                        .HasConstraintName("fk_standardized_jds_users_owner_user_id");
-
-                    b.Navigation("OwnerUser");
-                });
-
             modelBuilder.Entity("CVerify.API.Modules.Profiles.Entities.AcademicAchievement", b =>
                 {
                     b.HasOne("CVerify.API.Modules.Shared.Domain.Entities.User", "User")
