@@ -119,8 +119,6 @@ export interface DeclaredCareerPreference {
   companyValues: string[];
   expectedSalaryMin?: number | null;
   expectedSalaryMax?: number | null;
-  desiredSalary?: number | null;
-  minimumAcceptableSalary?: number | null;
   expectedSalaryCurrency?: string | null;
   expectedSalaryType?: string | null;
   expectedSalaryNegotiable: boolean;
@@ -189,8 +187,6 @@ export interface UpdateCareerPreferenceRequest {
   employmentPreferences?: string[];
   expectedSalaryMin?: number | null;
   expectedSalaryMax?: number | null;
-  desiredSalary?: number | null;
-  minimumAcceptableSalary?: number | null;
   expectedSalaryCurrency?: string | null;
   expectedSalaryType?: string | null;
   expectedSalaryNegotiable?: boolean;
@@ -220,8 +216,6 @@ export interface PublicCareerPreference {
   desiredJobPositions: string[];
   expectedSalaryMin?: number | null;
   expectedSalaryMax?: number | null;
-  desiredSalary?: number | null;
-  minimumAcceptableSalary?: number | null;
   expectedSalaryCurrency?: string | null;
   expectedSalaryType?: string | null;
   expectedSalaryNegotiable: boolean;
@@ -261,6 +255,7 @@ export interface PublicProfileResponse {
   achievements?: AcademicAchievementResponse[] | null;
   hasCompletedAssessment: boolean;
   lastAssessmentDate: string | null;
+  vacancies?: any[];
 }
 
 export interface WorkExperienceAchievement {
@@ -440,4 +435,84 @@ export interface PublicProject {
   technologies: string[];
   contributions: string[];
 }
+
+export interface RankingQueryParams {
+  search?: string;
+  category?: string;
+  trustTiers?: string[];
+  experienceLevels?: string[];
+  skills?: string[];
+  location?: string;
+  availableForHire?: boolean;
+  page?: number;
+  pageSize?: number;
+}
+
+export interface CapabilityInfo {
+  name: string;
+  score: number;
+}
+
+export interface RankingResponseItem {
+  candidateId: string;
+  fullName: string;
+  username: string | null;
+  bio: string | null;
+  headline: string | null;
+  location: string | null;
+  avatarUrl: string | null;
+  compositeScore: number;
+  aiScore: number;
+  trustScore: number;
+  profileCompleteness: number;
+  evidenceTrustScore: number;
+  verifiedRepoCount: number;
+  totalStarsCount: number;
+  totalForksCount: number;
+  verifiedContributionCount: number;
+  topCapabilities: CapabilityInfo[];
+  primaryDomain: string | null;
+  careerLevelLabel: string | null;
+  followersCount: number;
+  followingCount: number;
+  availableForHire: boolean;
+  openToWorkStatus: string;
+  globalRankPosition: number;
+  previousGlobalRankPosition: number;
+  isFollowedByCurrentUser: boolean;
+  lastUpdatedAt: string;
+}
+
+export interface PaginatedRankingResponse {
+  items: RankingResponseItem[];
+  totalCount: number;
+  page: number;
+  pageSize: number;
+}
+
+export interface TrendingEngineer {
+  candidateId: string;
+  fullName: string;
+  username: string | null;
+  avatarUrl: string | null;
+  compositeScore: number;
+  globalRankPosition: number;
+  previousGlobalRankPosition: number;
+  rankDelta: number;
+}
+
+export interface RankingStats {
+  totalTalents: number;
+  totalRepositories: number;
+  totalCountries: number;
+  topTechnologies: string[];
+  fastestRisingSkills: string[];
+  trendingEngineers: TrendingEngineer[];
+  averageTrustScore: number;
+  averageCapabilityScore: number;
+  averageRepositoryImpact: number;
+  verificationRate: number;
+  averageCompositeScore: number;
+}
+
 

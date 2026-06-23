@@ -67,8 +67,11 @@ public record WorkspaceDetailsDto(
     string? CoreValues = null,
     string? Founded = null,
     int FollowerCount = 0,
-    bool IsFollowing = false
+    bool IsFollowing = false,
+    bool IsVerified = false,
+    int VerificationLevel = 0
 );
+
 
 public record UpdateWorkspaceDetailsRequestDto(
     string? Description,
@@ -125,32 +128,6 @@ public record CreateWorkspacePostRequestDto(
     List<string>? ImageUrls = null
 );
 
-public record JobVacancyDto(
-    Guid Id,
-    Guid OrganizationId,
-    string Title,
-    string Department,
-    string WorkplaceType,
-    string City,
-    string Type,
-    string Salary,
-    string SalaryMinMax,
-    int Headcount,
-    string Gender,
-    string Experience,
-    string Degree,
-    string Category,
-    List<string> Description,
-    List<string> Requirements,
-    List<string> Benefits,
-    List<string> Tags,
-    List<string> Skills,
-    string CoverUrl,
-    List<string> Images,
-    bool IsActive,
-    DateTimeOffset CreatedAt,
-    DateTimeOffset UpdatedAt
-);
 
 public record CreateJobRequestDto(
     string Title,
@@ -172,5 +149,46 @@ public record CreateJobRequestDto(
     List<string> Skills,
     string CoverUrl,
     List<string>? Images = null,
-    List<string>? ImageUrls = null
+    List<string>? ImageUrls = null,
+    string? Metadata = null
 );
+
+public record OrganizationListDto(
+    Guid OrganizationId,
+    string OrganizationName,
+    string OrganizationSlug,
+    string? LogoUrl,
+    string? BannerUrl,
+    string? Description,
+    string? CompanyType,
+    string? CompanySize,
+    string? City,
+    string? Website,
+    List<string> IndustryTags,
+    bool IsVerified,
+    int VerificationLevel,
+    int MemberCount,
+    int OpenPositionsCount,
+    int RepositoryCount,
+    int VerifiedRepositoryCount,
+    double AverageTrustScore,
+    int FollowerCount,
+    DateTimeOffset CreatedAt,
+    DateTimeOffset UpdatedAt
+);
+
+public record OrganizationStatsDto(
+    int TotalOrganizations,
+    int VerifiedOrganizations,
+    int OpenOpportunities,
+    int VerifiedRepositories,
+    int TotalMembers
+);
+
+public record PaginatedOrganizationsResponseDto(
+    List<OrganizationListDto> Items,
+    int TotalCount,
+    int Page,
+    int PageSize
+);
+

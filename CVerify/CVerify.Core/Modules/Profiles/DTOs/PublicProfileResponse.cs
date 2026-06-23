@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using CVerify.API.Modules.Shared.Domain.Enums;
+using CVerify.API.Modules.Shared.System.DTOs;
 
 namespace CVerify.API.Modules.Profiles.DTOs;
 
@@ -79,5 +80,6 @@ public record PublicProfileResponse(
     List<EducationEntryResponse>? Educations = null,
     List<AcademicAchievementResponse>? Achievements = null,
     bool HasCompletedAssessment = false,
-    DateTimeOffset? LastAssessmentDate = null
+    DateTimeOffset? LastAssessmentDate = null,
+    List<JobVacancyDto>? Vacancies = null
 );

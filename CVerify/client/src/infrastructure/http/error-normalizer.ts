@@ -49,11 +49,10 @@ export function normalizeError(error: unknown): ApiError {
       // The backend-provided localization key, or fallback to system category matching
       const messageKey = (data.messageKey as string) || `system.toast.error.${code.toLowerCase()}`;
       
-      const mainMessage = (data.detail as string) ||
-                          (data.message as string) ||
-                          (data.title as string) ||
-                          (data.error as string) ||
-                          axiosErr.message ||
+      const mainMessage = (data.detail as string) || 
+                          (data.message as string) || 
+                          (data.title as string) || 
+                          axiosErr.message || 
                           'An unexpected error occurred.';
 
       const retryable = typeof data.retryable === 'boolean' 
@@ -85,9 +84,9 @@ export function normalizeError(error: unknown): ApiError {
       const details: Record<string, unknown> = {};
       Object.keys(data).forEach((key) => {
         const skippedKeys = [
-          'contractVersion', 'status', 'code', 'category', 'severity',
-          'messageKey', 'message', 'retryable', 'errors', 'correlationId',
-          'timestamp', 'uxSemantics', 'detail', 'title', 'error'
+          'contractVersion', 'status', 'code', 'category', 'severity', 
+          'messageKey', 'message', 'retryable', 'errors', 'correlationId', 
+          'timestamp', 'uxSemantics', 'detail', 'title'
         ];
         if (!skippedKeys.includes(key)) {
           details[key] = data[key];

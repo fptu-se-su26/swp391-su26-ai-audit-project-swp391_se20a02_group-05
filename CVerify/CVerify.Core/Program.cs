@@ -38,11 +38,12 @@ using CVerify.API.Modules.Shared.Security.Authorization;
 using CVerify.API.Modules.Shared.System.BackgroundWorkers;
 using CVerify.API.Modules.SourceCode.Services;
 using CVerify.API.Modules.SourceCode.BackgroundWorkers;
-using CVerify.API.Modules.Jd.Services;
 using CVerify.API.Modules.Shared.Domain.Services;
 using CVerify.API.Modules.SourceCode.Clients;
 using CVerify.API.Modules.Shared.Domain.Resolvers;
 using CVerify.API.Modules.Shared.Hubs;
+using CVerify.API.Modules.Intelligence.Services;
+using CVerify.API.Modules.Intelligence.BackgroundWorkers;
 
 
 var builder = WebApplication.CreateBuilder(args);
@@ -210,6 +211,7 @@ builder.Services.AddControllers()
     {
         options.JsonSerializerOptions.Converters.Add(
             new System.Text.Json.Serialization.JsonStringEnumConverter());
+        options.JsonSerializerOptions.ReferenceHandler = System.Text.Json.Serialization.ReferenceHandler.IgnoreCycles;
     });
 builder.Services.AddSignalR(options =>
 {
@@ -350,6 +352,25 @@ builder.Services.AddScoped<ITokenService, TokenService>();
 builder.Services.AddScoped<IUsernameService, UsernameService>();
 builder.Services.AddScoped<IEncryptedFileStorageService, EncryptedFileStorageService>();
 builder.Services.AddScoped<IGoogleTokenValidator, GoogleTokenValidator>();
+builder.Services.AddScoped<ICapabilityCatalogService, CapabilityCatalogService>();
+builder.Services.AddScoped<IHiringRequirementService, HiringRequirementService>();
+builder.Services.AddScoped<ICapabilityProjectionBuilder, CapabilityProjectionBuilder>();
+builder.Services.AddScoped<IRequirementGraphBuilder, RequirementGraphBuilder>();
+builder.Services.AddScoped<ITalentGraphBuilder, TalentGraphBuilder>();
+
+// Talent Intelligence Service Registrations
+builder.Services.AddScoped<IOutboxPublisher, OutboxPublisher>();
+builder.Services.AddScoped<ICapabilityGraphService, CapabilityGraphService>();
+builder.Services.AddScoped<ITrustEngineService, TrustEngineService>();
+builder.Services.AddScoped<IExplainableMatchService, ExplainableMatchService>();
+builder.Services.AddScoped<ICandidateEvaluationService, CandidateEvaluationService>();
+builder.Services.AddScoped<IUnifiedMatchingEngine, UnifiedMatchingEngine>();
+builder.Services.AddScoped<IRepositoryIntelligencePipeline, RepositoryIntelligencePipeline>();
+builder.Services.AddScoped<IJobRankingStrategy, WeightedJobRankingStrategy>();
+builder.Services.AddScoped<IRecommendationProvider, DefaultRecommendationProvider>();
+builder.Services.AddScoped<IJobEligibilityService, JobEligibilityService>();
+builder.Services.AddScoped<ICandidateRankingCalculator, CandidateRankingCalculator>();
+builder.Services.AddScoped<ICandidateRankingProjectionService, CandidateRankingProjectionService>();
 
 
 // Register Cloudflare R2 Object Storage Stack (IAmazonS3 + IStorageService)
@@ -407,6 +428,7 @@ builder.Services.AddScoped<IAttachmentService, AttachmentService>();
 builder.Services.AddScoped<IWorkExperienceService, WorkExperienceService>();
 builder.Services.AddScoped<IProjectService, ProjectService>();
 builder.Services.AddScoped<ICvRepositoryIndexer, CvRepositoryIndexer>();
+builder.Services.AddScoped<ICandidateMatchService, CandidateMatchService>();
 builder.Services.AddScoped<ICandidateAssessmentService, CandidateAssessmentService>();
 builder.Services.AddSingleton<ICandidateAssessmentQueue, BackgroundCandidateAssessmentQueue>();
 
@@ -420,8 +442,6 @@ builder.Services.AddScoped<ISourceCodeClient, GitLabSourceCodeClient>();
 builder.Services.AddScoped<ISourceCodeProviderService, SourceCodeProviderService>();
 builder.Services.AddSingleton<IRepositorySyncQueue, BackgroundRepositorySyncQueue>();
 builder.Services.AddScoped<IRepositoryAnalysisService, RepositoryAnalysisService>();
-builder.Services.AddScoped<IJdService, JdService>();
-builder.Services.AddScoped<IJdMatchingService, JdMatchingService>();
 builder.Services.AddSingleton<IRepositoryAnalysisQueue, BackgroundRepositoryAnalysisQueue>();
 builder.Services.AddScoped<ICandidateRepositoryProvider, CandidateRepositoryProvider>();
 builder.Services.AddScoped<CVerify.API.Pipelines.Shared.Storage.IArtifactStorageProvider, CVerify.API.Pipelines.Shared.Storage.ArtifactStorageProvider>();
@@ -459,10 +479,12 @@ builder.Services.AddHostedService<AnalysisQueueRecoverySweeper>();
 builder.Services.AddHostedService<BackgroundRepositoryAnalysisProcessor>();
 builder.Services.AddHostedService<BackgroundCandidateAssessmentProcessor>();
 builder.Services.AddHostedService<BackgroundCandidateAssessmentBackfillProcessor>();
+builder.Services.AddHostedService<TalentOutboxBackgroundProcessor>();
 
 
 builder.Services.AddHostedService<RedisNotificationSubscriberWorker>();
 builder.Services.AddHostedService<ActivityEventProjectionWorker>();
+builder.Services.AddHostedService<CandidateRankingProjectionWorker>();
 
 
 // Configure JWT Authentication

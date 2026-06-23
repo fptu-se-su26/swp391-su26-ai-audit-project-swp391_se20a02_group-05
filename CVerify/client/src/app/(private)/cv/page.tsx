@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useRef } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import {
   Typography,
   Button,
@@ -196,8 +196,6 @@ const INITIAL_DRAFT_STATE: CvDraftState = {
     employmentPreferences: [],
     expectedSalaryMin: null,
     expectedSalaryMax: null,
-    desiredSalary: null,
-    minimumAcceptableSalary: null,
     expectedSalaryCurrency: "USD",
     expectedSalaryType: "Monthly",
     expectedSalaryNegotiable: false,
@@ -215,11 +213,23 @@ const INITIAL_DRAFT_STATE: CvDraftState = {
 
 export default function CvManagementCenter() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { user } = useAuth();
 
   // Page Views State
   const [viewState, setViewState] = useState<ViewState>("overview");
   const [activeTab, setActiveTab] = useState<CvSectionId>("basic-info");
+
+  // Sync tab search param with editor state on mount/update
+  const tabParam = searchParams?.get("tab") as CvSectionId | null;
+  useEffect(() => {
+    if (tabParam && ["basic-info", "skills", "projects", "experience", "education", "achievements", "preferences"].includes(tabParam)) {
+      setActiveTab(tabParam);
+      setViewState("editor");
+    } else {
+      setViewState("overview");
+    }
+  }, [tabParam]);
   const [editorMode, setEditorMode] = useState<"edit" | "preview">("edit");
   const [isSaving, setIsSaving] = useState(false);
   const [mobileShowPreview, setMobileShowPreview] = useState(false);
@@ -426,8 +436,6 @@ export default function CvManagementCenter() {
         employmentPreferences: declared.employmentPreferences || [],
         expectedSalaryMin: declared.expectedSalaryMin ?? null,
         expectedSalaryMax: declared.expectedSalaryMax ?? null,
-        desiredSalary: declared.desiredSalary ?? null,
-        minimumAcceptableSalary: declared.minimumAcceptableSalary ?? null,
         expectedSalaryCurrency: declared.expectedSalaryCurrency || "USD",
         expectedSalaryType: declared.expectedSalaryType || "Monthly",
         expectedSalaryNegotiable: declared.expectedSalaryNegotiable ?? false,
@@ -726,8 +734,6 @@ export default function CvManagementCenter() {
           employmentPreferences: payload.employmentPreferences,
           expectedSalaryMin: payload.expectedSalaryMin,
           expectedSalaryMax: payload.expectedSalaryMax,
-          desiredSalary: payload.desiredSalary,
-          minimumAcceptableSalary: payload.minimumAcceptableSalary,
           expectedSalaryCurrency: payload.expectedSalaryCurrency,
           expectedSalaryType: payload.expectedSalaryType,
           expectedSalaryNegotiable: payload.expectedSalaryNegotiable,
@@ -757,8 +763,6 @@ export default function CvManagementCenter() {
           employmentPreferences: declared.employmentPreferences || [],
           expectedSalaryMin: declared.expectedSalaryMin ?? null,
           expectedSalaryMax: declared.expectedSalaryMax ?? null,
-          desiredSalary: declared.desiredSalary ?? null,
-          minimumAcceptableSalary: declared.minimumAcceptableSalary ?? null,
           expectedSalaryCurrency: declared.expectedSalaryCurrency || "USD",
           expectedSalaryType: declared.expectedSalaryType || "Monthly",
           expectedSalaryNegotiable: declared.expectedSalaryNegotiable ?? false,
@@ -2110,6 +2114,7 @@ export default function CvManagementCenter() {
                       onClick={() => {
                         setActiveTab(section.id);
                         setViewState("editor");
+                        router.push(`/cv?tab=${section.id}`);
                       }}
                     >
                       <div className="p-2.5 rounded-xl bg-surface-secondary text-accent group-hover:bg-accent group-hover:text-accent-foreground shrink-0 flex items-center justify-center size-10 mt-0.5 transition-colors">
@@ -2163,6 +2168,7 @@ export default function CvManagementCenter() {
                       onClick={() => {
                         setActiveTab(section.id);
                         setViewState("editor");
+                        router.push(`/cv?tab=${section.id}`);
                       }}
                     >
                       <div className="p-2.5 rounded-xl bg-surface-secondary text-accent group-hover:bg-accent group-hover:text-accent-foreground shrink-0 flex items-center justify-center size-10 mt-0.5 transition-colors">
@@ -2215,6 +2221,7 @@ export default function CvManagementCenter() {
                       onClick={() => {
                         setActiveTab(section.id);
                         setViewState("editor");
+                        router.push(`/cv?tab=${section.id}`);
                       }}
                     >
                       <div className="p-2.5 rounded-xl bg-surface-secondary text-accent group-hover:bg-accent group-hover:text-accent-foreground shrink-0 flex items-center justify-center size-10 mt-0.5 transition-colors">
@@ -2443,7 +2450,10 @@ export default function CvManagementCenter() {
         <div className="flex items-center justify-between pb-3 border-b border-border/40 select-none">
           <div className="flex items-center gap-3">
             <button
-              onClick={() => setViewState("overview")}
+              onClick={() => {
+                setViewState("overview");
+                router.push("/cv");
+              }}
               className="text-muted hover:text-foreground border-none bg-transparent cursor-pointer p-1.5 rounded-xl hover:bg-surface-secondary flex items-center justify-center transition-colors"
               title="Back to Overview"
             >
@@ -2479,6 +2489,7 @@ export default function CvManagementCenter() {
                     key={tab.id}
                     onClick={() => {
                       setActiveTab(tab.id);
+                      router.push(`/cv?tab=${tab.id}`);
                     }}
                     className={[
                       "flex items-center justify-between px-3.5 py-3 rounded-xl text-left border-none text-xs font-bold transition-all w-full cursor-pointer group relative",

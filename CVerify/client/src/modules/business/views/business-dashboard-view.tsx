@@ -1,19 +1,16 @@
 "use client";
 
 import React from 'react';
-import { useRouter } from 'next/navigation';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Building2, TrendingUp, HandCoins, Globe, Plus, Settings, FileText } from 'lucide-react';
+import { Building2, TrendingUp, HandCoins, Globe, Plus, Settings } from 'lucide-react';
 import { Typography } from '@heroui/react';
 import { TableActionDropdown } from '@/components/ui/table-action-dropdown';
 
 export function BusinessDashboardView() {
-  const router = useRouter();
-
   return (
     <div className="space-y-6 font-outfit">
-
+      
       {/* Header Banner */}
       <div className="dark flex flex-col md:flex-row md:items-center justify-between gap-4 p-6 rounded-2xl bg-background border border-border text-foreground select-none">
         <div className="space-y-1">
@@ -26,15 +23,6 @@ export function BusinessDashboardView() {
           </Typography>
         </div>
         <div className="flex gap-2.5">
-          <Button
-            variant="bordered"
-            size="sm"
-            className="cursor-pointer"
-            onClick={() => router.push('/business/jd/create')}
-          >
-            <FileText size={14} />
-            Create JD
-          </Button>
           <Button variant="solid" className="w-fit self-start bg-accent hover:bg-accent/90 border-none shrink-0 cursor-pointer" size="sm">
             <Plus size={14} />
             Add Listing
