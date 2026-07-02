@@ -23,6 +23,12 @@ class PipelineContext(BaseModel):
     problemSolvingScore: Optional[float] = None
     impactScore: Optional[float] = None
 
+    rawSkillDepth: Optional[float] = None
+    rawOwnership: Optional[float] = None
+    rawArchitecture: Optional[float] = None
+    rawProblemSolving: Optional[float] = None
+    rawImpact: Optional[float] = None
+
     # Step Outputs (CamelCase to match prompt requirements & payload JSON)
     mappedSkills: Optional[List[Dict[str, Any]]] = None
     unmatchedCvSkills: Optional[List[str]] = None
@@ -94,12 +100,14 @@ class PipelineContext(BaseModel):
     cvImprovementSuggestions: Optional[List[Dict[str, Any]]] = None
     recruiterHeadline: Optional[str] = None
     fullSummary: Optional[str] = None
+    professionalBio: Optional[str] = None
     keyStrengths: Optional[List[str]] = None
     watchPoints: Optional[List[str]] = None
     
     # Composites
     candidateProfile: Optional[Dict[str, Any]] = None
     improvementPlan: Optional[Dict[str, Any]] = None
+    skillTree: Optional[Dict[str, Any]] = None
 
     def update(self, **kwargs) -> "PipelineContext":
         """Creates a new instance of PipelineContext with updated attributes, enforcing immutability."""
@@ -112,7 +120,7 @@ class PipelineContext(BaseModel):
             
             # Check immutability for normal fields
             if key in current_data:
-                if current_data[key] is not None and key not in ["candidateProfile", "cvImprovementSuggestions", "keyStrengths", "watchPoints", "watchpoints", "problemSolvingScore"]:
+                if current_data[key] is not None and key not in ["candidateProfile", "cvImprovementSuggestions", "keyStrengths", "watchPoints", "watchpoints", "problemSolvingScore", "skillTree"]:
                     raise ValueError(f"State key '{key}' has already been written and is immutable.")
         
         # Merge values for normal fields

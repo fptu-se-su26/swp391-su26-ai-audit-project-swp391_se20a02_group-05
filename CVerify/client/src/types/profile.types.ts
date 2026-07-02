@@ -17,6 +17,7 @@ export interface ProfileResponse {
   createdAt: string;
   updatedAt: string;
   version: number;
+  aiSuggestionsJson?: string | null;
   socialLinks: string[];
 }
 
@@ -34,6 +35,7 @@ export interface UpdateProfileRequest {
   profileVisibility: string;
   recruiterVisibility: boolean;
   aiTalentDiscovery: string;
+  aiSuggestionsJson?: string | null;
   socialLinks: string[];
   version: number;
 }
@@ -304,9 +306,16 @@ export interface WorkExperienceResponse {
 }
 
 
+export interface MissingFieldDto {
+  fieldKey: string;
+  displayLabel: string;
+  recommendationMessage: string;
+  isRequired: boolean;
+}
+
 export interface CandidateReadinessDto {
   isReady: boolean;
-  missingFields: string[];
+  missingFields: MissingFieldDto[];
   completenessScore: number;
   requiresReassessment: boolean;
   lastAssessmentAt: string | null;
@@ -319,12 +328,14 @@ export interface CandidateAssessmentResponse {
   userId: string;
   status: string;
   overallScore: number;
+  trustLevel: number;
   careerLevel: string | null;
   careerLevelLabel: string | null;
   primaryTendency: string | null;
   primaryWorkingStyle: string | null;
   summaryHeadline: string | null;
   summaryParagraph: string | null;
+  professionalBio: string | null;
   pipelineVersion: string;
   assessmentSchemaVersion: string;
   cvId: string | null;
@@ -337,6 +348,10 @@ export interface CandidateAssessmentResponse {
   failureReason: string | null;
   createdAtUtc: string;
   completedAtUtc: string | null;
+  calculationMode: string | null;
+  inputFeatureSetHash: string | null;
+  evidenceCompleteness: string | null;
+  cloneRiskClassification: string | null;
 }
 
 export interface CandidateAssessmentArtifactDto {
@@ -513,6 +528,18 @@ export interface RankingStats {
   averageRepositoryImpact: number;
   verificationRate: number;
   averageCompositeScore: number;
+}
+
+export interface CandidateSkillTreeNodeResponse {
+  id: string;
+  parentId: string | null;
+  displayName: string;
+  category: 'Domain' | 'Subdomain' | 'Technology' | 'Framework' | 'Library' | 'Tool' | 'Methodology';
+  proficiencyLevel: string;
+  confidenceScore: number;
+  estimatedExperienceMonths: number;
+  supportingEvidence?: string; // Serialized JSON string
+  children: CandidateSkillTreeNodeResponse[];
 }
 
 

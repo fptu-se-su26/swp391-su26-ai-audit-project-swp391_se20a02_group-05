@@ -6,9 +6,10 @@ using Microsoft.EntityFrameworkCore.Storage;
 using CVerify.API.Modules.AiChat.Entities;
 using CVerify.API.Modules.Shared.Domain.Entities;
 using CVerify.API.Modules.Shared.Exceptions.Catalogs;
+using CVerify.API.Modules.Shared.Configuration;
+using CVerify.API.Modules.Forum.Entities;
 using CVerify.API.Modules.Shared.Security;
 using CVerify.API.Modules.Profiles.Entities;
-using CVerify.API.Modules.Shared.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Npgsql;
 
@@ -66,7 +67,8 @@ public static class DbInitializer
                 ('20260615152001_AddProjectEntriesAndLinks', '10.0.0'),
                 ('20260615171115_AddRepositoryAssessments', '10.0.0'),
                 ('20260616080806_AddRepositoryIntelligenceTables', '10.0.0'),
-                ('20260616082519_AddCandidateIntelligenceTablesPhase2', '10.0.0')
+                ('20260616082519_AddCandidateIntelligenceTablesPhase2', '10.0.0'),
+                ('20260623181310_AddWorkspaceDescriptionAndOwner', '10.0.0')
                 ON CONFLICT (migration_id) DO NOTHING;
             ");
         }
@@ -82,6 +84,24 @@ public static class DbInitializer
         if (shouldReset)
         {
             const string dropSql = @"
+                DROP TABLE IF EXISTS forum_reply_histories CASCADE;
+                DROP TABLE IF EXISTS forum_topic_histories CASCADE;
+                DROP TABLE IF EXISTS forum_moderation_logs CASCADE;
+                DROP TABLE IF EXISTS forum_user_badges CASCADE;
+                DROP TABLE IF EXISTS forum_badges CASCADE;
+                DROP TABLE IF EXISTS forum_reputations CASCADE;
+                DROP TABLE IF EXISTS forum_reports CASCADE;
+                DROP TABLE IF EXISTS forum_follows CASCADE;
+                DROP TABLE IF EXISTS forum_bookmarks CASCADE;
+                DROP TABLE IF EXISTS forum_reactions CASCADE;
+                DROP TABLE IF EXISTS forum_votes CASCADE;
+                DROP TABLE IF EXISTS forum_topic_tags CASCADE;
+                DROP TABLE IF EXISTS forum_tags CASCADE;
+                DROP TABLE IF EXISTS forum_replies CASCADE;
+                DROP TABLE IF EXISTS forum_topics CASCADE;
+                DROP TABLE IF EXISTS forum_category_moderators CASCADE;
+                DROP TABLE IF EXISTS forum_categories CASCADE;
+
                 DROP TABLE IF EXISTS candidate_strengths_weaknesses CASCADE;
                 DROP TABLE IF EXISTS candidate_best_fit_roles CASCADE;
                 DROP TABLE IF EXISTS candidate_intelligence_signals CASCADE;
@@ -335,6 +355,28 @@ public static class DbInitializer
                     END IF;
                     IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'organizations' AND column_name = 'follower_count') THEN
                         ALTER TABLE organizations ADD COLUMN follower_count INTEGER NOT NULL DEFAULT 0;
+                    END IF;
+                END IF;
+
+                -- If workspaces exists but lacks owner_id or description, add them
+                IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'workspaces') THEN
+                    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'workspaces' AND column_name = 'owner_id') THEN
+                        ALTER TABLE workspaces ADD COLUMN owner_id UUID;
+                        UPDATE workspaces w 
+                        SET owner_id = COALESCE(
+                            (SELECT user_id FROM organization_memberships om WHERE om.organization_id = w.organization_id AND om.role = 'OWNER' AND om.status = 'active' LIMIT 1),
+                            (SELECT user_id FROM organization_memberships om WHERE om.organization_id = w.organization_id AND om.status = 'active' LIMIT 1),
+                            (SELECT id FROM users LIMIT 1)
+                        );
+                        ALTER TABLE workspaces ALTER COLUMN owner_id SET NOT NULL;
+                        
+                        -- Add foreign key constraint to workspaces(owner_id)
+                        IF NOT EXISTS (SELECT 1 FROM information_schema.table_constraints WHERE constraint_name = 'fk_workspaces_users_owner_id') THEN
+                            ALTER TABLE workspaces ADD CONSTRAINT fk_workspaces_users_owner_id FOREIGN KEY (owner_id) REFERENCES users(id) ON DELETE CASCADE;
+                        END IF;
+                    END IF;
+                    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'workspaces' AND column_name = 'description') THEN
+                        ALTER TABLE workspaces ADD COLUMN description VARCHAR(1000);
                     END IF;
                 END IF;
 
@@ -962,14 +1004,18 @@ public static class DbInitializer
                 organization_id UUID NOT NULL,
                 display_name VARCHAR(255) NOT NULL,
                 slug VARCHAR(100) NOT NULL,
+                description VARCHAR(1000),
                 branding TEXT,
                 status VARCHAR(50) NOT NULL DEFAULT 'active',
+                owner_id UUID NOT NULL,
                 created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
                 updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
                 deleted_at TIMESTAMP WITH TIME ZONE,
-                CONSTRAINT fk_workspaces_organization FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE
+                CONSTRAINT fk_workspaces_organization FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE,
+                CONSTRAINT fk_workspaces_users_owner_id FOREIGN KEY (owner_id) REFERENCES users(id) ON DELETE CASCADE
             );
             CREATE UNIQUE INDEX IF NOT EXISTS idx_workspaces_slug_active ON workspaces(slug) WHERE deleted_at IS NULL;
+            CREATE INDEX IF NOT EXISTS ix_workspaces_owner_id ON workspaces(owner_id);
 
             -- Stores workspace memberships (Workspace Membership Layer)
             CREATE TABLE IF NOT EXISTS workspace_members (
@@ -2719,6 +2765,10 @@ public static class DbInitializer
                 technical_breadth DOUBLE PRECISION NOT NULL DEFAULT 0.0,
                 technical_depth DOUBLE PRECISION NOT NULL DEFAULT 0.0,
                 trust_level DOUBLE PRECISION NOT NULL DEFAULT 0.0,
+                calculation_mode VARCHAR(50),
+                input_feature_set_hash VARCHAR(100),
+                evidence_completeness VARCHAR(50),
+                clone_risk_classification VARCHAR(50),
                 CONSTRAINT fk_candidate_assessments_users_user_id FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
             );
             CREATE INDEX IF NOT EXISTS idx_candidate_assessments_user_id ON candidate_assessments(user_id);
@@ -2741,6 +2791,18 @@ public static class DbInitializer
                 END IF;
                 IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'candidate_assessments' AND column_name = 'trust_level') THEN
                     ALTER TABLE candidate_assessments ADD COLUMN trust_level DOUBLE PRECISION NOT NULL DEFAULT 0.0;
+                END IF;
+                IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'candidate_assessments' AND column_name = 'calculation_mode') THEN
+                    ALTER TABLE candidate_assessments ADD COLUMN calculation_mode VARCHAR(50);
+                END IF;
+                IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'candidate_assessments' AND column_name = 'input_feature_set_hash') THEN
+                    ALTER TABLE candidate_assessments ADD COLUMN input_feature_set_hash VARCHAR(100);
+                END IF;
+                IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'candidate_assessments' AND column_name = 'evidence_completeness') THEN
+                    ALTER TABLE candidate_assessments ADD COLUMN evidence_completeness VARCHAR(50);
+                END IF;
+                IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'candidate_assessments' AND column_name = 'clone_risk_classification') THEN
+                    ALTER TABLE candidate_assessments ADD COLUMN clone_risk_classification VARCHAR(50);
                 END IF;
             END $$;
 
@@ -2986,7 +3048,7 @@ public static class DbInitializer
                 SELECT COUNT(*)::int AS ""Value""
                 FROM pg_type 
                 WHERE typname = 'user_status'
-            ").FirstOrDefaultAsync();
+            ").SingleOrDefaultAsync();
 
             if (typeExists > 0)
             {
@@ -3082,7 +3144,7 @@ public static class DbInitializer
         {
             var storedEnv = await context.Database.SqlQueryRaw<string>(@"
                 SELECT value AS ""Value"" FROM system_metadata WHERE key = 'database_environment'
-            ").FirstOrDefaultAsync();
+            ").SingleOrDefaultAsync();
 
             var currentEnv = resolvedEnv?.EnvironmentName ?? Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT");
 
@@ -3111,10 +3173,11 @@ public static class DbInitializer
         // Invoke modular seeders
         await SuperAdminSeeder.SeedAsync(context, config.SuperAdmin, seedingPolicy);
         await PermissionSeeder.SeedAsync(context, seedingPolicy);
+        await BusinessAccountSeeder.SeedAsync(context, config.Seeding, seedingPolicy);
         await RoleSeeder.SeedAsync(context, seedingPolicy);
         await MembershipMigrationSeeder.SeedAsync(context, seedingPolicy);
-        await BusinessAccountSeeder.SeedAsync(context, config.Seeding, seedingPolicy);
         await CapabilityCatalogSeeder.SeedAsync(context, seedingPolicy);
+        await SeedForumDataAsync(context, seedingPolicy);
 
         global::System.Collections.Generic.IEnumerable<IPublicWorkspaceModuleSeeder> moduleSeeders;
         Microsoft.Extensions.Logging.ILoggerFactory loggerFactory;
@@ -3146,6 +3209,79 @@ public static class DbInitializer
 
         // One-time compatibility migration to backfill repository classification & authenticity columns
         await MigrateLegacyRepositoryMetadataAsync(context);
+    }
+
+    private static async Task SeedForumDataAsync(ApplicationDbContext context, SeedingPolicy policy)
+    {
+        if (context == null) throw new ArgumentNullException(nameof(context));
+        if (policy == null) throw new ArgumentNullException(nameof(policy));
+
+        // Seed Forum Categories
+        var defaultCategories = new List<(string Name, string Slug, string Description, string IconName, int DisplayOrder, string? RequiredRole)>
+        {
+            ("General Discussion", "general-discussion", "Discuss anything tech, life, or CVerify related.", "MessageSquare", 1, null),
+            ("Programming", "programming", "Share code snippets, software design patterns, and programming advice.", "Code", 2, null),
+            ("Frontend Development", "frontend", "Discuss HTML, CSS, React, Next.js, Tailwind and UI/UX.", "Layout", 3, null),
+            ("Backend Development", "backend", "Discuss C#, .NET, Go, Python, databases, API design, and system architecture.", "Server", 4, null),
+            ("DevOps & Cloud", "devops-cloud", "Discuss CI/CD, Docker, Kubernetes, AWS, Cloudflare, and automation.", "Cloud", 5, null),
+            ("Security", "security", "Discuss penetration testing, cryptography, auth safety, and cybersecurity guidelines.", "Shield", 6, null),
+            ("Career Discussion", "career", "Career development advice, resume reviews, salary negotiations, and advice.", "TrendingUp", 7, null),
+            ("Hiring & Open Positions", "hiring", "Official hiring posts, job openings, and employer branding updates.", "Briefcase", 8, "BUSINESS"),
+            ("Projects & Showcase", "projects-showcase", "Showcase your side projects, open source contributions, and web products.", "Folder", 9, null),
+            ("Announcements", "announcements", "Platform news, official updates, and maintenance announcements from CVerify.", "Megaphone", 10, "ADMIN")
+        };
+
+        foreach (var dc in defaultCategories)
+        {
+            var exists = await context.ForumCategories.AnyAsync(c => c.Slug == dc.Slug && c.OrganizationId == null);
+            if (!exists)
+            {
+                context.ForumCategories.Add(new ForumCategory
+                {
+                    Id = Guid.CreateVersion7(),
+                    Name = dc.Name,
+                    Slug = dc.Slug,
+                    Description = dc.Description,
+                    IconName = dc.IconName,
+                    DisplayOrder = dc.DisplayOrder,
+                    RequiredRole = dc.RequiredRole,
+                    IsPrivate = false,
+                    IsArchived = false,
+                    CreatedAt = DateTimeOffset.UtcNow,
+                    UpdatedAt = DateTimeOffset.UtcNow
+                });
+            }
+        }
+
+        // Seed Forum Badges
+        var defaultBadges = new List<(string Name, string Description, string IconName, string CriteriaCode)>
+        {
+            ("First Post", "Awarded for posting your first discussion topic or reply.", "Award", "first_post"),
+            ("Top Contributor", "Awarded for reaching 1000 reputation points.", "Trophy", "top_contributor"),
+            ("AI Expert", "Awarded for contributions to AI discussions and insights.", "Sparkles", "ai_expert"),
+            ("Open Source Contributor", "Awarded for sharing open source projects in showcase.", "GitFork", "open_source_contributor"),
+            ("Hiring Expert", "Awarded to verified businesses with helpful hiring discussions.", "Briefcase", "hiring_expert"),
+            ("Community Helper", "Awarded for having 5 accepted solutions.", "Heart", "community_helper")
+        };
+
+        foreach (var db in defaultBadges)
+        {
+            var exists = await context.ForumBadges.AnyAsync(b => b.CriteriaCode == db.CriteriaCode);
+            if (!exists)
+            {
+                context.ForumBadges.Add(new ForumBadge
+                {
+                    Id = Guid.CreateVersion7(),
+                    Name = db.Name,
+                    Description = db.Description,
+                    IconName = db.IconName,
+                    CriteriaCode = db.CriteriaCode,
+                    CreatedAt = DateTimeOffset.UtcNow
+                });
+            }
+        }
+
+        await context.SaveChangesAsync();
     }
 
     private static async Task MigrateLegacyGoogleEmailsAsync(ApplicationDbContext context)

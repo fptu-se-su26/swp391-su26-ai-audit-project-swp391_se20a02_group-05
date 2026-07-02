@@ -18,7 +18,7 @@ public class UserProfile
     [MaxLength(32)]
     public string? Username { get; set; }
 
-    [MaxLength(160)]
+    [MaxLength(1000)]
     public string? Bio { get; set; }
 
     [MaxLength(50)]
@@ -64,6 +64,8 @@ public class UserProfile
 
     [ConcurrencyCheck]
     public uint Version { get; set; } // Map PostgreSQL xmin system column
+
+    public string? AiSuggestionsJson { get; set; }
 
     public List<string> SocialLinks { get; set; } = new();
 }
