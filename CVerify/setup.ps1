@@ -107,4 +107,4 @@ if ($null -ne $composeCmd) {
 
 Write-Success "CVerify Platform launched successfully!"
 Write-Info "Frontend dashboard is accessible at: http://localhost:3000"
-Write-Info "Backend gateway healthcheck: http://localhost:5000/health"
+Write-Info "Backend gateway healthcheck: http://localhost:5020/health"

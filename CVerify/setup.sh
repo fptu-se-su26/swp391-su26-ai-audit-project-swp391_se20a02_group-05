@@ -118,4 +118,4 @@ fi
 
 write_success "CVerify Platform launched successfully!"
 write_info "Frontend dashboard is accessible at: http://localhost:3000"
-write_info "Backend gateway healthcheck: http://localhost:5000/health"
+write_info "Backend gateway healthcheck: http://localhost:5020/health"
