@@ -7,6 +7,7 @@ import { Card } from "@/components/ui/card";
 import { Typography, Chip, Input, TextArea, toast } from "@heroui/react";
 import { Button } from "@/components/ui/button";
 import { getTagLabel } from "../types/workspace.types";
+import { BusinessVerificationBadge } from "@/components/ui/cverify/verification-badges";
 import {
   Building2,
   Globe,
@@ -239,7 +240,7 @@ export const WorkspaceInformationView: React.FC<WorkspaceInformationViewProps> =
                 {myOrganizations.map((org) => (
                   <button
                     key={org.slug}
-                    onClick={() => router.push(`/workspace/${org.slug}/information`)}
+                    onClick={() => router.push(`/business/${org.slug}/information`)}
                     className="flex items-center gap-3 w-full p-3.5 rounded-xl border border-border bg-surface-secondary/40 hover:bg-surface-secondary hover:border-accent/30 text-left transition-colors duration-200 group cursor-pointer"
                   >
                     <div className="w-8 h-8 rounded-lg bg-accent/10 text-accent flex items-center justify-center group-hover:bg-accent group-hover:text-background transition-colors duration-200">
@@ -412,10 +413,7 @@ export const WorkspaceInformationView: React.FC<WorkspaceInformationViewProps> =
               </Button>
             )
           )}
-          <Chip color="success" variant="soft" size="sm" className="font-semibold text-xs py-1">
-            <ShieldCheck size={12} className="inline mr-1" />
-            Verified Enterprise
-          </Chip>
+          <BusinessVerificationBadge level={workspaceDetails.verificationLevel} />
         </div>
       </div>
 

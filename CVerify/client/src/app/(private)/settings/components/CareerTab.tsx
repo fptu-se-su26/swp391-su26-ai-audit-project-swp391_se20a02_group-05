@@ -176,8 +176,6 @@ const careerSchema = z
     employmentPreferences: z.array(z.string()),
     expectedSalaryMin: salarySchema,
     expectedSalaryMax: salarySchema,
-    desiredSalary: salarySchema,
-    minimumAcceptableSalary: salarySchema,
     expectedSalaryCurrency: z.enum(["VND", "USD"]),
     expectedSalaryType: z.enum(["Monthly", "Hourly", "Project-based"]),
     expectedSalaryNegotiable: z.boolean(),
@@ -213,23 +211,6 @@ const careerSchema = z
     {
       message: "Max salary must be greater than or equal to min salary.",
       path: ["expectedSalaryMax"],
-    }
-  )
-  .refine(
-    (data) => {
-      if (
-        data.minimumAcceptableSalary !== null &&
-        data.minimumAcceptableSalary !== undefined &&
-        data.desiredSalary !== null &&
-        data.desiredSalary !== undefined
-      ) {
-        return data.minimumAcceptableSalary <= data.desiredSalary;
-      }
-      return true;
-    },
-    {
-      message: "Minimum acceptable salary must be less than or equal to desired salary.",
-      path: ["minimumAcceptableSalary"],
     }
   )
   .refine(
@@ -286,8 +267,6 @@ export const CareerTab: React.FC<CareerTabProps> = ({
       employmentPreferences: ["full_time"],
       expectedSalaryMin: null,
       expectedSalaryMax: null,
-      desiredSalary: null,
-      minimumAcceptableSalary: null,
       expectedSalaryCurrency: "USD",
       expectedSalaryType: "Monthly",
       expectedSalaryNegotiable: false,
@@ -340,8 +319,6 @@ export const CareerTab: React.FC<CareerTabProps> = ({
         employmentPreferences: declared.employmentPreferences || [],
         expectedSalaryMin: declared.expectedSalaryMin ?? null,
         expectedSalaryMax: declared.expectedSalaryMax ?? null,
-        desiredSalary: declared.desiredSalary ?? null,
-        minimumAcceptableSalary: declared.minimumAcceptableSalary ?? null,
         expectedSalaryCurrency: (declared.expectedSalaryCurrency as any) || "USD",
         expectedSalaryType: (declared.expectedSalaryType as any) || "Monthly",
         expectedSalaryNegotiable: declared.expectedSalaryNegotiable ?? false,
@@ -378,8 +355,6 @@ export const CareerTab: React.FC<CareerTabProps> = ({
         employmentPreferences: declared.employmentPreferences || [],
         expectedSalaryMin: declared.expectedSalaryMin ?? null,
         expectedSalaryMax: declared.expectedSalaryMax ?? null,
-        desiredSalary: declared.desiredSalary ?? null,
-        minimumAcceptableSalary: declared.minimumAcceptableSalary ?? null,
         expectedSalaryCurrency: (declared.expectedSalaryCurrency as any) || "USD",
         expectedSalaryType: (declared.expectedSalaryType as any) || "Monthly",
         expectedSalaryNegotiable: declared.expectedSalaryNegotiable ?? false,
@@ -1107,62 +1082,6 @@ export const CareerTab: React.FC<CareerTabProps> = ({
                       />
                     )}
                   />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 items-end text-left">
-                <div className="flex flex-col gap-2">
-                  <Label htmlFor="desiredSalary">Desired Salary ({currencyCode})</Label>
-                  <Controller
-                    control={control}
-                    name="desiredSalary"
-                    render={({ field: { value, onChange } }) => (
-                      <InputGroup>
-                        <InputGroup.Prefix>{currencySymbol}</InputGroup.Prefix>
-                        <InputGroup.Input
-                          id="desiredSalary"
-                          aria-label="Desired Salary"
-                          type="number"
-                          placeholder={currencyCode === "VND" ? "30000000" : "3000"}
-                          value={value === null || value === undefined ? "" : value.toString()}
-                          onChange={onChange}
-                        />
-                        <InputGroup.Suffix>{currencyCode}</InputGroup.Suffix>
-                      </InputGroup>
-                    )}
-                  />
-                  {errors.desiredSalary && (
-                    <FieldError className="text-danger text-xs mt-1 block">
-                      {errors.desiredSalary.message}
-                    </FieldError>
-                  )}
-                </div>
-
-                <div className="flex flex-col gap-2">
-                  <Label htmlFor="minimumAcceptableSalary">Minimum Acceptable Salary ({currencyCode})</Label>
-                  <Controller
-                    control={control}
-                    name="minimumAcceptableSalary"
-                    render={({ field: { value, onChange } }) => (
-                      <InputGroup>
-                        <InputGroup.Prefix>{currencySymbol}</InputGroup.Prefix>
-                        <InputGroup.Input
-                          id="minimumAcceptableSalary"
-                          aria-label="Minimum Acceptable Salary"
-                          type="number"
-                          placeholder={salaryPlaceholderMin}
-                          value={value === null || value === undefined ? "" : value.toString()}
-                          onChange={onChange}
-                        />
-                        <InputGroup.Suffix>{currencyCode}</InputGroup.Suffix>
-                      </InputGroup>
-                    )}
-                  />
-                  {errors.minimumAcceptableSalary && (
-                    <FieldError className="text-danger text-xs mt-1 block">
-                      {errors.minimumAcceptableSalary.message}
-                    </FieldError>
-                  )}
                 </div>
               </div>
 

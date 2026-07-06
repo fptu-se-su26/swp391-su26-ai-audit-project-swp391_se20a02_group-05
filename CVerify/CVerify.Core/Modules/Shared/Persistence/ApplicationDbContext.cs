@@ -2,7 +2,6 @@ using Microsoft.EntityFrameworkCore;
 using Npgsql;
 using CVerify.API.Modules.AiChat.Entities;
 using CVerify.API.Modules.Auth.Entities;
-using CVerify.API.Modules.Jd.Entities;
 using CVerify.API.Modules.Profiles.Entities;
 using CVerify.API.Modules.Recovery.Entities;
 using CVerify.API.Modules.Shared.Domain.Entities;
@@ -10,6 +9,7 @@ using CVerify.API.Modules.Shared.Domain.Enums;
 using CVerify.API.Modules.Shared.Email.Entities;
 using CVerify.API.Modules.Shared.Exceptions;
 using CVerify.API.Modules.SourceCode.Entities;
+using CVerify.API.Modules.Forum.Entities;
 
 namespace CVerify.API.Modules.Shared.Persistence;
 
@@ -128,7 +128,52 @@ public class ApplicationDbContext : DbContext
     public DbSet<RoleAssignment> RoleAssignments => Set<RoleAssignment>();
     public DbSet<WorkspacePost> WorkspacePosts => Set<WorkspacePost>();
     public DbSet<JobVacancy> JobVacancies => Set<JobVacancy>();
-    public DbSet<StandardizedJd> StandardizedJds => Set<StandardizedJd>();
+    public DbSet<HiringRequirement> HiringRequirements => Set<HiringRequirement>();
+    public DbSet<BusinessOutcome> BusinessOutcomes => Set<BusinessOutcome>();
+    public DbSet<Responsibility> Responsibilities => Set<Responsibility>();
+    public DbSet<RequirementCapability> RequirementCapabilities => Set<RequirementCapability>();
+    public DbSet<CapabilityCatalogItem> CapabilityCatalogItems => Set<CapabilityCatalogItem>();
+    public DbSet<TechnologyRequirement> TechnologyRequirements => Set<TechnologyRequirement>();
+    public DbSet<EvidenceSignal> EvidenceSignals => Set<EvidenceSignal>();
+    public DbSet<EvaluationRubric> EvaluationRubrics => Set<EvaluationRubric>();
+    public DbSet<InterviewBlueprint> InterviewBlueprints => Set<InterviewBlueprint>();
+    public DbSet<RequirementArtifact> RequirementArtifacts => Set<RequirementArtifact>();
+    public DbSet<RequirementSnapshot> RequirementSnapshots => Set<RequirementSnapshot>();
+    public DbSet<EvaluationRubricSnapshot> EvaluationRubricSnapshots => Set<EvaluationRubricSnapshot>();
+    public DbSet<InterviewBlueprintSnapshot> InterviewBlueprintSnapshots => Set<InterviewBlueprintSnapshot>();
+    public DbSet<RequirementArtifactSnapshot> RequirementArtifactSnapshots => Set<RequirementArtifactSnapshot>();
+    public DbSet<RequirementVectorSnapshot> RequirementVectorSnapshots => Set<RequirementVectorSnapshot>();
+    public DbSet<CandidateDiscoveryRun> CandidateDiscoveryRuns => Set<CandidateDiscoveryRun>();
+    public DbSet<CapabilityRegistry> CapabilityRegistries => Set<CapabilityRegistry>();
+    public DbSet<CapabilityHierarchy> CapabilityHierarchies => Set<CapabilityHierarchy>();
+    public DbSet<CapabilityAlias> CapabilityAliases => Set<CapabilityAlias>();
+
+    // CVerify Talent Intelligence Graph & Search Projection DbSets
+    public DbSet<CapabilityNode> CapabilityNodes => Set<CapabilityNode>();
+    public DbSet<CapabilityEdge> CapabilityEdges => Set<CapabilityEdge>();
+    public DbSet<CandidateCapability> CandidateCapabilities => Set<CandidateCapability>();
+    public DbSet<CandidateCapabilityEvidence> CandidateCapabilityEvidences => Set<CandidateCapabilityEvidence>();
+    public DbSet<CandidateCapabilityScore> CandidateCapabilityScores => Set<CandidateCapabilityScore>();
+    public DbSet<CandidateCapabilityHistory> CandidateCapabilityHistories => Set<CandidateCapabilityHistory>();
+    public DbSet<EvidenceSource> EvidenceSources => Set<EvidenceSource>();
+    public DbSet<EvidenceArtifact> EvidenceArtifacts => Set<EvidenceArtifact>();
+    public DbSet<EvidenceClaim> EvidenceClaims => Set<EvidenceClaim>();
+    public DbSet<EvidenceVerification> EvidenceVerifications => Set<EvidenceVerification>();
+    public DbSet<TrustProfile> TrustProfiles => Set<TrustProfile>();
+    public DbSet<TrustComponent> TrustComponents => Set<TrustComponent>();
+    public DbSet<TrustCalculation> TrustCalculations => Set<TrustCalculation>();
+    public DbSet<CandidateTrustProjection> CandidateTrustProjections => Set<CandidateTrustProjection>();
+    public DbSet<CandidateSearchProfile> CandidateSearchProfiles => Set<CandidateSearchProfile>();
+    public DbSet<UserFollower> UserFollowers => Set<UserFollower>();
+    public DbSet<CandidateRankingProjection> CandidateRankingProjections => Set<CandidateRankingProjection>();
+    public DbSet<CandidateMatchProjection> CandidateMatchProjections => Set<CandidateMatchProjection>();
+    public DbSet<CandidateEvaluationSnapshot> CandidateEvaluationSnapshots => Set<CandidateEvaluationSnapshot>();
+    public DbSet<CandidateCapabilityProjection> CandidateCapabilityProjections => Set<CandidateCapabilityProjection>();
+    public DbSet<MatchingEvaluation> MatchingEvaluations => Set<MatchingEvaluation>();
+    public DbSet<MatchingFactor> MatchingFactors => Set<MatchingFactor>();
+    public DbSet<MatchingExplanation> MatchingExplanations => Set<MatchingExplanation>();
+    public DbSet<JobApplication> JobApplications => Set<JobApplication>();
+    public DbSet<JobInteraction> JobInteractions => Set<JobInteraction>();
 
     public DbSet<ActivityEvent> ActivityEvents => Set<ActivityEvent>();
     public DbSet<InAppNotification> InAppNotifications => Set<InAppNotification>();
@@ -175,6 +220,12 @@ public class ApplicationDbContext : DbContext
     public DbSet<CandidateIntelligenceSignal> CandidateIntelligenceSignals => Set<CandidateIntelligenceSignal>();
     public DbSet<CandidateBestFitRole> CandidateBestFitRoles => Set<CandidateBestFitRole>();
     public DbSet<CandidateStrengthWeakness> CandidateStrengthsWeaknesses => Set<CandidateStrengthWeakness>();
+    public DbSet<CandidateSkillTreeNode> CandidateSkillTreeNodes => Set<CandidateSkillTreeNode>();
+
+    public DbSet<AiStreamingSession> AiStreamingSessions => Set<AiStreamingSession>();
+    public DbSet<AiStreamingStage> AiStreamingStages => Set<AiStreamingStage>();
+    public DbSet<AiStreamingLog> AiStreamingLogs => Set<AiStreamingLog>();
+    public DbSet<AiStreamingMetric> AiStreamingMetrics => Set<AiStreamingMetric>();
 
 
     public DbSet<ProjectEntry> ProjectEntries => Set<ProjectEntry>();
@@ -182,6 +233,26 @@ public class ApplicationDbContext : DbContext
     public DbSet<CvRepositoryMapping> CvRepositoryMappings => Set<CvRepositoryMapping>();
     public DbSet<ProjectTechnology> ProjectTechnologies => Set<ProjectTechnology>();
     public DbSet<ProjectContribution> ProjectContributions => Set<ProjectContribution>();
+
+    // Forum Module DbSets
+    public DbSet<ForumCategory> ForumCategories => Set<ForumCategory>();
+    public DbSet<ForumCategoryModerator> ForumCategoryModerators => Set<ForumCategoryModerator>();
+    public DbSet<ForumTopic> ForumTopics => Set<ForumTopic>();
+    public DbSet<ForumReply> ForumReplies => Set<ForumReply>();
+    public DbSet<ForumTag> ForumTags => Set<ForumTag>();
+    public DbSet<ForumTopicTag> ForumTopicTags => Set<ForumTopicTag>();
+    public DbSet<ForumVote> ForumVotes => Set<ForumVote>();
+    public DbSet<ForumReaction> ForumReactions => Set<ForumReaction>();
+    public DbSet<ForumBookmark> ForumBookmarks => Set<ForumBookmark>();
+    public DbSet<ForumFollow> ForumFollows => Set<ForumFollow>();
+    public DbSet<ForumReport> ForumReports => Set<ForumReport>();
+    public DbSet<ForumReputation> ForumReputations => Set<ForumReputation>();
+    public DbSet<ForumBadge> ForumBadges => Set<ForumBadge>();
+    public DbSet<ForumUserBadge> ForumUserBadges => Set<ForumUserBadge>();
+    public DbSet<ForumModerationLog> ForumModerationLogs => Set<ForumModerationLog>();
+    public DbSet<ForumTopicHistory> ForumTopicHistories => Set<ForumTopicHistory>();
+    public DbSet<ForumReplyHistory> ForumReplyHistories => Set<ForumReplyHistory>();
+
 
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
@@ -237,7 +308,50 @@ public class ApplicationDbContext : DbContext
         modelBuilder.Entity<RoleAssignment>().Property(ra => ra.Id).ValueGeneratedNever();
         modelBuilder.Entity<WorkspacePost>().Property(wp => wp.Id).ValueGeneratedNever();
         modelBuilder.Entity<JobVacancy>().Property(jv => jv.Id).ValueGeneratedNever();
-        modelBuilder.Entity<StandardizedJd>().Property(jd => jd.Id).ValueGeneratedNever();
+        modelBuilder.Entity<JobVacancy>()
+            .HasOne(jv => jv.HiringRequirement)
+            .WithMany()
+            .HasForeignKey(jv => jv.HiringRequirementId)
+            .OnDelete(DeleteBehavior.Cascade);
+        modelBuilder.Entity<JobVacancy>()
+            .HasOne(jv => jv.RequirementSnapshot)
+            .WithMany()
+            .HasForeignKey(jv => jv.RequirementSnapshotId)
+            .OnDelete(DeleteBehavior.SetNull);
+        modelBuilder.Entity<JobVacancy>()
+            .HasIndex(jv => new { jv.Status, jv.IsActive })
+            .HasDatabaseName("idx_job_vacancies_published_active")
+            .HasFilter("status = 'Published' AND is_active = TRUE");
+
+        modelBuilder.Entity<JobApplication>(entity =>
+        {
+            entity.Property(ja => ja.Id).ValueGeneratedNever();
+            entity.HasIndex(ja => new { ja.JobVacancyId, ja.CandidateId }).IsUnique();
+            entity.HasOne(ja => ja.JobVacancy)
+                  .WithMany()
+                  .HasForeignKey(ja => ja.JobVacancyId)
+                  .OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(ja => ja.Candidate)
+                  .WithMany()
+                  .HasForeignKey(ja => ja.CandidateId)
+                  .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<JobInteraction>(entity =>
+        {
+            entity.Property(ji => ji.Id).ValueGeneratedNever();
+            entity.HasIndex(ji => new { ji.UserId, ji.JobVacancyId, ji.InteractionType }).IsUnique();
+            entity.HasIndex(ji => new { ji.UserId, ji.InteractionType });
+            entity.HasOne(ji => ji.User)
+                  .WithMany()
+                  .HasForeignKey(ji => ji.UserId)
+                  .OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(ji => ji.JobVacancy)
+                  .WithMany()
+                  .HasForeignKey(ji => ji.JobVacancyId)
+                  .OnDelete(DeleteBehavior.Cascade);
+        });
+
         modelBuilder.Entity<AdminMember>().Property(am => am.Id).ValueGeneratedNever();
         modelBuilder.Entity<AdminInvitation>().Property(ai => ai.Id).ValueGeneratedNever();
         modelBuilder.Entity<AdminInvitationRole>().Property(air => air.Id).ValueGeneratedNever();
@@ -266,15 +380,215 @@ public class ApplicationDbContext : DbContext
         modelBuilder.Entity<RepositoryDomain>().Property(x => x.Id).ValueGeneratedNever();
         modelBuilder.Entity<RepositoryIntelligenceSignal>().Property(x => x.Id).ValueGeneratedNever();
 
-        modelBuilder.Entity<StandardizedJd>(entity =>
+        modelBuilder.Entity<CandidateDiscoveryRun>(entity =>
         {
-            entity.ToTable("standardized_jds");
-            entity.HasIndex(jd => new { jd.OwnerUserId, jd.CreatedAt });
-            entity.HasOne(jd => jd.OwnerUser)
-                .WithMany()
-                .HasForeignKey(jd => jd.OwnerUserId)
-                .OnDelete(DeleteBehavior.Cascade);
+            entity.Property(cdr => cdr.Id).ValueGeneratedNever();
+            entity.HasOne(cdr => cdr.HiringRequirement)
+                  .WithMany(hr => hr.DiscoveryRuns)
+                  .HasForeignKey(cdr => cdr.HiringRequirementId)
+                  .OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(cdr => cdr.TriggeredBy)
+                  .WithMany()
+                  .HasForeignKey(cdr => cdr.TriggeredById)
+                  .OnDelete(DeleteBehavior.SetNull);
+            entity.HasIndex(cdr => cdr.HiringRequirementId)
+                  .HasDatabaseName("idx_candidate_discovery_runs_requirement_id");
+            entity.HasIndex(cdr => cdr.TriggeredById)
+                  .HasDatabaseName("idx_candidate_discovery_runs_triggered_by_id");
         });
+
+        // Capability Nodes and Graph Edges
+        modelBuilder.Entity<CapabilityNode>(entity =>
+        {
+            entity.Property(cn => cn.Id).ValueGeneratedNever();
+            entity.HasIndex(cn => cn.Slug).IsUnique();
+        });
+
+        modelBuilder.Entity<CapabilityEdge>(entity =>
+        {
+            entity.HasKey(ce => new { ce.SourceNodeId, ce.TargetNodeId, ce.RelationshipType });
+            entity.HasOne(ce => ce.SourceNode)
+                  .WithMany(cn => cn.OutgoingEdges)
+                  .HasForeignKey(ce => ce.SourceNodeId)
+                  .OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(ce => ce.TargetNode)
+                  .WithMany(cn => cn.IncomingEdges)
+                  .HasForeignKey(ce => ce.TargetNodeId)
+                  .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        // Candidate Capabilities
+        modelBuilder.Entity<CandidateCapability>(entity =>
+        {
+            entity.Property(cc => cc.Id).ValueGeneratedNever();
+            entity.HasIndex(cc => new { cc.CandidateId, cc.CapabilityNodeId }).IsUnique();
+        });
+
+        modelBuilder.Entity<CandidateCapabilityEvidence>(entity =>
+        {
+            entity.HasKey(cce => new { cce.CandidateCapabilityId, cce.EvidenceArtifactId });
+            entity.HasOne(cce => cce.CandidateCapability)
+                  .WithMany(cc => cc.EvidenceLinks)
+                  .HasForeignKey(cce => cce.CandidateCapabilityId)
+                  .OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(cce => cce.EvidenceArtifact)
+                  .WithMany()
+                  .HasForeignKey(cce => cce.EvidenceArtifactId)
+                  .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<CandidateCapabilityHistory>(entity =>
+        {
+            entity.Property(cch => cch.Id).ValueGeneratedNever();
+            entity.HasIndex(cch => new { cch.CandidateCapabilityId, cch.RecordedAt });
+        });
+
+        // Evidence Graph
+        modelBuilder.Entity<EvidenceSource>(entity =>
+        {
+            entity.Property(es => es.Id).ValueGeneratedNever();
+        });
+
+        modelBuilder.Entity<EvidenceArtifact>(entity =>
+        {
+            entity.Property(ea => ea.Id).ValueGeneratedNever();
+            entity.HasIndex(ea => new { ea.SourceId, ea.ExternalIdentifier });
+        });
+
+        modelBuilder.Entity<EvidenceClaim>(entity =>
+        {
+            entity.Property(ec => ec.Id).ValueGeneratedNever();
+            entity.HasIndex(ec => new { ec.CandidateId, ec.EvidenceArtifactId }).IsUnique();
+        });
+
+        modelBuilder.Entity<EvidenceVerification>(entity =>
+        {
+            entity.Property(ev => ev.Id).ValueGeneratedNever();
+            entity.HasIndex(ev => ev.EvidenceClaimId);
+        });
+
+        // Trust Profile and Components
+        modelBuilder.Entity<TrustProfile>(entity =>
+        {
+            entity.Property(tp => tp.Id).ValueGeneratedNever();
+            entity.HasIndex(tp => new { tp.TargetEntityId, tp.TargetType });
+        });
+
+        modelBuilder.Entity<TrustComponent>(entity =>
+        {
+            entity.Property(tc => tc.Id).ValueGeneratedNever();
+            entity.HasIndex(tc => tc.TrustProfileId);
+        });
+
+        modelBuilder.Entity<TrustCalculation>(entity =>
+        {
+            entity.Property(tc => tc.Id).ValueGeneratedNever();
+            entity.HasIndex(tc => tc.TrustProfileId);
+        });
+
+        modelBuilder.Entity<CandidateTrustProjection>(entity =>
+        {
+            entity.HasKey(ctp => ctp.CandidateId);
+            entity.HasOne(ctp => ctp.Candidate)
+                  .WithOne()
+                  .HasForeignKey<CandidateTrustProjection>(ctp => ctp.CandidateId)
+                  .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<CandidateSearchProfile>(entity =>
+        {
+            entity.HasKey(csp => csp.CandidateId);
+            entity.HasOne(csp => csp.Candidate)
+                  .WithOne()
+                  .HasForeignKey<CandidateSearchProfile>(csp => csp.CandidateId)
+                  .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<CandidateRankingProjection>(entity =>
+        {
+            entity.HasKey(crp => crp.CandidateId);
+            entity.HasOne(crp => crp.Candidate)
+                  .WithOne()
+                  .HasForeignKey<CandidateRankingProjection>(crp => crp.CandidateId)
+                  .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<UserFollower>(entity =>
+        {
+            entity.HasKey(uf => new { uf.FollowerId, uf.FolloweeId });
+
+            entity.HasOne(uf => uf.Follower)
+                  .WithMany()
+                  .HasForeignKey(uf => uf.FollowerId)
+                  .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasOne(uf => uf.Followee)
+                  .WithMany()
+                  .HasForeignKey(uf => uf.FolloweeId)
+                  .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<CandidateMatchProjection>(entity =>
+        {
+            entity.HasKey(cmp => cmp.CandidateId);
+            entity.HasOne(cmp => cmp.Candidate)
+                  .WithOne()
+                  .HasForeignKey<CandidateMatchProjection>(cmp => cmp.CandidateId)
+                  .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<CandidateEvaluationSnapshot>(entity =>
+        {
+            entity.HasKey(ces => ces.CandidateId);
+            entity.HasOne(ces => ces.Candidate)
+                  .WithOne()
+                  .HasForeignKey<CandidateEvaluationSnapshot>(ces => ces.CandidateId)
+                  .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<CandidateCapabilityProjection>(entity =>
+        {
+            entity.HasKey(ccp => ccp.CandidateId);
+            entity.HasOne(ccp => ccp.Candidate)
+                  .WithOne()
+                  .HasForeignKey<CandidateCapabilityProjection>(ccp => ccp.CandidateId)
+                  .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        // Matching Engine
+        modelBuilder.Entity<MatchingEvaluation>(entity =>
+        {
+            entity.Property(me => me.Id).ValueGeneratedNever();
+            entity.HasIndex(me => new { me.JobVacancyId, me.CandidateId }).IsUnique();
+        });
+
+        modelBuilder.Entity<MatchingFactor>(entity =>
+        {
+            entity.Property(mf => mf.Id).ValueGeneratedNever();
+            entity.HasIndex(mf => mf.MatchingEvaluationId);
+        });
+
+        modelBuilder.Entity<MatchingExplanation>(entity =>
+        {
+            entity.Property(me => me.Id).ValueGeneratedNever();
+            entity.HasIndex(me => me.MatchingEvaluationId);
+        });
+
+        modelBuilder.Entity<CandidateSkillTreeNode>(entity =>
+        {
+            entity.Property(n => n.Id).ValueGeneratedNever();
+            
+            entity.HasOne(n => n.Assessment)
+                  .WithMany(a => a.SkillTreeNodes)
+                  .HasForeignKey(n => n.CandidateAssessmentId)
+                  .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasOne(n => n.Parent)
+                  .WithMany()
+                  .HasForeignKey(n => n.ParentId)
+                  .OnDelete(DeleteBehavior.Restrict);
+        });
+
 
         // Enable PostgreSQL Extensions
         modelBuilder.HasPostgresExtension("citext");
@@ -611,10 +925,6 @@ public class ApplicationDbContext : DbContext
             entity.HasOne(m => m.SourceCodeRepository)
                   .WithMany()
                   .HasForeignKey(m => m.SourceCodeRepositoryId)
-                  .OnDelete(DeleteBehavior.Cascade);
-            entity.HasOne<User>()
-                  .WithMany()
-                  .HasForeignKey(m => m.UserId)
                   .OnDelete(DeleteBehavior.Cascade);
             entity.HasIndex(m => m.UserId).HasDatabaseName("idx_cv_repository_mappings_user_id");
             entity.HasIndex(m => m.SourceCodeRepositoryId).HasDatabaseName("idx_cv_repository_mappings_repo_id");
@@ -1474,6 +1784,338 @@ public class ApplicationDbContext : DbContext
             entity.HasIndex(pc => pc.ProjectEntryId)
                   .HasDatabaseName("idx_project_contributions_project_id");
         });
+
+        // Hiring Requirement configurations
+        modelBuilder.Entity<HiringRequirement>(entity =>
+        {
+            entity.ToTable("hiring_requirements");
+            entity.HasKey(hr => hr.Id);
+            entity.Property(hr => hr.Id).ValueGeneratedNever();
+
+            entity.HasOne(hr => hr.Organization)
+                  .WithMany()
+                  .HasForeignKey(hr => hr.OrganizationId)
+                  .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasOne(hr => hr.Workspace)
+                  .WithMany()
+                  .HasForeignKey(hr => hr.WorkspaceId)
+                  .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasMany(hr => hr.BusinessOutcomes)
+                  .WithOne(bo => bo.HiringRequirement)
+                  .HasForeignKey(bo => bo.HiringRequirementId)
+                  .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasMany(hr => hr.Responsibilities)
+                  .WithOne(r => r.HiringRequirement)
+                  .HasForeignKey(r => r.HiringRequirementId)
+                  .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasMany(hr => hr.Capabilities)
+                  .WithOne(c => c.HiringRequirement)
+                  .HasForeignKey(c => c.HiringRequirementId)
+                  .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasMany(hr => hr.TechnologyRequirements)
+                  .WithOne(tr => tr.HiringRequirement)
+                  .HasForeignKey(tr => tr.HiringRequirementId)
+                  .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasMany(hr => hr.EvaluationRubrics)
+                  .WithOne(er => er.HiringRequirement)
+                  .HasForeignKey(er => er.HiringRequirementId)
+                  .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasMany(hr => hr.InterviewBlueprints)
+                  .WithOne(ib => ib.HiringRequirement)
+                  .HasForeignKey(ib => ib.HiringRequirementId)
+                  .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasMany(hr => hr.Snapshots)
+                  .WithOne(s => s.HiringRequirement)
+                  .HasForeignKey(s => s.HiringRequirementId)
+                  .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasIndex(hr => hr.OrganizationId).HasDatabaseName("idx_hiring_requirements_org_id");
+            entity.HasIndex(hr => hr.WorkspaceId).HasDatabaseName("idx_hiring_requirements_workspace_id");
+        });
+
+        modelBuilder.Entity<BusinessOutcome>(entity =>
+        {
+            entity.ToTable("business_outcomes");
+            entity.HasKey(bo => bo.Id);
+            entity.Property(bo => bo.Id).ValueGeneratedNever();
+            entity.HasIndex(bo => bo.HiringRequirementId).HasDatabaseName("idx_business_outcomes_hr_id");
+        });
+
+        modelBuilder.Entity<Responsibility>(entity =>
+        {
+            entity.ToTable("responsibilities");
+            entity.HasKey(r => r.Id);
+            entity.Property(r => r.Id).ValueGeneratedNever();
+            entity.Property(r => r.Priority).HasConversion<string>();
+            entity.Property(r => r.OwnershipLevel).HasConversion<string>();
+            entity.HasIndex(r => r.HiringRequirementId).HasDatabaseName("idx_responsibilities_hr_id");
+        });
+
+        modelBuilder.Entity<RequirementCapability>(entity =>
+        {
+            entity.ToTable("requirement_capabilities");
+            entity.HasKey(rc => rc.Id);
+            entity.Property(rc => rc.Id).ValueGeneratedNever();
+            entity.Property(rc => rc.Priority).HasConversion<string>();
+            entity.Property(rc => rc.OwnershipLevel).HasConversion<string>();
+            entity.HasIndex(rc => rc.HiringRequirementId).HasDatabaseName("idx_requirement_capabilities_hr_id");
+
+            entity.HasMany(rc => rc.EvidenceSignals)
+                  .WithOne(es => es.RequirementCapability)
+                  .HasForeignKey(es => es.RequirementCapabilityId)
+                  .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<TechnologyRequirement>(entity =>
+        {
+            entity.ToTable("technology_requirements");
+            entity.HasKey(tr => tr.Id);
+            entity.Property(tr => tr.Id).ValueGeneratedNever();
+            entity.Property(tr => tr.Priority).HasConversion<string>();
+            entity.HasIndex(tr => tr.HiringRequirementId).HasDatabaseName("idx_technology_requirements_hr_id");
+        });
+
+        modelBuilder.Entity<EvidenceSignal>(entity =>
+        {
+            entity.ToTable("evidence_signals");
+            entity.HasKey(es => es.Id);
+            entity.Property(es => es.Id).ValueGeneratedNever();
+            entity.HasIndex(es => es.RequirementCapabilityId).HasDatabaseName("idx_evidence_signals_cap_id");
+        });
+
+        modelBuilder.Entity<EvaluationRubric>(entity =>
+        {
+            entity.ToTable("evaluation_rubrics");
+            entity.HasKey(er => er.Id);
+            entity.Property(er => er.Id).ValueGeneratedNever();
+            entity.HasIndex(er => er.HiringRequirementId).HasDatabaseName("idx_evaluation_rubrics_hr_id");
+        });
+
+        modelBuilder.Entity<InterviewBlueprint>(entity =>
+        {
+            entity.ToTable("interview_blueprints");
+            entity.HasKey(ib => ib.Id);
+            entity.Property(ib => ib.Id).ValueGeneratedNever();
+            entity.HasIndex(ib => ib.HiringRequirementId).HasDatabaseName("idx_interview_blueprints_hr_id");
+        });
+
+        // Snapshots configurations
+        modelBuilder.Entity<RequirementSnapshot>(entity =>
+        {
+            entity.ToTable("requirement_snapshots");
+            entity.HasKey(rs => rs.Id);
+            entity.Property(rs => rs.Id).ValueGeneratedNever();
+            entity.HasIndex(rs => rs.HiringRequirementId).HasDatabaseName("idx_requirement_snapshots_hr_id");
+
+            entity.HasOne(rs => rs.EvaluationRubricSnapshot)
+                  .WithOne(ers => ers.RequirementSnapshot)
+                  .HasForeignKey<EvaluationRubricSnapshot>(ers => ers.RequirementSnapshotId)
+                  .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasOne(rs => rs.InterviewBlueprintSnapshot)
+                  .WithOne(ibs => ibs.RequirementSnapshot)
+                  .HasForeignKey<InterviewBlueprintSnapshot>(ibs => ibs.RequirementSnapshotId)
+                  .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasMany(rs => rs.ArtifactSnapshots)
+                  .WithOne(asnp => asnp.RequirementSnapshot)
+                  .HasForeignKey(asnp => asnp.RequirementSnapshotId)
+                  .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasOne(rs => rs.RequirementVectorSnapshot)
+                  .WithOne(rvs => rvs.RequirementSnapshot)
+                  .HasForeignKey<RequirementVectorSnapshot>(rvs => rvs.RequirementSnapshotId)
+                  .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<EvaluationRubricSnapshot>(entity =>
+        {
+            entity.ToTable("evaluation_rubric_snapshots");
+        });
+
+        modelBuilder.Entity<InterviewBlueprintSnapshot>(entity =>
+        {
+            entity.ToTable("interview_blueprint_snapshots");
+        });
+
+        modelBuilder.Entity<RequirementArtifactSnapshot>(entity =>
+        {
+            entity.ToTable("requirement_artifact_snapshots");
+        });
+
+        modelBuilder.Entity<RequirementArtifact>(entity =>
+        {
+            entity.ToTable("requirement_artifacts");
+            entity.HasOne(ra => ra.HiringRequirement)
+                  .WithMany(hr => hr.RequirementArtifacts)
+                  .HasForeignKey(ra => ra.HiringRequirementId)
+                  .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<RequirementVectorSnapshot>(entity =>
+        {
+            entity.ToTable("requirement_vector_snapshots");
+        });
+
+        modelBuilder.Entity<CapabilityRegistry>(entity =>
+        {
+            entity.ToTable("capability_registries");
+            entity.Property(cr => cr.CapabilityId).ValueGeneratedNever();
+            entity.HasOne(cr => cr.DeprecatedBy)
+                  .WithMany()
+                  .HasForeignKey(cr => cr.DeprecatedById)
+                  .OnDelete(DeleteBehavior.SetNull);
+            entity.HasIndex(cr => cr.Status);
+            entity.HasIndex(cr => cr.TaxonomyVersion);
+        });
+
+        modelBuilder.Entity<CapabilityHierarchy>(entity =>
+        {
+            entity.ToTable("capability_hierarchies");
+            entity.HasKey(ch => new { ch.ParentId, ch.ChildId });
+            entity.HasOne(ch => ch.Parent)
+                  .WithMany()
+                  .HasForeignKey(ch => ch.ParentId)
+                  .OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(ch => ch.Child)
+                  .WithMany()
+                  .HasForeignKey(ch => ch.ChildId)
+                  .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<CapabilityAlias>(entity =>
+        {
+            entity.ToTable("capability_aliases");
+            entity.HasKey(ca => ca.AliasName);
+            entity.HasOne(ca => ca.CanonicalCapability)
+                  .WithMany()
+                  .HasForeignKey(ca => ca.CanonicalId)
+                  .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        // Forum Module Fluent Mappings
+        modelBuilder.Entity<ForumCategoryModerator>(entity =>
+        {
+            entity.HasKey(cm => new { cm.CategoryId, cm.UserId });
+            entity.HasOne(cm => cm.Category)
+                  .WithMany(c => c.Moderators)
+                  .HasForeignKey(cm => cm.CategoryId)
+                  .OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(cm => cm.User)
+                  .WithMany()
+                  .HasForeignKey(cm => cm.UserId)
+                  .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<ForumTopicTag>(entity =>
+        {
+            entity.HasKey(tt => new { tt.TopicId, tt.TagId });
+            entity.HasOne(tt => tt.Topic)
+                  .WithMany(t => t.TopicTags)
+                  .HasForeignKey(tt => tt.TopicId)
+                  .OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(tt => tt.Tag)
+                  .WithMany(tag => tag.TopicTags)
+                  .HasForeignKey(tt => tt.TagId)
+                  .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<ForumBookmark>(entity =>
+        {
+            entity.HasKey(b => new { b.TopicId, b.UserId });
+            entity.HasOne(b => b.Topic)
+                  .WithMany(t => t.Bookmarks)
+                  .HasForeignKey(b => b.TopicId)
+                  .OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(b => b.User)
+                  .WithMany()
+                  .HasForeignKey(b => b.UserId)
+                  .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<ForumFollow>(entity =>
+        {
+            entity.HasKey(f => new { f.TopicId, f.UserId });
+            entity.HasOne(f => f.Topic)
+                  .WithMany(t => t.Follows)
+                  .HasForeignKey(f => f.TopicId)
+                  .OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(f => f.User)
+                  .WithMany()
+                  .HasForeignKey(f => f.UserId)
+                  .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<ForumUserBadge>(entity =>
+        {
+            entity.HasKey(ub => new { ub.UserId, ub.BadgeId });
+            entity.HasOne(ub => ub.User)
+                  .WithMany()
+                  .HasForeignKey(ub => ub.UserId)
+                  .OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(ub => ub.Badge)
+                  .WithMany()
+                  .HasForeignKey(ub => ub.BadgeId)
+                  .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<ForumVote>(entity =>
+        {
+            entity.HasOne(v => v.Topic)
+                  .WithMany(t => t.Votes)
+                  .HasForeignKey(v => v.TopicId)
+                  .OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(v => v.Reply)
+                  .WithMany(r => r.Votes)
+                  .HasForeignKey(v => v.ReplyId)
+                  .OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(v => v.User)
+                  .WithMany()
+                  .HasForeignKey(v => v.UserId)
+                  .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<ForumReaction>(entity =>
+        {
+            entity.HasOne(r => r.Topic)
+                  .WithMany(t => t.Reactions)
+                  .HasForeignKey(r => r.TopicId)
+                  .OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(r => r.Reply)
+                  .WithMany(rep => rep.Reactions)
+                  .HasForeignKey(r => r.ReplyId)
+                  .OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(r => r.User)
+                  .WithMany()
+                  .HasForeignKey(r => r.UserId)
+                  .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<ForumTopic>(entity =>
+        {
+            entity.HasIndex(t => t.Slug).IsUnique();
+            entity.HasIndex(t => new { t.CategoryId, t.IsPinned, t.CreatedAt });
+            entity.HasIndex(t => new { t.OrganizationId, t.CreatedAt });
+        });
+
+        modelBuilder.Entity<ForumReply>(entity =>
+        {
+            entity.HasIndex(r => new { r.TopicId, r.ParentReplyId, r.CreatedAt });
+        });
+
+        modelBuilder.Entity<ForumTag>(entity =>
+        {
+            entity.HasIndex(t => t.Name).IsUnique();
+            entity.HasIndex(t => t.Slug).IsUnique();
+        });
     }
 
     public async Task<User?> FindUserByEmailAsync(string email, CancellationToken cancellationToken = default)
@@ -1489,6 +2131,7 @@ public class ApplicationDbContext : DbContext
         var jsonContainment = $"[{{\"email\": \"{normalized}\"}}]";
         return await Users
             .FromSqlRaw("SELECT * FROM users WHERE email = {0} OR (linked_emails IS NOT NULL AND linked_emails @> {1}::jsonb)", normalized, jsonContainment)
+            .OrderBy(u => u.Id)
             .FirstOrDefaultAsync(cancellationToken);
     }
 
@@ -1505,6 +2148,7 @@ public class ApplicationDbContext : DbContext
         var jsonContainment = $"[{{\"email\": \"{normalized}\", \"is_verified\": true}}]";
         return await Users
             .FromSqlRaw("SELECT * FROM users WHERE email = {0} OR (linked_emails IS NOT NULL AND linked_emails @> {1}::jsonb)", normalized, jsonContainment)
+            .OrderBy(u => u.Id)
             .FirstOrDefaultAsync(cancellationToken);
     }
 
