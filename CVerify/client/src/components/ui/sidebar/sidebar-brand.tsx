@@ -1,7 +1,6 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import Link from "next/link";
 import { Typography } from "@heroui/react";
 import { useThemeStore } from "../../../stores/use-theme-store";
 
@@ -30,29 +29,24 @@ export const SidebarBrand: React.FC<SidebarBrandProps> = ({ collapsed }) => {
 
   return (
     <div className="flex h-16 items-center px-3 select-none border-b border-separator gap-2 overflow-hidden transition-all duration-300">
-      <Link
-        href="/user"
-        className="flex items-center gap-2 w-full cursor-pointer"
-      >
-        {/* Brand Logo Image */}
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src={logoSrc} alt="CVerify Logo" className="w-9 h-auto" />
+      {/* Brand Logo Image */}
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img src={logoSrc} alt="CVerify Logo" className="w-9 h-auto" />
 
-        {/* Brand Name Text */}
-        <div
-          className={[
-            "flex flex-col min-w-0 transition-all duration-300 ease-in-out",
-            collapsed ? "w-0 opacity-0" : "w-auto opacity-100",
-          ].join(" ")}
+      {/* Brand Name Text */}
+      <div
+        className={[
+          "flex flex-col min-w-0 transition-all duration-300 ease-in-out",
+          collapsed ? "w-0 opacity-0" : "w-auto opacity-100",
+        ].join(" ")}
+      >
+        <Typography
+          type="body-sm"
+          className="font-bold font-lato text-xl truncate"
         >
-          <Typography
-            type="body-sm"
-            className="font-bold font-lato text-xl truncate"
-          >
-            CVerify
-          </Typography>
-        </div>
-      </Link>
+          CVerify
+        </Typography>
+      </div>
     </div>
   );
 };

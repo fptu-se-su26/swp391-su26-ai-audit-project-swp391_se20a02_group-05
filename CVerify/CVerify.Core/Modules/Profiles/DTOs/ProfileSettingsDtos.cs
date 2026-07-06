@@ -8,7 +8,7 @@ public record UpdateProfileRequest(
     [MaxLength(100)]
     string? FullName,
 
-    [MaxLength(1000)]
+    [MaxLength(160)]
     string? Bio,
 
     [MaxLength(50)]
@@ -48,8 +48,6 @@ public record UpdateProfileRequest(
 
     List<string>? SocialLinks,
 
-    string? AiSuggestionsJson,
-
     [Required]
     uint Version // Optimistic concurrency token (xmin)
 );
@@ -73,7 +71,6 @@ public record ProfileResponse(
     DateTimeOffset CreatedAt,
     DateTimeOffset UpdatedAt,
     uint Version,
-    string? AiSuggestionsJson,
     List<string> SocialLinks
 );
 
@@ -189,6 +186,8 @@ public record DeclaredCareerPreferenceDto(
     List<string> CompanyValues,
     decimal? ExpectedSalaryMin,
     decimal? ExpectedSalaryMax,
+    decimal? DesiredSalary,
+    decimal? MinimumAcceptableSalary,
     string? ExpectedSalaryCurrency,
     string? ExpectedSalaryType,
     bool ExpectedSalaryNegotiable,
@@ -273,6 +272,12 @@ public record UpdateCareerPreferenceRequest(
     [Range(0.0, 999999999999.99, ErrorMessage = "Maximum salary cannot be negative.")]
     decimal? ExpectedSalaryMax,
 
+    [Range(0.0, 999999999999.99, ErrorMessage = "Desired salary cannot be negative.")]
+    decimal? DesiredSalary,
+
+    [Range(0.0, 999999999999.99, ErrorMessage = "Minimum acceptable salary cannot be negative.")]
+    decimal? MinimumAcceptableSalary,
+
     [MaxLength(10)] string? ExpectedSalaryCurrency,
     [MaxLength(20)] string? ExpectedSalaryType,
     bool? ExpectedSalaryNegotiable,
@@ -312,6 +317,8 @@ public record CareerPreferenceResponse(
     List<string> DesiredJobPositions,
     decimal? ExpectedSalaryMin,
     decimal? ExpectedSalaryMax,
+    decimal? DesiredSalary,
+    decimal? MinimumAcceptableSalary,
     string? ExpectedSalaryCurrency,
     string? ExpectedSalaryType,
     bool ExpectedSalaryNegotiable,

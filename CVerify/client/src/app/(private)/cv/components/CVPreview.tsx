@@ -29,7 +29,6 @@ interface CVPreviewProps {
     location?: string;
     birthDate?: string;
     socialLinks?: string[];
-    aiSuggestionsJson?: string | null;
   };
   summary: {
     bio?: string;
@@ -92,7 +91,7 @@ const categorizeSkills = (skillsList: string[]): Record<string, string[]> => {
     go: "Languages", golang: "Languages", rust: "Languages", php: "Languages",
     ruby: "Languages", swift: "Languages", kotlin: "Languages", sql: "Languages",
     html: "Languages", css: "Languages", bash: "Languages", shell: "Languages",
-
+    
     react: "Frameworks & Libraries", reactjs: "Frameworks & Libraries", next: "Frameworks & Libraries",
     nextjs: "Frameworks & Libraries", vue: "Frameworks & Libraries", vuejs: "Frameworks & Libraries",
     angular: "Frameworks & Libraries", svelte: "Frameworks & Libraries", tailwind: "Frameworks & Libraries",
@@ -101,13 +100,13 @@ const categorizeSkills = (skillsList: string[]): Record<string, string[]> => {
     springboot: "Frameworks & Libraries", nestjs: "Frameworks & Libraries", express: "Frameworks & Libraries",
     expressjs: "Frameworks & Libraries", django: "Frameworks & Libraries", flask: "Frameworks & Libraries",
     fastapi: "Frameworks & Libraries",
-
+    
     postgresql: "Databases & Cloud", mysql: "Databases & Cloud", mongodb: "Databases & Cloud",
     redis: "Databases & Cloud", sqlite: "Databases & Cloud", mariadb: "Databases & Cloud",
     firebase: "Databases & Cloud", oracle: "Databases & Cloud", aws: "Databases & Cloud",
     azure: "Databases & Cloud", gcp: "Databases & Cloud", kubernetes: "Databases & Cloud",
     k8s: "Databases & Cloud", docker: "Databases & Cloud",
-
+    
     git: "Tools & Platforms", github: "Tools & Platforms", gitlab: "Tools & Platforms",
     cicd: "Tools & Platforms", "ci/cd": "Tools & Platforms", linux: "Tools & Platforms",
     nginx: "Tools & Platforms",
@@ -149,24 +148,6 @@ export const CVPreview: React.FC<CVPreviewProps> = ({
   preferences,
   projects = [],
 }) => {
-  let isAiHeadline = false;
-  let matchScore: number | undefined = undefined;
-  let isAiBio = false;
-
-  if (basic.aiSuggestionsJson) {
-    try {
-      const suggestionsMap = JSON.parse(basic.aiSuggestionsJson);
-      const headlineSuggestion = suggestionsMap.headline;
-      isAiHeadline = headlineSuggestion?.source === 'ai';
-      matchScore = headlineSuggestion?.matchScore;
-
-      const bioSuggestion = suggestionsMap.bio;
-      isAiBio = bioSuggestion?.source === 'ai';
-    } catch (e) {
-      console.error("Failed to parse aiSuggestionsJson in CVPreview:", e);
-    }
-  }
-
   // Clean and split lines of text into bullets
   const renderBulletPoints = (text: string) => {
     if (!text) return null;
@@ -204,20 +185,20 @@ export const CVPreview: React.FC<CVPreviewProps> = ({
       if (status === 2) {
         return (
           <span className="text-[8px] font-extrabold text-amber-700 bg-amber-50 px-1.5 py-0.5 rounded border border-amber-200 mt-0.5 inline-block w-max select-none uppercase tracking-wide">
-            AI • Outdated
+            AI Audited • Outdated
           </span>
         );
       }
       if (status === 3) {
         return (
           <span className="text-[8px] font-extrabold text-rose-700 bg-rose-50 px-1.5 py-0.5 rounded border border-rose-200 mt-0.5 inline-block w-max select-none uppercase tracking-wide">
-            AI • Disconnected
+            AI Audited • Disconnected
           </span>
         );
       }
       return (
         <span className="text-[8px] font-extrabold text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200 mt-0.5 inline-block w-max select-none uppercase tracking-wide">
-          AI
+          AI Audited
         </span>
       );
     }
@@ -484,36 +465,22 @@ export const CVPreview: React.FC<CVPreviewProps> = ({
 
       {/* Main Flow Content Container */}
       <div className="cv-page-content-wrapper flex flex-col gap-5 flex-1">
-
+        
         {/* Centered Header */}
         <div className="flex flex-col items-center text-center gap-1.5 pb-4 w-full min-w-0">
-          <h1
+          <h1 
             className="text-xl font-bold tracking-tight text-neutral-900 uppercase w-full"
             style={{ overflowWrap: "anywhere", wordBreak: "break-word" }}
           >
             {basic.fullName || "Untitled"}
           </h1>
           {basic.headline && (
-            <div className="flex items-center justify-center gap-1.5 flex-wrap w-full">
-              <span
-                className="text-[11px] font-bold text-neutral-600 tracking-wider uppercase"
-                style={{ overflowWrap: "anywhere", wordBreak: "break-word" }}
-              >
-                {basic.headline}
-              </span>
-              {isAiHeadline && (
-                <div className="inline-flex items-center gap-1 select-none shrink-0 normal-case">
-                  <span className="px-1.5 py-0.5 rounded bg-emerald-50 text-emerald-700 text-[8px] font-black tracking-wider uppercase border border-emerald-200/50">
-                    AI
-                  </span>
-                  {matchScore !== undefined && (
-                    <span className="px-1.5 py-0.5 rounded bg-accent/10 text-accent text-[8px] font-bold border border-accent/20">
-                      {matchScore}% Match
-                    </span>
-                  )}
-                </div>
-              )}
-            </div>
+            <span 
+              className="text-[11px] font-bold text-neutral-600 tracking-wider uppercase w-full"
+              style={{ overflowWrap: "anywhere", wordBreak: "break-word" }}
+            >
+              {basic.headline}
+            </span>
           )}
 
           {/* Contact Details Grid */}
@@ -561,16 +528,9 @@ export const CVPreview: React.FC<CVPreviewProps> = ({
         {/* Section: About Me */}
         {summary.bio && (
           <div className="flex flex-col gap-1 text-left cv-item-avoid-break">
-            <div className="flex items-center gap-1.5 flex-wrap">
-              <h2 className="font-bold text-[11px] uppercase tracking-wider text-neutral-900">
-                Career Objective / Summary
-              </h2>
-              {isAiBio && (
-                <span className="px-1.5 py-0.5 rounded bg-emerald-50 text-emerald-700 text-[8px] font-black tracking-wider border border-emerald-200/50 select-none normal-case leading-none">
-                  AI
-                </span>
-              )}
-            </div>
+            <h2 className="font-bold text-[11px] uppercase tracking-wider text-neutral-900">
+              Career Objective / Summary
+            </h2>
             <div className="border-b border-neutral-300 w-full my-0.5" />
             <p className="text-neutral-700 leading-relaxed font-normal text-[11px] whitespace-pre-wrap">
               {summary.bio}
@@ -602,7 +562,7 @@ export const CVPreview: React.FC<CVPreviewProps> = ({
                       {exp.company}{exp.location ? ` • ${exp.location}` : ""}
                     </div>
                     {renderBulletPoints(exp.description)}
-
+                    
                     {exp.achievements && exp.achievements.length > 0 && (
                       <ul className="list-disc pl-4 space-y-0.5 text-neutral-700 mt-0.5 text-[11px]">
                         {exp.achievements.map((ach: any, idx: number) => (
@@ -619,7 +579,7 @@ export const CVPreview: React.FC<CVPreviewProps> = ({
                         {exp.technologies.join(", ")}
                       </div>
                     )}
-
+                    
                     {exp.links && exp.links.length > 0 && (
                       <div className="flex flex-wrap gap-2 mt-1 pl-4">
                         {exp.links.map((link: any, idx: number) => (
@@ -708,7 +668,7 @@ export const CVPreview: React.FC<CVPreviewProps> = ({
                       {proj.description}
                     </p>
                   )}
-
+                  
                   <ul className="list-disc pl-4 space-y-0.5 text-neutral-700 mt-0.5 text-[11px]">
                     {proj.role && (
                       <li className="leading-relaxed">
@@ -746,7 +706,7 @@ export const CVPreview: React.FC<CVPreviewProps> = ({
               Technical Skills
             </h2>
             <div className="border-b border-neutral-300 w-full my-0.5" />
-
+            
             <div className="flex flex-col gap-1 mt-1 text-[11px] text-neutral-800">
               {Object.keys(categorizedSkills).length > 0 ? (
                 Object.entries(categorizedSkills).map(([category, items]) => (
@@ -807,7 +767,7 @@ export const CVPreview: React.FC<CVPreviewProps> = ({
             Career Preferences
           </h2>
           <div className="border-b border-neutral-300 w-full my-0.5" />
-
+          
           <div className="grid grid-cols-2 gap-x-6 gap-y-1 mt-1 text-[10.5px] text-neutral-700">
             {preferences.openToWorkStatus && (
               <div>
@@ -816,8 +776,8 @@ export const CVPreview: React.FC<CVPreviewProps> = ({
                   {preferences.openToWorkStatus === "active"
                     ? "Active Job Search"
                     : preferences.openToWorkStatus === "casual"
-                      ? "Casual Browsing"
-                      : "Not Open to Work"}
+                    ? "Casual Browsing"
+                    : "Not Open to Work"}
                 </span>
               </div>
             )}

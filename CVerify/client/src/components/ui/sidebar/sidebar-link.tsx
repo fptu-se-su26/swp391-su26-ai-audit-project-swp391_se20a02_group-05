@@ -1,10 +1,9 @@
 "use client";
 
 import React from "react";
-import { useRouter, usePathname, useSearchParams } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import { Tooltip } from "@heroui/react";
 import { useSidebarStore } from "../../../stores/use-sidebar-store";
-import { useAuth } from "../../../features/auth/hooks/use-auth";
 import { isActiveRoute } from "../../../lib/navigation-utils";
 import { type NavigationLinkItem } from "../../../types/navigation.types";
 
@@ -23,21 +22,9 @@ export const SidebarLink: React.FC<SidebarLinkProps> = ({
 }) => {
   const router = useRouter();
   const pathname = usePathname();
-  const searchParams = useSearchParams();
   const { setMobileOpen } = useSidebarStore();
-  const { user } = useAuth();
 
-  const checkActive = () => {
-    const paramsRecord: Record<string, string> = {};
-    if (searchParams) {
-      searchParams.forEach((value, key) => {
-        paramsRecord[key] = value;
-      });
-    }
-    return isActiveRoute(pathname, item.href, item.exactMatch, item.id, user?.username, paramsRecord);
-  };
-
-  const active = checkActive();
+  const active = isActiveRoute(pathname, item.href, item.exactMatch);
   const Icon = item.icon;
 
   const label = item.label;
@@ -64,10 +51,6 @@ export const SidebarLink: React.FC<SidebarLinkProps> = ({
 
   // Close mobile drawer and navigate when link is clicked
   const handleLinkClick = (e: React.MouseEvent<HTMLAnchorElement>) => {
-    if (item.openInNewTab) {
-      setMobileOpen(false);
-      return;
-    }
     e.preventDefault();
     setMobileOpen(false);
     router.push(item.href);
@@ -78,14 +61,12 @@ export const SidebarLink: React.FC<SidebarLinkProps> = ({
     <a
       href={item.href}
       onClick={handleLinkClick}
-      target={item.openInNewTab ? "_blank" : undefined}
-      rel={item.openInNewTab ? "noopener noreferrer" : undefined}
       aria-label={label}
       aria-current={active ? "page" : undefined}
       style={{
         paddingLeft: collapsed
           ? undefined
-          : `${depth > 0 ? (isMobile ? 16 : 12) : isMobile ? 14 : 16}px`,
+          : `${depth > 0 ? (isMobile ? 12 : 6) : isMobile ? 14 : 16}px`,
       }}
       className={[
         "relative flex items-center w-full rounded-xl font-semibold transition-all duration-200 group cursor-pointer",
@@ -115,7 +96,7 @@ export const SidebarLink: React.FC<SidebarLinkProps> = ({
       )}
 
       {/* Renders text label - Hidden on desktop when collapsed */}
-      {!collapsed && <span className="whitespace-nowrap">{label}</span>}
+      {!collapsed && <span className="truncate">{label}</span>}
 
       {/* Renders optional badge - Hidden on desktop when collapsed */}
       {!collapsed && item.badge !== undefined && (

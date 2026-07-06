@@ -80,7 +80,6 @@ public class Level2RecoveryTests : BaseIntegrationTest
             DisplayName = $"{companyName} Default Workspace",
             Slug = $"workspace-{taxCode}",
             Status = "active",
-            OwnerId = adminUser.Id,
             CreatedAt = DateTimeOffset.UtcNow,
             UpdatedAt = DateTimeOffset.UtcNow
         };

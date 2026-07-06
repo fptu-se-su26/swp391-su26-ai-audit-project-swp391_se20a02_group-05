@@ -1,5 +1,5 @@
 {
-  "title": "Developer Dashboard",
+  "title": "Traveler Hub",
   "welcome": "Welcome back, {{name}}!",
   "widgets": {
     "itineraries": {

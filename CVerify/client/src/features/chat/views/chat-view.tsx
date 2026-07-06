@@ -203,10 +203,10 @@ export function ChatView() {
                   <Sparkles size={24} className="animate-pulse" />
                 </div>
                 <Typography type="h2" className="text-xl font-bold tracking-tight text-foreground font-outfit mt-2">
-                  CVerify AI Copilot
+                  AI Travel Planner
                 </Typography>
                 <Typography type="body-xs" className="text-muted max-w-sm leading-normal">
-                  Ask anything to optimize your verified CV profile, analyze connected code repositories, or get recommendations to elevate your Developer Trust Score.
+                  Ask anything to generate custom itineraries, evaluate routes, and book trips using our advanced AI travel companion.
                 </Typography>
               </div>
 
@@ -215,42 +215,42 @@ export function ChatView() {
                 <Card 
                   as="button"
                   type="button"
-                  onClick={() => handleSuggestionClick("How can I optimize my CV profile to boost my verified skill score?")}
+                  onClick={() => handleSuggestionClick("Recommend a 3-day cultural itinerary in Kyoto, including temples and local dining.")}
                   className="p-4 cursor-pointer hover:scale-[1.02] border border-border/60 bg-surface-secondary/40 hover:bg-surface-secondary/80 transition-all duration-200 text-left space-y-1.5 focus-ring"
                   glow={false}
-                  aria-label="Suggestion: Optimize Profile"
+                  aria-label="Suggestion: Kyoto Culture"
                 >
-                  <span className="text-[10px] font-extrabold tracking-wider text-accent uppercase">Optimize Profile</span>
+                  <span className="text-[10px] font-extrabold tracking-wider text-accent uppercase">Kyoto Culture</span>
                   <p className="text-[11px] font-semibold text-foreground/90 leading-normal">
-                    &quot;How can I optimize my CV profile to boost my verified skill score?&quot;
+                    &quot;Recommend a 3-day cultural itinerary in Kyoto...&quot;
                   </p>
                 </Card>
                 
                 <Card 
                   as="button"
                   type="button"
-                  onClick={() => handleSuggestionClick("Explain why some of my skills are showing as unverified in my skill tree.")}
+                  onClick={() => handleSuggestionClick("Draft a weekend hiking itinerary for Yosemite National Park with safety advice.")}
                   className="p-4 cursor-pointer hover:scale-[1.02] border border-border/60 bg-surface-secondary/40 hover:bg-surface-secondary/80 transition-all duration-200 text-left space-y-1.5 focus-ring"
                   glow={false}
-                  aria-label="Suggestion: Verify Gaps"
+                  aria-label="Suggestion: Yosemite Hiking"
                 >
-                  <span className="text-[10px] font-extrabold tracking-wider text-success uppercase">Verify Gaps</span>
+                  <span className="text-[10px] font-extrabold tracking-wider text-success uppercase">Yosemite Hiking</span>
                   <p className="text-[11px] font-semibold text-foreground/90 leading-normal">
-                    &quot;Explain why some of my skills are showing as unverified in my skill tree.&quot;
+                    &quot;Draft a weekend hiking itinerary for Yosemite...&quot;
                   </p>
                 </Card>
 
                 <Card 
                   as="button"
                   type="button"
-                  onClick={() => handleSuggestionClick("What architectural patterns should I implement to elevate my system score?")}
+                  onClick={() => handleSuggestionClick("Create a family-friendly walking tour of ancient Rome historical sites.")}
                   className="p-4 cursor-pointer hover:scale-[1.02] border border-border/60 bg-surface-secondary/40 hover:bg-surface-secondary/80 transition-all duration-200 text-left space-y-1.5 focus-ring"
                   glow={false}
-                  aria-label="Suggestion: Elevate Architecture"
+                  aria-label="Suggestion: Ancient Rome"
                 >
-                  <span className="text-[10px] font-extrabold tracking-wider text-warning uppercase">Elevate Architecture</span>
+                  <span className="text-[10px] font-extrabold tracking-wider text-warning uppercase">Ancient Rome</span>
                   <p className="text-[11px] font-semibold text-foreground/90 leading-normal">
-                    &quot;What architectural patterns should I implement to elevate my system score?&quot;
+                    &quot;Create a family-friendly walking tour of ancient Rome...&quot;
                   </p>
                 </Card>
               </div>
@@ -322,7 +322,7 @@ export function ChatView() {
               value={input}
               onChange={(e) => setInput(e.target.value)}
               disabled={isStreaming}
-              placeholder="Ask our CVerify AI assistant..."
+              placeholder="Ask our travel assistant..."
               className="flex-1 px-4 py-3 rounded-xl border border-border bg-surface-secondary/50 backdrop-blur-sm text-sm text-foreground focus:outline-hidden focus:ring-2 focus:ring-focus transition-all select-text pr-24"
             />
             

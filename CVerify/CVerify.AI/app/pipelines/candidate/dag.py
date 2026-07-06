@@ -20,11 +20,11 @@ EXTERNAL_CONSUMERS: Dict[str, Set[str]] = {
         "styleConfidence", "styleDistribution", "workingStyleSummary", "_ruleBasedStyle",
         "totalExperienceYears", "hasLeadershipExperience", "multiplierRationale",
         "skillDepthScore", "ownershipScore", "architectureScore", "impactScore", "problemSolvingScore",
-        "candidateProfile", "improvementPlan", "skillTree"
+        "candidateProfile", "improvementPlan"
     },
     "DatabaseProjection": {
         "candidateScore", "finalLevel", "finalLevelLabel", "primaryTendency", "primaryWorkingStyle",
-        "recruiterHeadline", "fullSummary", "professionalBio", "keyStrengths", "watchPoints",
+        "recruiterHeadline", "fullSummary", "keyStrengths", "watchPoints",
         "technicalDepth", "technicalBreadth", "leadershipPotential", "executionStrength", "trustLevel"
     }
 }

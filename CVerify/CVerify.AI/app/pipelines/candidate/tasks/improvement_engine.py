@@ -23,7 +23,7 @@ class CandidateImprovementEngine(BaseTask):
 
     @property
     def output_keys(self) -> List[str]:
-        return ["improvementPlan", "candidateProfile"]
+        return ["improvementPlan"]
 
     async def _execute_internal(
         self,

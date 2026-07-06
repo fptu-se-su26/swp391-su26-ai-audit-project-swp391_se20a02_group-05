@@ -31,7 +31,9 @@ export function AuthAvatar() {
   const router = useRouter();
   const { theme, setTheme } = useThemeStore();
 
-
+  React.useEffect(() => {
+    console.log("[Navbar Avatar Render Diagnostics] user.avatarUrl:", user?.avatarUrl);
+  }, [user?.avatarUrl]);
 
   React.useEffect(() => {
     const handleKeyDown = async (e: KeyboardEvent) => {
@@ -66,9 +68,6 @@ export function AuthAvatar() {
       case "dashboard":
         const role = user.role?.toLowerCase() || "user";
         router.push(`/${role}`);
-        break;
-      case "profile":
-        router.push(user?.username ? `/${user.username.toLowerCase()}` : "/user/profile");
         break;
       case "settings":
         router.push("/settings");

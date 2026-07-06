@@ -22,7 +22,6 @@ export interface BasicInfoDraft {
   company: string;
   birthDate: string;
   socialLinks: string[];
-  aiSuggestionsJson?: string | null;
 }
 
 export interface SkillsDraft {
@@ -104,6 +103,8 @@ export interface PreferencesDraft {
   employmentPreferences: string[];
   expectedSalaryMin: number | null;
   expectedSalaryMax: number | null;
+  desiredSalary: number | null;
+  minimumAcceptableSalary: number | null;
   expectedSalaryCurrency: string;
   expectedSalaryType: string;
   expectedSalaryNegotiable: boolean;
