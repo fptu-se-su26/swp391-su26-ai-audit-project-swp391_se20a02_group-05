@@ -25,7 +25,6 @@ STAGES = [
     ("L2-011", "ExperienceConfidenceMultiplier", None),
     ("L2-012", "MultiRoleRecommendationEngine", "Recommendations"),
     ("L2-013", "CandidateSummaryGenerator", None),
-    ("L2-016", "SkillTreeGenerator", "SkillTree"),
     ("L2-014", "CandidateProfileComposer", "CandidateProfile"),
     ("L2-015", "CandidateImprovementEngine", "ImprovementPlan"),
 ]
@@ -351,7 +350,6 @@ class CandidateAssessmentStreamOrchestrator:
                 # Extract resultData and merge it back into inputs
                 result_data = json.loads(result["resultData"])
                 inputs = {**inputs, **result_data}
-                task_telemetry = result.get("telemetry") or {}
 
                 # Unpack single-key wrapper for artifact types if they are nested in task outputs
                 json_payload = result_data
@@ -365,16 +363,12 @@ class CandidateAssessmentStreamOrchestrator:
                 # Emit completion
                 completion_pct = round(10.0 + (90.0 * (idx + 1) / len(STAGES)), 1)
                 yield {
-                    "status": "Completed",
+                    "status": "Running",
                     "step": task_alias,
                     "message": f"Completed task {task_alias} ({task_name}).",
                     "percentage": completion_pct,
                     "artifactType": artifact_type,
-                    "jsonData": json.dumps(json_payload),
-                    "inputTokens": task_telemetry.get("promptTokens"),
-                    "outputTokens": task_telemetry.get("completionTokens"),
-                    "costUsd": task_telemetry.get("estimatedCostUsd"),
-                    "modelName": task_telemetry.get("modelName")
+                    "jsonData": json.dumps(json_payload)
                 }
 
             except Exception as e:
@@ -390,7 +384,7 @@ class CandidateAssessmentStreamOrchestrator:
         # Success final yield
         yield {
             "status": "Completed",
-            "step": "Complete",
+            "step": "CandidateProfileComposer",
             "message": "Candidate Assessment completed successfully.",
             "percentage": 100.0
         }

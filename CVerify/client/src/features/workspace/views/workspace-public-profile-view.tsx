@@ -18,7 +18,6 @@ import {
 } from "lucide-react";
 import { SkeletonLoader } from "@/components/ui/states";
 import { getTagLabel } from "../types/workspace.types";
-import { BusinessVerificationBadge } from "@/components/ui/cverify/verification-badges";
 
 // Inline brand SVGs to bypass Lucide member mismatch errors
 const LinkedInIcon = (props: React.SVGProps<SVGSVGElement>) => (
@@ -106,7 +105,10 @@ export const WorkspacePublicProfileView: React.FC<WorkspacePublicProfileViewProp
           </Typography>
         </div>
         <div className="flex gap-2">
-          <BusinessVerificationBadge level={workspaceDetails.verificationLevel} />
+          <Chip color="success" variant="soft" size="sm" className="font-semibold text-xs py-1 font-outfit">
+            <ShieldCheck size={12} className="inline mr-1" />
+            Verified Enterprise
+          </Chip>
         </div>
       </div>
 

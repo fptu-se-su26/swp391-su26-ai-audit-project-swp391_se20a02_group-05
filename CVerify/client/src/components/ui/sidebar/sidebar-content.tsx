@@ -1,20 +1,12 @@
 "use client";
 
-import React, { useMemo, useEffect, useState } from "react";
+import React, { useMemo, useEffect } from "react";
 import { useAuth } from "../../../features/auth/hooks/use-auth";
-import {
-  companyNavigationConfig,
-  workspaceNavigationConfig,
-  candidateNavigationConfig,
-  adminNavigationConfig
-} from "../../../config/navigation-config";
-import { useSidebarMode } from "../../../providers/sidebar-mode-provider";
-import { useActiveWorkspace } from "../../../features/workspace/hooks/use-active-workspace";
+import { navigationConfig } from "../../../config/navigation-config";
 import { filterNavigationNodes } from "../../../lib/navigation-utils";
 import SidebarLink from "./sidebar-link";
 import SidebarGroup from "./sidebar-group";
 import SidebarSection from "./sidebar-section";
-import WorkspaceSwitcher from "./workspace-switcher";
 import { useWorkspace } from "../../../providers/workspace-provider";
 import { useWorkspaceStore } from "../../../features/workspace/store/use-workspace-store";
 import { useRouter, useSearchParams, usePathname } from "next/navigation";
@@ -33,36 +25,48 @@ import {
   BarChart3,
   Settings,
   ArrowLeft,
-  BookOpen
+  BookOpen,
+  Building2,
+  Shield,
+  Users,
+  Briefcase,
+  FileText,
+  Info,
+  CreditCard
 } from "lucide-react";
 import { type NavigationNode } from "../../../types/navigation.types";
 
 interface SidebarContentProps {
   collapsed: boolean;
   isMobile: boolean;
-  hideSwitcher?: boolean;
-  hideActiveWorkspaceBanner?: boolean;
 }
 
 export const SidebarContent: React.FC<SidebarContentProps> = ({
   collapsed,
   isMobile,
-  hideSwitcher = false,
-  hideActiveWorkspaceBanner = false,
 }) => {
   const { user, isAuthenticated, hasPermission } = useAuth();
   const userRole = user?.role || "USER";
 
+  const backHref = useMemo(() => {
+    if (userRole === "BUSINESS") return "/business";
+    if (userRole === "ADMIN") return "/admin";
+    return "/user";
+  }, [userRole]);
+
+  const backLabel = useMemo(() => {
+    if (userRole === "BUSINESS") return "Back to Business Hub";
+    if (userRole === "ADMIN") return "Back to Admin Dashboard";
+    return "Back to Personal Hub";
+  }, [userRole]);
+
   const { activeWorkspace } = useWorkspace();
-  const { sidebarMode } = useSidebarMode();
   const router = useRouter();
   const searchParams = useSearchParams();
   const activeView = searchParams?.get("view") || "overview";
 
   const fetchMyOrganizations = useWorkspaceStore((s) => s.fetchMyOrganizations);
   const myOrganizations = useWorkspaceStore((s) => s.myOrganizations);
-  const workspacesStore = useWorkspaceStore((s) => s.workspaces);
-  const fetchWorkspace = useWorkspaceStore((s) => s.fetchWorkspace);
 
   useEffect(() => {
     if (isAuthenticated && user) {
@@ -70,165 +74,191 @@ export const SidebarContent: React.FC<SidebarContentProps> = ({
     }
   }, [isAuthenticated, user, fetchMyOrganizations]);
 
+  // Memoize filtered navigation nodes to optimize performance and prevent redundant re-renders
+  const filteredNodes = useMemo(() => {
+    return filterNavigationNodes(navigationConfig, userRole, hasPermission);
+  }, [userRole, hasPermission]);
+
   const pathname = usePathname();
 
-  // Derive active workspace slug directly from URL path segment
-  const activeWorkspaceSlug = useMemo(() => {
-    if (pathname?.startsWith("/business/")) {
-      const slug = pathname.split("/business/")[1]?.split("/")[0] || "";
-      if (slug === "organizations") return "";
-      return slug;
-    }
-    return "";
-  }, [pathname]);
-
-  // Fallback organization slug if not currently in a workspace path
+  // Resolve current organization slug:
+  // If the path is /workspace/slug/..., use slug.
+  // Otherwise, if myOrganizations exists and has entries, default to the first organization's slug.
   const currentOrgSlug = useMemo(() => {
-    if (activeWorkspaceSlug) return activeWorkspaceSlug;
+    if (pathname?.startsWith("/workspace/")) {
+      return pathname.split("/workspace/")[1]?.split("/")[0] || "";
+    }
     return myOrganizations && myOrganizations.length > 0 ? myOrganizations[0].slug : "";
-  }, [activeWorkspaceSlug, myOrganizations]);
+  }, [pathname, myOrganizations]);
 
-  // Fetch workspace details to run permission checks
+  const fetchWorkspace = useWorkspaceStore((s) => s.fetchWorkspace);
+  const workspaceDetails = useWorkspaceStore((s) => s.workspaces[currentOrgSlug]);
+
   useEffect(() => {
     if (currentOrgSlug) {
       fetchWorkspace(currentOrgSlug);
     }
   }, [currentOrgSlug, fetchWorkspace]);
 
-  const workspaceDetails = useMemo(() => {
-    return currentOrgSlug ? workspacesStore[currentOrgSlug] : null;
-  }, [currentOrgSlug, workspacesStore]);
+  const permissions = useMemo(() => workspaceDetails?.permissions || [], [workspaceDetails]);
 
-  const workspacePermissions = useMemo(() => workspaceDetails?.permissions || [], [workspaceDetails]);
-  const workspaceUserRole = useMemo(() => workspaceDetails?.userRole || null, [workspaceDetails]);
+  const canViewRoles = useMemo(() => {
+    return permissions.includes("organization:roles:view") || permissions.includes("organization:roles:manage");
+  }, [permissions]);
 
-  // Active sub-workspaces hook
-  const { activeWorkspaceId, setActiveWorkspaceId, workspaces } = useActiveWorkspace(currentOrgSlug);
-  const activeWorkspaceObj = useMemo(() => workspaces.find(w => w.id === activeWorkspaceId), [workspaces, activeWorkspaceId]);
-  const activeWorkspaceName = activeWorkspaceObj?.displayName || "Select Workspace";
+  const canViewBilling = useMemo(() => {
+    return permissions.includes("billing:invoice:view") || permissions.includes("billing:subscription:manage");
+  }, [permissions]);
 
-  // Helper check for role & permissions at workspace level
-  const hasWorkspaceAccess = (node: NavigationNode) => {
-    const reqPerms = node.requiredWorkspacePermissions;
-    if (reqPerms && reqPerms.length > 0) {
-      // Strictly permission-based checking (no role-specific bypasses)
-      const hasPerm = reqPerms.some((p) => workspacePermissions.includes(p));
-      if (!hasPerm) return false;
-    }
+  const canEditSettings = useMemo(() => {
+    return permissions.includes("organization:settings:edit") || permissions.includes("organization:profile:edit");
+  }, [permissions]);
 
-    const reqRoles = node.requiredWorkspaceRoles;
-    if (reqRoles && reqRoles.length > 0) {
-      if (!workspaceUserRole || !reqRoles.includes(workspaceUserRole)) {
-        return false;
-      }
-    }
+  const canViewRecruitment = useMemo(() => {
+    return (
+      permissions.includes("ai:interview:configure") ||
+      permissions.includes("ai:interview:conduct") ||
+      permissions.includes("ai:interview:evaluate")
+    );
+  }, [permissions]);
 
-    return true;
-  };
+  const orgNodes = useMemo<NavigationNode[]>(() => {
+    if (!currentOrgSlug) return [];
 
-  // Helper to substitute workspace slug and username in href
-  const resolveNodeHref = (node: NavigationNode): NavigationNode => {
-    const username = user?.username ? user.username.toLowerCase() : "";
-    const replaceTokens = (str: string) => {
-      let result = str.replace(/\[slug\]/g, currentOrgSlug).replace(/:slug/g, currentOrgSlug);
-      if (user?.username) {
-        result = result.replace(/\[username\]/g, username).replace(/:username/g, username);
-      } else {
-        result = result.replace(/\/\[username\]/g, "/user/profile").replace(/\/:username/g, "/user/profile");
-      }
-      return result;
-    };
+    return [
+      {
+        id: "org-workspace-group",
+        type: "group" as const,
+        label: "Workspace",
+        icon: Building2,
+        children: [
+          {
+            id: "org-info",
+            type: "item" as const,
+            label: "Information",
+            href: `/workspace/${currentOrgSlug}/information`,
+            icon: Info,
+          },
+          {
+            id: "org-members",
+            type: "item" as const,
+            label: "Members",
+            href: `/workspace/${currentOrgSlug}/members`,
+            icon: Users,
+          },
+          ...(canViewRoles
+            ? [
+              {
+                id: "org-roles",
+                type: "item" as const,
+                label: "Business Roles",
+                href: `/workspace/${currentOrgSlug}/roles`,
+                icon: Shield,
+              },
+            ]
+            : []),
+          ...(canViewBilling
+            ? [
+              {
+                id: "org-billing",
+                type: "item" as const,
+                label: "Billing",
+                href: `/workspace/${currentOrgSlug}/billing`,
+                icon: CreditCard,
+              },
+            ]
+            : []),
+          ...(canEditSettings
+            ? [
+              {
+                id: "org-settings",
+                type: "item" as const,
+                label: "Settings",
+                href: `/workspace/${currentOrgSlug}/settings`,
+                icon: Settings,
+              },
+            ]
+            : []),
+        ],
+      },
+      ...(canViewRecruitment
+        ? [
+          {
+            id: "org-recruitment-group",
+            type: "group" as const,
+            label: "Recruitment",
+            icon: Briefcase,
+            children: [
+              {
+                id: "org-recruitment-dashboard",
+                type: "item" as const,
+                label: "Dashboard",
+                href: `/workspace/${currentOrgSlug}/recruitment/dashboard`,
+                icon: LayoutDashboard,
+              },
+              {
+                id: "org-recruitment-jd",
+                type: "item" as const,
+                label: "JD Management",
+                href: `/workspace/${currentOrgSlug}/recruitment/jd`,
+                icon: FileText,
+              },
+            ],
+          },
+        ]
+        : []),
+    ];
+  }, [currentOrgSlug, canViewRoles, canViewBilling, canEditSettings, canViewRecruitment]);
 
-    if (node.type === "item") {
-      return {
-        ...node,
-        href: replaceTokens(node.href),
+  // Dynamically inject workspace links based on role sections
+  const combinedNodes = useMemo(() => {
+    const isInsideWorkspace = pathname?.startsWith("/workspace/");
+
+    if (isInsideWorkspace && currentOrgSlug) {
+      const backNode: NavigationNode = {
+        id: "back-to-hub",
+        type: "item" as const,
+        label: backLabel,
+        href: backHref,
+        icon: ArrowLeft,
       };
-    }
-    if (node.type === "group") {
-      return {
-        ...node,
-        href: node.href ? replaceTokens(node.href) : undefined,
-        children: node.children.map(resolveNodeHref),
-      };
-    }
-    if (node.type === "section") {
-      return {
-        ...node,
-        children: node.children.map(resolveNodeHref),
-      };
-    }
-    return node;
-  };
 
-  // Filter navigation nodes based on user role, global permissions, and workspace permissions
-  const filteredNodes = useMemo(() => {
-    const filterRecurse = (nodes: NavigationNode[]): NavigationNode[] => {
-      return nodes
-        .map((node) => {
-          // 1. Role-based check
-          if (node.requiredRoles && !node.requiredRoles.includes(userRole)) {
-            return null;
-          }
+      // Filter out candidate and business dashboards to focus purely on the workspace
+      const baseNodes = filteredNodes.filter(
+        (node) => node.id !== "candidate-section" && node.id !== "business-section"
+      );
 
-          // 2. Global permission check
-          if (node.requiredPermissions) {
-            const passes = node.requiredPermissions.some((p) => hasPermission(p));
-            if (!passes) {
-              return null;
-            }
-          }
-
-          // 3. Workspace membership and permission check
-          const hasWorkspacePerms = node.requiredWorkspacePermissions && node.requiredWorkspacePermissions.length > 0;
-          const isWorkspaceRoute = node.id.startsWith("workspace-") || node.id.startsWith("org-") || hasWorkspacePerms;
-          if (isWorkspaceRoute) {
-            if (!currentOrgSlug || !workspaceDetails || workspaceUserRole === null) {
-              return null;
-            }
-            if (!hasWorkspaceAccess(node)) {
-              return null;
-            }
-          }
-
-          // 4. Recursive child filtering
-          if (node.type === "group" || node.type === "section") {
-            const filteredChildren = filterRecurse(node.children);
-            if (filteredChildren.length === 0) {
-              return null;
-            }
-            return {
-              ...node,
-              children: filteredChildren,
-            } as NavigationNode;
-          }
-
-          return node;
-        })
-        .filter((node): node is NavigationNode => node !== null);
-    };
-
-    // Determine config array depending on mode
-    let targetConfig: NavigationNode[] = [];
-    if (sidebarMode === "WORKSPACE") {
-      targetConfig = workspaceNavigationConfig;
-    } else if (sidebarMode === "CANDIDATE") {
-      targetConfig = candidateNavigationConfig;
-    } else if (sidebarMode === "SYSTEM_ADMIN") {
-      targetConfig = adminNavigationConfig;
-    } else {
-      // Default mode: COMPANY
-      targetConfig = [...companyNavigationConfig];
-      if (userRole === "USER") {
-        targetConfig = [...candidateNavigationConfig];
-      } else if (userRole === "ADMIN") {
-        targetConfig = [...targetConfig, ...adminNavigationConfig];
-      }
+      return [
+        backNode,
+        ...baseNodes,
+        ...orgNodes,
+      ];
     }
 
-    const rawNodes = filterRecurse(targetConfig);
-    return rawNodes.map(resolveNodeHref);
-  }, [sidebarMode, userRole, hasPermission, currentOrgSlug, workspaceDetails, workspaceUserRole, workspacePermissions]);
+    if (!myOrganizations || myOrganizations.length === 0) {
+      return filteredNodes;
+    }
+
+    const mappedNodes = [...filteredNodes];
+
+    mappedNodes.push({
+      id: "workspaces-section",
+      type: "section",
+      label: "Workspaces",
+      children: [
+        ...myOrganizations.map((org) => ({
+          id: `org-workspace-${org.slug}`,
+          type: "item" as const,
+          label: org.name,
+          tooltip: org.name,
+          href: `/workspace/${org.slug}/information`,
+          icon: Building2,
+        })),
+      ],
+    });
+
+    return mappedNodes;
+  }, [filteredNodes, myOrganizations, orgNodes, pathname, currentOrgSlug, backHref, backLabel]);
 
   // Dedicated specialized components workspace navigation sections
   const componentSections = useMemo(() => [
@@ -246,6 +276,7 @@ export const SidebarContent: React.FC<SidebarContentProps> = ({
   ], []);
 
   const handleBackToAdmin = () => {
+    // Return to Previous Admin Dashboard Page cleanly
     router.push("/admin");
   };
 
@@ -349,93 +380,52 @@ export const SidebarContent: React.FC<SidebarContentProps> = ({
     );
   }
 
+  // Standard Admin Layout Navigation
   return (
     <nav
-      className={["flex flex-col w-full h-full", isMobile ? "gap-2" : "gap-3"].join(
+      className={["flex flex-col w-full", isMobile ? "gap-2" : "gap-3"].join(
         " ",
       )}
       aria-label={
         isMobile ? "Mobile Sidebar Navigation" : "Desktop Sidebar Navigation"
       }
     >
-      <div className="flex-1 flex flex-col gap-3 w-full">
-        {/* Workspace specific Mode Header */}
-        {sidebarMode === "WORKSPACE" && (
-          <div className="flex flex-col gap-2 pb-2 border-b border-border/40 mb-1 select-none">
-            <Link
-              href={`/business/${currentOrgSlug}/dashboard`}
-              className={[
-                "flex items-center gap-2 w-full rounded-xl transition-all duration-200 text-muted hover:bg-accent/10 hover:text-accent font-semibold cursor-pointer border-0 bg-transparent text-left",
-                isMobile ? "h-12 text-base px-3.5" : "h-10 text-sm px-3",
-                collapsed ? "justify-center" : ""
-              ].join(" ")}
-            >
-              <ArrowLeft size={16} />
-              {!collapsed && <span className="text-xs">Company Console</span>}
-            </Link>
-          </div>
-        )}
-
-        {/* Company Quick-Jump Banner (Rendered when in Company Mode and a workspace is selected) */}
-        {!hideActiveWorkspaceBanner && sidebarMode === "COMPANY" && activeWorkspaceObj && !collapsed && (
-          <div className="select-none">
-            <Link
-              href={`/business/${currentOrgSlug}/recruitment/dashboard`}
-              className="flex items-center justify-between p-2 rounded-xl border border-accent/20 bg-accent/5 hover:bg-accent/10 transition-colors duration-200 cursor-pointer"
-            >
-              <div className="flex flex-col min-w-0">
-                <span className="text-[8px] text-accent font-bold uppercase tracking-wider">Active Workspace</span>
-                <span className="text-[11px] font-bold text-foreground truncate">{activeWorkspaceName}</span>
-              </div>
-              <span className="text-[9px] font-bold text-accent shrink-0 ml-1.5 bg-accent/10 px-1.5 py-0.5 rounded-md border border-accent/20">Open →</span>
-            </Link>
-          </div>
-        )}
-
-        {/* Dynamic Navigation Node Links */}
-        {filteredNodes.map((node) => {
-          if (node.type === "item") {
-            return (
-              <SidebarLink
-                key={node.id}
-                item={node}
-                collapsed={collapsed}
-                isMobile={isMobile}
-              />
-            );
-          }
-          if (node.type === "group") {
-            return (
-              <SidebarGroup
-                key={node.id}
-                group={node}
-                collapsed={collapsed}
-                isMobile={isMobile}
-              />
-            );
-          }
-          if (node.type === "section") {
-            return (
-              <SidebarSection
-                key={node.id}
-                section={node}
-                collapsed={collapsed}
-                isMobile={isMobile}
-              />
-            );
-          }
-          return null;
-        })}
-      </div>
-
-      {/* Organization Switcher at the bottom */}
-      {!hideSwitcher && (userRole === "BUSINESS" || userRole === "ADMIN") && (
-        <div className="mt-auto pt-3 border-t border-separator/50 w-full shrink-0 min-w-0">
-          <WorkspaceSwitcher collapsed={collapsed} isMobile={isMobile} />
-        </div>
-      )}
+      {combinedNodes.map((node) => {
+        if (node.type === "item") {
+          return (
+            <SidebarLink
+              key={node.id}
+              item={node}
+              collapsed={collapsed}
+              isMobile={isMobile}
+            />
+          );
+        }
+        if (node.type === "group") {
+          return (
+            <SidebarGroup
+              key={node.id}
+              group={node}
+              collapsed={collapsed}
+              isMobile={isMobile}
+            />
+          );
+        }
+        if (node.type === "section") {
+          return (
+            <SidebarSection
+              key={node.id}
+              section={node}
+              collapsed={collapsed}
+              isMobile={isMobile}
+            />
+          );
+        }
+        return null;
+      })}
     </nav>
   );
 };
 
 export default SidebarContent;
+

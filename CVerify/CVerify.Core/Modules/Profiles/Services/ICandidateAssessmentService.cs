@@ -14,10 +14,5 @@ public interface ICandidateAssessmentService
     Task<List<CandidateAssessmentResponse>> GetAssessmentHistoryAsync(Guid userId, CancellationToken cancellationToken = default);
     Task<CandidateAssessmentDetailResponse?> GetAssessmentDetailsAsync(Guid userId, Guid assessmentId, CancellationToken cancellationToken = default);
     Task<CandidateAssessmentDetailResponse?> GetLatestPublicAssessmentAsync(string username, CancellationToken cancellationToken = default);
-    Task<List<CandidateSkillTreeNodeResponse>?> GetSkillTreeAsync(Guid userId, Guid assessmentId, CancellationToken cancellationToken = default);
-    Task<List<CandidateSkillTreeNodeResponse>?> GetPublicSkillTreeAsync(string username, CancellationToken cancellationToken = default);
     Task ProcessAssessmentJobAsync(Guid assessmentId, CancellationToken cancellationToken = default);
-    Task<bool> CancelAssessmentAsync(Guid userId, Guid assessmentId);
-    Task ReprocessAssessmentAsync(Guid assessmentId, CancellationToken cancellationToken = default);
-    Task ReprocessAllAssessmentsAsync(CancellationToken cancellationToken = default);
 }

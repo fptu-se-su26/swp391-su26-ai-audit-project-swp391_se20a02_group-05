@@ -30,6 +30,7 @@ TASK_ALIASES: dict[str, str] = {
     "L3-011": "MatchScoreAggregator",
     "L3-012": "MatchScoreCapRule",
     "L3-013": "GapAnalysisEngine",
+    "L3-014": "ApplicationQualityGate",
     "L3-015": "HiringRecommendationGenerator",
 }
 
@@ -143,6 +144,8 @@ class JdMatchingOrchestrator:
                 result = await self._match_score_cap_rule(job_id, inputs, correlation_id)
             elif normalized == "GapAnalysisEngine":
                 result = await self._gap_analysis_engine(job_id, inputs, correlation_id)
+            elif normalized == "ApplicationQualityGate":
+                result = await self._application_quality_gate(job_id, inputs, correlation_id)
             elif normalized == "HiringRecommendationGenerator":
                 result = await self._hiring_recommendation_generator(job_id, inputs, correlation_id)
             else:
@@ -364,7 +367,7 @@ class JdMatchingOrchestrator:
         capped_score = match_score_pct
 
         # Rule 1: Hard salary mismatch → cap at 60%
-        if salary_score == 0.0:
+        if salary_score <= 0.0:
             if capped_score > 60.0:
                 capped_score = 60.0
                 cap_applied = True
@@ -383,7 +386,7 @@ class JdMatchingOrchestrator:
             "cappedMatchScorePercent": capped_score,
             "capApplied": cap_applied,
             "activeFlags": flags,
-            "isScreeningBlocked": (capped_score < 30.0 or salary_score == 0.0 and skill_score < 0.4),
+            "isScreeningBlocked": (capped_score < 30.0 or (salary_score <= 0.0 and skill_score < 0.4)),
             "capRuleSummary": _cap_summary(flags, cap_applied, capped_score)
         }
         return self._ok(data, None, "MatchScoreCapRule")
@@ -397,6 +400,52 @@ class JdMatchingOrchestrator:
         raw, telemetry = await self.claude_service.analyze_repo_with_telemetry(system, user, correlation_id)
         data = self._extract_json(raw, correlation_id)
         return self._ok(data, telemetry, "GapAnalysisEngine")
+
+    # ── L3-014 Application Quality Gate (deterministic) ────────────────────────
+
+    async def _application_quality_gate(self, job_id: str, inputs: dict, correlation_id: str) -> dict:
+        match_score_pct = float(inputs.get("matchScorePercent", inputs.get("cappedMatchScorePercent", 0.0)))
+        capped_score_pct = float(inputs.get("cappedMatchScorePercent", match_score_pct))
+        salary_score = float(inputs.get("salaryMatchScore", 1.0))
+        skill_score = float(inputs.get("skillMatchScore", 0.0))
+        seniority_gap = abs(int(inputs.get("levelGap", 0)))
+        seniority_flag = inputs.get("seniorityFlag", "exact_match")
+        gap_severity = inputs.get("gapSeverity", "none")
+        active_flags = list(inputs.get("activeFlags", []))
+        missing_skills = list(inputs.get("missingRequiredSkills", []))
+
+        warnings = []
+        confirmation_reasons = []
+
+        if salary_score <= 0.0:
+            warnings.append("Candidate salary expectation is above the JD maximum budget.")
+            confirmation_reasons.append("salary_mismatch")
+
+        if skill_score < 0.4 or missing_skills:
+            warnings.append("Candidate is missing required skills or has low verified skill coverage.")
+            confirmation_reasons.append("skill_gap")
+
+        if seniority_gap >= 2:
+            warnings.append(f"Candidate seniority has a {seniority_gap}-level {seniority_flag.replace('_', ' ')} gap.")
+            confirmation_reasons.append("seniority_gap")
+
+        if gap_severity in ("critical", "significant"):
+            warnings.append(f"Gap analysis found {gap_severity} issues for this JD match.")
+            confirmation_reasons.append("gap_analysis")
+
+        requires_confirmation = bool(confirmation_reasons)
+        data = {
+            "qualityGateStatus": "requires_confirmation" if requires_confirmation else "clear",
+            "canApply": True,
+            "requiresExplicitConfirmation": requires_confirmation,
+            "confirmationRequiredReasons": sorted(set(confirmation_reasons)),
+            "warnings": warnings,
+            "activeFlags": active_flags,
+            "originalMatchScorePercent": match_score_pct,
+            "displayScorePercent": capped_score_pct,
+            "gateSummary": _quality_gate_summary(requires_confirmation, capped_score_pct, warnings),
+        }
+        return self._ok(data, None, "ApplicationQualityGate")
 
     # ── L3-015 Hiring Recommendation Generator ────────────────────────────────
 
@@ -414,7 +463,7 @@ class JdMatchingOrchestrator:
 
         if match_pct >= 75 and salary_score > 0 and gap_severity not in ("critical", "significant"):
             enforced_verdict = "Yes"
-        elif match_pct >= 50 or (gap_severity in ("minor", "none") and salary_score > 0):
+        elif salary_score > 0 and (match_pct >= 50 or gap_severity in ("minor", "none")):
             enforced_verdict = "Conditional"
         else:
             enforced_verdict = "No"
@@ -456,3 +505,13 @@ def _cap_summary(flags: list, cap_applied: bool, capped_score: float) -> str:
     summary = f"Cap rules applied. Final score: {capped_score:.1f}%. "
     summary += " | ".join(flags)
     return summary
+
+
+def _quality_gate_summary(requires_confirmation: bool, score_pct: float, warnings: list) -> str:
+    if not requires_confirmation:
+        return f"Application quality gate is clear. Candidate may apply with a {score_pct:.1f}% match score."
+    warning_types = "; ".join(warnings)
+    return (
+        f"Application quality gate requires explicit confirmation before applying. "
+        f"Displayed match score: {score_pct:.1f}%. Warnings: {warning_types}."
+    )

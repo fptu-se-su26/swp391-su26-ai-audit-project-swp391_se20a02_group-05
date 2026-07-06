@@ -2,7 +2,6 @@ import { create } from "zustand";
 import { toast } from "@heroui/react";
 import { repositoryAnalysisApi } from "@/services/repository-analysis.service";
 import type { AnalysisStatus, RepositoryAnalysis, AnalysisTaskEvent } from "@/types/repository-analysis.types";
-import { useStreamingStore } from "@/modules/streaming";
 
 export interface RepoJobState {
   repoId: string;
@@ -178,8 +177,8 @@ interface AnalysisJobStore {
   resetRepositoryAnalysis: (repoId: string) => Promise<void>;
 }
 
-// Map to track active store subscriptions in the module scope
-const activeSubscriptions: Record<string, () => void> = {};
+// Map to track active EventSources in the module scope
+const activeEventSources: Record<string, EventSource> = {};
 
 export const useAnalysisJobStore = create<AnalysisJobStore>((set, get) => {
   const getOrInitState = (repoId: string): RepoJobState => {
@@ -200,162 +199,244 @@ export const useAnalysisJobStore = create<AnalysisJobStore>((set, get) => {
   };
 
   const connectToProgressStream = (repoId: string, jobId: string) => {
-    if (activeSubscriptions[repoId]) {
-      activeSubscriptions[repoId]();
-      delete activeSubscriptions[repoId];
+    if (activeEventSources[repoId]) {
+      activeEventSources[repoId].close();
+      delete activeEventSources[repoId];
     }
 
+    const sseUrl = `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api"}/repository-analyses/jobs/${jobId}/progress-stream`;
+    const eventSource = new EventSource(sseUrl, { withCredentials: true });
+    activeEventSources[repoId] = eventSource;
 
+    eventSource.onmessage = async (event) => {
+      // Discard messages if this stream is no longer the active EventSource for the repo
+      if (activeEventSources[repoId] !== eventSource) {
+        eventSource.close();
+        return;
+      }
 
-    let lastCompletedStagesCount = 0;
-    const unsubscribe = useStreamingStore.subscribe((streamingState: any) => {
-      const activeSession = streamingState.activeSession;
-      if (activeSession && activeSession.id === jobId) {
-        let mappedStatus: AnalysisStatus = "idle";
-        if (activeSession.status === "Pending") mappedStatus = "QUEUED";
-        else if (activeSession.status === "Running") mappedStatus = "ANALYZING";
-        else if (activeSession.status === "Completed") mappedStatus = "COMPLETED";
-        else if (activeSession.status === "Failed") mappedStatus = "FAILED";
-        else if (activeSession.status === "Cancelled") mappedStatus = "CANCELLED";
+      const currentRepoState = get().repoStates[repoId];
+      // Discard messages if this stream is for an older or different job (Race Condition Protection)
+      if (currentRepoState && currentRepoState.jobId !== jobId) {
+        eventSource.close();
+        if (activeEventSources[repoId] === eventSource) {
+          delete activeEventSources[repoId];
+        }
+        return;
+      }
 
-        const localLogs = streamingState.logs.map((l: any) => l.message);
+      const dataStr = event.data;
+      if (dataStr === "[DONE]") {
+        eventSource.close();
+        if (activeEventSources[repoId] === eventSource) {
+          delete activeEventSources[repoId];
+        }
 
-        const localTaskEvents = streamingState.stages.map((s: any) => ({
-          id: s.id,
-          taskId: s.id,
-          timestamp: s.completedAt || s.startedAt || new Date().toISOString(),
-          level: s.status === "Failed" ? "Error" : s.status === "Completed" ? "Success" : "Info",
-          eventType: s.status === "Failed" ? "AI_TASK_FAILED" : s.status === "Completed" ? "AI_TASK_COMPLETED" : "ProgressUpdate",
-          message: s.description || "",
-          taskType: s.stageId,
-          taskStatus: s.status,
-          taskProgress: s.progress,
-          taskDurationMs: s.durationMs,
-        }));
-
-        set((storeState) => {
-          const prevState = storeState.repoStates[repoId] || getOrInitState(repoId);
-          return {
+        try {
+          const report = await repositoryAnalysisApi.getLatestReport(repoId);
+          set((state) => ({
             repoStates: {
-              ...storeState.repoStates,
+              ...state.repoStates,
               [repoId]: {
-                ...prevState,
+                ...getOrInitState(repoId),
                 jobId,
-                status: mappedStatus,
-                progress: activeSession.progress,
-                currentStep: activeSession.currentStep || "",
-                logs: localLogs,
-                taskEvents: localTaskEvents,
+                status: "COMPLETED",
+                progress: 100,
+                currentStep: "Completed",
+                latestReport: report,
+                partialSnapshot: null,
                 lastUpdated: Date.now(),
+              },
+            },
+          }));
+        } catch (err) {
+          console.error("Failed to load completed report from SSE stream:", err);
+          set((state) => ({
+            repoStates: {
+              ...state.repoStates,
+              [repoId]: {
+                ...getOrInitState(repoId),
+                jobId,
+                status: "FAILED",
+                currentStep: "Failed to load report",
+                lastUpdated: Date.now(),
+              },
+            },
+          }));
+        }
+        return;
+      }
+
+      try {
+        const payload = JSON.parse(dataStr);
+        if (payload && (payload.status || payload.taskStatus || payload.jobId)) {
+          set((state) => {
+            const prevState = getOrInitState(repoId);
+            const jobStatus = payload.status || prevState.status || "ANALYZING";
+
+            const isQueued = ["Queued", "QUEUED"].includes(jobStatus);
+            const isAnalyzing = [
+              "Preparing", "CloningRepository", "DetectingTechnologyStack",
+              "SamplingCode", "RunningAgents", "AggregatingResults", "SavingReport", "Running", "analyzing", "ANALYZING"
+            ].includes(jobStatus);
+
+            const isError = [
+              "Failed", "TimedOut", "error", "FAILED"
+            ].includes(jobStatus);
+
+            const isCancelled = [
+              "Cancelled", "Cancelled", "CANCELLED"
+            ].includes(jobStatus);
+
+            let status: AnalysisStatus = "idle";
+            if (isError) {
+              status = "FAILED";
+            } else if (isQueued) {
+              status = "QUEUED";
+            } else if (isAnalyzing) {
+              status = "ANALYZING";
+            } else if (isCancelled) {
+              status = prevState.latestReport ? "CANCELLED" : "CANCELLED_PARTIAL";
+            } else if (jobStatus === "Completed" || jobStatus === "success" || jobStatus === "COMPLETED") {
+              status = "COMPLETED";
+            } else {
+              status = prevState.status;
+            }
+
+            const step = payload.step || payload.taskType || status;
+            const progress = payload.progress !== undefined ? payload.progress : prevState.progress;
+            const message = payload.message || step;
+
+            const currentLogs = prevState.logs;
+            const updatedLogs = message && !currentLogs.includes(message)
+              ? [...currentLogs, message]
+              : currentLogs;
+
+            let updatedTaskEvents = prevState.taskEvents;
+            if (payload.taskType && payload.message) {
+              const newEvent: AnalysisTaskEvent & {
+                taskType?: string;
+                taskStatus?: string;
+                taskProgress?: number;
+                taskDurationMs?: number;
+                promptTokens?: number;
+                completionTokens?: number;
+                cacheReadTokens?: number;
+                cacheWriteTokens?: number;
+                estimatedCostUsd?: number;
+                modelName?: string;
+              } = {
+                id: payload.id || `live-${Date.now()}-${Math.random()}`,
+                taskId: payload.taskId || "",
+                timestamp: payload.timestamp || new Date().toISOString(),
+                level: payload.level || "Info",
+                eventType: payload.eventType || "ProgressUpdate",
+                message: payload.message,
+                metadata: payload.metadata,
+                taskType: payload.taskType,
+                taskStatus: payload.taskStatus || (payload.eventType === "AI_TASK_FAILED" ? "Failed" : undefined),
+                taskProgress: payload.taskProgress,
+                taskDurationMs: payload.taskDurationMs,
+                promptTokens: payload.promptTokens,
+                completionTokens: payload.completionTokens,
+                cacheReadTokens: payload.cacheReadTokens,
+                cacheWriteTokens: payload.cacheWriteTokens,
+                estimatedCostUsd: payload.estimatedCostUsd,
+                modelName: payload.modelName,
+              };
+
+              if (!updatedTaskEvents.some((e) => e.message === newEvent.message && e.timestamp === newEvent.timestamp)) {
+                updatedTaskEvents = [...updatedTaskEvents, newEvent];
               }
             }
-          };
-        });
 
-        // Trigger snapshot fetch only when a new stage completes (not on every state update)
-        const completedStagesCount = streamingState.stages.filter((s: any) => s.status === "Completed").length;
-        if (completedStagesCount > lastCompletedStagesCount) {
-          lastCompletedStagesCount = completedStagesCount;
-          repositoryAnalysisApi
-            .getJobSnapshot(jobId)
-            .then((snapshot) => {
-              if (snapshot) {
-                set((storeState) => {
-                  const s = storeState.repoStates[repoId] || getOrInitState(repoId);
-                  if (s.status === "COMPLETED" || s.status === "CANCELLED" || s.status === "CANCELLED_PARTIAL") {
-                    return {};
-                  }
-                  return {
-                    repoStates: {
-                      ...storeState.repoStates,
-                      [repoId]: {
-                        ...s,
-                        partialSnapshot: snapshot,
-                        lastUpdated: Date.now(),
+            return {
+              repoStates: {
+                ...state.repoStates,
+                [repoId]: {
+                  ...prevState,
+                  status,
+                  progress,
+                  currentStep: step,
+                  logs: updatedLogs,
+                  taskEvents: updatedTaskEvents,
+                  lastUpdated: Date.now(),
+                },
+              },
+            };
+          });
+
+          if (payload.taskStatus === "Completed") {
+            repositoryAnalysisApi
+              .getJobSnapshot(jobId)
+              .then((snapshot) => {
+                if (snapshot) {
+                  set((state) => {
+                    const s = getOrInitState(repoId);
+                    if (s.status === "COMPLETED" || s.status === "CANCELLED" || s.status === "CANCELLED_PARTIAL") {
+                      return {};
+                    }
+                    return {
+                      repoStates: {
+                        ...state.repoStates,
+                        [repoId]: {
+                          ...s,
+                          partialSnapshot: snapshot,
+                          lastUpdated: Date.now(),
+                        },
                       },
-                    },
-                  };
+                    };
+                  });
+                }
+              })
+              .catch((err: any) => {
+                console.error("Failed to load intermediate job snapshot in store:", err);
+              });
+          }
+
+          const isTerminalState = [
+            "Failed", "Cancelled", "TimedOut", "error", "Completed", "success"
+          ].includes(payload.status || "");
+
+          if (isTerminalState) {
+            eventSource.close();
+            if (activeEventSources[repoId] === eventSource) {
+              delete activeEventSources[repoId];
+            }
+
+            if (["Failed", "error", "TimedOut"].includes(payload.status || "")) {
+              const errMsg = payload.message || payload.errorMessage || "";
+              const isConnectionFailure = payload.errorCode === "CONNECTION_FAILURE" || 
+                errMsg.toUpperCase().includes("CONNECTION") ||
+                errMsg.toUpperCase().includes("REFUSED") ||
+                errMsg.toUpperCase().includes("UNREACHABLE") ||
+                errMsg.toUpperCase().includes("AI TASK SERVICE") ||
+                errMsg.toUpperCase().includes("FASTAPI");
+
+              if (isConnectionFailure) {
+                toast.danger("AI Service Connection Failed", {
+                  description: "Cannot connect to the AI microservice. The analysis has been stopped.",
+                });
+              } else {
+                toast.danger("Analysis Failed", {
+                  description: errMsg || "An unexpected error occurred during analysis.",
                 });
               }
-            })
-            .catch((err: any) => {
-              console.error("Failed to load intermediate job snapshot in store:", err);
-            });
-        }
-
-        if (activeSession.status === "Failed") {
-          toast.danger("Analysis Failed", {
-            description: activeSession.errorMessage || "An unexpected error occurred during analysis.",
-          });
-          unsubscribe();
-          if (activeSubscriptions[repoId] === unsubscribe) {
-            delete activeSubscriptions[repoId];
-          }
-        } else if (activeSession.status === "Completed") {
-          // Retry with delay to handle the race condition where the SSE fires
-          // "Completed" before the backend has finished persisting the report.
-          const fetchWithRetry = async (retriesLeft: number, delayMs: number): Promise<RepositoryAnalysis> => {
-            try {
-              return await repositoryAnalysisApi.getLatestReport(repoId);
-            } catch (err: any) {
-              const is404 = err?.response?.status === 404 || err?.status === 404;
-              if (is404 && retriesLeft > 0) {
-                await new Promise(resolve => setTimeout(resolve, delayMs));
-                return fetchWithRetry(retriesLeft - 1, delayMs * 2);
-              }
-              throw err;
             }
-          };
-
-          fetchWithRetry(3, 1000).then((report) => {
-            set((storeState) => ({
-              repoStates: {
-                ...storeState.repoStates,
-                [repoId]: {
-                  ...(storeState.repoStates[repoId] || getOrInitState(repoId)),
-                  status: "COMPLETED",
-                  progress: 100,
-                  currentStep: "Completed",
-                  latestReport: report,
-                  partialSnapshot: null,
-                  lastUpdated: Date.now(),
-                }
-              }
-            }));
-          }).catch(err => {
-            console.error("Failed to load completed report after retries:", err);
-            // Fallback: use the last snapshot if available
-            const currentJobState = get().repoStates[repoId];
-            set((storeState) => ({
-              repoStates: {
-                ...storeState.repoStates,
-                [repoId]: {
-                  ...(storeState.repoStates[repoId] || getOrInitState(repoId)),
-                  status: "COMPLETED",
-                  progress: 100,
-                  currentStep: "Completed",
-                  latestReport: currentJobState?.partialSnapshot || null,
-                  partialSnapshot: null,
-                  lastUpdated: Date.now(),
-                }
-              }
-            }));
-          });
-          unsubscribe();
-          if (activeSubscriptions[repoId] === unsubscribe) {
-            delete activeSubscriptions[repoId];
-          }
-        } else if (activeSession.status === "Cancelled") {
-          unsubscribe();
-          if (activeSubscriptions[repoId] === unsubscribe) {
-            delete activeSubscriptions[repoId];
           }
         }
+      } catch (err) {
+        console.error("Error parsing progress stream chunk in store:", err);
       }
-    });
+    };
 
-    activeSubscriptions[repoId] = unsubscribe;
-    useStreamingStore.getState().connectSession("repository-analysis", jobId, undefined, repoId);
+    eventSource.onerror = (err) => {
+      console.error(`EventSource error in store for repository ${repoId}:`, err);
+      eventSource.close();
+      if (activeEventSources[repoId] === eventSource) {
+        delete activeEventSources[repoId];
+      }
+    };
   };
 
   return {
@@ -386,7 +467,7 @@ export const useAnalysisJobStore = create<AnalysisJobStore>((set, get) => {
               partialSnapshot: null,
               lastUpdated: Date.now(),
             };
-          } else if (!activeSubscriptions[repo.id]) {
+          } else if (!activeEventSources[repo.id]) {
             existing.status = status;
             if (status === "COMPLETED") {
               existing.progress = 100;
@@ -478,12 +559,10 @@ export const useAnalysisJobStore = create<AnalysisJobStore>((set, get) => {
       const currentState = get().repoStates[repoId];
       if (!currentState || !currentState.jobId) return;
 
-      if (activeSubscriptions[repoId]) {
-        activeSubscriptions[repoId]();
-        delete activeSubscriptions[repoId];
+      if (activeEventSources[repoId]) {
+        activeEventSources[repoId].close();
+        delete activeEventSources[repoId];
       }
-
-      useStreamingStore.getState().disconnect();
 
       try {
         await repositoryAnalysisApi.cancelJob(currentState.jobId);
@@ -516,7 +595,7 @@ export const useAnalysisJobStore = create<AnalysisJobStore>((set, get) => {
 
           const current = get().repoStates[repoId];
           // If we already have a live monitor session for the same jobId, skip
-          const isAlreadyMonitoring = activeSubscriptions[repoId] && current?.jobId === jobId;
+          const isAlreadyMonitoring = activeEventSources[repoId] && current?.jobId === jobId;
           if (isAlreadyMonitoring) continue;
 
           // If current state is analyzing a newer or different active job, skip
@@ -610,12 +689,10 @@ export const useAnalysisJobStore = create<AnalysisJobStore>((set, get) => {
     },
 
     resetRepositoryAnalysis: async (repoId) => {
-      if (activeSubscriptions[repoId]) {
-        activeSubscriptions[repoId]();
-        delete activeSubscriptions[repoId];
+      if (activeEventSources[repoId]) {
+        activeEventSources[repoId].close();
+        delete activeEventSources[repoId];
       }
-
-      useStreamingStore.getState().disconnect();
 
       try {
         await repositoryAnalysisApi.resetAnalysis(repoId);

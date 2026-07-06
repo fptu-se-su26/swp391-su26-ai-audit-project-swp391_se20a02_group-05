@@ -27,8 +27,7 @@ public record ExternalOrganizationDto(
 public record SyncResult(
     List<ExternalOrganizationDto> Organizations,
     List<SourceCodeRepository> Repositories,
-    string? SyncError,
-    bool IsAuthError = false
+    string? SyncError
 );
 
 public record TokenRefreshResult(

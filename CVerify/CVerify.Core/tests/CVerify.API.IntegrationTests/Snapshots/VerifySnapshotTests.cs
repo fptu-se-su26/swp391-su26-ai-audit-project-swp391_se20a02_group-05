@@ -11,8 +11,8 @@ namespace CVerify.API.IntegrationTests.Snapshots;
 
 /// <summary>
 /// Execution tests using Verify.Xunit snapshot comparison engine to validate HTML structures and contracts.
-[Collection("Shared Containers Collection")]
-public class VerifySnapshotTests
+/// </summary>
+public class VerifySnapshotTests : IClassFixture<SharedTestcontainerFixture>
 {
     private readonly SharedTestcontainerFixture _fixture;
     private readonly IEmailTemplateService _templateService;

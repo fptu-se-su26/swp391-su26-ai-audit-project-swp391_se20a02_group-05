@@ -5,61 +5,12 @@ import { usePathname, useRouter } from "next/navigation";
 import { Breadcrumbs } from "@heroui/react";
 import { getRouteMetadata, getDynamicSegmentLabel } from "../../config/routes";
 import { useAuth } from "../../features/auth/hooks/use-auth";
-import { RESERVED_USERNAMES } from "../../lib/navigation-utils";
-
-/**
- * Checks if a generated breadcrumb URL corresponds to a valid existing page route.
- */
-const isRouteExist = (href: string): boolean => {
-  const path = href.replace(/\/+/g, "/");
-
-  if (path === "/") {
-    return true;
-  }
-
-  // Dynamic candidate profiles validation
-  const segments = path.split("/").filter(Boolean);
-  if (segments.length === 1 && !RESERVED_USERNAMES.has(segments[0].toLowerCase())) {
-    return true;
-  }
-
-  // 1. Workspace routes checking
-  // Matches exact valid pages.
-  const workspaceRegex = /^\/business\/([^/]+)(?:\/(billing|information|members|roles|settings|jobs|people|posts|intelligence|dashboard|listings|bookings|revenue|customers|analytics))?$/i;
-  
-  if (workspaceRegex.test(path)) {
-    return true;
-  }
-
-  // Check for candidate detail in intelligence: /business/[org]/intelligence/[id]
-  const intelligenceDetailRegex = /^\/business\/[^/]+\/intelligence\/[^/]+$/i;
-  if (intelligenceDetailRegex.test(path)) {
-    return true;
-  }
-
-  // Check for recruitment sub-routes:
-  // - /business/[org]/recruitment/dashboard
-  // - /business/[org]/recruitment/jd
-  // - /business/[org]/recruitment/jd/[id]/review
-  const recruitmentDashboardOrJdRegex = /^\/business\/[^/]+\/recruitment\/(dashboard|jd)$/i;
-  if (recruitmentDashboardOrJdRegex.test(path)) {
-    return true;
-  }
-
-  const jdReviewRegex = /^\/business\/[^/]+\/recruitment\/jd\/[^/]+\/review$/i;
-  if (jdReviewRegex.test(path)) {
-    return true;
-  }
-
-  // 2. Validate dynamically against centralized route registry
-  const metadata = getRouteMetadata(path);
-  return metadata !== null;
-};
 
 export const AppBreadcrumbs: React.FC = () => {
   const pathname = usePathname();
   const router = useRouter();
   const { user } = useAuth();
+  const isBusiness = user?.role === "BUSINESS";
 
   if (!pathname) return null;
 
@@ -76,18 +27,11 @@ export const AppBreadcrumbs: React.FC = () => {
 
   for (let index = 0; index < segments.length; index++) {
     const segment = segments[index];
-    
-    // Skip "business" segment
-    if (segment === "business") {
-      continue;
-    }
-    
-    // Skip the dynamic organization slug that follows "business"
-    if (index > 0 && segments[index - 1] === "business") {
+    if (segment === "workspace" && isBusiness) {
       continue;
     }
 
-    // Construct cumulative URL path up to current index from original segments
+    // Construct cumulative URL path up to current index from the original segments array
     const href = "/" + segments.slice(0, index + 1).join("/");
     const metadata = getRouteMetadata(href);
 
@@ -108,23 +52,16 @@ export const AppBreadcrumbs: React.FC = () => {
     });
   }
 
-  // Filter breadcrumb items to only include existing routes
-  const filteredBreadcrumbItems = breadcrumbItems.filter((item) => isRouteExist(item.href));
-
   // Set the isLast property for the final item
-  if (filteredBreadcrumbItems.length > 0) {
-    filteredBreadcrumbItems[filteredBreadcrumbItems.length - 1].isLast = true;
-  }
-
-  if (filteredBreadcrumbItems.length === 0) {
-    return null;
+  if (breadcrumbItems.length > 0) {
+    breadcrumbItems[breadcrumbItems.length - 1].isLast = true;
   }
 
   return (
     <nav aria-label="Breadcrumbs Navigation" className="hidden md:flex">
       <Breadcrumbs>
         {/* Dynamic Nodes */}
-        {filteredBreadcrumbItems.map((item) => (
+        {breadcrumbItems.map((item) => (
           <Breadcrumbs.Item
             key={item.href}
             href={item.href}

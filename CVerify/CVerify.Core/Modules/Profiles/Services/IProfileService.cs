@@ -3,8 +3,6 @@ using System.Threading;
 using System.Threading.Tasks;
 using CVerify.API.Modules.Profiles.DTOs;
 
-using CVerify.API.Modules.Shared.System.DTOs;
-
 namespace CVerify.API.Modules.Profiles.Services;
 
 public interface IProfileService
@@ -42,21 +40,4 @@ public interface IProfileService
         CancellationToken cancellationToken = default);
 
     Task<PublicProfileResponse> GetPublicProfileByUsernameAsync(string username, CancellationToken cancellationToken = default);
-
-    Task<PaginatedResultDto<RankingResponseItemDto>> GetRankingAsync(
-        Guid? currentUserId, 
-        RankingQueryDto query, 
-        CancellationToken cancellationToken = default);
-
-    Task FollowUserAsync(
-        Guid followerId, 
-        string usernameToFollow, 
-        CancellationToken cancellationToken = default);
-
-    Task UnfollowUserAsync(
-        Guid followerId, 
-        string usernameToUnfollow, 
-        CancellationToken cancellationToken = default);
-
-    Task<RankingStatsDto> GetRankingStatsAsync(CancellationToken cancellationToken = default);
 }

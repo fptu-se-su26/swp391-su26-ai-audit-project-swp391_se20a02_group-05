@@ -453,7 +453,7 @@ export const ExperienceForm: React.FC<ExperienceFormProps> = ({
                     <Tooltip.Trigger>
                       <Info className="size-3.5 text-muted-foreground hover:text-foreground cursor-help" />
                     </Tooltip.Trigger>
-                    <Tooltip.Content showArrow className="bg-surface border border-border rounded-xl p-2 text-xs max-w-xs text-foreground break-words">
+                    <Tooltip.Content showArrow className="bg-surface border border-border rounded-xl p-2 text-xs max-w-xs text-foreground break-normal wrap-break-word">
                       Key metrics, achievements, or notable results in this role, e.g. 'Optimized database query response time by 30%'
                     </Tooltip.Content>
                   </Tooltip>

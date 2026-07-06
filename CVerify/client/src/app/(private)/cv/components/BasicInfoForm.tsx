@@ -1,18 +1,11 @@
 import React, { useRef, useState } from "react";
-import { Input, Button, Select, ListBox, Spinner, toast, TextArea, Tooltip, Dropdown, DatePicker, DateField, Calendar, Chip } from "@heroui/react";
+import { Input, Button, Select, ListBox, Spinner, toast, TextArea, Tooltip, Dropdown, DatePicker, DateField, Calendar } from "@heroui/react";
 import { parseDate } from "@internationalized/date";
 import { PlusCircle, Trash2, Camera, Info, Sparkles } from "lucide-react";
 import { type BasicInfoDraft } from "./types";
 import { profileApi } from "@/services/profile.service";
 import { BaseUnsavedChangesBar } from "@/components/ui/unsaved-changes-bar";
 import { type CandidateAssessmentResponse } from "@/types/profile.types";
-import {
-  parseAiSuggestions,
-  stringifyAiSuggestions,
-  getFieldSuggestion,
-  selectSuggestion,
-  selectUserValue
-} from "@/utils/ai-suggestions";
 
 interface BasicInfoFormProps {
   draft: BasicInfoDraft;
@@ -24,7 +17,6 @@ interface BasicInfoFormProps {
   isDirty: boolean;
   avatarUrl?: string | null;
   latestAssessment?: CandidateAssessmentResponse | null;
-  parsedProfile?: any | null;
 }
 
 export const BasicInfoForm: React.FC<BasicInfoFormProps> = ({
@@ -37,133 +29,10 @@ export const BasicInfoForm: React.FC<BasicInfoFormProps> = ({
   isDirty,
   avatarUrl,
   latestAssessment,
-  parsedProfile,
 }) => {
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const [isUploading, setIsUploading] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
-
-  const suggestionsMap = parseAiSuggestions(draft.aiSuggestionsJson);
-  const headlineSuggestion = getFieldSuggestion(suggestionsMap, "headline", latestAssessment?.summaryHeadline);
-  const bioSuggestion = getFieldSuggestion(suggestionsMap, "bio", latestAssessment?.professionalBio);
-
-  const rawRoles = parsedProfile?.bestFitRoles || [];
-  const bestFitRoles = rawRoles.map((r: any) => ({
-    title: r.roleTitle || '',
-    matchScore: typeof r.matchScore === 'number' ? r.matchScore : 0,
-    rank: typeof r.rank === 'number' ? r.rank : 1,
-  }));
-
-  const rolesList: Array<{ title: string; matchScore: number }> = [];
-  if (bestFitRoles.length > 0) {
-    bestFitRoles.forEach((role: any) => {
-      rolesList.push({ title: role.title, matchScore: role.matchScore });
-    });
-  } else if (headlineSuggestion.aiValue) {
-    rolesList.push({ title: headlineSuggestion.aiValue, matchScore: 90 });
-  }
-
-  const [userHeadline, setUserHeadline] = useState(() => {
-    return suggestionsMap.headline?.source === 'user' ? (draft.headline || "") : "";
-  });
-  const [userBio, setUserBio] = useState(() => {
-    return suggestionsMap.bio?.source === 'user' ? (draft.bio || "") : "";
-  });
-
-  const [prevHeadline, setPrevHeadline] = useState(draft.headline);
-  const [prevHeadlineSuggestions, setPrevHeadlineSuggestions] = useState(draft.aiSuggestionsJson);
-  if (draft.headline !== prevHeadline || draft.aiSuggestionsJson !== prevHeadlineSuggestions) {
-    setPrevHeadline(draft.headline);
-    setPrevHeadlineSuggestions(draft.aiSuggestionsJson);
-    if (suggestionsMap.headline?.source === 'user') {
-      setUserHeadline(draft.headline || "");
-    }
-  }
-
-  const [prevBio, setPrevBio] = useState(draft.bio);
-  const [prevBioSuggestions, setPrevBioSuggestions] = useState(draft.aiSuggestionsJson);
-  if (draft.bio !== prevBio || draft.aiSuggestionsJson !== prevBioSuggestions) {
-    setPrevBio(draft.bio);
-    setPrevBioSuggestions(draft.aiSuggestionsJson);
-    if (suggestionsMap.bio?.source === 'user') {
-      setUserBio(draft.bio || "");
-    }
-  }
-
-  const handleHeadlineChange = (val: string) => {
-    setUserHeadline(val);
-    const updatedMap = selectUserValue(suggestionsMap, "headline");
-    onChange({
-      headline: val,
-      aiSuggestionsJson: stringifyAiSuggestions(updatedMap)
-    });
-  };
-
-  const handleUseHeadlineSuggestion = () => {
-    if (headlineSuggestion.source === 'user') {
-      setUserHeadline(draft.headline || "");
-    }
-    const updatedMap = selectSuggestion(suggestionsMap, "headline", headlineSuggestion.aiValue);
-    onChange({
-      headline: headlineSuggestion.aiValue,
-      aiSuggestionsJson: stringifyAiSuggestions(updatedMap)
-    });
-  };
-
-  const handleSelectHeadlineRole = (roleTitle: string, matchScore: number) => {
-    if (headlineSuggestion.source === 'user') {
-      setUserHeadline(draft.headline || "");
-    }
-    const updatedMap = {
-      ...suggestionsMap,
-      headline: {
-        aiValue: roleTitle,
-        source: 'ai' as const,
-        generatedAt: new Date().toISOString(),
-        matchScore: matchScore
-      }
-    };
-    onChange({
-      headline: roleTitle,
-      aiSuggestionsJson: stringifyAiSuggestions(updatedMap)
-    });
-  };
-
-  const handleKeepUserHeadline = () => {
-    const updatedMap = selectUserValue(suggestionsMap, "headline");
-    onChange({
-      headline: userHeadline,
-      aiSuggestionsJson: stringifyAiSuggestions(updatedMap)
-    });
-  };
-
-  const handleBioChange = (val: string) => {
-    setUserBio(val);
-    const updatedMap = selectUserValue(suggestionsMap, "bio");
-    onChange({
-      bio: val,
-      aiSuggestionsJson: stringifyAiSuggestions(updatedMap)
-    });
-  };
-
-  const handleUseBioSuggestion = () => {
-    if (bioSuggestion.source === 'user') {
-      setUserBio(draft.bio || "");
-    }
-    const updatedMap = selectSuggestion(suggestionsMap, "bio", bioSuggestion.aiValue);
-    onChange({
-      bio: bioSuggestion.aiValue,
-      aiSuggestionsJson: stringifyAiSuggestions(updatedMap)
-    });
-  };
-
-  const handleKeepUserBio = () => {
-    const updatedMap = selectUserValue(suggestionsMap, "bio");
-    onChange({
-      bio: userBio,
-      aiSuggestionsJson: stringifyAiSuggestions(updatedMap)
-    });
-  };
 
   const birthDateString = draft.birthDate || "";
   let birthDateValue = null;
@@ -204,10 +73,6 @@ export const BasicInfoForm: React.FC<BasicInfoFormProps> = ({
       if (!phoneRegex.test(draft.phoneNumber)) {
         newErrors.phoneNumber = "Required";
       }
-    }
-
-    if (draft.bio && draft.bio.length > 1000) {
-      newErrors.bio = "Bio cannot exceed 1000 characters.";
     }
 
     // Verify all social links are valid URLs
@@ -351,7 +216,7 @@ export const BasicInfoForm: React.FC<BasicInfoFormProps> = ({
                 <Tooltip.Trigger>
                   <Info className="size-3.5 text-muted-foreground hover:text-foreground cursor-help" />
                 </Tooltip.Trigger>
-                <Tooltip.Content showArrow className="bg-surface border border-border rounded-xl p-2 text-xs max-w-xs text-foreground break-words">
+                <Tooltip.Content showArrow className="bg-surface border border-border rounded-xl p-2 text-xs max-w-xs text-foreground break-normal wrap-break-word">
                   This will form your public profile URL: cverify.com/username
                 </Tooltip.Content>
               </Tooltip>
@@ -370,153 +235,104 @@ export const BasicInfoForm: React.FC<BasicInfoFormProps> = ({
 
           {/* Headline */}
           <div className="flex flex-col gap-1.5 md:col-span-2">
-            <div className="flex items-center justify-between gap-2">
-              <div className="flex items-center gap-1.5">
-                <label className="text-[11px] font-bold text-foreground">Professional Headline</label>
-                {headlineSuggestion.source === 'ai' && (
-                  <Chip
-                    size="sm"
-                    color="accent"
-                    variant="soft"
-                    className="text-[9px] font-extrabold uppercase px-1.5 h-4.5 bg-primary/10 text-primary border-none select-none"
-                  >
-                    AI Suggested
-                  </Chip>
-                )}
-                <Tooltip delay={0}>
-                  <Tooltip.Trigger>
-                    <Info className="size-3.5 text-muted-foreground hover:text-foreground cursor-help" />
-                  </Tooltip.Trigger>
-                  <Tooltip.Content showArrow className="bg-surface border border-border rounded-xl p-2 text-xs max-w-xs text-foreground break-words">
-                    A short, catchy phrase summarizing your expertise, e.g. "Senior Fullstack Engineer"
-                  </Tooltip.Content>
-                </Tooltip>
-              </div>
-
-              {rolesList.length > 0 && (
-                <div className="flex items-center gap-1.5">
-                  {headlineSuggestion.source === 'user' ? (
-                    <Dropdown>
-                      <Dropdown.Trigger>
-                        <span
-                          role="button"
-                          tabIndex={0}
-                          className="inline-flex items-center gap-1 rounded-lg h-6 px-2 text-[10px] font-bold text-primary hover:bg-primary/10 border-none cursor-pointer bg-transparent select-none focus:outline-none"
-                        >
-                          <Sparkles className="size-3" />
-                          <span>Use AI Suggestion</span>
-                        </span>
-                      </Dropdown.Trigger>
-                      <Dropdown.Popover className="bg-overlay border border-border shadow-overlay rounded-xl p-1.5 min-w-[240px] outline-hidden animate-in fade-in duration-100 z-50 font-outfit">
-                        <Dropdown.Menu
-                          aria-label="AI Headline Suggestions"
-                          onAction={(key) => {
-                            const idx = parseInt(key as string, 10);
-                            const selectedRole = rolesList[idx];
-                            if (selectedRole) {
-                              handleSelectHeadlineRole(selectedRole.title, selectedRole.matchScore);
-                            }
-                          }}
-                        >
-                          {rolesList.map((role, idx) => (
-                            <Dropdown.Item
-                              key={idx.toString()}
-                              onClick={() => handleSelectHeadlineRole(role.title, role.matchScore)}
-                              className="flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-semibold cursor-pointer text-foreground hover:bg-surface-secondary focus:bg-surface-secondary outline-none select-none transition-colors duration-150"
-                            >
-                              <div className="flex items-center justify-between gap-4 w-full text-xs font-semibold">
-                                <span className="truncate max-w-[150px]">{role.title}</span>
-                                <Chip size="sm" className="bg-accent/10 text-accent font-bold font-outfit border-none h-5 shrink-0">
-                                  {role.matchScore}% Match
-                                </Chip>
-                              </div>
-                            </Dropdown.Item>
-                          ))}
-                        </Dropdown.Menu>
-                      </Dropdown.Popover>
-                    </Dropdown>
-                  ) : (
+            <div className="flex items-center gap-1">
+              <label className="text-[11px] font-bold text-foreground">Professional Headline</label>
+              <Tooltip delay={0}>
+                <Tooltip.Trigger>
+                  <Info className="size-3.5 text-muted-foreground hover:text-foreground cursor-help" />
+                </Tooltip.Trigger>
+                <Tooltip.Content showArrow className="bg-surface border border-border rounded-xl p-2 text-xs max-w-xs text-foreground break-normal wrap-break-word">
+                  A short, catchy phrase summarizing your expertise, e.g. "Senior Fullstack Engineer"
+                </Tooltip.Content>
+              </Tooltip>
+            </div>
+            <div className="flex gap-2 items-center">
+              <Input
+                value={draft.headline}
+                onChange={(e) => onChange({ headline: e.target.value })}
+                placeholder="Senior Fullstack Engineer"
+                aria-label="Professional Headline"
+                maxLength={150}
+                className="flex-1"
+              />
+              {latestAssessment && (latestAssessment.summaryHeadline || (latestAssessment.careerLevelLabel && latestAssessment.primaryTendency)) && (
+                <Dropdown>
+                  <Dropdown.Trigger>
                     <Button
-                      size="sm"
-                      variant="ghost"
-                      className="rounded-lg h-6 px-2 text-[10px] font-bold text-muted hover:bg-surface-secondary border-none cursor-pointer"
-                      onPress={handleKeepUserHeadline}
+                      size="md"
+                      variant="secondary"
+                      className="rounded-xl border border-border/30 h-10 shrink-0 font-bold text-xs flex items-center gap-1.5"
+                      type="button"
                     >
-                      <span>Restore My Input</span>
+                      <Sparkles className="size-3.5 text-primary animate-pulse" />
+                      <span>AI Suggestions</span>
                     </Button>
-                  )}
-                </div>
+                  </Dropdown.Trigger>
+                  <Dropdown.Popover
+                    placement="bottom end"
+                    className="bg-overlay border border-border shadow-overlay rounded-xl p-1.5 min-w-[240px] outline-hidden z-50 font-outfit"
+                  >
+                    <Dropdown.Menu aria-label="AI Suggested Headline Options">
+                      {latestAssessment.summaryHeadline && (
+                        <Dropdown.Item
+                          key="summaryHeadline"
+                          onClick={() => onChange({ headline: latestAssessment.summaryHeadline ?? "" })}
+                          className="flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-semibold cursor-pointer text-foreground hover:bg-surface-secondary focus:bg-surface-secondary outline-none select-none transition-colors duration-150"
+                        >
+                          <div className="flex flex-col text-left">
+                            <span className="font-bold text-foreground">{latestAssessment.summaryHeadline}</span>
+                            <span className="text-[9px] text-muted-foreground mt-0.5">Primary AI Recommendation</span>
+                          </div>
+                        </Dropdown.Item>
+                      )}
+                      {latestAssessment.careerLevelLabel && latestAssessment.primaryTendency && (() => {
+                        const altHeadline = `${latestAssessment.careerLevelLabel} ${latestAssessment.primaryTendency} Engineer`;
+                        if (altHeadline.toLowerCase() === latestAssessment.summaryHeadline?.toLowerCase()) {
+                          return null;
+                        }
+                        return (
+                          <Dropdown.Item
+                            key="altHeadline"
+                            onClick={() => onChange({ headline: altHeadline })}
+                            className="flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-semibold cursor-pointer text-foreground hover:bg-surface-secondary focus:bg-surface-secondary outline-none select-none transition-colors duration-150"
+                          >
+                            <div className="flex flex-col text-left">
+                              <span className="font-bold text-foreground">{altHeadline}</span>
+                              <span className="text-[9px] text-muted-foreground mt-0.5">Role-based Recommendation</span>
+                            </div>
+                          </Dropdown.Item>
+                        );
+                      })()}
+                    </Dropdown.Menu>
+                  </Dropdown.Popover>
+                </Dropdown>
               )}
             </div>
-            <Input
-              value={draft.headline}
-              onChange={(e) => handleHeadlineChange(e.target.value)}
-              placeholder="Senior Fullstack Engineer"
-              aria-label="Professional Headline"
-              maxLength={150}
-              className="w-full"
-            />
-            <div className="flex justify-end text-[10px] text-muted-foreground mt-0.5 select-none">
+            <div className="flex justify-between items-center text-[10px] text-muted-foreground mt-0.5 select-none">
+              {latestAssessment && (latestAssessment.summaryHeadline || (latestAssessment.careerLevelLabel && latestAssessment.primaryTendency)) ? (
+                <span className="text-primary/80 flex items-center gap-1 font-medium">
+                  <Sparkles className="size-3 text-primary animate-pulse" />
+                  Select career orientation from AI suggestions dropdown
+                </span>
+              ) : (
+                <span />
+              )}
               <span>{(draft.headline || "").length}/150 characters</span>
             </div>
           </div>
 
           {/* Bio Summary */}
           <div className="flex flex-col gap-1.5 md:col-span-2">
-            <div className="flex items-center justify-between gap-2">
-              <div className="flex items-center gap-1.5">
-                <label className="text-[11px] font-bold text-foreground">Professional Bio / Profile Summary</label>
-                {bioSuggestion.source === 'ai' && (
-                  <Chip
-                    size="sm"
-                    color="accent"
-                    variant="soft"
-                    className="text-[9px] font-extrabold uppercase px-1.5 h-4.5 bg-primary/10 text-primary border-none select-none"
-                  >
-                    AI Suggested
-                  </Chip>
-                )}
-              </div>
-
-              {bioSuggestion.aiValue && (
-                <div className="flex items-center gap-1.5">
-                  {bioSuggestion.source === 'user' ? (
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      className="rounded-lg h-6 px-2 text-[10px] font-bold text-primary hover:bg-primary/10 border-none cursor-pointer flex items-center gap-1"
-                      onPress={handleUseBioSuggestion}
-                    >
-                      <Sparkles className="size-3" />
-                      <span>Use AI Suggestion</span>
-                    </Button>
-                  ) : (
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      className="rounded-lg h-6 px-2 text-[10px] font-bold text-muted hover:bg-surface-secondary border-none cursor-pointer"
-                      onPress={handleKeepUserBio}
-                    >
-                      <span>Restore My Input</span>
-                    </Button>
-                  )}
-                </div>
-              )}
-            </div>
+            <label className="text-[11px] font-bold text-foreground">Professional Bio / Profile Summary</label>
             <TextArea
               value={draft.bio}
-              onChange={(e) => handleBioChange(e.target.value)}
+              onChange={(e) => onChange({ bio: e.target.value })}
               placeholder="Write a brief professional bio detailing your background, key expertise, and engineering projects..."
               rows={4}
               aria-label="Professional Bio"
               maxLength={1000}
             />
-            <div className="flex justify-between items-center text-[10px] text-muted-foreground mt-0.5 select-none">
-              {errors.bio ? (
-                <span className="text-danger">{errors.bio}</span>
-              ) : (
-                <span />
-              )}
+            <div className="flex justify-end text-[10px] text-muted-foreground mt-0.5 select-none">
               <span>{(draft.bio || "").length}/1000 characters</span>
             </div>
           </div>

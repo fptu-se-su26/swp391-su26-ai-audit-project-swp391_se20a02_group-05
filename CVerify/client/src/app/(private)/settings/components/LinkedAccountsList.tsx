@@ -409,18 +409,9 @@ export const LinkedAccountsList: React.FC = () => {
                             </Avatar.Fallback>
                           </Avatar>
                           <div className="flex flex-col min-w-0 text-left">
-                            <span className="font-semibold text-sm truncate text-foreground flex items-center gap-1.5">
+                            <span className="font-semibold text-sm truncate text-foreground">
                               {conn.providerDisplayName ||
                                 conn.providerUsername}
-                              {conn.scopeValidationStatus !== "Valid" && (
-                                <Chip
-                                  color="danger"
-                                  variant="soft"
-                                  className="h-4 px-1 text-[8px] font-extrabold uppercase tracking-wider rounded-md"
-                                >
-                                  Reconnect Required
-                                </Chip>
-                              )}
                             </span>
                             <span className="text-[10px] text-muted truncate">
                               @{conn.providerUsername}{" "}
@@ -444,28 +435,16 @@ export const LinkedAccountsList: React.FC = () => {
                               <ExternalLink size={14} />
                             </a>
                           )}
-                          {conn.scopeValidationStatus !== "Valid" ? (
-                            <Button
-                              size="sm"
-                              variant="secondary"
-                              onClick={() => handleConnect(conn.providerName)}
-                              className="bg-warning-soft text-warning rounded-xl h-8 text-xs font-semibold"
-                              aria-label={`Reconnect account @${conn.providerUsername}`}
-                            >
-                              Reconnect
-                            </Button>
-                          ) : (
-                            <Button
-                              size="sm"
-                              variant="ghost"
-                              onClick={() => router.push(`/settings/source-code-providers?providerId=${conn.id}`)}
-                              className="rounded-xl h-8 text-xs font-semibold flex items-center gap-1.5 border border-border/40 hover:bg-foreground/5 hover:text-foreground"
-                              aria-label={`Manage repositories for @${conn.providerUsername}`}
-                            >
-                              <FolderTree size={14} className="text-muted-foreground" />
-                              <span>Manage Repositories</span>
-                            </Button>
-                          )}
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => router.push(`/settings/source-code-providers?providerId=${conn.id}`)}
+                            className="rounded-xl h-8 text-xs font-semibold flex items-center gap-1.5 border border-border/40 hover:bg-foreground/5 hover:text-foreground"
+                            aria-label={`Manage repositories for @${conn.providerUsername}`}
+                          >
+                            <FolderTree size={14} className="text-muted-foreground" />
+                            <span>Manage Repositories</span>
+                          </Button>
                           <Button
                             size="sm"
                             variant="danger-soft"
@@ -643,18 +622,9 @@ export const LinkedAccountsList: React.FC = () => {
                             </Avatar.Fallback>
                           </Avatar>
                           <div className="flex flex-col min-w-0 text-left">
-                            <span className="font-semibold text-sm truncate text-foreground flex items-center gap-1.5">
+                            <span className="font-semibold text-sm truncate text-foreground">
                               {conn.providerDisplayName ||
                                 conn.providerUsername}
-                              {conn.scopeValidationStatus !== "Valid" && (
-                                <Chip
-                                  color="danger"
-                                  variant="soft"
-                                  className="h-4 px-1 text-[8px] font-extrabold uppercase tracking-wider rounded-md"
-                                >
-                                  Reconnect Required
-                                </Chip>
-                              )}
                             </span>
                             <span className="text-[10px] text-muted truncate">
                               @{conn.providerUsername}{" "}
@@ -678,28 +648,16 @@ export const LinkedAccountsList: React.FC = () => {
                               <ExternalLink size={14} />
                             </a>
                           )}
-                          {conn.scopeValidationStatus !== "Valid" ? (
-                            <Button
-                              size="sm"
-                              variant="secondary"
-                              onClick={() => handleConnect(conn.providerName)}
-                              className="bg-warning-soft text-warning rounded-xl h-8 text-xs font-semibold"
-                              aria-label={`Reconnect account @${conn.providerUsername}`}
-                            >
-                              Reconnect
-                            </Button>
-                          ) : (
-                            <Button
-                              size="sm"
-                              variant="ghost"
-                              onClick={() => router.push(`/settings/source-code-providers?providerId=${conn.id}`)}
-                              className="rounded-xl h-8 text-xs font-semibold flex items-center gap-1.5 border border-border/40 hover:bg-foreground/5 hover:text-foreground"
-                              aria-label={`Manage repositories for @${conn.providerUsername}`}
-                            >
-                              <FolderTree size={14} className="text-muted-foreground" />
-                              <span>Manage Repositories</span>
-                            </Button>
-                          )}
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => router.push(`/settings/source-code-providers?providerId=${conn.id}`)}
+                            className="rounded-xl h-8 text-xs font-semibold flex items-center gap-1.5 border border-border/40 hover:bg-foreground/5 hover:text-foreground"
+                            aria-label={`Manage repositories for @${conn.providerUsername}`}
+                          >
+                            <FolderTree size={14} className="text-muted-foreground" />
+                            <span>Manage Repositories</span>
+                          </Button>
                           <Button
                             size="sm"
                             variant="danger-soft"
