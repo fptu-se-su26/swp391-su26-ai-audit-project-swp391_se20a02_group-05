@@ -19,14 +19,19 @@ export interface ProjectMember {
 export interface ChangelogEntry {
   id: string;
   phaseName: string;
+  startDate?: string;
+  endDate?: string;
+  phaseDescription?: string;
   date: string;
   status: 'Not Started' | 'In Progress' | 'Completed';
   completedChecklist: string[];
   changes: Array<{ id: string; content: string; author: string; files: string; evidence: string }>;
   aiSupport: { used: boolean; description: string };
-  evidenceLink: string;
+  evidence: EvidenceItem[];
+  evidenceLink?: string; // Kept for migration from older versions
   notes: string;
 }
+
 
 export interface ChangelogSummary {
   completedFeatures: string;
@@ -105,7 +110,10 @@ export interface ReflectionData {
   summaryText: string;
   toolsUsed: string[];
   mostUsedTool: string;
+  mostUsedToolCustom?: string;
   mostUsedReason: string;
+  mostUsedReasonsList?: string[];
+  mostUsedReasonCustom?: string;
   supportAreas: string[];
   supportDetails: string;
   helpfulPoints: string;
@@ -117,12 +125,20 @@ export interface ReflectionData {
   verificationExample: { aiSuggestion: string; checkMethod: string; result: string; followUp: string };
   wrongSuggestions: Array<{ id: string; suggestion: string; reason: string; detectionMethod: string; fixMethod: string; lesson: string }>;
   realContributionText: string;
+  linkedContributionIds?: string[];
+  contributionDetails?: Record<string, { type: 'human' | 'assisted' | 'reviewed'; notes: string }>;
   beforeAfter: Array<{ id: string; area: string; before: string; after: string; improvement: string }>;
   lessonsLearnedText: string;
+  lessonsLearnedList?: string[];
+  lessonsLearnedCustom?: string;
   responsibilityLessonsText: string;
+  responsibilityLessonsList?: string[];
+  responsibilityLessonsCustom?: string;
   commitments: string[];
   commitmentExplanation: string;
   improvementPlanText: string;
+  improvementPlanList?: string[];
+  improvementPlanCustom?: string;
   selfEvaluation: Array<{ id: string; criteria: string; score: number; notes: string }>;
   finalQuestions: { explainable: string; canReproduce: string; coreCompetency: string; desiredSkill: string };
 }

@@ -58,7 +58,11 @@ Nguyên tắc ghi changelog:
   defaultPhases.forEach(defaultPhase => {
     const existing = changelogs.find(c => c.phaseName.includes(defaultPhase));
     if (existing) {
-      markdown += `| ${existing.phaseName} | ${existing.date} | ${existing.notes.split('\\n')[0] || existing.phaseName} | ${existing.status} |\n`;
+      const displayDate = (existing.startDate && existing.endDate) 
+        ? `${existing.startDate} ~ ${existing.endDate}` 
+        : (existing.date || '');
+      const displayDesc = existing.phaseDescription || existing.notes.split('\n')[0] || existing.notes.split('\\n')[0] || existing.phaseName;
+      markdown += `| ${existing.phaseName} | ${displayDate} | ${displayDesc} | ${existing.status || 'Completed'} |\n`;
     } else {
       markdown += `| ${defaultPhase} |  |  | Not Started |\n`;
     }
@@ -69,7 +73,13 @@ Nguyên tắc ghi changelog:
   // Details for each phase
   changelogs.forEach((phase) => {
     markdown += `# [${phase.phaseName}] \n\n`;
-    markdown += `## Ngày thực hiện\n\n\`\`\`text\n${phase.date}\n\`\`\`\n\n`;
+    const displayDate = (phase.startDate && phase.endDate) 
+      ? `${phase.startDate} ~ ${phase.endDate}` 
+      : (phase.date || '');
+    markdown += `## Thông tin giai đoạn\n\n`;
+    markdown += `- **Thời gian thực hiện:** ${displayDate}\n`;
+    markdown += `- **Mô tả giai đoạn:** ${phase.phaseDescription || 'Chưa có mô tả chi tiết.'}\n`;
+    markdown += `- **Trạng thái hiện tại:** ${phase.status || 'Completed'}\n\n`;
     markdown += `## Thay đổi chi tiết\n\n`;
     markdown += `| STT | Nội dung thay đổi | Người thực hiện | File/Module liên quan | Minh chứng |\n`;
     markdown += `|---:|---|---|---|---|\n`;
@@ -90,7 +100,18 @@ Nguyên tắc ghi changelog:
       markdown += `Nếu có, mô tả AI đã hỗ trợ phần nào:\n\n\`\`\`text\n${phase.aiSupport.description || ' '}\n\`\`\`\n\n`;
     }
 
-    markdown += `## Commit/Screenshot minh chứng\n\n\`\`\`text\n${phase.evidenceLink || ' '}\n\`\`\`\n\n`;
+    markdown += `## Minh chứng liên quan\n\n| Loại minh chứng | Nhãn | Nội dung |\n|---|---|---|\n`;
+    if (phase.evidence && phase.evidence.length > 0) {
+      phase.evidence.forEach((ev) => {
+        const typeLabel = evidenceTypeLabels[ev.type] || ev.type;
+        markdown += `| ${typeLabel} | ${ev.label || ' '} | ${ev.content || ev.fileName || ' '} |\n`;
+      });
+    } else if (phase.evidenceLink) {
+      markdown += `| Commit/PR | Migrated | ${phase.evidenceLink} |\n`;
+    } else {
+      markdown += `| File/Commit |  |  |\n`;
+    }
+    markdown += `\n`;
     markdown += `## Ghi chú\n\n\`\`\`text\n${phase.notes || ' '}\n\`\`\`\n\n`;
     markdown += `---\n\n`;
   });
@@ -403,7 +424,7 @@ export const generateReflection = (project: Project): string => {
   }
   markdown += `---\n\n`;
 
-  markdown += `## 9. Phần đóng góp thật sự của sinh viên/nhóm\n\n\`\`\`text\n${reflection.realContributionText || ' '}\n\`\`\`\n\n---\n\n`;
+  markdown += `## 9. Phần đóng góp thật sự của sinh viên/nhóm\n\n${reflection.realContributionText || 'Chưa có thông tin đóng góp.'}\n\n---\n\n`;
 
   markdown += `## 10. So sánh trước và sau khi dùng AI\n\n`;
   markdown += `| Nội dung | Trước khi dùng AI | Sau khi dùng AI | Cải thiện đạt được |\n|---|---|---|---|\n`;
@@ -412,8 +433,8 @@ export const generateReflection = (project: Project): string => {
   });
   markdown += `\n---\n\n`;
 
-  markdown += `## 11. Bài học về môn học\n\n\`\`\`text\n${reflection.lessonsLearnedText || ' '}\n\`\`\`\n\n---\n\n`;
-  markdown += `## 12. Bài học về sử dụng AI có trách nhiệm\n\n\`\`\`text\n${reflection.responsibilityLessonsText || ' '}\n\`\`\`\n\n---\n\n`;
+  markdown += `## 11. Bài học về môn học\n\n${reflection.lessonsLearnedText || 'Chưa có thông tin.'}\n\n---\n\n`;
+  markdown += `## 12. Bài học về sử dụng AI có trách nhiệm\n\n${reflection.responsibilityLessonsText || 'Chưa có thông tin.'}\n\n---\n\n`;
 
   markdown += `## 13. Điều em/nhóm sẽ không làm khi sử dụng AI\n\n`;
   const commitments = ["Không dùng AI để làm toàn bộ bài mà không hiểu nội dung.", "Không nộp nguyên văn kết quả AI nếu chưa kiểm tra.", "Không che giấu việc sử dụng AI trong các phần quan trọng.", "Không dùng AI để tạo nội dung sai lệch hoặc gian lận.", "Không dùng AI thay thế hoàn toàn quá trình học.", "Không bỏ qua yêu cầu, rubric hoặc hướng dẫn của giảng viên."];
@@ -422,7 +443,7 @@ export const generateReflection = (project: Project): string => {
   });
   markdown += `\n### Giải thích thêm nếu có\n\n\`\`\`text\n${reflection.commitmentExplanation || ' '}\n\`\`\`\n\n---\n\n`;
 
-  markdown += `## 14. Kế hoạch cải thiện lần sau\n\n\`\`\`text\n${reflection.improvementPlanText || ' '}\n\`\`\`\n\n---\n\n`;
+  markdown += `## 14. Kế hoạch cải thiện lần sau\n\n${reflection.improvementPlanText || 'Chưa có thông tin.'}\n\n---\n\n`;
 
   markdown += `## 15. Tự đánh giá mức độ hoàn thành\n\n| Tiêu chí | Điểm tự đánh giá 1-5 | Ghi chú |\n|---|:---:|---|\n`;
   (reflection.selfEvaluation || []).forEach(e => {

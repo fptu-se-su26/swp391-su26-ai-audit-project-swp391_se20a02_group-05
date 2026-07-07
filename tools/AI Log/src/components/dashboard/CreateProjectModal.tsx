@@ -6,6 +6,7 @@ import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useProjectStore } from "@/store/projectStore";
 import { useRouter } from "next/navigation";
+import { DEFAULT_PROJECT_METADATA } from "@/lib/defaults";
 
 const schema = z.object({
   name: z.string().min(1, "Project name is required"),
@@ -23,13 +24,7 @@ export default function CreateProjectModal({ isOpen, onClose }: { isOpen: boolea
   const { control, handleSubmit, formState: { errors }, reset } = useForm<FormData>({
     resolver: zodResolver(schema),
     defaultValues: {
-      name: "",
-      course: "",
-      courseCode: "",
-      class: "",
-      semester: "SU26",
-      lecturer: "",
-      repoUrl: "",
+      ...DEFAULT_PROJECT_METADATA,
     }
   });
 
@@ -40,8 +35,6 @@ export default function CreateProjectModal({ isOpen, onClose }: { isOpen: boolea
     const projectId = createProject({
       ...data,
       repoUrl: data.repoUrl || "",
-      startDate: new Date().toISOString(),
-      endDate: new Date().toISOString(),
     });
     reset();
     onClose();

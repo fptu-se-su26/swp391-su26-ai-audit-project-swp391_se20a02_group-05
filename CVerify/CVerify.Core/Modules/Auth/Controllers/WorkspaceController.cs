@@ -52,7 +52,8 @@ public class WorkspaceController : ControllerBase
         }
 
         var actorTypeClaim = User.FindFirst("actor_type")?.Value;
-        bool isBusiness = string.Equals(actorTypeClaim, "business", StringComparison.OrdinalIgnoreCase);
+        bool isBusiness = string.Equals(actorTypeClaim, "business", StringComparison.OrdinalIgnoreCase) ||
+                          string.Equals(actorTypeClaim, "organization", StringComparison.OrdinalIgnoreCase);
 
         if (isBusiness)
         {
@@ -279,7 +280,8 @@ public class WorkspaceController : ControllerBase
         }
 
         var actorTypeClaim = User.FindFirst("actor_type")?.Value;
-        bool isBusiness = string.Equals(actorTypeClaim, "business", StringComparison.OrdinalIgnoreCase);
+        bool isBusiness = string.Equals(actorTypeClaim, "business", StringComparison.OrdinalIgnoreCase) ||
+                          string.Equals(actorTypeClaim, "organization", StringComparison.OrdinalIgnoreCase);
 
         if (isBusiness)
         {
@@ -435,7 +437,8 @@ public class WorkspaceController : ControllerBase
         }
 
         var actorTypeClaim = User.FindFirst("actor_type")?.Value;
-        bool isBusiness = string.Equals(actorTypeClaim, "business", StringComparison.OrdinalIgnoreCase);
+        bool isBusiness = string.Equals(actorTypeClaim, "business", StringComparison.OrdinalIgnoreCase) ||
+                          string.Equals(actorTypeClaim, "organization", StringComparison.OrdinalIgnoreCase);
 
         if (isBusiness)
         {
@@ -568,7 +571,9 @@ public class WorkspaceController : ControllerBase
 
         // Business accounts cannot follow organizations
         var actorTypeClaim = User.FindFirst("actor_type")?.Value;
-        if (string.Equals(actorTypeClaim, "business", StringComparison.OrdinalIgnoreCase))
+        bool isBusinessOrOrg = string.Equals(actorTypeClaim, "business", StringComparison.OrdinalIgnoreCase) ||
+                               string.Equals(actorTypeClaim, "organization", StringComparison.OrdinalIgnoreCase);
+        if (isBusinessOrOrg)
         {
             return Unauthorized();
         }
@@ -768,7 +773,8 @@ public class WorkspaceController : ControllerBase
         if (!limitToPublic)
         {
             var actorTypeClaim = User.FindFirst("actor_type")?.Value;
-            bool isBusiness = string.Equals(actorTypeClaim, "business", StringComparison.OrdinalIgnoreCase);
+            bool isBusiness = string.Equals(actorTypeClaim, "business", StringComparison.OrdinalIgnoreCase) ||
+                              string.Equals(actorTypeClaim, "organization", StringComparison.OrdinalIgnoreCase);
 
             if (isBusiness)
             {
@@ -896,7 +902,8 @@ public class WorkspaceController : ControllerBase
         }
 
         var actorTypeClaim = User.FindFirst("actor_type")?.Value;
-        bool isBusiness = string.Equals(actorTypeClaim, "business", StringComparison.OrdinalIgnoreCase);
+        bool isBusiness = string.Equals(actorTypeClaim, "business", StringComparison.OrdinalIgnoreCase) ||
+                          string.Equals(actorTypeClaim, "organization", StringComparison.OrdinalIgnoreCase);
 
         if (isBusiness)
         {
@@ -994,7 +1001,8 @@ public class WorkspaceController : ControllerBase
         }
 
         var actorTypeClaim = User.FindFirst("actor_type")?.Value;
-        bool isBusiness = string.Equals(actorTypeClaim, "business", StringComparison.OrdinalIgnoreCase);
+        bool isBusiness = string.Equals(actorTypeClaim, "business", StringComparison.OrdinalIgnoreCase) ||
+                          string.Equals(actorTypeClaim, "organization", StringComparison.OrdinalIgnoreCase);
 
         if (isBusiness)
         {
@@ -1100,7 +1108,8 @@ public class WorkspaceController : ControllerBase
         }
 
         var actorTypeClaim = User.FindFirst("actor_type")?.Value;
-        bool isBusiness = string.Equals(actorTypeClaim, "business", StringComparison.OrdinalIgnoreCase);
+        bool isBusiness = string.Equals(actorTypeClaim, "business", StringComparison.OrdinalIgnoreCase) ||
+                          string.Equals(actorTypeClaim, "organization", StringComparison.OrdinalIgnoreCase);
 
         if (isBusiness)
         {
@@ -1174,7 +1183,8 @@ public class WorkspaceController : ControllerBase
         }
 
         var actorTypeClaim = User.FindFirst("actor_type")?.Value;
-        bool isBusiness = string.Equals(actorTypeClaim, "business", StringComparison.OrdinalIgnoreCase);
+        bool isBusiness = string.Equals(actorTypeClaim, "business", StringComparison.OrdinalIgnoreCase) ||
+                          string.Equals(actorTypeClaim, "organization", StringComparison.OrdinalIgnoreCase);
 
         string authorRole = "Administrator";
         if (isBusiness)
@@ -1254,7 +1264,8 @@ public class WorkspaceController : ControllerBase
         if (userIdClaim != null && Guid.TryParse(userIdClaim.Value, out var userId))
         {
             var actorTypeClaim = User?.FindFirst("actor_type")?.Value;
-            bool isBusiness = string.Equals(actorTypeClaim, "business", StringComparison.OrdinalIgnoreCase);
+            bool isBusiness = string.Equals(actorTypeClaim, "business", StringComparison.OrdinalIgnoreCase) ||
+                              string.Equals(actorTypeClaim, "organization", StringComparison.OrdinalIgnoreCase);
 
             if (isBusiness)
             {
@@ -1341,7 +1352,8 @@ public class WorkspaceController : ControllerBase
         }
 
         var actorTypeClaim = User.FindFirst("actor_type")?.Value;
-        bool isBusiness = string.Equals(actorTypeClaim, "business", StringComparison.OrdinalIgnoreCase);
+        bool isBusiness = string.Equals(actorTypeClaim, "business", StringComparison.OrdinalIgnoreCase) ||
+                          string.Equals(actorTypeClaim, "organization", StringComparison.OrdinalIgnoreCase);
 
         if (isBusiness)
         {
@@ -1478,7 +1490,8 @@ public class WorkspaceController : ControllerBase
         }
 
         var actorTypeClaim = User.FindFirst("actor_type")?.Value;
-        bool isBusiness = string.Equals(actorTypeClaim, "business", StringComparison.OrdinalIgnoreCase);
+        bool isBusiness = string.Equals(actorTypeClaim, "business", StringComparison.OrdinalIgnoreCase) ||
+                          string.Equals(actorTypeClaim, "organization", StringComparison.OrdinalIgnoreCase);
 
         Guid workspaceOwnerId = userId;
         if (isBusiness)
@@ -1708,7 +1721,8 @@ public class WorkspaceController : ControllerBase
         });
 
         var actorTypeClaim = User.FindFirst("actor_type")?.Value;
-        bool isBusiness = string.Equals(actorTypeClaim, "business", StringComparison.OrdinalIgnoreCase);
+        bool isBusiness = string.Equals(actorTypeClaim, "business", StringComparison.OrdinalIgnoreCase) ||
+                          string.Equals(actorTypeClaim, "organization", StringComparison.OrdinalIgnoreCase);
         var realUserId = isBusiness ? null : (Guid?)userId;
 
         var log = new AuditLog
@@ -2224,7 +2238,8 @@ public class WorkspaceController : ControllerBase
         var userAgent = Request.Headers.UserAgent.ToString();
 
         var actorTypeClaim = User.FindFirst("actor_type")?.Value;
-        bool isBusiness = string.Equals(actorTypeClaim, "business", StringComparison.OrdinalIgnoreCase);
+        bool isBusiness = string.Equals(actorTypeClaim, "business", StringComparison.OrdinalIgnoreCase) ||
+                          string.Equals(actorTypeClaim, "organization", StringComparison.OrdinalIgnoreCase);
         var realUserId = isBusiness ? null : userId;
 
         var log = new AuditLog

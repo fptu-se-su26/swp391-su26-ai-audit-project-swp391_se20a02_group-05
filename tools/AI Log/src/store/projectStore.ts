@@ -10,6 +10,7 @@ import {
   openProjectFile, getPersistenceMode, migrateProject,
   type PersistenceMode 
 } from '@/lib/fileService';
+import { DEFAULT_PROJECT_METADATA, DEFAULT_PROJECT_MEMBERS } from '@/lib/defaults';
 
 interface ProjectState {
   projects: Record<string, Project>;
@@ -19,7 +20,7 @@ interface ProjectState {
   persistenceMode: PersistenceMode;
   
   // Core Actions
-  createProject: (metadata: ProjectMetadata) => string;
+  createProject: (metadata: Partial<ProjectMetadata> & { name: string; courseCode: string }) => string;
   deleteProject: (id: string) => void;
   setActiveProject: (id: string) => void;
   importProject: (projectData: Project) => void;
@@ -38,6 +39,10 @@ interface ProjectState {
   updatePrompts: (prompts: PromptLogEntry[], lessons?: Partial<PromptLessons>) => void;
   updateAiAudit: (aiAudit: Partial<AiAuditData>) => void;
   updateReflection: (reflection: Partial<ReflectionData>) => void;
+
+  // Active form save registration
+  saveHandler: (() => Promise<boolean>) | null;
+  registerSaveHandler: (handler: (() => Promise<boolean>) | null) => void;
 }
 
 const generateId = () => Math.random().toString(36).substring(2, 9);
@@ -62,8 +67,8 @@ const initialReflectionData: ReflectionData = {
   supportDetails: '',
   helpfulPoints: '',
   unhelpfulPoints: '',
-  dependencyLevel: '',
-  dependencyReason: '',
+  dependencyLevel: 'Phụ thuộc ít',
+  dependencyReason: 'Sử dụng AI để tối ưu hóa thời gian nghiên cứu và tạo cấu trúc ban đầu.',
   verificationMethods: [],
   verificationDescription: '',
   verificationExample: { aiSuggestion: '', checkMethod: '', result: '', followUp: '' },
@@ -72,11 +77,23 @@ const initialReflectionData: ReflectionData = {
   beforeAfter: [],
   lessonsLearnedText: '',
   responsibilityLessonsText: '',
-  commitments: [],
+  commitments: [
+    "Không dùng AI để làm toàn bộ bài mà không hiểu nội dung.",
+    "Không nộp nguyên văn kết quả AI nếu chưa kiểm tra.",
+    "Không che giấu việc sử dụng AI trong các phần quan trọng.",
+    "Không dùng AI để tạo nội dung sai lệch hoặc gian lận.",
+    "Không dùng AI thay thế hoàn toàn quá trình học.",
+    "Không bỏ qua yêu cầu, rubric hoặc hướng dẫn của giảng viên."
+  ],
   commitmentExplanation: '',
   improvementPlanText: '',
   selfEvaluation: [],
-  finalQuestions: { explainable: '', canReproduce: '', coreCompetency: '', desiredSkill: '' },
+  finalQuestions: { 
+    explainable: 'Có, nhóm đã đọc, kiểm tra và hiểu nội dung trước khi sử dụng.', 
+    canReproduce: 'Có, nhưng sẽ mất nhiều thời gian hơn để nghiên cứu và triển khai.', 
+    coreCompetency: 'Phần thiết kế workflow, chỉnh sửa logic và xử lý lỗi thực tế.', 
+    desiredSkill: 'Kỹ năng thiết kế hệ thống, viết prompt và kiểm thử phần mềm.' 
+  },
 };
 
 const initialPromptLessons: PromptLessons = {
@@ -102,14 +119,14 @@ export const useProjectStore = create<ProjectState>()(
       lastSavedAt: {},
       persistenceMode: typeof window !== 'undefined' ? getPersistenceMode() : 'fallback',
 
-      createProject: (metadata) => {
+      createProject: (metadata: Partial<ProjectMetadata> & { name: string; courseCode: string }) => {
         const id = generateId();
         const newProject: Project = {
           id,
           createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString(),
-          metadata,
-          members: [],
+          metadata: { ...DEFAULT_PROJECT_METADATA, ...metadata } as ProjectMetadata,
+          members: DEFAULT_PROJECT_MEMBERS,
           changelogs: [],
           changelogSummary: initialChangelogSummary,
           prompts: [],
@@ -338,6 +355,9 @@ export const useProjectStore = create<ProjectState>()(
           }
         }));
       },
+
+      saveHandler: null,
+      registerSaveHandler: (handler) => set({ saveHandler: handler }),
     }),
     {
       name: 'ai-workflow-logger-storage',

@@ -99,6 +99,24 @@ export function migrateProject(project: Project): Project {
       ...p,
       importanceExplanation: p.importanceExplanation || "",
     })),
+    changelogs: (project.changelogs || []).map((c) => {
+      const migrated: any = {
+        ...c,
+        evidence: c.evidence || [],
+      };
+
+      // Migrate evidenceLink to evidence array if it exists and evidence is empty
+      if (c.evidenceLink && migrated.evidence.length === 0) {
+        migrated.evidence.push({
+          id: Math.random().toString(36).substr(2, 9),
+          type: "commit",
+          label: "Migrated Evidence",
+          content: c.evidenceLink,
+          timestamp: new Date().toISOString(),
+        });
+      }
+      return migrated;
+    }),
     aiAudit: {
       ...project.aiAudit,
       auditEntries: (project.aiAudit?.auditEntries || []).map((e) => ({

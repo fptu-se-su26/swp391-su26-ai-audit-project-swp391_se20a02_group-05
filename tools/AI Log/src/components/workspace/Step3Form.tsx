@@ -4,9 +4,10 @@ import { useProjectStore } from "@/store/projectStore";
 import { useForm, Controller, useFieldArray } from "react-hook-form";
 import { Accordion, TextField, Input, Button, TextArea, Select, ListBox, CheckboxGroup, Checkbox, Card, Separator, Label } from "@heroui/react";
 import { Plus, Trash2, Save, ArrowRight, ArrowLeft, ChevronDown } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { PromptLogEntry, PromptLessons } from "@/types/project";
 import { useUnsavedChanges } from "@/lib/useUnsavedChanges";
+import { useFormDraft } from "@/hooks/useFormDraft";
 import ConfirmDeleteModal from "./ConfirmDeleteModal";
 
 export default function Step3Form({ projectId }: { projectId: string }) {
@@ -28,22 +29,55 @@ export default function Step3Form({ projectId }: { projectId: string }) {
     name: "prompts"
   });
 
-  useEffect(() => {
-    if (project) {
-      reset({
-        prompts: project.prompts || [],
-        promptLessons: project.promptLessons || { infoNeeded: '', lessonsLearned: '', futureImprovements: '' }
-      });
-    }
-  }, [project, reset]);
+  const originalData = {
+    prompts: project?.prompts || [],
+    promptLessons: project?.promptLessons || { infoNeeded: "", lessonsLearned: "", futureImprovements: "" }
+  };
+
+  const { DraftStatusIndicator, isActuallyDirty } = useFormDraft({
+    projectId,
+    stepKey: "step3",
+    watch,
+    reset,
+    originalData
+  });
 
   const onSubmit = (data: { prompts: PromptLogEntry[], promptLessons: PromptLessons }) => {
     updatePrompts(data.prompts, data.promptLessons);
     reset(data);
   };
 
+  const handleSaveForm = useCallback(async () => {
+    let success = false;
+    await new Promise<void>((resolve) => {
+      handleSubmit(
+        (data) => {
+          onSubmit(data);
+          success = true;
+          resolve();
+        },
+        () => {
+          success = false;
+          resolve();
+        }
+      )();
+    });
+    return success;
+  }, [handleSubmit, onSubmit]);
+
+  const saveHandlerRef = useRef(handleSaveForm);
+  useEffect(() => {
+    saveHandlerRef.current = handleSaveForm;
+  }, [handleSaveForm]);
+
+  useEffect(() => {
+    const { registerSaveHandler } = useProjectStore.getState();
+    registerSaveHandler(async () => saveHandlerRef.current());
+    return () => registerSaveHandler(null);
+  }, []);
+
   const { UnsavedModal, guardNavigation } = useUnsavedChanges({
-    isDirty,
+    isDirty: isActuallyDirty,
     onSave: handleSubmit(onSubmit),
   });
 
@@ -73,8 +107,11 @@ export default function Step3Form({ projectId }: { projectId: string }) {
 
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-6">
-      <div className="flex justify-between items-center">
-        <h3 className="text-xl font-semibold">Logged Prompts</h3>
+      <div className="flex justify-between items-center mb-2">
+        <div className="flex items-center gap-3">
+          <h3 className="text-xl font-semibold text-default-800">3. Nhật ký Prompts đã dùng</h3>
+          <DraftStatusIndicator />
+        </div>
         <Button size="sm" variant="secondary" onPress={handleAddPrompt}>
           <Plus className="w-4 h-4 mr-2 inline" />
           Add Prompt
@@ -332,9 +369,9 @@ export default function Step3Form({ projectId }: { projectId: string }) {
           Back
         </Button>
         <div className="flex gap-2">
-          <Button type="submit" variant={isDirty ? "secondary" : "ghost"}>
+          <Button type="submit" variant={isActuallyDirty ? "secondary" : "ghost"}>
             <Save className="w-4 h-4 mr-2 inline" />
-            {isDirty ? "Save Changes" : "Saved"}
+            {isActuallyDirty ? "Save Changes" : "Saved"}
           </Button>
           <Button onPress={() => guardNavigation(`/project/${projectId}/workspace/step4`)} variant="secondary">
             Next Step

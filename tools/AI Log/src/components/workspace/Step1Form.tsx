@@ -6,9 +6,12 @@ import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Card, Input, TextField, Label, Button, Separator } from "@heroui/react";
 import { Plus, Trash2, Save, ArrowRight } from "lucide-react";
-import { useEffect } from "react";
+import { useEffect, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { ProjectMember } from "@/types/project";
+
+import { useUnsavedChanges } from "@/lib/useUnsavedChanges";
+import { useFormDraft } from "@/hooks/useFormDraft";
 
 const schema = z.object({
   name: z.string().min(1, "Required"),
@@ -29,24 +32,18 @@ const schema = z.object({
 
 type FormData = z.infer<typeof schema>;
 
+import { DEFAULT_PROJECT_METADATA, DEFAULT_PROJECT_MEMBERS } from "@/lib/defaults";
+
 export default function Step1Form({ projectId }: { projectId: string }) {
   const { projects, updateMetadata, updateMembers } = useProjectStore();
   const project = projects[projectId];
   const router = useRouter();
 
-  const { control, handleSubmit, formState: { errors, isDirty }, reset } = useForm<FormData>({
+  const { control, handleSubmit, formState: { errors, isDirty }, reset, watch } = useForm<FormData>({
     resolver: zodResolver(schema),
     defaultValues: {
-      name: "",
-      course: "",
-      courseCode: "",
-      class: "",
-      semester: "",
-      lecturer: "",
-      repoUrl: "",
-      startDate: "",
-      endDate: "",
-      members: [],
+      ...DEFAULT_PROJECT_METADATA,
+      members: DEFAULT_PROJECT_MEMBERS,
     }
   });
 
@@ -55,31 +52,80 @@ export default function Step1Form({ projectId }: { projectId: string }) {
     name: "members"
   });
 
-  // Initialize form with store data
-  useEffect(() => {
-    if (project) {
-      reset({
-        ...project.metadata,
-        repoUrl: project.metadata.repoUrl || "",
-        startDate: project.metadata.startDate || "",
-        endDate: project.metadata.endDate || "",
-        members: project.members || [],
-      });
-    }
-  }, [project, reset]);
+  const originalData = {
+    ...DEFAULT_PROJECT_METADATA,
+    members: DEFAULT_PROJECT_MEMBERS,
+  };
+  if (project) {
+    originalData.name = project.metadata.name;
+    originalData.courseCode = project.metadata.courseCode;
+    originalData.course = project.metadata.course;
+    originalData.class = project.metadata.class;
+    originalData.semester = project.metadata.semester;
+    originalData.lecturer = project.metadata.lecturer;
+    originalData.repoUrl = project.metadata.repoUrl || "";
+    originalData.startDate = project.metadata.startDate || "";
+    originalData.endDate = project.metadata.endDate || "";
+    originalData.members = project.members || [];
+  }
+
+  const { DraftStatusIndicator, isActuallyDirty } = useFormDraft({
+    projectId,
+    stepKey: "step1",
+    watch,
+    reset,
+    originalData
+  });
 
   const onSubmit = (data: FormData) => {
     const { members, ...metadata } = data;
     updateMetadata(metadata);
     updateMembers(members as ProjectMember[]);
-    // Reset to clear isDirty state
     reset(data);
   };
+
+  const handleSaveForm = useCallback(async () => {
+    let success = false;
+    await new Promise<void>((resolve) => {
+      handleSubmit(
+        (data) => {
+          onSubmit(data);
+          success = true;
+          resolve();
+        },
+        () => {
+          success = false;
+          resolve();
+        }
+      )();
+    });
+    return success;
+  }, [handleSubmit, onSubmit]);
+
+  const saveHandlerRef = useRef(handleSaveForm);
+  useEffect(() => {
+    saveHandlerRef.current = handleSaveForm;
+  }, [handleSaveForm]);
+
+  useEffect(() => {
+    const { registerSaveHandler } = useProjectStore.getState();
+    registerSaveHandler(async () => saveHandlerRef.current());
+    return () => registerSaveHandler(null);
+  }, []);
+
+  const { UnsavedModal, guardNavigation } = useUnsavedChanges({
+    isDirty: isActuallyDirty,
+    onSave: handleSubmit(onSubmit),
+  });
 
   if (!project) return null;
 
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-6">
+      <div className="flex justify-between items-center mb-2">
+        <h2 className="text-xl font-bold text-default-800">1. Thông tin chung & Thành viên</h2>
+        <DraftStatusIndicator />
+      </div>
       <Card>
         <div className="flex flex-col gap-6 p-6">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -221,20 +267,21 @@ export default function Step1Form({ projectId }: { projectId: string }) {
       <div className="flex justify-between items-center mt-4">
         <Button
           type="submit"
-          variant={isDirty ? "secondary" : "ghost"}
+          variant={isActuallyDirty ? "secondary" : "ghost"}
         >
           <Save className="w-4 h-4 mr-2 inline" />
-          {isDirty ? "Save Changes" : "Saved"}
+          {isActuallyDirty ? "Save Changes" : "Saved"}
         </Button>
 
         <Button
-          onPress={() => router.push(`/project/${projectId}/workspace/step2`)}
+          onPress={() => guardNavigation(`/project/${projectId}/workspace/step2`)}
           variant="secondary"
         >
           Next Step
           <ArrowRight className="w-4 h-4 ml-2 inline" />
         </Button>
       </div>
+      <UnsavedModal />
     </form>
   );
 }
