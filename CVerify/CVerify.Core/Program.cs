@@ -1,6 +1,7 @@
 using System.Text;
 using System.Threading.RateLimiting;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
@@ -527,6 +528,27 @@ builder.Services.AddAuthentication(options =>
 builder.Services.AddCustomAuthorization();
 
 var app = builder.Build();
+
+// Trust X-Forwarded-For/X-Forwarded-Proto from the host-level Nginx reverse
+// proxy so RemoteIpAddress/Scheme reflect the real client instead of Nginx
+// itself. Without this, the IP-partitioned rate limiter above buckets every
+// real visitor under Nginx's own connecting address once traffic is proxied
+// (see deployment/CODE_CHANGES_REQUIRED.md #1 for the full analysis).
+//
+// KnownNetworks is restricted (not left open) so an external client can't
+// spoof X-Forwarded-For and bypass rate limiting themselves. The range below
+// covers Docker's default bridge address pool (172.16.0.0/12) plus loopback,
+// since Nginx runs on the VPS host and reaches containers via published
+// ports. VERIFY the real subnet with `docker network inspect cverify-frontend-net`
+// on the VPS and replace this range if it differs.
+var forwardedHeadersOptions = new ForwardedHeadersOptions
+{
+    ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto
+};
+forwardedHeadersOptions.KnownProxies.Clear();
+forwardedHeadersOptions.KnownIPNetworks.Add(new System.Net.IPNetwork(System.Net.IPAddress.Parse("172.16.0.0"), 12));
+forwardedHeadersOptions.KnownIPNetworks.Add(new System.Net.IPNetwork(System.Net.IPAddress.Loopback, 8));
+app.UseForwardedHeaders(forwardedHeadersOptions);
 
 // Startup Diagnostics for Rate Limiting / Environment
 {
