@@ -55,21 +55,21 @@
     "liveBadge": "Production-grade AuthN & AuthZ Module Live",
     "headline": "Decoupled Role-Based Security for modern TravelTech.",
     "description": "CVerify AI integrates Zustand state hydration, edge JWT cryptography, anti-CSRF protections, Broadcast session syncing, and inactivity warning locks.",
-    "enterHub": "Enter Traveler Hub",
+    "enterHub": "Enter Dashboard",
     "accessConsole": "Access Console",
     "goConsole": "Go to Console",
     "roles": {
       "userTitle": "Traveler (USER)",
       "userDesc": "Standard traveler dashboard giving full access to planning, searching prompts, and reviewing personal travel history details.",
-      "businessTitle": "Service Partner (BUSINESS)",
-      "businessDesc": "Partner dashboard to manage hotel packages, list excursions, and evaluate incoming travelers reservation revenue pools.",
+      "businessTitle": "Enterprise & Workspace (ORGANIZATION)",
+      "businessDesc": "Organization dashboard to manage hiring workspaces, candidate assessments, and member role configurations.",
       "adminTitle": "System Admin (ADMIN)",
       "adminDesc": "Global system control dashboard offering server health diagnostic analytics, account registries, and direct API lock gates."
     },
     "footerNote": "CVerify AI Auth Portal Integration. Verified for Next.js 16 + HeroUI v3 + Tailwind v4."
   },
   "dashboard": {
-    "travelerHub": "Dashboard",
+    "travelerHub": "Developer Dashboard",
     "aiPlanner": "AI Planner Chat",
     "partnerConsole": "Partner Console",
     "systemAdmin": "System Admin",
@@ -78,13 +78,17 @@
     "sections": {
       "general": "General",
       "candidate": "Candidate",
-      "business": "Business"
+      "business": "Organization"
     },
     "jobBoard": "Job Board",
+    "ranking": "Leaderboard",
+    "exploreJobs": "Explore",
+    "recommendedJobs": "Recommended",
+    "savedJobs": "Saved",
+    "appliedJobs": "Applied",
     "cv": "My CV",
     "candidateDashboard": "Candidate Dashboard",
-    "businessDashboard": "Business Dashboard",
-    "jdManagement": "JD Management"
+    "businessDashboard": "Organization Dashboard"
   },
   "admin": {
     "dashboard": "Admin",
@@ -93,6 +97,7 @@
     "auditTrail": "Audit Trail"
   },
   "cvManagement": {
+    "overview": "Overview",
     "title": "CV Management",
     "subtitle": "Build and share your professional career profile",
     "description": "Manage and update your professional CV profile. All changes sync with your Account Settings.",

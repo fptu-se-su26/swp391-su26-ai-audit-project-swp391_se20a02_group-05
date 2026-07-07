@@ -1,8 +1,9 @@
-﻿import type { NextConfig } from "next";
+import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   /* config options here */
   reactCompiler: true,
+  output: "standalone",
   async headers() {
     return [
       {
@@ -13,6 +14,15 @@ const nextConfig: NextConfig = {
             value: "same-origin-allow-popups",
           },
         ],
+      },
+    ];
+  },
+  async redirects() {
+    return [
+      {
+        source: "/business/:path*",
+        destination: "/organization/:path*",
+        permanent: true,
       },
     ];
   },

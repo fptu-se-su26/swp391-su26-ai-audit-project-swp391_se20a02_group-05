@@ -58,6 +58,8 @@ export interface WorkspaceDetails {
   facebookUrl?: string;
   twitterUrl?: string;
   taxCode?: string;
+  isVerified?: boolean;
+  verificationLevel?: number;
 }
 
 export interface PaginatedWorkspaceMembers {
@@ -143,6 +145,43 @@ export interface Post {
   authorRole?: string;
 }
 
+export interface JobRequirementMetadata {
+  hiringGoal: {
+    reason: string;
+    problem: string;
+    outcomes: string[];
+  };
+  prioritizedRequirements: {
+    responsibilities: Array<{
+      text: string;
+      priority: "Must Have" | "Should Have" | "Nice To Have";
+      ownershipLevel: "Awareness" | "Contributor" | "Owner" | "Leader";
+      isLeadership: boolean;
+    }>;
+    capabilities: Array<{
+      id: string;
+      name: string;
+      priority: "Must Have" | "Should Have" | "Nice To Have";
+      ownershipLevel: "Awareness" | "Contributor" | "Owner" | "Leader";
+    }>;
+    skills: Array<{
+      name: string;
+      priority: "Must Have" | "Should Have" | "Nice To Have";
+      sfiaLevel: number;
+    }>;
+  };
+  teamCollaboration: {
+    teamSize: number;
+    reportingTo: string;
+    collaborationPartners: string[];
+    stakeholderInteractions: string[];
+  };
+  successMilestones: {
+    thirtyDays: string;
+    ninetyDays: string;
+  };
+}
+
 export interface Job {
   id: string;
   organizationId?: string;
@@ -169,6 +208,49 @@ export interface Job {
   coverUrl: string;
   images?: string[];
   isActive?: boolean;
+  metadata?: JobRequirementMetadata | string;
   createdAt?: string;
   updatedAt?: string;
 }
+
+export interface OrganizationListItem {
+  organizationId: string;
+  organizationName: string;
+  organizationSlug: string;
+  logoUrl?: string;
+  bannerUrl?: string;
+  description?: string;
+  companyType?: string;
+  companySize?: string;
+  city?: string;
+  website?: string;
+  industryTags: string[];
+  isVerified: boolean;
+  verificationLevel: number;
+  memberCount: number;
+  openPositionsCount: number;
+  repositoryCount: number;
+  verifiedRepositoryCount: number;
+  averageTrustScore: number;
+  followerCount: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface OrganizationStats {
+  totalOrganizations: number;
+  verifiedOrganizations: number;
+  openOpportunities: number;
+  verifiedRepositories: number;
+  totalMembers: number;
+}
+
+export interface PaginatedOrganizations {
+  items: OrganizationListItem[];
+  totalCount: number;
+  page: number;
+  pageSize: number;
+}
+
+export type OrganizationDetails = WorkspaceDetails;
+

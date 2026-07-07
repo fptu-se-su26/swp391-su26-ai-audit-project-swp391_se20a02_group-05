@@ -203,7 +203,7 @@ public class WorkspaceProvisioningService : IWorkspaceProvisioningService
         }, cancellationToken);
     }
 
-    public async Task<VerifyCompanyOnboardingResponse> VerifyCompanyOnboardingAsync(VerifyCompanyOnboardingRequest request, CancellationToken cancellationToken = default)
+    public async Task<VerifyOrganizationOnboardingResponse> VerifyOrganizationOnboardingAsync(VerifyOrganizationOnboardingRequest request, CancellationToken cancellationToken = default)
     {
         var taxCode = request.TaxCode.Trim();
         if (!System.Text.RegularExpressions.Regex.IsMatch(taxCode, @"^\d{10}(-\d{3})?$"))
@@ -248,9 +248,9 @@ public class WorkspaceProvisioningService : IWorkspaceProvisioningService
             throw new AuthException(AuthErrorCodes.InvalidCredentials, $"This company is inactive/suspended: {status}.");
         }
 
-        if (!IsFuzzyMatch(officialName, request.CompanyName))
+        if (!IsFuzzyMatch(officialName, request.OrganizationName))
         {
-            throw new AuthException(AuthErrorCodes.InvalidCredentials, "Company name does not match the official tax registry business name.");
+            throw new AuthException(AuthErrorCodes.InvalidCredentials, "Organization name does not match the official tax registry business name.");
         }
 
         var existingOrg = await _context.Organizations
@@ -268,9 +268,9 @@ public class WorkspaceProvisioningService : IWorkspaceProvisioningService
 
         if (existingOrg != null)
         {
-            return new VerifyCompanyOnboardingResponse(
+            return new VerifyOrganizationOnboardingResponse(
                 SignedToken: null,
-                OfficialCompanyName: existingOrg.Name,
+                OfficialOrganizationName: existingOrg.Name,
                 TaxCode: existingOrg.TaxCode,
                 OrganizationExists: true,
                 OrganizationDisplayName: existingOrg.Name,
@@ -281,7 +281,7 @@ public class WorkspaceProvisioningService : IWorkspaceProvisioningService
 
         var signedToken = OnboardingTokenHelper.GenerateStep1Token(taxCode, officialName, _envConfig.Jwt.Key);
 
-        return new VerifyCompanyOnboardingResponse(signedToken, officialName, taxCode);
+        return new VerifyOrganizationOnboardingResponse(signedToken, officialName, taxCode);
     }
 
     public async Task<VerifyOtpResponse> VerifyOnboardingOtpAsync(VerifyOtpRequest request, string step1Token, CancellationToken cancellationToken = default)
@@ -397,17 +397,7 @@ public class WorkspaceProvisioningService : IWorkspaceProvisioningService
             _context.Organizations.Add(org);
             await _context.SaveChangesAsync(cancellationToken);
 
-            var workspace = new Workspace
-            {
-                OrganizationId = org.Id,
-                DisplayName = org.Name,
-                Slug = org.Username,
-                Status = "active",
-                CreatedAt = _timeProvider.GetUtcNow(),
-                UpdatedAt = _timeProvider.GetUtcNow()
-            };
-            _context.Workspaces.Add(workspace);
-            await _context.SaveChangesAsync(cancellationToken);
+
 
             var credential = new OrganizationCredential
             {
@@ -580,17 +570,7 @@ public class WorkspaceProvisioningService : IWorkspaceProvisioningService
             _context.Organizations.Add(org);
             await _context.SaveChangesAsync(cancellationToken);
 
-            var workspace = new Workspace
-            {
-                OrganizationId = org.Id,
-                DisplayName = org.Name,
-                Slug = org.Username,
-                Status = "active",
-                CreatedAt = _timeProvider.GetUtcNow(),
-                UpdatedAt = _timeProvider.GetUtcNow()
-            };
-            _context.Workspaces.Add(workspace);
-            await _context.SaveChangesAsync(cancellationToken);
+
 
             var credential = new OrganizationCredential
             {

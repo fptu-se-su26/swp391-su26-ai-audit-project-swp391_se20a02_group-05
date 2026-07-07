@@ -52,7 +52,7 @@ public class ScribanTemplateLoader : ITemplateLoader
     }
 
     /// <inheritdoc />
-    public async ValueTask<string?> LoadAsync(TemplateContext context, SourceSpan callerSpan, string templatePath)
+    public async ValueTask<string> LoadAsync(TemplateContext context, SourceSpan callerSpan, string templatePath)
     {
         if (!File.Exists(templatePath))
         {

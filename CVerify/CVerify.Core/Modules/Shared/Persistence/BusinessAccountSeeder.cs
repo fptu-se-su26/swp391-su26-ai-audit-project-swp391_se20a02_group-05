@@ -97,56 +97,6 @@ public static class BusinessAccountSeeder
                 new NpgsqlParameter("@status", org.Status)
             );
 
-            // Update extended profile fields (idempotent - safe to re-run)
-            var industryTagsJson = global::System.Text.Json.JsonSerializer.Serialize(org.IndustryTags);
-            var benefitTagsJson = global::System.Text.Json.JsonSerializer.Serialize(org.BenefitTags);
-            var sqlProfile = @"
-                UPDATE organizations SET
-                    description = COALESCE(@description, description),
-                    company_type = COALESCE(@companyType, company_type),
-                    company_size = COALESCE(@companySize, company_size),
-                    branch_count = COALESCE(@branchCount, branch_count),
-                    website = COALESCE(@website, website),
-                    city = COALESCE(@city, city),
-                    detail_address = COALESCE(@detailAddress, detail_address),
-                    contact_name = COALESCE(@contactName, contact_name),
-                    contact_phone = COALESCE(@contactPhone, contact_phone),
-                    contact_email = COALESCE(@contactEmail, contact_email),
-                    linkedin_url = COALESCE(@linkedinUrl, linkedin_url),
-                    facebook_url = COALESCE(@facebookUrl, facebook_url),
-                    twitter_url = COALESCE(@twitterUrl, twitter_url),
-                    mission = COALESCE(@mission, mission),
-                    vision = COALESCE(@vision, vision),
-                    core_values = COALESCE(@coreValues, core_values),
-                    founded = COALESCE(@founded, founded),
-                    industry_tags = CASE WHEN @industryTags::jsonb != '[]'::jsonb THEN ARRAY(SELECT jsonb_array_elements_text(@industryTags::jsonb))::varchar(100)[] ELSE industry_tags END,
-                    benefit_tags = CASE WHEN @benefitTags::jsonb != '[]'::jsonb THEN ARRAY(SELECT jsonb_array_elements_text(@benefitTags::jsonb))::varchar(100)[] ELSE benefit_tags END,
-                    updated_at = NOW()
-                WHERE id = @id AND deleted_at IS NULL;
-            ";
-            await context.Database.ExecuteSqlRawAsync(sqlProfile,
-                new NpgsqlParameter("@id", org.Id),
-                new NpgsqlParameter("@description", (object?)org.Description ?? DBNull.Value),
-                new NpgsqlParameter("@companyType", (object?)org.CompanyType ?? DBNull.Value),
-                new NpgsqlParameter("@companySize", (object?)org.CompanySize ?? DBNull.Value),
-                new NpgsqlParameter("@branchCount", (object?)org.BranchCount ?? DBNull.Value),
-                new NpgsqlParameter("@website", (object?)org.Website ?? DBNull.Value),
-                new NpgsqlParameter("@city", (object?)org.City ?? DBNull.Value),
-                new NpgsqlParameter("@detailAddress", (object?)org.DetailAddress ?? DBNull.Value),
-                new NpgsqlParameter("@contactName", (object?)org.ContactName ?? DBNull.Value),
-                new NpgsqlParameter("@contactPhone", (object?)org.ContactPhone ?? DBNull.Value),
-                new NpgsqlParameter("@contactEmail", (object?)org.ContactEmail ?? DBNull.Value),
-                new NpgsqlParameter("@linkedinUrl", (object?)org.LinkedinUrl ?? DBNull.Value),
-                new NpgsqlParameter("@facebookUrl", (object?)org.FacebookUrl ?? DBNull.Value),
-                new NpgsqlParameter("@twitterUrl", (object?)org.TwitterUrl ?? DBNull.Value),
-                new NpgsqlParameter("@mission", (object?)org.Mission ?? DBNull.Value),
-                new NpgsqlParameter("@vision", (object?)org.Vision ?? DBNull.Value),
-                new NpgsqlParameter("@coreValues", (object?)org.CoreValues ?? DBNull.Value),
-                new NpgsqlParameter("@founded", (object?)org.Founded ?? DBNull.Value),
-                new NpgsqlParameter("@industryTags", industryTagsJson),
-                new NpgsqlParameter("@benefitTags", benefitTagsJson)
-            );
-
             // Seed Organization Credential
             var sqlCred = @"
                 INSERT INTO organization_credentials (organization_id, username, password_hash)
@@ -201,9 +151,12 @@ public static class BusinessAccountSeeder
             // Seed Workspaces
             foreach (var ws in org.Workspaces)
             {
+                var ownerUser = org.Users.FirstOrDefault(u => u.OrgRole == "OWNER") ?? org.Users.FirstOrDefault();
+                var ownerId = ownerUser?.Id ?? Guid.Empty;
+
                 var sqlWs = @"
-                    INSERT INTO workspaces (id, organization_id, display_name, slug, status)
-                    VALUES (@id, @orgId, @displayName, @slug, @status)
+                    INSERT INTO workspaces (id, organization_id, display_name, slug, status, owner_id)
+                    VALUES (@id, @orgId, @displayName, @slug, @status, @ownerId)
                     ON CONFLICT (slug) WHERE deleted_at IS NULL DO NOTHING;
                 ";
                 await context.Database.ExecuteSqlRawAsync(sqlWs,
@@ -211,7 +164,8 @@ public static class BusinessAccountSeeder
                     new NpgsqlParameter("@orgId", org.Id),
                     new NpgsqlParameter("@displayName", ws.DisplayName),
                     new NpgsqlParameter("@slug", ws.Slug),
-                    new NpgsqlParameter("@status", ws.Status)
+                    new NpgsqlParameter("@status", ws.Status),
+                    new NpgsqlParameter("@ownerId", ownerId)
                 );
 
                 // Seed Workspace Members
@@ -268,25 +222,6 @@ public static class BusinessAccountSeeder
         public string Username { get; set; } = null!;
         public int VerificationLevel { get; set; }
         public string Status { get; set; } = null!;
-        public string? Description { get; set; }
-        public string? CompanyType { get; set; }
-        public string? CompanySize { get; set; }
-        public int? BranchCount { get; set; }
-        public string? Website { get; set; }
-        public string? City { get; set; }
-        public string? DetailAddress { get; set; }
-        public string? ContactName { get; set; }
-        public string? ContactPhone { get; set; }
-        public string? ContactEmail { get; set; }
-        public string? LinkedinUrl { get; set; }
-        public string? FacebookUrl { get; set; }
-        public string? TwitterUrl { get; set; }
-        public string? Mission { get; set; }
-        public string? Vision { get; set; }
-        public string? CoreValues { get; set; }
-        public string? Founded { get; set; }
-        public List<string> IndustryTags { get; set; } = new();
-        public List<string> BenefitTags { get; set; } = new();
         public List<SeedWorkspace> Workspaces { get; set; } = new();
         public List<SeedUser> Users { get; set; } = new();
     }

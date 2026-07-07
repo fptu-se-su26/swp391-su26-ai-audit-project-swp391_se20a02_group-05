@@ -11,25 +11,6 @@
       "username": "tier1-business",
       "verificationLevel": 1,
       "status": "active",
-      "description": "FPT Software is a leading technology company specializing in digital transformation, software development, and IT outsourcing services. We build world-class software solutions for global clients across banking, healthcare, manufacturing, and e-commerce sectors.",
-      "companyType": "Corporation",
-      "companySize": "1000-5000",
-      "branchCount": 12,
-      "website": "https://fptsoftware.com",
-      "city": "Ho Chi Minh City",
-      "detailAddress": "FPT Tan Thuan Software Park, Tan Thuan Dong Ward, District 7, Ho Chi Minh City, Vietnam",
-      "contactName": "Tier 1 HR Department",
-      "contactPhone": "+84 28 7300 0600",
-      "contactEmail": "hr@fptsoftware.com",
-      "linkedinUrl": "https://linkedin.com/company/fpt-software",
-      "facebookUrl": "https://facebook.com/FPTSoftware",
-      "twitterUrl": "https://twitter.com/FPTSoftware",
-      "mission": "To deliver world-class technology solutions that drive digital transformation for global enterprises.",
-      "vision": "To become a top 50 global IT services company by 2030, powered by innovation and talent.",
-      "coreValues": "Integrity, Innovation, Inclusion, Impact",
-      "founded": "1999",
-      "industryTags": ["Software Development", "IT Outsourcing", "Digital Transformation", "Cloud Services", "AI & Machine Learning"],
-      "benefitTags": ["Health Insurance", "Annual Bonus", "Flexible Working Hours", "Remote Work", "Learning Budget", "Team Building", "Stock Options", "Relocation Support"],
       "workspaces": [
         {
           "id": "01900000-0000-0000-0000-000000000004",
@@ -41,6 +22,34 @@
               "id": "01900000-0000-0000-0000-000000000005",
               "userId": "01900000-0000-0000-0000-000000000002",
               "role": "workspace_admin"
+            },
+            {
+              "id": "01900000-0000-0000-0000-00000000000e",
+              "userId": "01900000-0000-0000-0000-000000000007",
+              "role": "manager"
+            }
+          ]
+        },
+        {
+          "id": "01900000-0000-0000-0000-00000000000c",
+          "displayName": "Tier 1 Secondary Workspace",
+          "slug": "tier1-secondary-workspace",
+          "status": "active",
+          "members": [
+            {
+              "id": "01900000-0000-0000-0000-00000000000d",
+              "userId": "01900000-0000-0000-0000-000000000002",
+              "role": "workspace_admin"
+            },
+            {
+              "id": "01900000-0000-0000-0000-00000000000f",
+              "userId": "01900000-0000-0000-0000-000000000009",
+              "role": "workspace_admin"
+            },
+            {
+              "id": "01900000-0000-0000-0000-00000000000a",
+              "userId": "01900000-0000-0000-0000-00000000001b",
+              "role": "viewer"
             }
           ]
         }
@@ -84,24 +93,6 @@
       "username": "tier2-business",
       "verificationLevel": 2,
       "status": "active",
-      "description": "FPT Software Tier 2 is an enterprise-grade technology partner offering end-to-end digital solutions. Our engineering teams specialize in cloud-native architectures, microservices, and AI-powered platforms.",
-      "companyType": "Corporation",
-      "companySize": "5000+",
-      "branchCount": 25,
-      "website": "https://fptsoftware.com",
-      "city": "Hanoi",
-      "detailAddress": "FPT Tower, 10 Pham Van Bach Street, Cau Giay District, Hanoi, Vietnam",
-      "contactName": "Tier 2 HR Department",
-      "contactPhone": "+84 24 7300 0700",
-      "contactEmail": "hr2@fptsoftware.com",
-      "linkedinUrl": "https://linkedin.com/company/fpt-software",
-      "facebookUrl": "https://facebook.com/FPTSoftware",
-      "mission": "Driving enterprise innovation through scalable technology platforms.",
-      "vision": "To be the preferred digital transformation partner for Fortune 500 companies.",
-      "coreValues": "Excellence, Agility, Customer-Centricity, Trust",
-      "founded": "1999",
-      "industryTags": ["Enterprise Software", "Cloud Computing", "FinTech", "HealthTech", "AI Solutions"],
-      "benefitTags": ["Premium Health Insurance", "Performance Bonus", "Remote First", "L&D Budget", "Gym Membership", "Sabbatical Leave"],
       "workspaces": [
         {
           "id": "01900000-0000-0000-0000-000000000014",
@@ -113,6 +104,29 @@
               "id": "01900000-0000-0000-0000-000000000015",
               "userId": "01900000-0000-0000-0000-000000000012",
               "role": "workspace_admin"
+            },
+            {
+              "id": "01900000-0000-0000-0000-000000000020",
+              "userId": "01900000-0000-0000-0000-000000000022",
+              "role": "manager"
+            }
+          ]
+        },
+        {
+          "id": "01900000-0000-0000-0000-00000000001c",
+          "displayName": "Tier 2 Secondary Workspace",
+          "slug": "tier2-secondary-workspace",
+          "status": "active",
+          "members": [
+            {
+              "id": "01900000-0000-0000-0000-00000000001d",
+              "userId": "01900000-0000-0000-0000-000000000012",
+              "role": "workspace_admin"
+            },
+            {
+              "id": "01900000-0000-0000-0000-000000000021",
+              "userId": "01900000-0000-0000-0000-000000000024",
+              "role": "viewer"
             }
           ]
         }
@@ -124,6 +138,20 @@
           "fullName": "Tier 2 Business Owner",
           "membershipId": "01900000-0000-0000-0000-000000000016",
           "orgRole": "OWNER"
+        },
+        {
+          "id": "01900000-0000-0000-0000-000000000022",
+          "email": "hr2@testbusiness.com",
+          "fullName": "Tier 2 HR Manager",
+          "membershipId": "01900000-0000-0000-0000-000000000023",
+          "orgRole": "HR"
+        },
+        {
+          "id": "01900000-0000-0000-0000-000000000024",
+          "email": "member2@testbusiness.com",
+          "fullName": "Tier 2 Staff Member",
+          "membershipId": "01900000-0000-0000-0000-000000000025",
+          "orgRole": "MEMBER"
         }
       ]
     }
