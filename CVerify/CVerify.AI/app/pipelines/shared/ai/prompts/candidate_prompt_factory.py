@@ -354,7 +354,7 @@ class CandidatePromptFactory:
         problem_solving = inputs.get("problemSolvingSummary", "")
         top_role = inputs.get("topMatchRole", "")
         return (
-            f"Generate an objective, evidence-based candidate summary for recruiter review.\n\n"
+            f"Generate an objective candidate summary and professional bio for the candidate.\n\n"
             f"CANDIDATE DATA:\n"
             f"- Career Level: {final_level} ({final_level_label})\n"
             f"- Primary Tendency: {primary_tendency}\n"
@@ -364,15 +364,26 @@ class CandidatePromptFactory:
             f"- Engineering Maturity: {engineering_maturity}\n"
             f"- Problem Solving: {problem_solving}\n"
             f"- Top Role Match: {top_role}\n\n"
-            f"REQUIREMENTS:\n"
-            f"- Tone: objective, evidence-based, professional (not promotional)\n"
-            f"- Length: 200-350 characters for recruiter_headline, 400-700 characters for full_summary\n"
-            f"- Must cite specific technical evidence, not generic statements\n"
-            f"- Must mention level, tendency, and top 2-3 skills\n\n"
+            f"You MUST generate two distinct and independent narrative outputs from two completely different personas and viewpoints:\n\n"
+            f"1. recruiterHeadline (STRICTLY 150-250 characters):\n"
+            f"   - Objective, professional headline summarizing level and tech stack (e.g., 'Senior Backend Engineer with 3+ years of Python/FastAPI expertise').\n\n"
+            f"2. fullSummary (Full AI Evaluation Narrative - up to 1000 characters):\n"
+            f"   - Persona: Technical Talent Analyst (Objective, analytical, data-driven, repository-evidentiary).\n"
+            f"   - Objective: Synthesize candidate's code quality, software patterns, architectural capabilities, maturity, and gaps.\n"
+            f"   - Tone: Recruiter-focused, professional, and diagnostic. Describe findings in the codebase.\n\n"
+            f"3. professionalBio (AI Professional Bio Suggestion - STRICTLY 250-500 characters):\n"
+            f"   - Persona: Experienced Career Advisor (Warm, supportive, natural, human-composed, CV-ready).\n"
+            f"   - Objective: Highlight career positioning, core technical stack, and software engineering capabilities. Make the candidate look polished and professional.\n"
+            f"   - Tone: CV/LinkedIn ready, resume style. Do NOT make it sound like a report about the candidate (e.g., use 'Experienced software engineer specializing in...' rather than 'The candidate is evaluated as...').\n"
+            f"   - CRITICAL CONTRACT RULES:\n"
+            f"     - Strict Word-level Independence: Do NOT make it a truncated, rephrased, or summarized version of fullSummary. Compose it from scratch using the Career Advisor persona.\n"
+            f"     - Banned Language: Absolutely NO score numbers (e.g. 'score of 85'), trust metrics, cohort percentiles, level codes ('L1', 'L2', 'L3', 'L4', 'L5', 'Intern'), or evaluation jargon (such as 'watchpoints', 'vetting', 'CVerify', 'recruiter headline', 'evidence governance').\n\n"
             f"Return JSON:\n"
-            f'  "recruiterHeadline": "Senior Backend Engineer with 3+ years of Python/FastAPI expertise", \n'
-            f'  "fullSummary": "paragraph 400-700 chars", \n'
-            f'  "keyStrengths": ["Distributed system design", "API architecture", "PostgreSQL optimization"], \n'
+            f'{{\n'
+            f'  "recruiterHeadline": "Senior Backend Engineer with 3+ years of Python/FastAPI expertise",\n'
+            f'  "fullSummary": "paragraph up to 1000 characters detailing codebase evidence, patterns, maturity, and gaps...",\n'
+            f'  "professionalBio": "paragraph 250-500 characters of natural career summary highlighting expertise in React, Next.js, and backend systems...",\n'
+            f'  "keyStrengths": ["Distributed system design", "API architecture", "PostgreSQL optimization"],\n'
             f'  "watchPoints": ["Limited frontend exposure", "No mobile development evidence"]\n'
             f'}}'
         )
@@ -430,5 +441,79 @@ class CandidatePromptFactory:
             f"  \"verifiedPatterns\": [\"CQRS\"],\n"
             f"  \"keyStrengths\": [\"string\"],\n"
             f"  \"identifiedGaps\": [\"string\"]\n"
+            f"}}\n"
+        )
+
+    def get_skill_tree_generator_prompt(self, inputs: Dict[str, Any]) -> str:
+        mapped_skills = inputs.get("mappedSkills", [])
+        skill_proficiencies = inputs.get("skillProficiencies", [])
+        cv = inputs.get("cv", {})
+        projects = cv.get("projects", [])
+        experiences = cv.get("experiences", [])
+        total_exp = inputs.get("totalExperienceMonths", 0.0)
+
+        return (
+            f"You are CVerify Candidate Intelligence Engine, an expert AI Talent Analyst.\n"
+            f"Your task is to generate a structured hierarchical Skill Tree for the candidate based on all available evidence.\n\n"
+            f"CANONICAL TAXONOMY HIERARCHY:\n"
+            f"Every node must follow this taxonomy: Domain -> Subdomain -> Technology -> Framework -> Library -> Tool -> Methodology\n"
+            f"Examples:\n"
+            f"- Software Engineering (Domain) -> Backend Development (Subdomain) -> C# (Technology) -> ASP.NET Core (Framework) -> EF Core (Library)\n"
+            f"- Software Engineering (Domain) -> Frontend Development (Subdomain) -> TypeScript (Technology) -> React (Framework) -> Redux (Library)\n"
+            f"- Infrastructure & DevOps (Domain) -> Containerization (Subdomain) -> Docker (Tool)\n\n"
+            f"INPUT EVIDENCE:\n"
+            f"- MAPPED SKILLS:\n{json.dumps(mapped_skills, indent=2)}\n"
+            f"- SKILL PROFICIENCIES:\n{json.dumps(skill_proficiencies, indent=2)}\n"
+            f"- CV PROJECTS:\n{json.dumps(projects, indent=2)}\n"
+            f"- CV WORK EXPERIENCE:\n{json.dumps(experiences, indent=2)}\n"
+            f"- TOTAL EXPERIENCE: {total_exp} months\n\n"
+            f"TASK:\n"
+            f"1. Analyze all inputs to group skills into a structured parent-child tree hierarchy conforming to the canonical taxonomy.\n"
+            f"2. For each node in the tree, generate a logical slug (path-based ID using slashes, e.g., 'software-engineering/backend/csharp/asp-net-core') and specify the parent slug.\n"
+            f"3. Populate metadata for each node:\n"
+            f"   - displayName: Human-readable name (e.g. 'ASP.NET Core')\n"
+            f"   - category: One of ['Domain', 'Subdomain', 'Technology', 'Framework', 'Library', 'Tool', 'Methodology']\n"
+            f"   - proficiencyLevel: Best estimate matching proficiency level of concrete skills ('Awareness', 'Working', 'Practitioner', 'Expert') or default to parent level\n"
+            f"   - confidenceScore: Float from 0.0 to 1.0 (higher for verified repo evidence, lower for self-declared cv evidence)\n"
+            f"   - estimatedExperience: Float (total months of estimated experience using the tool/domain)\n"
+            f"   - supportingEvidence: Structured object referencing sources in detail. Schema: {{\"references\": [{{\"sourceType\": \"Repository|WorkExperience|Project\", \"sourceId\": \"string id if available or name\", \"displayName\": \"name\", \"details\": \"short description\"}}]}}\n"
+            f"4. Structure the output as a nested tree using the 'children' property. You can have a single root node or multiple root nodes, but wrap it under a single top-level object or list.\n"
+            f"5. RETURN RAW JSON ONLY. No markdown wrapping. Do NOT truncate the JSON.\n\n"
+            f"EXPECTED JSON SCHEMA:\n"
+            f"{{\n"
+            f"  \"skillTree\": {{\n"
+            f"    \"id\": \"software-engineering\",\n"
+            f"    \"parentId\": null,\n"
+            f"    \"displayName\": \"Software Engineering\",\n"
+            f"    \"category\": \"Domain\",\n"
+            f"    \"proficiencyLevel\": \"Practitioner\",\n"
+            f"    \"confidenceScore\": 0.9,\n"
+            f"    \"estimatedExperience\": 36.0,\n"
+            f"    \"supportingEvidence\": {{\n"
+            f"      \"references\": [\n"
+            f"        {{\n"
+            f"          \"sourceType\": \"WorkExperience\",\n"
+            f"          \"sourceId\": \"company-a-job\",\n"
+            f"          \"displayName\": \"Google - Software Engineer\",\n"
+            f"          \"details\": \"Developed backend systems for 36 months\"\n"
+            f"        }}\n"
+            f"      ]\n"
+            f"    }},\n"
+            f"    \"children\": [\n"
+            f"      {{\n"
+            f"        \"id\": \"software-engineering/backend\",\n"
+            f"        \"parentId\": \"software-engineering\",\n"
+            f"        \"displayName\": \"Backend Development\",\n"
+            f"        \"category\": \"Subdomain\",\n"
+            f"        \"proficiencyLevel\": \"Practitioner\",\n"
+            f"        \"confidenceScore\": 0.9,\n"
+            f"        \"estimatedExperience\": 36.0,\n"
+            f"        \"supportingEvidence\": {{\n"
+            f"          \"references\": []\n"
+            f"        }},\n"
+            f"        \"children\": []\n"
+            f"      }}\n"
+            f"    ]\n"
+            f"  }}\n"
             f"}}\n"
         )

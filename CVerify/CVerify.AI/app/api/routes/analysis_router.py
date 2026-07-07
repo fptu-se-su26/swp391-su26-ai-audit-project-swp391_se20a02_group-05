@@ -1,7 +1,7 @@
 import json
 import logging
 from typing import Optional, List
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Request
 from fastapi.responses import StreamingResponse, JSONResponse
 from pydantic import BaseModel
 from app.core.middleware.hmac_auth import verify_hmac_signature
@@ -308,5 +308,128 @@ async def assess_repository(
             status_code=400,
             content={"status": "Failed", "errorMessage": str(e)}
         )
+
+
+class HiringRequirementGenerateRequest(BaseModel):
+    requirementData: dict
+
+
+@router.post("/api/v1/hiring-requirements/generate/stream")
+async def generate_requirement_artifacts_stream(
+    request_data: HiringRequirementGenerateRequest,
+    correlation_id: str = Depends(verify_hmac_signature)
+):
+    extra_log = {"correlation_id": correlation_id}
+    req_id = request_data.requirementData.get("id", "unknown")
+    logger.info(f"Initiated hiring requirement artifacts stream request for requirement: {req_id}", extra=extra_log)
+
+    from app.pipelines.requirement.orchestrator import RequirementArtifactsOrchestrator
+    orchestrator = RequirementArtifactsOrchestrator()
+
+    async def sse_generator():
+        try:
+            async for progress_event in orchestrator.generate_all_artifacts_async(
+                requirement_data=request_data.requirementData,
+                correlation_id=correlation_id
+            ):
+                yield f"data: {json.dumps(progress_event)}\n\n"
+            yield "data: [DONE]\n\n"
+        except Exception as e:
+            logger.error(f"Error during requirement artifacts generation: {e}", extra=extra_log)
+            err_payload = {
+                "status": "Failed",
+                "step": "Failed",
+                "message": str(e)
+            }
+            yield f"data: {json.dumps(err_payload)}\n\n"
+
+    return StreamingResponse(sse_generator(), media_type="text/event-stream")
+
+
+class GenerateArtifactBody(BaseModel):
+    requirementData: dict
+    artifactType: str
+
+
+@router.post("/api/v1/hiring-requirements/generate-artifact/stream")
+async def generate_artifact_stream_endpoint(
+    request: Request,
+    request_data: GenerateArtifactBody,
+    correlation_id: str = Depends(verify_hmac_signature)
+):
+    extra_log = {"correlation_id": correlation_id}
+    req_id = request_data.requirementData.get("id", "unknown")
+    logger.info(f"Initiated single requirement artifact stream request ({request_data.artifactType}) for requirement: {req_id}", extra=extra_log)
+
+    from app.pipelines.requirement.orchestrator import RequirementArtifactsOrchestrator
+    orchestrator = RequirementArtifactsOrchestrator()
+
+    async def sse_generator():
+        try:
+            async for progress_event in orchestrator.generate_artifact_stream(
+                requirement_data=request_data.requirementData,
+                artifact_type=request_data.artifactType,
+                request=request,
+                correlation_id=correlation_id
+            ):
+                yield f"data: {json.dumps(progress_event)}\n\n"
+            yield "data: [DONE]\n\n"
+        except Exception as e:
+            logger.error(f"Error during single requirement artifact generation: {e}", extra=extra_log)
+            err_payload = {
+                "status": "Failed",
+                "step": "Failed",
+                "message": str(e)
+            }
+            yield f"data: {json.dumps(err_payload)}\n\n"
+
+    return StreamingResponse(sse_generator(), media_type="text/event-stream")
+
+
+@router.post("/api/v1/analysis/jobs/{job_id}/cancel")
+async def cancel_job_endpoint(job_id: str):
+    from app.core.monitoring.observability import UIStreamingManager
+    redis_client = UIStreamingManager()._redis_client
+    await redis_client.set(f"ai:cancel:{job_id}", "true", ex=300)
+    logger.info(f"Registered cancellation signal for job {job_id} in Redis.")
+    return {"status": "Cancelled", "jobId": job_id}
+
+
+class ScoreCalculationRequest(BaseModel):
+    cv: dict
+    repositoryAssessments: List[dict]
+    skillProficiencies: Optional[List[dict]] = None
+    historicalMaturityScore: Optional[float] = None
+    historicalProblemSolvingScore: Optional[float] = None
+
+
+@router.post("/api/v1/candidate/assess/score")
+async def calculate_scores_endpoint(
+    request_data: ScoreCalculationRequest,
+    correlation_id: str = Depends(verify_hmac_signature)
+):
+    extra_log = {"correlation_id": correlation_id}
+    logger.info("Initiated deterministic scoring calculation", extra=extra_log)
+    try:
+        from app.pipelines.candidate.scoring_engine import score_candidate_deterministic
+        from app.pipelines.candidate.contracts import CandidateAssessmentV2Contract
+        
+        profile = score_candidate_deterministic(
+            cv=request_data.cv,
+            repository_assessments=request_data.repositoryAssessments,
+            skill_proficiencies=request_data.skillProficiencies,
+            historical_maturity_score=request_data.historicalMaturityScore,
+            historical_problem_solving_score=request_data.historicalProblemSolvingScore
+        )
+        
+        # Enforce contract verification boundary
+        CandidateAssessmentV2Contract.model_validate(profile)
+        return profile
+    except Exception as e:
+        logger.error(f"Error during deterministic scoring: {e}", extra=extra_log)
+        return JSONResponse(status_code=500, content={"error": str(e)})
+
+
+
 
 

@@ -1,11 +1,13 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Compass, Briefcase, MapPin, Link as LinkIcon, ShieldCheck, GraduationCap, Award } from 'lucide-react';
+import { Compass, Briefcase, MapPin, Link as LinkIcon, ShieldCheck, GraduationCap, Award, EyeOff } from 'lucide-react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { Button, Tabs } from '@heroui/react';
 import { type PublicProfileResponse, type CandidateAssessmentDetailResponse } from '@/types/profile.types';
+import { CVPreview } from '@/app/(candidate)/cv/components/CVPreview';
+import { mapPublicProfileToCvProps } from '@/app/(candidate)/cv/utils/cvMapper';
 import {
   normalizeScore,
   getVerifiedSkills,
@@ -14,6 +16,9 @@ import {
   isTrustScoreEvaluated
 } from '@/lib/ai-score-mapper';
 import { AiAssessmentTab } from './AiAssessmentTab';
+import { PublicPageShell } from '@/components/ui/public-page-shell';
+import { CandidateVerificationBadge } from '@/components/ui/cverify/verification-badges';
+import { TrustScoreDial } from '@/components/ui/cverify/trust-score-indicator';
 
 interface ProfileContainerProps {
   profile: PublicProfileResponse;
@@ -21,7 +26,7 @@ interface ProfileContainerProps {
   username: string;
 }
 
-type TabId = 'overview' | 'assessment';
+type TabId = 'overview' | 'assessment' | 'opportunities' | 'cv';
 
 export function ProfileContainer({ profile, assessment, username: _username }: ProfileContainerProps) {
   const [activeTab, setActiveTab] = useState<TabId>('overview');
@@ -137,85 +142,21 @@ export function ProfileContainer({ profile, assessment, username: _username }: P
         contributions: []
       }));
 
-  const renderPublicVerificationBadge = (level: any, status: any) => {
-    const numLevel = typeof level === 'string'
-      ? (level === 'AiAnalyzed' ? 1 : level === 'RepositoryLinked' ? 2 : 3)
-      : level;
-    const numStatus = typeof status === 'string'
-      ? (status === 'Verified' ? 1 : status === 'Outdated' ? 2 : status === 'Disconnected' ? 3 : 4)
-      : status;
 
-    if (numLevel === 1) { // AI Analyzed
-      if (numStatus === 2) {
-        return (
-          <span className="px-2 py-0.5 text-[9px] font-extrabold uppercase bg-warning/10 text-warning border border-warning/20 rounded-full">
-            AI Audited • Outdated
-          </span>
-        );
-      }
-      if (numStatus === 3) {
-        return (
-          <span className="px-2 py-0.5 text-[9px] font-extrabold uppercase bg-danger/10 text-danger border border-danger/20 rounded-full">
-            AI Audited • Disconnected
-          </span>
-        );
-      }
-      return (
-        <span className="px-2 py-0.5 text-[9px] font-extrabold uppercase bg-success/10 text-success border border-success/20 rounded-full">
-          AI Audited
-        </span>
-      );
-    }
-    if (numLevel === 2) { // Repo Linked
-      if (numStatus === 3) {
-        return (
-          <span className="px-2 py-0.5 text-[9px] font-extrabold uppercase bg-danger/10 text-danger border border-danger/20 rounded-full">
-            Repo Linked • Disconnected
-          </span>
-        );
-      }
-      return (
-        <span className="px-2 py-0.5 text-[9px] font-extrabold uppercase bg-primary/10 text-primary border border-primary/20 rounded-full">
-          Repo Linked
-        </span>
-      );
-    }
-    return (
-      <span className="px-2 py-0.5 text-[9px] font-extrabold uppercase bg-default/45 text-muted-foreground border border-default rounded-full">
-        Self Declared
-      </span>
-    );
-  };
 
   return (
-    <div className="relative min-h-screen w-full bg-background text-foreground flex flex-col justify-between overflow-x-hidden antialiased">
-      {/* Grid backdrop */}
-      <div className="absolute inset-0 bg-[radial-gradient(var(--separator)_1px,transparent_1px)] bg-size-[24px_24px] pointer-events-none opacity-40" />
-
-      {/* Header */}
-      <header className="z-10 w-full bg-surface/85 backdrop-blur-md border-b border-border select-none sticky top-0">
-        <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
-          <Link href="/" className="flex items-center gap-2.5 hover:opacity-90 transition-opacity">
-            <div className="w-8 h-8 rounded-lg bg-foreground text-background flex items-center justify-center shadow-md font-bold">
-              <Compass size={18} />
-            </div>
-            <span className="font-extrabold text-sm tracking-tight text-foreground">
-              CVerify
-            </span>
-          </Link>
-          <Link href="/login">
-            <Button size="sm" className="font-semibold text-xs rounded-xl bg-foreground hover:bg-foreground/90 text-background transition-colors px-4 border-none h-8 min-h-8">
-              Sign In
-            </Button>
-          </Link>
-        </div>
-      </header>
-
-      {/* Main Content */}
-      <main className="relative z-10 flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 py-8 flex flex-col gap-6">
-
-        {/* Sleek Document Paper Container */}
-        <div className="w-full bg-surface border border-border rounded-2xl shadow-xs p-6 sm:p-8 flex flex-col gap-8">
+    <PublicPageShell
+      guestContainerClassName="relative min-h-screen w-full bg-background text-foreground flex flex-col justify-between overflow-x-hidden antialiased"
+      guestBackdrop={<div className="absolute inset-0 bg-[radial-gradient(var(--separator)_1px,transparent_1px)] bg-size-[24px_24px] pointer-events-none opacity-40" />}
+      guestMainClassName="relative z-10 flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 py-8 flex flex-col gap-6"
+      guestFooter={
+        <footer className="relative z-10 w-full max-w-7xl mx-auto px-6 h-16 flex items-center justify-center border-t border-border text-xs text-muted bg-surface/50 select-none">
+          &copy; {new Date().getFullYear()} CVerify. All rights reserved.
+        </footer>
+      }
+    >
+      {/* Sleek Document Paper Container */}
+      <div className="w-full bg-surface border border-border rounded-2xl shadow-xs p-6 sm:p-8 flex flex-col gap-8">
 
           {/* 1. Header Area */}
           <div className="flex flex-col md:flex-row items-center md:items-start justify-between gap-6 pb-6 border-b border-separator">
@@ -245,10 +186,7 @@ export function ProfileContainer({ profile, assessment, username: _username }: P
                   <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground text-left">
                     {profile.fullName}
                   </h1>
-                  <span className="flex items-center gap-1 bg-success/10 text-success border border-success/20 text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-full select-none shrink-0" title="Verified Profile">
-                    <ShieldCheck className="size-3 text-success" />
-                    Verified
-                  </span>
+                  <CandidateVerificationBadge type="identity" />
                 </div>
 
                 <div className="flex flex-wrap items-center justify-center sm:justify-start gap-x-2 gap-y-0.5 text-xs text-muted font-medium select-none">
@@ -349,9 +287,19 @@ export function ProfileContainer({ profile, assessment, username: _username }: P
                   <Tabs.Indicator className="bottom-0" />
                 </Tabs.Tab>
                 <Tabs.Tab id="assessment" className="pb-2 font-bold text-sm cursor-pointer select-none">
-                  AI Verified Assessment
+                  AI Suggested Assessment
                   <Tabs.Indicator className="bottom-0" />
                 </Tabs.Tab>
+                <Tabs.Tab id="cv" className="pb-2 font-bold text-sm cursor-pointer select-none">
+                  CV
+                  <Tabs.Indicator className="bottom-0" />
+                </Tabs.Tab>
+                {profile.vacancies && profile.vacancies.length > 0 && (
+                  <Tabs.Tab id="opportunities" className="pb-2 font-bold text-sm cursor-pointer select-none">
+                    Active Opportunities ({profile.vacancies.length})
+                    <Tabs.Indicator className="bottom-0" />
+                  </Tabs.Tab>
+                )}
               </Tabs.List>
             </Tabs.ListContainer>
 
@@ -463,10 +411,7 @@ export function ProfileContainer({ profile, assessment, username: _username }: P
                     {/* Visual Circle Score */}
                     {isEvaluated ? (
                       <div className="flex flex-col items-center gap-1 select-none shrink-0">
-                        <div className="w-20 h-20 rounded-full border-4 border-accent text-accent flex flex-col items-center justify-center bg-surface shadow-xs">
-                          <span className="text-2xl font-black font-outfit leading-none">{normalizeScore(profile.trustScore)}</span>
-                          <span className="text-[8px] font-bold text-muted uppercase tracking-widest mt-0.5">SCORE</span>
-                        </div>
+                        <TrustScoreDial score={profile.trustScore ?? 0} />
                         <span className="text-[10px] font-bold text-success uppercase tracking-wider mt-1">AI Evaluated</span>
                       </div>
                     ) : (
@@ -515,7 +460,7 @@ export function ProfileContainer({ profile, assessment, username: _username }: P
                                   <h4 className="text-base font-bold text-foreground truncate">
                                     {proj.name}
                                   </h4>
-                                  {renderPublicVerificationBadge(proj.verificationLevel, proj.verificationStatus)}
+                                  <CandidateVerificationBadge type="project" level={proj.verificationLevel} status={proj.verificationStatus} />
                                 </div>
                                 {proj.role && (
                                   <p className="text-xs text-muted font-semibold">
@@ -855,7 +800,7 @@ export function ProfileContainer({ profile, assessment, username: _username }: P
               </div>
             </Tabs.Panel>
 
-            {/* Tab 2: AI Verified Assessment Panel */}
+            {/* Tab 2: AI Suggested Assessment Panel */}
             <Tabs.Panel id="assessment" className="pt-6">
               {profile.hasCompletedAssessment && assessment ? (
                 <AiAssessmentTab 
@@ -868,7 +813,101 @@ export function ProfileContainer({ profile, assessment, username: _username }: P
                   <ShieldCheck className="size-12 text-muted/40" />
                   <h3 className="text-base font-bold text-foreground">Not Yet Analyzed</h3>
                   <p className="text-xs text-muted leading-relaxed">
-                    This candidate has not generated their public AI Verified Assessment yet. AI Assessments require manually linking GitHub repositories and initiating verification.
+                    This candidate has not generated their public AI Suggested Assessment yet. AI Assessments require manually linking GitHub repositories and initiating verification.
+                  </p>
+                </div>
+              )}
+            </Tabs.Panel>
+
+            {/* Tab 3: Active Opportunities Panel */}
+            {profile.vacancies && profile.vacancies.length > 0 && (
+              <Tabs.Panel id="opportunities" className="pt-6 font-outfit text-left">
+                <div className="space-y-4">
+                  <div className="flex items-center gap-2 border-b border-border/60 pb-3 mb-4 select-none">
+                    <Briefcase className="text-accent size-5" />
+                    <div>
+                      <span className="text-xs font-bold text-foreground block">Hiring Portfolio</span>
+                      <span className="text-[10px] text-muted block font-medium">Active published opportunities listed by this recruiter</span>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 gap-4">
+                    {profile.vacancies.map((job: any) => {
+                      const orgSlug = job.metadata || 'tier1-business';
+                      return (
+                        <div
+                          key={job.id}
+                          className="p-5 border border-border rounded-xl bg-surface hover:border-accent/40 transition-all shadow-xs flex flex-col md:flex-row gap-4 justify-between items-start md:items-center"
+                        >
+                          <div className="flex gap-4 items-start w-full min-w-0">
+                            {/* Job Cover banner or placeholder */}
+                            <div className="w-16 h-16 md:w-20 md:h-20 rounded-lg overflow-hidden shrink-0 border border-border bg-card/25">
+                              {job.coverUrl ? (
+                                // eslint-disable-next-line @next/next/no-img-element
+                                <img src={job.coverUrl} alt={job.title} className="w-full h-full object-cover" />
+                              ) : (
+                                <div className="w-full h-full bg-default flex items-center justify-center text-xs font-bold text-muted">
+                                  JD
+                                </div>
+                              )}
+                            </div>
+
+                            <div className="flex-1 min-w-0 space-y-1">
+                              <h4 className="text-base font-bold text-foreground truncate">{job.title}</h4>
+                              <p className="text-xs text-muted font-semibold">
+                                {job.department} &bull; {job.city} ({job.workplaceType})
+                              </p>
+                              
+                              <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] font-normal text-muted-foreground pt-0.5">
+                                <span className="text-accent font-semibold">{job.salary}</span>
+                                <span>&bull;</span>
+                                <span>Experience: {job.experience}</span>
+                                <span>&bull;</span>
+                                <span>Degree: {job.degree}</span>
+                              </div>
+
+                              <div className="flex flex-wrap gap-1.5 pt-1.5">
+                                {job.tags && job.tags.slice(0, 3).map((tag: string) => (
+                                  <span key={tag} className="text-[9px] bg-default border border-border/80 text-muted px-1.5 py-0.5 rounded-md font-medium">
+                                    {tag}
+                                  </span>
+                                ))}
+                              </div>
+                            </div>
+                          </div>
+
+                          <div className="shrink-0 pt-2 md:pt-0 w-full md:w-auto">
+                            <Link
+                              href={`/business/${orgSlug}/jobs`}
+                              className="inline-block text-xs font-bold px-6 py-2 rounded-lg transition-colors border-none text-center bg-accent text-background hover:bg-accent/90 w-full md:w-auto hover:opacity-95"
+                            >
+                              Apply Now
+                            </Link>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              </Tabs.Panel>
+            )}
+
+            {/* Tab 4: CV Panel */}
+            <Tabs.Panel id="cv" className="pt-6 font-outfit text-left">
+              {profile.isCvPublished ? (
+                <div className="flex flex-col items-center justify-start w-full gap-4 mt-2">
+                  <div className="w-full overflow-x-auto p-4 md:p-8 bg-surface-secondary/20 border border-border/80 rounded-2xl flex justify-center items-start">
+                    <div className="shadow-lg border border-border rounded-lg overflow-hidden bg-card shrink-0" style={{ width: "794px" }}>
+                      <CVPreview {...mapPublicProfileToCvProps(profile)} />
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="flex flex-col items-center justify-center p-12 border border-dashed border-border rounded-xl text-center max-w-lg mx-auto gap-4 mt-6 select-none">
+                  <EyeOff className="size-12 text-muted/40" />
+                  <h3 className="text-base font-bold text-foreground">CV Unpublished</h3>
+                  <p className="text-xs text-muted leading-relaxed">
+                    This candidate has not published their CV to their public profile.
                   </p>
                 </div>
               )}
@@ -876,12 +915,6 @@ export function ProfileContainer({ profile, assessment, username: _username }: P
           </Tabs>
 
         </div>
-      </main>
-
-      {/* Footer */}
-      <footer className="relative z-10 w-full max-w-7xl mx-auto px-6 h-16 flex items-center justify-center border-t border-border text-xs text-muted bg-surface/50 select-none">
-        &copy; {new Date().getFullYear()} CVerify. All rights reserved.
-      </footer>
-    </div>
-  );
-}
+      </PublicPageShell>
+    );
+  }

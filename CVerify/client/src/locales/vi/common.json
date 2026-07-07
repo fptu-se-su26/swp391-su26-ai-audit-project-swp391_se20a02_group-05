@@ -55,21 +55,21 @@
     "liveBadge": "Tính năng xác thực & phân quyền cấp doanh nghiệp đã sẵn sàng",
     "headline": "Bảo mật phân vai phi tập trung cho ứng dụng TravelTech hiện đại.",
     "description": "CVerify AI tích hợp quản lý trạng thái đồng bộ với Zustand, mã hóa JWT, chống tấn công CSRF, đồng bộ phiên bằng Broadcast và khóa cảnh báo không hoạt động.",
-    "enterHub": "Vào Traveler Hub",
+    "enterHub": "Vào Bảng điều khiển",
     "accessConsole": "Vào Bảng Điều Khiển",
     "goConsole": "Đến Bảng Điều Khiển",
     "roles": {
       "userTitle": "Hành khách (USER)",
       "userDesc": "Bảng điều khiển cho hành khách tiêu chuẩn, cho phép lập kế hoạch du lịch, tìm kiếm gợi ý bằng AI và xem lịch sử chuyến đi cá nhân.",
-      "businessTitle": "Đối tác dịch vụ (BUSINESS)",
-      "businessDesc": "Bảng điều khiển cho đối tác để quản lý các gói khách sạn, niêm yết tour du lịch và đánh giá dòng doanh thu từ hành khách đặt lịch.",
+      "businessTitle": "Tổ chức & Doanh nghiệp (ORGANIZATION)",
+      "businessDesc": "Bảng điều khiển cho tổ chức quản lý nhân sự, đánh giá năng lực ứng viên và cấu hình không gian làm việc.",
       "adminTitle": "Quản trị hệ thống (ADMIN)",
       "adminDesc": "Bảng điều khiển quản trị toàn cầu cung cấp phân tích chẩn đoán sức khỏe máy chủ, quản lý tài khoản và cổng khóa API trực tiếp."
     },
     "footerNote": "Tích hợp Cổng Xác thực CVerify AI. Đã xác thực cho Next.js 16 + HeroUI v3 + Tailwind v4."
   },
   "dashboard": {
-    "travelerHub": "Traveler Hub",
+    "travelerHub": "Bảng điều khiển Nhà phát triển",
     "aiPlanner": "AI Planner Chat",
     "partnerConsole": "Partner Console",
     "systemAdmin": "System Admin",
@@ -78,12 +78,17 @@
     "sections": {
       "general": "Chung",
       "candidate": "Ứng viên",
-      "business": "Doanh nghiệp"
+      "business": "Tổ chức"
     },
     "jobBoard": "Bảng tin tuyển dụng",
+    "ranking": "Bảng xếp hạng",
+    "exploreJobs": "Khám phá",
+    "recommendedJobs": "Gợi ý",
+    "savedJobs": "Đã lưu",
+    "appliedJobs": "Đã ứng tuyển",
     "cv": "CV của tôi",
     "candidateDashboard": "Bảng điều khiển",
-    "businessDashboard": "Bảng điều khiển doanh nghiệp"
+    "businessDashboard": "Bảng điều khiển Tổ chức"
   },
   "admin": {
     "dashboard": "Quản trị",
@@ -92,6 +97,7 @@
     "auditTrail": "Nhật ký kiểm toán"
   },
   "cvManagement": {
+    "overview": "Tổng quan",
     "title": "Quản lý CV",
     "subtitle": "Tạo và chia sẻ hồ sơ nghề nghiệp của bạn",
     "description": "Quản lý và cập nhật hồ sơ CV chuyên nghiệp của bạn. Tất cả thay đổi sẽ đồng bộ với Cài đặt tài khoản.",

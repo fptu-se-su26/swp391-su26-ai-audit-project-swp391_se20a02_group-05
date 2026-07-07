@@ -32,26 +32,20 @@ class MatchingPromptFactory(IPromptFactory):
             f"JD FORM DATA:\n{json.dumps(jd_raw, indent=2)}\n\n"
             f"VALIDATION RULES:\n"
             f"- jobTitle: required, not empty\n"
-            f"- department, employmentType, location, workMode, industry, hiringPriority: normalize casing when present\n"
             f"- seniority: must be one of [Junior, Middle, Senior, Staff, Principal]\n"
             f"- requiredSkills: required, at least 1 skill\n"
-            f"- mustHave, niceToHave, techStack, languages: arrays, trimmed, deduplicated\n"
             f"- salaryMin and salaryMax: salaryMin must be ≤ salaryMax\n"
             f"- Normalize all skill names to standard taxonomy (ReactJS → React, etc.)\n\n"
             f"Return JSON:\n"
             f'{{"isValid": true, "validationErrors": [], '
             f'"normalizedJd": {{"jobTitle": "string", "seniority": "Senior", '
-            f'"department": "Engineering", "employmentType": "Full-time", '
             f'"requiredSkills": ["normalized skill list"], '
             f'"preferredSkills": ["normalized"], '
             f'"responsibilities": ["string"], '
-            f'"mustHave": ["string"], "niceToHave": ["string"], "techStack": ["string"], '
             f'"experienceYearsMin": 3, "experienceYearsMax": 6, '
             f'"educationRequirement": "string", "englishLevel": "string", '
             f'"salaryMin": 2000, "salaryMax": 3500, "currency": "USD", '
-            f'"location": "string", "workingModel": "remote|hybrid|onsite", '
-            f'"workMode": "Remote|Hybrid|Onsite", "industry": "string", '
-            f'"languages": ["English"], "hiringPriority": "Low|Medium|High|Urgent"}}}}'
+            f'"location": "string", "workingModel": "remote|hybrid|onsite"}}}}'
         )
 
     # ── L3-003 AI JD Generator ────────────────────────────────────────────────
@@ -187,12 +181,11 @@ class MatchingPromptFactory(IPromptFactory):
             f"Aggregate component scores into final Match Score using CVerify formula.\n\n"
             f"COMPONENT SCORES:\n"
             f"- Skill Match: {skill_score} (weight: 35%)\n"
-            f"- Project / Responsibility Relevance: {responsibility_score} (weight: 25%)\n"
-            f"- Experience / Seniority Match: {seniority_score} (weight: 15%)\n"
-            f"- Contribution Quality: {culture_score} (weight: 10%)\n"
-            f"- Trust Score: {salary_score} (weight: 10%)\n"
-            f"- Risk Analysis: 1.0 unless active risk flags exist (weight: 5%)\n\n"
-            f"FORMULA: MatchScore = Skill×0.35 + Project×0.25 + Experience×0.15 + ContributionQuality×0.10 + TrustScore×0.10 + Risk×0.05\n\n"
+            f"- Responsibility Match: {responsibility_score} (weight: 25%)\n"
+            f"- Seniority Match: {seniority_score} (weight: 20%)\n"
+            f"- Salary Match: {salary_score} (weight: 10%)\n"
+            f"- Culture Fit: {culture_score} (weight: 10%)\n\n"
+            f"FORMULA: MatchScore = Skill×0.35 + Responsibility×0.25 + Seniority×0.20 + Salary×0.10 + Culture×0.10\n\n"
             f"Return JSON:\n"
             f'{{"matchScore": 0.74, "matchScorePercent": 74.0, '
             f'"matchLabel": "Strong Match|Good Match|Partial Match|Weak Match|Poor Match", '

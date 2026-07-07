@@ -7,6 +7,7 @@ import {
   Shield, 
   FileText,
   Settings,
+  Trophy,
   type LucideIcon
 } from 'lucide-react';
 
@@ -26,6 +27,12 @@ export const routesConfig: Record<string, RouteMetadata> = {
     fallbackLabel: 'Settings',
     icon: Settings,
   },
+  '/settings/source-code-providers': {
+    path: '/settings/source-code-providers',
+    translationKey: 'common:dashboard.sourceCodeProviders',
+    fallbackLabel: 'Connected Repositories',
+    parentPath: '/settings',
+  },
   '/cv': {
     path: '/cv',
     translationKey: 'common:dashboard.cv',
@@ -35,7 +42,7 @@ export const routesConfig: Record<string, RouteMetadata> = {
   '/user': {
     path: '/user',
     translationKey: 'common:dashboard.travelerHub',
-    fallbackLabel: 'Traveler Hub',
+    fallbackLabel: 'Developer Dashboard',
     icon: LayoutDashboard,
   },
   '/chat': {
@@ -44,17 +51,55 @@ export const routesConfig: Record<string, RouteMetadata> = {
     fallbackLabel: 'AI Chat',
     icon: Sparkles,
   },
+  '/jobs': {
+    path: '/jobs',
+    translationKey: 'common:dashboard.jobBoard',
+    fallbackLabel: 'Job Board',
+  },
+  '/workspace/organizations': {
+    path: '/workspace/organizations',
+    translationKey: 'common:dashboard.organizations',
+    fallbackLabel: 'Organizations',
+    icon: Building2,
+  },
+  '/forum': {
+    path: '/forum',
+    translationKey: 'common:dashboard.forum',
+    fallbackLabel: 'Forum',
+  },
+  '/ranking': {
+    path: '/ranking',
+    translationKey: 'common:dashboard.ranking',
+    fallbackLabel: 'Leaderboard',
+    icon: Trophy,
+  },
+  '/ranking/insights': {
+    path: '/ranking/insights',
+    translationKey: 'common:dashboard.rankingInsights',
+    fallbackLabel: 'Talent Insights',
+    icon: Sparkles,
+    parentPath: '/ranking',
+  },
+  '/intelligence/skill-tree': {
+    path: '/intelligence/skill-tree',
+    translationKey: 'common:dashboard.skillTree',
+    fallbackLabel: 'Skill Tree',
+  },
+  '/intelligence/trust-score': {
+    path: '/intelligence/trust-score',
+    translationKey: 'common:dashboard.trustScore',
+    fallbackLabel: 'Trust Score',
+  },
+  '/intelligence/ai-analysis': {
+    path: '/intelligence/ai-analysis',
+    translationKey: 'common:dashboard.aiAnalysis',
+    fallbackLabel: 'AI Analysis',
+  },
   '/business': {
     path: '/business',
     translationKey: 'common:dashboard.partnerConsole',
     fallbackLabel: 'Partner Console',
     icon: Building2,
-  },
-  '/jd': {
-    path: '/jd',
-    translationKey: 'common:dashboard.jdManagement',
-    fallbackLabel: 'JD Management',
-    icon: FileText,
   },
   '/admin': {
     path: '/admin',
@@ -83,7 +128,121 @@ export const routesConfig: Record<string, RouteMetadata> = {
     icon: FileText,
     parentPath: '/admin',
   },
+  '/admin/recovery-claims': {
+    path: '/admin/recovery-claims',
+    translationKey: 'common:admin.recoveryClaims',
+    fallbackLabel: 'Recovery Claims',
+    parentPath: '/admin',
+  },
+  '/admin/recovery/level2': {
+    path: '/admin/recovery/level2',
+    translationKey: 'common:admin.recoveryLevel2',
+    fallbackLabel: 'Level 2 Recovery',
+    parentPath: '/admin',
+  },
+  '/admin/verification': {
+    path: '/admin/verification',
+    translationKey: 'common:admin.verification',
+    fallbackLabel: 'Verification Queue',
+    parentPath: '/admin',
+  },
+  '/admin/security': {
+    path: '/admin/security',
+    translationKey: 'common:admin.security',
+    fallbackLabel: 'Security Events',
+    parentPath: '/admin',
+  },
+  '/admin/analytics': {
+    path: '/admin/analytics',
+    translationKey: 'common:admin.analytics',
+    fallbackLabel: 'Analytics',
+    parentPath: '/admin',
+  },
+  '/admin/system': {
+    path: '/admin/system',
+    translationKey: 'common:admin.system',
+    fallbackLabel: 'System Diagnostics',
+    parentPath: '/admin',
+  },
+  '/admin/settings': {
+    path: '/admin/settings',
+    translationKey: 'common:admin.settings',
+    fallbackLabel: 'Portal Settings',
+    parentPath: '/admin',
+  },
+  '/business/[organizationSlug]/dashboard': {
+    path: '/business/[organizationSlug]/dashboard',
+    translationKey: 'common:dashboard.businessDashboard',
+    fallbackLabel: 'Dashboard',
+  },
+  '/business/[organizationSlug]/listings': {
+    path: '/business/[organizationSlug]/listings',
+    translationKey: 'common:dashboard.listings',
+    fallbackLabel: 'Listings',
+  },
+  '/business/[organizationSlug]/bookings': {
+    path: '/business/[organizationSlug]/bookings',
+    translationKey: 'common:dashboard.bookings',
+    fallbackLabel: 'Bookings',
+  },
+  '/business/[organizationSlug]/revenue': {
+    path: '/business/[organizationSlug]/revenue',
+    translationKey: 'common:dashboard.revenue',
+    fallbackLabel: 'Revenue',
+  },
+  '/business/[organizationSlug]/customers': {
+    path: '/business/[organizationSlug]/customers',
+    translationKey: 'common:dashboard.customers',
+    fallbackLabel: 'Customers',
+  },
+  '/business/[organizationSlug]/analytics': {
+    path: '/business/[organizationSlug]/analytics',
+    translationKey: 'common:dashboard.analytics',
+    fallbackLabel: 'Analytics',
+  },
+  '/business/[organizationSlug]/members': {
+    path: '/business/[organizationSlug]/members',
+    translationKey: 'common:dashboard.members',
+    fallbackLabel: 'Team Members',
+  },
+  '/business/[organizationSlug]/roles': {
+    path: '/business/[organizationSlug]/roles',
+    translationKey: 'common:dashboard.roles',
+    fallbackLabel: 'Access Control',
+  },
+  '/business/[organizationSlug]/billing': {
+    path: '/business/[organizationSlug]/billing',
+    translationKey: 'common:dashboard.billing',
+    fallbackLabel: 'Billing & Subscription',
+  },
+  '/business/[organizationSlug]/settings': {
+    path: '/business/[organizationSlug]/settings',
+    translationKey: 'common:dashboard.settings',
+    fallbackLabel: 'Workspace Settings',
+  },
 };
+
+const BASE_RESERVED_WORDS = [
+  "admin", "api", "login", "register", "settings", "dashboard", "profile", "privacy", "terms", "support", "help",
+  "chat", "business", "user", "organization", "auth", "system", "unauthorized", "company-onboarding",
+  "company-verification", "continue-with-email", "forgot-password", "gateway", "reset-password", "verify-email",
+  "workspace-setup", "company-setup", "cv", "ranking", "forum", "jobs", "invitations"
+];
+
+export const RESERVED_USERNAMES = new Set<string>(
+  [
+    ...BASE_RESERVED_WORDS,
+    ...Object.keys(routesConfig).map((path) => {
+      const firstSegment = path.split('/')[1];
+      return firstSegment ? firstSegment.toLowerCase() : '';
+    }).filter((segment) => segment && !segment.startsWith('[') && !segment.startsWith(':'))
+  ]
+);
+
+export const isReservedUsername = (username: string): boolean => {
+  return RESERVED_USERNAMES.has(username.toLowerCase().trim());
+};
+
 
 /**
  * Checks if a string is a standard UUID.
@@ -103,6 +262,41 @@ const isNumeric = (str: string): boolean => {
  * Resolves a dynamic route segment into a readable string fallback.
  */
 export const getDynamicSegmentLabel = (segment: string): string => {
+  const lower = segment.toLowerCase();
+  if (lower === "jd") {
+    return "Job Descriptions";
+  }
+  if (lower === "intelligence") {
+    return "Talent Discovery";
+  }
+  if (lower === "information") {
+    return "Company Profile";
+  }
+  if (lower === "members") {
+    return "Team Members";
+  }
+  if (lower === "roles") {
+    return "Access Control";
+  }
+  if (lower === "settings") {
+    return "Workspace Settings";
+  }
+  if (lower === "billing") {
+    return "Billing & Subscription";
+  }
+  if (lower === "posts") {
+    return "Company Posts";
+  }
+  if (lower === "people") {
+    return "Members";
+  }
+  if (lower === "jobs") {
+    return "Job Board";
+  }
+  if (lower === "dashboard") {
+    return "Dashboard";
+  }
+
   if (isUUID(segment)) {
     return `Ref: ${segment.slice(0, 8)}`;
   }

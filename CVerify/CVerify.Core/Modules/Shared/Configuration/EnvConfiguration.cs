@@ -100,7 +100,6 @@ public class SeedingSettings
     public string? BusinessPassword { get; set; }
     public string SeedDataPath { get; set; } = "resources/seed-business-data.json";
     public string PublicDemoDataPath { get; set; } = "resources/public-workspace-demo-content.json";
-    public string JdSeedDataPath { get; set; } = "resources/seed-job-descriptions.json";
 }
 
 public class CloudflareR2Settings

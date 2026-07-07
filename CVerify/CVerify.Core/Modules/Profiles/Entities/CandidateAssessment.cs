@@ -42,6 +42,9 @@ public class CandidateAssessment
     [MaxLength(2000)]
     public string? SummaryParagraph { get; set; }
 
+    [MaxLength(1000)]
+    public string? ProfessionalBio { get; set; }
+
     [Required]
     [MaxLength(20)]
     public string PipelineVersion { get; set; } = "2.0.0";
@@ -85,10 +88,23 @@ public class CandidateAssessment
     public double ExecutionStrength { get; set; } = 0.0;
     public double TrustLevel { get; set; } = 0.0;
 
+    [MaxLength(50)]
+    public string? CalculationMode { get; set; }
+
+    [MaxLength(100)]
+    public string? InputFeatureSetHash { get; set; }
+
+    [MaxLength(50)]
+    public string? EvidenceCompleteness { get; set; }
+
+    [MaxLength(50)]
+    public string? CloneRiskClassification { get; set; }
+
     public virtual ICollection<CandidateAssessmentArtifact> Artifacts { get; set; } = new List<CandidateAssessmentArtifact>();
     public virtual ICollection<CandidateSkill> Skills { get; set; } = new List<CandidateSkill>();
     public virtual ICollection<CandidateDomainProfile> DomainProfiles { get; set; } = new List<CandidateDomainProfile>();
     public virtual ICollection<CandidateIntelligenceSignal> IntelligenceSignals { get; set; } = new List<CandidateIntelligenceSignal>();
     public virtual ICollection<CandidateBestFitRole> BestFitRoles { get; set; } = new List<CandidateBestFitRole>();
     public virtual ICollection<CandidateStrengthWeakness> StrengthsWeaknesses { get; set; } = new List<CandidateStrengthWeakness>();
+    public virtual ICollection<CandidateSkillTreeNode> SkillTreeNodes { get; set; } = new List<CandidateSkillTreeNode>();
 }
