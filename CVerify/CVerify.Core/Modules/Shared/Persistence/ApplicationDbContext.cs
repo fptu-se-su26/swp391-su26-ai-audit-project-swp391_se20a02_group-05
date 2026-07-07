@@ -10,6 +10,7 @@ using CVerify.API.Modules.Shared.Email.Entities;
 using CVerify.API.Modules.Shared.Exceptions;
 using CVerify.API.Modules.SourceCode.Entities;
 using CVerify.API.Modules.Forum.Entities;
+using CVerify.API.Modules.Jd.Entities;
 
 namespace CVerify.API.Modules.Shared.Persistence;
 
@@ -232,6 +233,7 @@ public class ApplicationDbContext : DbContext
     public DbSet<ProjectRepositoryLink> ProjectRepositoryLinks => Set<ProjectRepositoryLink>();
     public DbSet<CvRepositoryMapping> CvRepositoryMappings => Set<CvRepositoryMapping>();
     public DbSet<UserCvSetting> UserCvSettings => Set<UserCvSetting>();
+    public DbSet<StandardizedJd> StandardizedJds => Set<StandardizedJd>();
     public DbSet<ProjectTechnology> ProjectTechnologies => Set<ProjectTechnology>();
     public DbSet<ProjectContribution> ProjectContributions => Set<ProjectContribution>();
 
@@ -309,6 +311,16 @@ public class ApplicationDbContext : DbContext
         modelBuilder.Entity<WorkspaceMember>().Property(wm => wm.Id).ValueGeneratedNever();
         modelBuilder.Entity<RoleAssignment>().Property(ra => ra.Id).ValueGeneratedNever();
         modelBuilder.Entity<WorkspacePost>().Property(wp => wp.Id).ValueGeneratedNever();
+        modelBuilder.Entity<StandardizedJd>().Property(jd => jd.Id).ValueGeneratedNever();
+        modelBuilder.Entity<StandardizedJd>(entity =>
+        {
+            entity.ToTable("standardized_jds");
+            entity.HasIndex(jd => new { jd.OwnerUserId, jd.CreatedAt });
+            entity.HasOne(jd => jd.OwnerUser)
+                  .WithMany()
+                  .HasForeignKey(jd => jd.OwnerUserId)
+                  .OnDelete(DeleteBehavior.Cascade);
+        });
         modelBuilder.Entity<JobVacancy>().Property(jv => jv.Id).ValueGeneratedNever();
         modelBuilder.Entity<JobVacancy>()
             .HasOne(jv => jv.HiringRequirement)
@@ -927,6 +939,10 @@ public class ApplicationDbContext : DbContext
             entity.HasOne(m => m.SourceCodeRepository)
                   .WithMany()
                   .HasForeignKey(m => m.SourceCodeRepositoryId)
+                  .OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne<User>()
+                  .WithMany()
+                  .HasForeignKey(m => m.UserId)
                   .OnDelete(DeleteBehavior.Cascade);
             entity.HasIndex(m => m.UserId).HasDatabaseName("idx_cv_repository_mappings_user_id");
             entity.HasIndex(m => m.SourceCodeRepositoryId).HasDatabaseName("idx_cv_repository_mappings_repo_id");
