@@ -8,6 +8,7 @@ import {
 } from "./types";
 import { pipelineRegistry } from "./registry";
 import { streamingHistoryApi } from "./history-service";
+import { API_URL } from "@/infrastructure/http/axios-client";
 
 interface StreamingState {
   activeSession: StreamingSession | null;
@@ -388,12 +389,11 @@ export const useStreamingStore = create<StreamingState>((set, get) => {
 
       // Determine default SSE urls
       let sseUrl = customSseUrl;
-      const sseBaseUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5247/api";
 
       if (!sseUrl) {
-        sseUrl = `${sseBaseUrl}/v1/streaming/sessions/${sessionId}/progress-stream`;
+        sseUrl = `${API_URL}/v1/streaming/sessions/${sessionId}/progress-stream`;
       } else if (sseUrl.startsWith("/")) {
-        sseUrl = `${sseBaseUrl}${sseUrl}`;
+        sseUrl = `${API_URL}${sseUrl}`;
       }
 
       if (!sseUrl) {
@@ -620,9 +620,8 @@ export const useStreamingStore = create<StreamingState>((set, get) => {
           await registryDef.actions.retryStage(sessionId, stageId);
         } else {
           // Fallback generic call
-          const sseBaseUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5247/api";
           const token = localStorage.getItem("token") || sessionStorage.getItem("token") || "";
-          const res = await fetch(`${sseBaseUrl}/v1/streaming/sessions/${sessionId}/stages/${stageId}/retry`, {
+          const res = await fetch(`${API_URL}/v1/streaming/sessions/${sessionId}/stages/${stageId}/retry`, {
             method: "POST",
             headers: {
               "Content-Type": "application/json",

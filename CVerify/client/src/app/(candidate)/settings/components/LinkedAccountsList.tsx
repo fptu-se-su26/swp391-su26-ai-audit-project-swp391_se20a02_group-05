@@ -23,6 +23,7 @@ import {
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { type LinkedProviderConnection } from "@/types/auth.types";
+import { API_URL } from "@/infrastructure/http/axios-client";
 
 export const LinkedAccountsList: React.FC = () => {
   const router = useRouter();
@@ -181,8 +182,6 @@ export const LinkedAccountsList: React.FC = () => {
   const handleConnect = async (provider: string) => {
     setActionLoadingId(`${provider}-link`);
     try {
-      const API_URL =
-        process.env.NEXT_PUBLIC_API_URL || "http://localhost:5247/api";
       window.location.assign(`${API_URL}/auth/connect/${provider}`);
     } catch (err) {
       console.error(err);

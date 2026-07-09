@@ -82,6 +82,7 @@ yarn-error.log*
 # ENVIRONMENT & SECRETS (SENSITIVE)
 # ==========================================
 .env*
+!.env.example
 appsettings.local.json
 UserSecrets/
 .microsoft.dotnet.usersecrets/

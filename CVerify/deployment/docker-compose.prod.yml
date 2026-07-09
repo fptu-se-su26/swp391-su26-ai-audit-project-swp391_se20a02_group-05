@@ -130,7 +130,17 @@ services:
     restart: unless-stopped
     environment:
       NEXT_PUBLIC_API_URL: https://${DOMAIN}/api
-    ports:
+      # SSR (server components / route handlers) runs inside this container,
+      # so it can reach cverify-core over the Docker network directly instead
+      # of round-tripping through the public domain — see
+      # client/src/infrastructure/http/axios-client.ts:10-11, which already
+      # prefers INTERNAL_API_URL server-side but had nothing setting it.
+      INTERNAL_API_URL: http://cverify-core:5000/api
+    # `ports` merges as a list across compose files by default (concatenation,
+    # not replacement), so without `!override` this entry ADDS to the base
+    # file's public "3000:3000" mapping instead of replacing it — the client
+    # would stay exposed on 0.0.0.0:3000 even with this override applied.
+    ports: !override
       - "127.0.0.1:${CLIENT_PORT:-3000}:3000"
     deploy:
       resources:
