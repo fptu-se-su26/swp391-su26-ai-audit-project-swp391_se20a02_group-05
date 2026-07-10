@@ -1,5 +1,4 @@
 import { type Metadata } from "next";
-import { API_URL } from "@/infrastructure/http/axios-client";
 
 interface Props {
   children: React.ReactNode;
@@ -9,7 +8,8 @@ interface Props {
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { organizationSlug } = await params;
   try {
-    const res = await fetch(`${API_URL}/workspace/${organizationSlug}`, {
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5247/api";
+    const res = await fetch(`${apiUrl}/workspace/${organizationSlug}`, {
       next: { revalidate: 60 },
     });
     if (res.ok) {

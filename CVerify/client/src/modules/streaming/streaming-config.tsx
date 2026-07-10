@@ -1,9 +1,8 @@
 import { pipelineRegistry } from "./registry";
-import { PipelineConfig } from "./types";
+import { type PipelineConfig } from "./types";
 import { repositoryAnalysisApi } from "@/services/repository-analysis.service";
 import { profileApi } from "@/services/profile.service";
 import { hiringRequirementService } from "@/services/hiring-requirement.service";
-import { API_URL } from "@/infrastructure/http/axios-client";
 
 // 1. Register Candidate CV Assessment Pipeline
 pipelineRegistry.register({
@@ -42,8 +41,9 @@ pipelineRegistry.register({
       await profileApi.cancelCandidateAssessment(sessionId);
     },
     fetchCosts: async (sessionId: string) => {
+      const sseBaseUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5247/api";
       const token = localStorage.getItem("token") || sessionStorage.getItem("token") || "";
-      const res = await fetch(`${API_URL}/v1/streaming/sessions/${sessionId}/costs`, {
+      const res = await fetch(`${sseBaseUrl}/v1/streaming/sessions/${sessionId}/costs`, {
         headers: {
           "Authorization": `Bearer ${token}`
         }

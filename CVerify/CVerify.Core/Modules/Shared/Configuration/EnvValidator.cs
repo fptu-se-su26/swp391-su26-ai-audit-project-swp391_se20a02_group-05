@@ -42,7 +42,7 @@ public static class EnvValidator
         config.Jwt.Key = configuration["Jwt:Key"]?.ResolveEnvironmentVariables() ?? throw new InvalidOperationException("Environment variable 'JWT_KEY' is missing.");
         config.Jwt.Issuer = configuration["Jwt:Issuer"]?.ResolveEnvironmentVariables() ?? throw new InvalidOperationException("Environment variable 'JWT_ISSUER' is missing.");
         config.Jwt.Audience = configuration["Jwt:Audience"]?.ResolveEnvironmentVariables() ?? throw new InvalidOperationException("Environment variable 'JWT_AUDIENCE' is missing.");
-        
+
         if (int.TryParse(configuration["Jwt:DurationInMinutes"], out var duration))
         {
             config.Jwt.DurationInMinutes = duration;
@@ -59,11 +59,10 @@ public static class EnvValidator
         }
         config.Auth.FrontendUrl = (configuration["Auth:FrontendUrl"] ?? configuration["FRONTEND_URL"])?.ResolveEnvironmentVariables()?.Trim('"') ?? config.Auth.FrontendUrl;
         config.Auth.BackendUrl = (configuration["Auth:BackendUrl"] ?? configuration["BACKEND_URL"])?.ResolveEnvironmentVariables()?.Trim('"');
-        config.Auth.CookieDomain = (configuration["Auth:CookieDomain"] ?? configuration["COOKIE_DOMAIN"])?.ResolveEnvironmentVariables()?.Trim('"');
         config.Auth.TrustedDomains = configuration["Auth:TrustedDomains"] ?? config.Auth.TrustedDomains;
         config.Auth.GoogleClientId = (configuration["Auth:GoogleClientId"] ?? configuration["GOOGLE_CLIENT_ID"])?.ResolveEnvironmentVariables()?.Trim('"')
             ?? throw new InvalidOperationException("Environment variable 'GOOGLE_CLIENT_ID' or setting 'Auth:GoogleClientId' is missing.");
-        
+
         config.Auth.GoogleClientSecret = (configuration["Auth:GoogleClientSecret"] ?? configuration["GOOGLE_CLIENT_SECRET"])?.ResolveEnvironmentVariables()?.Trim('"');
         config.Auth.GithubClientId = (configuration["Auth:GithubClientId"] ?? configuration["GITHUB_CLIENT_ID"])?.ResolveEnvironmentVariables()?.Trim('"');
         config.Auth.GithubClientSecret = (configuration["Auth:GithubClientSecret"] ?? configuration["GITHUB_CLIENT_SECRET"])?.ResolveEnvironmentVariables()?.Trim('"');

@@ -48,11 +48,6 @@ public class AuthSettings
     public int ResetPasswordTokenDurationInMinutes { get; set; } = 30;
     public string FrontendUrl { get; set; } = "http://localhost:3000";
     public string? BackendUrl { get; set; }
-    // Domain attribute applied to auth cookies (access_token/refresh_token/CSRF-TOKEN) so they are
-    // readable by both the frontend host and the API host when they live on different subdomains
-    // (e.g. ".cverify.io.vn" so cverify.io.vn and api.cverify.io.vn both receive them). Leave unset
-    // for single-host/local dev setups (localhost) where a Domain attribute would break the cookie.
-    public string? CookieDomain { get; set; }
     public string ResetPasswordUrlFormat => $"{FrontendUrl.TrimEnd('/')}/reset-password?token={{token}}";
     public string VerifyEmailUrlFormat => $"{FrontendUrl.TrimEnd('/')}/verify-email?token={{token}}";
     public string TrustedDomains { get; set; } = "cverify.ai;localhost;127.0.0.1";
@@ -69,7 +64,7 @@ public class AuthRateLimitSettings
 {
     public int ForgotPasswordPermitLimit { get; set; } = 3;
     public int ForgotPasswordWindowMinutes { get; set; } = 15;
-    
+
     public int ResetPasswordPermitLimit { get; set; } = 5;
     public int ResetPasswordWindowMinutes { get; set; } = 15;
 

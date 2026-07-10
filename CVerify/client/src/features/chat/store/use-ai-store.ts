@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { axiosClient, getCookie, API_URL } from '../../../services/axios-client';
+import { axiosClient, getCookie } from '../../../services/axios-client';
 import { AUTH_KEYS } from '../../../lib/constants/auth.constants';
 
 export interface Message {
@@ -38,6 +38,8 @@ interface AIState {
   cancelStreaming: () => void;
   clearError: () => void;
 }
+
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5247/api';
 
 export const useAiStore = create<AIState>((set, get) => ({
   conversations: [],

@@ -5,7 +5,6 @@ using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
-using CVerify.API.Modules.Shared.Configuration;
 using CVerify.API.Modules.Shared.Domain.Entities;
 using CVerify.API.Modules.Shared.Domain.Enums;
 using CVerify.API.Modules.Shared.Persistence;
@@ -24,7 +23,6 @@ public class SessionValidationMiddleware
 
     public async Task InvokeAsync(HttpContext context, IServiceProvider serviceProvider)
     {
-        var envConfig = serviceProvider.GetRequiredService<EnvConfiguration>();
         if (context.User.Identity?.IsAuthenticated == true)
         {
             var userIdClaim = context.User.FindFirst(ClaimTypes.NameIdentifier);
@@ -51,7 +49,7 @@ public class SessionValidationMiddleware
                         var org = await dbContext.Organizations.FindAsync(userId);
                         if (org == null || org.DeletedAt != null || !string.Equals(org.Status, "active", StringComparison.OrdinalIgnoreCase))
                         {
-                            InvalidateSession(context, envConfig);
+                            InvalidateSession(context);
                             return;
                         }
                         await cacheService.SetAsync(orgCacheKey, "active", TimeSpan.FromHours(24));
@@ -70,7 +68,7 @@ public class SessionValidationMiddleware
                         var user = await dbContext.Users.FindAsync(userId);
                         if (user == null || user.Status != UserStatus.ACTIVE)
                         {
-                            InvalidateSession(context, envConfig);
+                            InvalidateSession(context);
                             return;
                         }
                         activeVersion = user.SessionVersion;
@@ -81,11 +79,11 @@ public class SessionValidationMiddleware
                         activeVersion = int.Parse(cachedVersionStr);
                     }
 
-                    if (tokenVersionClaim == null || 
-                        !int.TryParse(tokenVersionClaim.Value, out var tokenVersion) || 
+                    if (tokenVersionClaim == null ||
+                        !int.TryParse(tokenVersionClaim.Value, out var tokenVersion) ||
                         tokenVersion != activeVersion)
                     {
-                        InvalidateSession(context, envConfig);
+                        InvalidateSession(context);
                         return;
                     }
                 }
@@ -110,14 +108,14 @@ public class SessionValidationMiddleware
                         {
                             if (storedToken.RevokedAt != null)
                             {
-                                InvalidateSession(context, envConfig);
+                                InvalidateSession(context);
                                 return;
                             }
                             sessionId = storedToken.SessionId;
                         }
                         else
                         {
-                            InvalidateSession(context, envConfig);
+                            InvalidateSession(context);
                             return;
                         }
                     }
@@ -136,7 +134,7 @@ public class SessionValidationMiddleware
                             // Cache miss: Query DB
                             isSessionActive = await dbContext.RefreshTokens
                                 .AnyAsync(t => t.SessionId == sessionId.Value && t.RevokedAt == null);
-                            
+
                             await cacheService.SetAsync(sessionCacheKey, isSessionActive.ToString(), TimeSpan.FromMinutes(30));
                         }
                         catch
@@ -153,7 +151,7 @@ public class SessionValidationMiddleware
 
                     if (!isSessionActive)
                     {
-                        InvalidateSession(context, envConfig);
+                        InvalidateSession(context);
                         return;
                     }
                 }
@@ -163,7 +161,7 @@ public class SessionValidationMiddleware
         await _next(context);
     }
 
-    private static void InvalidateSession(HttpContext context, EnvConfiguration envConfig)
+    private static void InvalidateSession(HttpContext context)
     {
         var isDevelopment = string.Equals(Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT"), "Development", StringComparison.OrdinalIgnoreCase);
         var cookieOptions = new CookieOptions
@@ -171,10 +169,7 @@ public class SessionValidationMiddleware
             HttpOnly = true,
             Secure = !isDevelopment,
             SameSite = SameSiteMode.Lax,
-            Path = "/",
-            // Must match the Domain used when the cookie was set (TokenService.SetTokenInsideCookie)
-            // or the browser won't recognize this as a delete of the same cookie.
-            Domain = string.IsNullOrWhiteSpace(envConfig.Auth.CookieDomain) ? null : envConfig.Auth.CookieDomain
+            Path = "/"
         };
 
         context.Response.Cookies.Delete("access_token", cookieOptions);

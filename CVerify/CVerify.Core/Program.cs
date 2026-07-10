@@ -1,7 +1,6 @@
 using System.Text;
 using System.Threading.RateLimiting;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
-using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
@@ -79,13 +78,17 @@ if (envPath == null)
     }
 }
 
-if (envPath != null) {
-    foreach (var line in File.ReadAllLines(envPath)) {
+if (envPath != null)
+{
+    foreach (var line in File.ReadAllLines(envPath))
+    {
         var parts = line.Split('=', 2, StringSplitOptions.RemoveEmptyEntries);
-        if (parts.Length == 2 && !parts[0].StartsWith("#")) {
+        if (parts.Length == 2 && !parts[0].StartsWith("#"))
+        {
             var key = parts[0].Trim();
             var val = parts[1].Trim();
-            if (string.IsNullOrEmpty(Environment.GetEnvironmentVariable(key))) {
+            if (string.IsNullOrEmpty(Environment.GetEnvironmentVariable(key)))
+            {
                 Environment.SetEnvironmentVariable(key, val);
             }
         }
@@ -155,7 +158,7 @@ builder.Services.AddOpenApi(options =>
             BearerFormat = "JWT",
             Description = "Enter your JWT token in the format: Bearer {token}"
         });
-        
+
         // 2. Ensure the Security requirements list is initialized before adding
         document.Security ??= new List<OpenApiSecurityRequirement>();
 
@@ -163,7 +166,7 @@ builder.Services.AddOpenApi(options =>
         {
             [new OpenApiSecuritySchemeReference("Bearer", document)] = new List<string>()
         });
-        
+
         return Task.CompletedTask;
     });
 });
@@ -186,7 +189,7 @@ builder.Services.AddControllers()
                 }
             }
 
-            var correlationId = AsyncLocalCorrelationScope.CurrentCorrelationId 
+            var correlationId = AsyncLocalCorrelationScope.CurrentCorrelationId
                                 ?? context.HttpContext.TraceIdentifier;
 
             var responsePayload = new ApiErrorResponse
@@ -304,8 +307,8 @@ builder.Services.AddRateLimiter(options =>
         var config = context.RequestServices.GetRequiredService<EnvConfiguration>();
         var limit = config.Security.DisableRateLimits ? 99999 : 10;
         return RateLimitPartition.GetFixedWindowLimiter(
-            partitionKey: context.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value 
-                          ?? context.Connection.RemoteIpAddress?.ToString() 
+            partitionKey: context.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value
+                          ?? context.Connection.RemoteIpAddress?.ToString()
                           ?? "unknown",
             factory: _ => new FixedWindowRateLimiterOptions
             {
@@ -533,27 +536,6 @@ builder.Services.AddCustomAuthorization();
 
 var app = builder.Build();
 
-// Trust X-Forwarded-For/X-Forwarded-Proto from the host-level Nginx reverse
-// proxy so RemoteIpAddress/Scheme reflect the real client instead of Nginx
-// itself. Without this, the IP-partitioned rate limiter above buckets every
-// real visitor under Nginx's own connecting address once traffic is proxied
-// (see deployment/CODE_CHANGES_REQUIRED.md #1 for the full analysis).
-//
-// KnownNetworks is restricted (not left open) so an external client can't
-// spoof X-Forwarded-For and bypass rate limiting themselves. The range below
-// covers Docker's default bridge address pool (172.16.0.0/12) plus loopback,
-// since Nginx runs on the VPS host and reaches containers via published
-// ports. VERIFY the real subnet with `docker network inspect cverify-frontend-net`
-// on the VPS and replace this range if it differs.
-var forwardedHeadersOptions = new ForwardedHeadersOptions
-{
-    ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto
-};
-forwardedHeadersOptions.KnownProxies.Clear();
-forwardedHeadersOptions.KnownIPNetworks.Add(new System.Net.IPNetwork(System.Net.IPAddress.Parse("172.16.0.0"), 12));
-forwardedHeadersOptions.KnownIPNetworks.Add(new System.Net.IPNetwork(System.Net.IPAddress.Loopback, 8));
-app.UseForwardedHeaders(forwardedHeadersOptions);
-
 // Startup Diagnostics for Rate Limiting / Environment
 {
     var startupLogger = app.Services.GetRequiredService<ILogger<Program>>();
@@ -618,7 +600,7 @@ using (var scope = app.Services.CreateScope())
 if (app.Environment.IsDevelopment())
 {
     app.MapOpenApi(); // /openapi/v1.json
-    app.UseSwaggerUI(options => 
+    app.UseSwaggerUI(options =>
     {
         options.SwaggerEndpoint("/openapi/v1.json", "CVerify API v1");
         options.RoutePrefix = "swagger";

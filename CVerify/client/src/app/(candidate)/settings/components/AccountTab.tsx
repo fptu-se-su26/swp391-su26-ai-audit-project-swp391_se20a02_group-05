@@ -51,7 +51,6 @@ import { useProfileStore } from "@/stores/use-profile-store";
 import { ConfirmationModal } from "./ConfirmationModal";
 import { useRouter, useSearchParams } from "next/navigation";
 import { authApi } from "@/features/auth/services/auth.service";
-import { API_URL } from "@/infrastructure/http/axios-client";
 import { OtpInput } from "@/components/ui/otp-input";
 import { SelectDropdown } from "@/components/ui/select-dropdown";
 
@@ -538,7 +537,8 @@ export const AccountTab: React.FC<AccountTabProps> = ({
 
   const _handleOAuthReauth = () => {
     const provider = deletionRequirements?.linkedOAuthProvider || "google";
-    window.location.assign(`${API_URL}/users/me/connect-reauth/${provider}`);
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5247/api";
+    window.location.assign(`${apiUrl}/users/me/connect-reauth/${provider}`);
   };
 
   const visibilityOptions = [
