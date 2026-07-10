@@ -8,10 +8,10 @@
 # ==============================================================================
 set -euo pipefail
 
-echo "[renew-ssl] Attempting certificate renewal for cverify.io.vn..."
+echo "[renew-ssl] Attempting certificate renewal for cverify.io.vn (and api.cverify.io.vn if it's a SAN on the same cert)..."
 sudo certbot renew --quiet --deploy-hook "systemctl reload nginx"
 
 echo "[renew-ssl] Current certificate status:"
-sudo certbot certificates | grep -A 5 "cverify.io.vn" || echo "  (no matching certificate found — has certbot --nginx -d cverify.io.vn been run yet?)"
+sudo certbot certificates | grep -A 5 "cverify.io.vn" || echo "  (no matching certificate found — has certbot --nginx -d cverify.io.vn -d www.cverify.io.vn -d api.cverify.io.vn been run yet?)"
 
 echo "[renew-ssl] Done."

@@ -56,7 +56,7 @@ jobs:
         working-directory: client
         run: npm run build
         env:
-          NEXT_PUBLIC_API_URL: https://cverify.io.vn/api
+          NEXT_PUBLIC_API_URL: https://api.cverify.io.vn/api
           NEXT_PUBLIC_GOOGLE_CLIENT_ID: ${{ secrets.NEXT_PUBLIC_GOOGLE_CLIENT_ID }}
 
       # ---------------------------------------------------------------------
@@ -119,7 +119,7 @@ jobs:
           docker build -t cverify-core-ci:test ./CVerify.Core
           docker build -t cverify-ai-ci:test ./CVerify.AI
           docker build -t cverify-client-ci:test \
-            --build-arg NEXT_PUBLIC_API_URL=https://cverify.io.vn/api \
+            --build-arg NEXT_PUBLIC_API_URL=https://api.cverify.io.vn/api \
             --build-arg NEXT_PUBLIC_GOOGLE_CLIENT_ID=${{ secrets.NEXT_PUBLIC_GOOGLE_CLIENT_ID }} \
             ./client
 

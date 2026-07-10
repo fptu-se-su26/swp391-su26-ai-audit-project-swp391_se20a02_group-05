@@ -60,8 +60,20 @@ nano .env   # fill in every value — see .env.example for what each one does
 ```
 
 Minimum production-specific values to set correctly in `.env`:
-- `DOMAIN` — the public domain (e.g. `cverify.io.vn`). This is baked into the
-  frontend bundle at **build time** — see step 6.
+- `DOMAIN` — the public frontend domain (e.g. `cverify.io.vn`).
+- `API_DOMAIN` — the public API subdomain (e.g. `api.cverify.io.vn`). Baked
+  into the frontend bundle as `NEXT_PUBLIC_API_URL` at **build time** — see
+  step 6.
+- `FRONTEND_URL` / `BACKEND_URL` — full origins (`https://` + host) matching
+  `DOMAIN` / `API_DOMAIN`. `FRONTEND_URL` also drives CORS on the backend.
+- `COOKIE_DOMAIN` — shared parent domain (e.g. `.cverify.io.vn`) so
+  `access_token`/`refresh_token`/`CSRF-TOKEN` cookies set by the API on
+  `API_DOMAIN` are still visible to the frontend on `DOMAIN`. Without this,
+  SSR auth checks silently fail and every POST/PUT/DELETE/PATCH gets a 403
+  CSRF error once frontend and API are on different subdomains.
+- `Auth__TrustedDomains` — must include `DOMAIN` (e.g.
+  `cverify.io.vn;www.cverify.io.vn`) or email-verification/password-reset
+  links are rejected as untrusted redirects.
 - `ASPNETCORE_ENVIRONMENT=Production`
 - `RESET_DATABASE=false`, `ALLOW_DEVELOPMENT_SEEDING=false`
 - All secrets (`JWT_KEY`/`JWT_SECRET`, `AI_SERVICE_SHARED_SECRET`,
@@ -91,13 +103,20 @@ sudo cp deployment/nginx/cverify.conf /etc/nginx/sites-available/cverify.conf
 sudo ln -s /etc/nginx/sites-available/cverify.conf /etc/nginx/sites-enabled/
 sudo nginx -t && sudo systemctl reload nginx
 
-sudo certbot --nginx -d <DOMAIN> -d www.<DOMAIN>
+sudo certbot --nginx -d <DOMAIN> -d www.<DOMAIN> -d api.<DOMAIN>
 ```
+
+One certificate covers all three names as SANs — `deployment/nginx/cverify.conf`
+points both the `<DOMAIN>` and `api.<DOMAIN>` server blocks at
+`/etc/letsencrypt/live/<DOMAIN>/`. If you issue `api.<DOMAIN>` as a separate
+certificate instead, update the `ssl_certificate*` paths in that server block.
 
 `deployment/nginx/cverify.conf` assumes `cverify-client` on `127.0.0.1:3000`
 and `cverify-core` on `127.0.0.1:5247` — this matches the host port mappings
 in `docker-compose.yml`/`deployment/docker-compose.prod.yml` as long as you
-haven't overridden `CORE_PORT`/`CLIENT_PORT` in `.env`.
+haven't overridden `CORE_PORT`/`CLIENT_PORT` in `.env`. `<DOMAIN>` proxies to
+the frontend; `api.<DOMAIN>` proxies straight to the API (see `API_DOMAIN` in
+`.env.example`).
 
 Renewal: `deployment/scripts/renew-ssl.sh` — put it on a cron/systemd timer
 (not currently automated by anything in this repo).
@@ -157,7 +176,7 @@ docker compose ps
 Then from a separate machine (not the VPS itself, to also exercise DNS/proxy):
 ```bash
 curl -I https://<DOMAIN>/
-curl -I https://<DOMAIN>/api/health
+curl -I https://api.<DOMAIN>/health
 ```
 Log into the app and confirm at least one API call succeeds (open DevTools →
 Network — no `ERR_CONNECTION_*` on XHR requests). This is the actual

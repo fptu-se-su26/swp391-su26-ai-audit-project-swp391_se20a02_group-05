@@ -59,6 +59,7 @@ public static class EnvValidator
         }
         config.Auth.FrontendUrl = (configuration["Auth:FrontendUrl"] ?? configuration["FRONTEND_URL"])?.ResolveEnvironmentVariables()?.Trim('"') ?? config.Auth.FrontendUrl;
         config.Auth.BackendUrl = (configuration["Auth:BackendUrl"] ?? configuration["BACKEND_URL"])?.ResolveEnvironmentVariables()?.Trim('"');
+        config.Auth.CookieDomain = (configuration["Auth:CookieDomain"] ?? configuration["COOKIE_DOMAIN"])?.ResolveEnvironmentVariables()?.Trim('"');
         config.Auth.TrustedDomains = configuration["Auth:TrustedDomains"] ?? config.Auth.TrustedDomains;
         config.Auth.GoogleClientId = (configuration["Auth:GoogleClientId"] ?? configuration["GOOGLE_CLIENT_ID"])?.ResolveEnvironmentVariables()?.Trim('"')
             ?? throw new InvalidOperationException("Environment variable 'GOOGLE_CLIENT_ID' or setting 'Auth:GoogleClientId' is missing.");

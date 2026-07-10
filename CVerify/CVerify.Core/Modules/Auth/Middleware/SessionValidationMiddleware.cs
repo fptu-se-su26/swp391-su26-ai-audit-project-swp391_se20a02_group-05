@@ -5,6 +5,7 @@ using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
+using CVerify.API.Modules.Shared.Configuration;
 using CVerify.API.Modules.Shared.Domain.Entities;
 using CVerify.API.Modules.Shared.Domain.Enums;
 using CVerify.API.Modules.Shared.Persistence;
@@ -23,6 +24,7 @@ public class SessionValidationMiddleware
 
     public async Task InvokeAsync(HttpContext context, IServiceProvider serviceProvider)
     {
+        var envConfig = serviceProvider.GetRequiredService<EnvConfiguration>();
         if (context.User.Identity?.IsAuthenticated == true)
         {
             var userIdClaim = context.User.FindFirst(ClaimTypes.NameIdentifier);
@@ -49,7 +51,7 @@ public class SessionValidationMiddleware
                         var org = await dbContext.Organizations.FindAsync(userId);
                         if (org == null || org.DeletedAt != null || !string.Equals(org.Status, "active", StringComparison.OrdinalIgnoreCase))
                         {
-                            InvalidateSession(context);
+                            InvalidateSession(context, envConfig);
                             return;
                         }
                         await cacheService.SetAsync(orgCacheKey, "active", TimeSpan.FromHours(24));
@@ -68,7 +70,7 @@ public class SessionValidationMiddleware
                         var user = await dbContext.Users.FindAsync(userId);
                         if (user == null || user.Status != UserStatus.ACTIVE)
                         {
-                            InvalidateSession(context);
+                            InvalidateSession(context, envConfig);
                             return;
                         }
                         activeVersion = user.SessionVersion;
@@ -83,7 +85,7 @@ public class SessionValidationMiddleware
                         !int.TryParse(tokenVersionClaim.Value, out var tokenVersion) || 
                         tokenVersion != activeVersion)
                     {
-                        InvalidateSession(context);
+                        InvalidateSession(context, envConfig);
                         return;
                     }
                 }
@@ -108,14 +110,14 @@ public class SessionValidationMiddleware
                         {
                             if (storedToken.RevokedAt != null)
                             {
-                                InvalidateSession(context);
+                                InvalidateSession(context, envConfig);
                                 return;
                             }
                             sessionId = storedToken.SessionId;
                         }
                         else
                         {
-                            InvalidateSession(context);
+                            InvalidateSession(context, envConfig);
                             return;
                         }
                     }
@@ -151,7 +153,7 @@ public class SessionValidationMiddleware
 
                     if (!isSessionActive)
                     {
-                        InvalidateSession(context);
+                        InvalidateSession(context, envConfig);
                         return;
                     }
                 }
@@ -161,7 +163,7 @@ public class SessionValidationMiddleware
         await _next(context);
     }
 
-    private static void InvalidateSession(HttpContext context)
+    private static void InvalidateSession(HttpContext context, EnvConfiguration envConfig)
     {
         var isDevelopment = string.Equals(Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT"), "Development", StringComparison.OrdinalIgnoreCase);
         var cookieOptions = new CookieOptions
@@ -169,7 +171,10 @@ public class SessionValidationMiddleware
             HttpOnly = true,
             Secure = !isDevelopment,
             SameSite = SameSiteMode.Lax,
-            Path = "/"
+            Path = "/",
+            // Must match the Domain used when the cookie was set (TokenService.SetTokenInsideCookie)
+            // or the browser won't recognize this as a delete of the same cookie.
+            Domain = string.IsNullOrWhiteSpace(envConfig.Auth.CookieDomain) ? null : envConfig.Auth.CookieDomain
         };
 
         context.Response.Cookies.Delete("access_token", cookieOptions);

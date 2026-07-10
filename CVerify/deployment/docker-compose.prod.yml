@@ -114,8 +114,11 @@ services:
 
   # ----------------------------------------------------------------------------
   # Frontend — CONFIG_VALIDATION.md #3 fix: the build ARG must be the public
-  # domain, not localhost:5247, because Next.js inlines NEXT_PUBLIC_* at build
-  # time. CONFIG_VALIDATION.md #7 fix: bind to loopback so Nginx is the only
+  # API domain (api.cverify.io.vn), not localhost:5247, because Next.js inlines
+  # NEXT_PUBLIC_* at build time. The API lives on its own subdomain (routed by
+  # deployment/nginx/cverify.conf straight to cverify-core), separate from the
+  # frontend's own domain — see DOMAIN vs API_DOMAIN in .env.example.
+  # CONFIG_VALIDATION.md #7 fix: bind to loopback so Nginx is the only
   # public entry point (matches how every other service in this stack is
   # already bound).
   #
@@ -125,11 +128,11 @@ services:
   cverify-client:
     build:
       args:
-        - NEXT_PUBLIC_API_URL=https://${DOMAIN}/api
+        - NEXT_PUBLIC_API_URL=https://${API_DOMAIN}/api
         - NEXT_PUBLIC_GOOGLE_CLIENT_ID=${NEXT_PUBLIC_GOOGLE_CLIENT_ID}
     restart: unless-stopped
     environment:
-      NEXT_PUBLIC_API_URL: https://${DOMAIN}/api
+      NEXT_PUBLIC_API_URL: https://${API_DOMAIN}/api
       # SSR (server components / route handlers) runs inside this container,
       # so it can reach cverify-core over the Docker network directly instead
       # of round-tripping through the public domain — see
