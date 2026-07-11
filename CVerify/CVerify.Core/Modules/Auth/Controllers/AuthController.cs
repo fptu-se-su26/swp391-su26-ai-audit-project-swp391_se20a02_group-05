@@ -529,12 +529,14 @@ public class AuthController : ControllerBase
 
         if (canonicalName != ProviderGitHub && canonicalName != ProviderGitLab && canonicalName != ProviderGoogle)
         {
+            _logger.LogWarning("PROVIDER_LINK_FAILED: unsupported_provider, providerName={ProviderName}", providerName);
             return Redirect($"{envConfig.Auth.FrontendUrl}/settings?tab=account&error=unsupported_provider");
         }
 
         var savedState = Request.Cookies[$"oauth_state_{canonicalName}"];
         if (string.IsNullOrEmpty(savedState) || savedState != state)
         {
+            _logger.LogWarning("PROVIDER_LINK_FAILED: state_mismatch, provider={ProviderName}, hasCookie={HasCookie}", canonicalName, !string.IsNullOrEmpty(savedState));
             return Redirect($"{envConfig.Auth.FrontendUrl}/settings?tab=account&error=state_mismatch");
         }
 
@@ -543,6 +545,7 @@ public class AuthController : ControllerBase
         var userIdStr = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
         if (string.IsNullOrEmpty(userIdStr) || !Guid.TryParse(userIdStr, out var userId))
         {
+            _logger.LogWarning("PROVIDER_LINK_FAILED: unauthenticated, provider={ProviderName}, isAuthenticated={IsAuthenticated}, hasAccessTokenCookie={HasCookie}", canonicalName, User.Identity?.IsAuthenticated ?? false, Request.Cookies.ContainsKey("access_token"));
             return Redirect($"{envConfig.Auth.FrontendUrl}/settings?tab=account&error=unauthenticated");
         }
 
@@ -554,6 +557,7 @@ public class AuthController : ControllerBase
                 .CountAsync(ap => ap.UserId == userId && ap.ProviderName.ToLower() == canonicalName.ToLower() && ap.DeletedAt == null, cancellationToken);
             if (activeCount >= 3)
             {
+                _logger.LogWarning("PROVIDER_LINK_FAILED: limit_reached, provider={ProviderName}, userId={UserId}", canonicalName, userId);
                 return Redirect($"{envConfig.Auth.FrontendUrl}/settings?tab=account&error=limit_reached");
             }
         }
@@ -599,6 +603,8 @@ public class AuthController : ControllerBase
                 var tokenResponse = await httpClient.SendAsync(tokenRequest, cancellationToken);
                 if (!tokenResponse.IsSuccessStatusCode)
                 {
+                    var body = await tokenResponse.Content.ReadAsStringAsync(cancellationToken);
+                    _logger.LogWarning("PROVIDER_LINK_FAILED: token_exchange_failed, provider=github, status={StatusCode}, body={Body}", (int)tokenResponse.StatusCode, body);
                     return Redirect($"{envConfig.Auth.FrontendUrl}/settings?tab=account&error=token_exchange_failed");
                 }
 
@@ -606,6 +612,7 @@ public class AuthController : ControllerBase
                 var tokenData = JsonSerializer.Deserialize<Dictionary<string, object>>(jsonStr);
                 if (tokenData == null || !tokenData.ContainsKey("access_token"))
                 {
+                    _logger.LogWarning("PROVIDER_LINK_FAILED: token_exchange_failed, provider=github, reason=no_access_token_in_response, body={Body}", jsonStr);
                     return Redirect($"{envConfig.Auth.FrontendUrl}/settings?tab=account&error=token_exchange_failed");
                 }
 
@@ -619,6 +626,8 @@ public class AuthController : ControllerBase
                 var profileResponse = await httpClient.SendAsync(profileRequest, cancellationToken);
                 if (!profileResponse.IsSuccessStatusCode)
                 {
+                    var body = await profileResponse.Content.ReadAsStringAsync(cancellationToken);
+                    _logger.LogWarning("PROVIDER_LINK_FAILED: profile_fetch_failed, provider=github, status={StatusCode}, body={Body}", (int)profileResponse.StatusCode, body);
                     return Redirect($"{envConfig.Auth.FrontendUrl}/settings?tab=account&error=profile_fetch_failed");
                 }
 
@@ -626,6 +635,7 @@ public class AuthController : ControllerBase
                 var profileData = JsonSerializer.Deserialize<Dictionary<string, object>>(profileJson);
                 if (profileData == null || !profileData.ContainsKey("id"))
                 {
+                    _logger.LogWarning("PROVIDER_LINK_FAILED: profile_fetch_failed, provider=github, reason=no_id_in_response, body={Body}", profileJson);
                     return Redirect($"{envConfig.Auth.FrontendUrl}/settings?tab=account&error=profile_fetch_failed");
                 }
 
@@ -650,6 +660,8 @@ public class AuthController : ControllerBase
                 var tokenResponse = await httpClient.PostAsync("https://gitlab.com/oauth/token", content, cancellationToken);
                 if (!tokenResponse.IsSuccessStatusCode)
                 {
+                    var body = await tokenResponse.Content.ReadAsStringAsync(cancellationToken);
+                    _logger.LogWarning("PROVIDER_LINK_FAILED: token_exchange_failed, provider=gitlab, status={StatusCode}, body={Body}", (int)tokenResponse.StatusCode, body);
                     return Redirect($"{envConfig.Auth.FrontendUrl}/settings?tab=account&error=token_exchange_failed");
                 }
 
@@ -657,6 +669,7 @@ public class AuthController : ControllerBase
                 var tokenData = JsonSerializer.Deserialize<Dictionary<string, object>>(jsonStr);
                 if (tokenData == null || !tokenData.ContainsKey("access_token"))
                 {
+                    _logger.LogWarning("PROVIDER_LINK_FAILED: token_exchange_failed, provider=gitlab, reason=no_access_token_in_response, body={Body}", jsonStr);
                     return Redirect($"{envConfig.Auth.FrontendUrl}/settings?tab=account&error=token_exchange_failed");
                 }
 
@@ -674,6 +687,8 @@ public class AuthController : ControllerBase
                 var profileResponse = await httpClient.SendAsync(profileRequest, cancellationToken);
                 if (!profileResponse.IsSuccessStatusCode)
                 {
+                    var body = await profileResponse.Content.ReadAsStringAsync(cancellationToken);
+                    _logger.LogWarning("PROVIDER_LINK_FAILED: profile_fetch_failed, provider=gitlab, status={StatusCode}, body={Body}", (int)profileResponse.StatusCode, body);
                     return Redirect($"{envConfig.Auth.FrontendUrl}/settings?tab=account&error=profile_fetch_failed");
                 }
 
@@ -681,6 +696,7 @@ public class AuthController : ControllerBase
                 var profileData = JsonSerializer.Deserialize<Dictionary<string, object>>(profileJson);
                 if (profileData == null || !profileData.ContainsKey("id"))
                 {
+                    _logger.LogWarning("PROVIDER_LINK_FAILED: profile_fetch_failed, provider=gitlab, reason=no_id_in_response, body={Body}", profileJson);
                     return Redirect($"{envConfig.Auth.FrontendUrl}/settings?tab=account&error=profile_fetch_failed");
                 }
 
@@ -705,6 +721,8 @@ public class AuthController : ControllerBase
                 var tokenResponse = await httpClient.PostAsync("https://oauth2.googleapis.com/token", content, cancellationToken);
                 if (!tokenResponse.IsSuccessStatusCode)
                 {
+                    var body = await tokenResponse.Content.ReadAsStringAsync(cancellationToken);
+                    _logger.LogWarning("PROVIDER_LINK_FAILED: token_exchange_failed, provider=google, status={StatusCode}, body={Body}", (int)tokenResponse.StatusCode, body);
                     return Redirect($"{envConfig.Auth.FrontendUrl}/settings?tab=account&error=token_exchange_failed");
                 }
 
@@ -712,6 +730,7 @@ public class AuthController : ControllerBase
                 var tokenData = JsonSerializer.Deserialize<Dictionary<string, object>>(jsonStr);
                 if (tokenData == null || !tokenData.ContainsKey("access_token"))
                 {
+                    _logger.LogWarning("PROVIDER_LINK_FAILED: token_exchange_failed, provider=google, reason=no_access_token_in_response, body={Body}", jsonStr);
                     return Redirect($"{envConfig.Auth.FrontendUrl}/settings?tab=account&error=token_exchange_failed");
                 }
 
@@ -725,6 +744,8 @@ public class AuthController : ControllerBase
                 var profileResponse = await httpClient.GetAsync($"https://www.googleapis.com/oauth2/v3/userinfo?access_token={accessToken}", cancellationToken);
                 if (!profileResponse.IsSuccessStatusCode)
                 {
+                    var body = await profileResponse.Content.ReadAsStringAsync(cancellationToken);
+                    _logger.LogWarning("PROVIDER_LINK_FAILED: profile_fetch_failed, provider=google, status={StatusCode}, body={Body}", (int)profileResponse.StatusCode, body);
                     return Redirect($"{envConfig.Auth.FrontendUrl}/settings?tab=account&error=profile_fetch_failed");
                 }
 
@@ -732,6 +753,7 @@ public class AuthController : ControllerBase
                 var profileData = JsonSerializer.Deserialize<Dictionary<string, object>>(profileJson);
                 if (profileData == null || !profileData.ContainsKey("sub"))
                 {
+                    _logger.LogWarning("PROVIDER_LINK_FAILED: profile_fetch_failed, provider=google, reason=no_sub_in_response, body={Body}", profileJson);
                     return Redirect($"{envConfig.Auth.FrontendUrl}/settings?tab=account&error=profile_fetch_failed");
                 }
 
@@ -742,6 +764,7 @@ public class AuthController : ControllerBase
 
             if (string.IsNullOrEmpty(accessToken))
             {
+                _logger.LogWarning("PROVIDER_LINK_FAILED: token_exchange_failed, provider={ProviderName}, reason=accessToken_empty_after_provider_branch", canonicalName);
                 return Redirect($"{envConfig.Auth.FrontendUrl}/settings?tab=account&error=token_exchange_failed");
             }
 
@@ -751,12 +774,14 @@ public class AuthController : ControllerBase
 
             if (duplicateProvider != null)
             {
+                _logger.LogWarning("PROVIDER_LINK_FAILED: provider_already_linked, provider={ProviderName}, providerKey={ProviderKey}, requestingUserId={UserId}, existingOwnerId={OwnerId}", canonicalName, providerKey, userId, duplicateProvider.UserId);
                 return Redirect($"{envConfig.Auth.FrontendUrl}/settings?tab=account&error=provider_already_linked");
             }
 
             // Encrypt credentials
             if (string.IsNullOrEmpty(envConfig.Security.TokenEncryptionKey))
             {
+                _logger.LogWarning("PROVIDER_LINK_FAILED: encryption_key_missing, provider={ProviderName}", canonicalName);
                 return Redirect($"{envConfig.Auth.FrontendUrl}/settings?tab=account&error=encryption_key_missing");
             }
 
