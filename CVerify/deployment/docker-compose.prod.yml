@@ -142,3 +142,38 @@ services:
       options:
         max-size: "10m"
         max-file: "3"
+
+  # ----------------------------------------------------------------------------
+  # MinIO -- self-hosted S3-compatible object storage, replacing Cloudflare R2.
+  # Program.cs already targets a generic S3-compatible endpoint via
+  # R2_ENDPOINT/ACCESS_KEY_ID/SECRET_ACCESS_KEY with ForcePathStyle=true, which
+  # MinIO satisfies natively -- no application code changes required.
+  # ----------------------------------------------------------------------------
+  minio:
+    image: minio/minio:latest
+    container_name: cverify-minio
+    restart: unless-stopped
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
+    command: server /data --console-address ":9001"
+    volumes:
+      - minio_data:/data
+    networks:
+      - cverify-infra-net
+    deploy:
+      resources:
+        limits:
+          cpus: "0.25"
+          memory: 256M
+        reservations:
+          memory: 128M
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+volumes:
+  minio_data:
+    driver: local
