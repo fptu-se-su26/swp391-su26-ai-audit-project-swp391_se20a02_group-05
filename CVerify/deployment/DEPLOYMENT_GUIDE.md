@@ -243,20 +243,24 @@ the compose/nginx setup instead.
 
 ## 9. Routine operations
 
-| Task | Command |
-|---|---|
-| Backup DB | `bash /opt/cverify/scripts/backup-db.sh` |
-| Restore DB | `bash /opt/cverify/scripts/restore-db.sh <backup-file>` |
-| Clean up stale analysis workspaces | `bash /opt/cverify/scripts/cleanup-workspaces.sh` |
-| Renew SSL cert | `bash /opt/cverify/scripts/renew-ssl.sh` |
-| Redeploy after a `git pull` | `bash deployment/scripts/deploy.sh` (does the pull itself) |
+| Task | Command | Automated? |
+|---|---|---|
+| Backup DB | `bash /opt/cverify/scripts/backup-db.sh` | Manual only |
+| Restore DB | `bash /opt/cverify/scripts/restore-db.sh <backup-file>` | Manual only (destructive) |
+| Clean up stale analysis workspaces | `bash deployment/scripts/cleanup-workspaces.sh` | Yes — `ec2-user` crontab, hourly (`:05`), logs to `~/cron-logs/cleanup-workspaces.log` |
+| Renew SSL cert | `bash deployment/scripts/renew-ssl.sh` | Yes — `certbot-renew.timer` (systemd, twice daily at 03:00/15:00 UTC ±30min) running `certbot-renew.service`, which calls this script directly from the git checkout |
+| Redeploy after a `git pull` | `bash deployment/scripts/deploy.sh` (does the pull itself) | Manual, or via `.github/workflows/deploy.yml` on push to `CVerify-uat` |
+
+Do **not** also add a cron entry for `renew-ssl.sh` — `certbot-renew.timer`
+already owns that job, and running both concurrently causes a "Another
+instance of Certbot is already running" lock conflict (hit this directly
+while setting up cron — confirm with `systemctl list-timers | grep certbot`
+before adding anything new here).
 
 ## 10. Known gaps (as of this writing — remove each line once fixed)
 
-- SSL cert renewal is not on a scheduled job — add `deployment/scripts/renew-ssl.sh`
-  and `deployment/scripts/cleanup-workspaces.sh` to cron/systemd timers on the
-  VPS (not something GitHub Actions can do, since it runs on the VPS itself).
 - DNSSEC is enabled on `cverify.com.vn` at the registrar — if DNS records
   ever need to change, re-check that DNSSEC signing isn't left in a broken
   state afterward (P.A's panel handles re-signing automatically in normal
   use, but this hasn't been stress-tested against manual record edits).
+- Backup and restore are manual-only — no scheduled backup job exists yet.
