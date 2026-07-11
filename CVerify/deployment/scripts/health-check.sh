@@ -12,6 +12,7 @@
 # ==============================================================================
 set -uo pipefail
 
+COMPOSE_DIR="${COMPOSE_DIR:-/home/ec2-user/swp391-su26-ai-audit-project-swp391_se20a02_group-05/CVerify}"
 CORE_PORT="${CORE_PORT:-5247}"
 AI_PORT="${AI_PORT:-8000}"
 CLIENT_PORT="${CLIENT_PORT:-3000}"
@@ -29,7 +30,7 @@ check() {
 }
 
 echo "[health-check] Checking containers are up..."
-docker compose -f /opt/cverify/compose/docker-compose.yml ps
+docker compose -f "$COMPOSE_DIR/docker-compose.yml" ps
 
 check "Backend API"   "http://127.0.0.1:${CORE_PORT}/health"
 check "AI Service"    "http://127.0.0.1:${AI_PORT}/health"

@@ -2,11 +2,12 @@
 # ==============================================================================
 # CVerify — Manual deploy script (VPS-side)
 # Mirrors what .github/workflows/deploy.yml does over SSH, for manual use.
-# Run from /opt/cverify/compose (see DEPLOYMENT_GUIDE.md for directory layout).
+# Run from the repository's CVerify/ subdirectory (see DEPLOYMENT_GUIDE.md for
+# the actual directory layout on the VPS).
 # ==============================================================================
 set -euo pipefail
 
-COMPOSE_DIR="/opt/cverify/compose"
+COMPOSE_DIR="${COMPOSE_DIR:-/home/ec2-user/swp391-su26-ai-audit-project-swp391_se20a02_group-05/CVerify}"
 cd "$COMPOSE_DIR"
 
 echo "[deploy] Pulling latest code..."
@@ -23,6 +24,6 @@ echo "[deploy] Current container status:"
 docker compose ps
 
 echo "[deploy] Running health check..."
-bash /opt/cverify/scripts/health-check.sh
+bash "$COMPOSE_DIR/deployment/scripts/health-check.sh"
 
 echo "[deploy] Done."

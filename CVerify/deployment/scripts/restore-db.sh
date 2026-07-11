@@ -1,14 +1,15 @@
 #!/usr/bin/env bash
 # ==============================================================================
 # CVerify — PostgreSQL restore
-# Usage: ./restore-db.sh /opt/cverify/backup/postgres/cverify_20260701_020000.sql.gz
+# Usage: ./restore-db.sh /home/ec2-user/backups/postgres/cverify_20260701_020000.sql.gz
 #
 # WARNING: this is destructive — it drops and recreates all data in DB_NAME.
 # Requires interactive confirmation. Does not run inside CI.
 # ==============================================================================
 set -euo pipefail
 
-ENV_FILE="/opt/cverify/compose/.env"
+COMPOSE_DIR="${COMPOSE_DIR:-/home/ec2-user/swp391-su26-ai-audit-project-swp391_se20a02_group-05/CVerify}"
+ENV_FILE="$COMPOSE_DIR/.env"
 BACKUP_FILE="${1:-}"
 
 if [ -z "$BACKUP_FILE" ] || [ ! -f "$BACKUP_FILE" ]; then
@@ -27,7 +28,7 @@ if [ "$CONFIRM" != "${DB_NAME}" ]; then
 fi
 
 echo "[restore-db] Stopping cverify-core to prevent writes during restore..."
-docker compose -f /opt/cverify/compose/docker-compose.yml stop cverify-core
+docker compose -f "$COMPOSE_DIR/docker-compose.yml" stop cverify-core
 
 echo "[restore-db] Dropping and recreating '${DB_NAME}'..."
 docker exec cverify-postgres psql -U "${DB_USER}" -d postgres \
@@ -42,6 +43,6 @@ docker exec cverify-postgres psql -U "${DB_USER}" -d "${DB_NAME}" \
   -c "CREATE EXTENSION IF NOT EXISTS vector;"
 
 echo "[restore-db] Restarting cverify-core..."
-docker compose -f /opt/cverify/compose/docker-compose.yml start cverify-core
+docker compose -f "$COMPOSE_DIR/docker-compose.yml" start cverify-core
 
 echo "[restore-db] Done. Verify with: docker compose logs -f cverify-core"

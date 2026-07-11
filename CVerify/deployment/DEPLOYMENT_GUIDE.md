@@ -1,9 +1,16 @@
 # CVerify — Production Deployment Guide
 
-Referenced by [`deployment/scripts/deploy.sh`](scripts/deploy.sh) and
-[`.github/workflows/deploy.yml`](../.github/workflows/deploy.yml). This is the
-single source of truth for deploying CVerify to a VPS — if a step here
-contradicts tribal knowledge or an old runbook, this file wins.
+Referenced by [`deployment/scripts/deploy.sh`](scripts/deploy.sh) and the
+repository-root `.github/workflows/deploy.yml`. This is the single source of
+truth for deploying CVerify to a VPS — if a step here contradicts tribal
+knowledge or an old runbook, this file wins.
+
+**GitHub Actions workflow location gotcha:** this repository has this
+`CVerify/` folder nested inside a parent monorepo. GitHub Actions only ever
+reads workflows from `.github/workflows/` at the **true repository root**
+(one level above `CVerify/`) — a `.github/workflows/` folder that also exists
+nested inside `CVerify/` is dead weight GitHub never executes. Always edit
+workflow YAML at the true root, not inside `CVerify/`.
 
 ## 0. Which branch is production?
 
@@ -27,10 +34,11 @@ the current public IP), not a DNS or Nginx problem.
 ## 1. Server layout
 
 ```
-/opt/cverify/compose/          <- this repository, checked out to CVerify-uat
+/home/ec2-user/swp391-su26-ai-audit-project-swp391_se20a02_group-05/   <- git root, checked out to CVerify-uat
+/home/ec2-user/swp391-su26-ai-audit-project-swp391_se20a02_group-05/CVerify/  <- app root (docker-compose.yml, deployment/) — all commands below run from here
 /opt/cverify/scripts/          <- copy of deployment/scripts/*.sh (see step 4)
 /etc/letsencrypt/live/<DOMAIN>/  <- certbot certificates
-/etc/nginx/sites-available/cverify.conf  <- deployment/nginx/cverify.conf
+/etc/nginx/conf.d/cverify.conf  <- deployment/nginx/cverify.conf (Amazon Linux/RHEL nginx has no sites-enabled by default; conf.d is what's actually in use)
 ```
 
 ## 2. Prerequisites on a fresh VPS (Amazon Linux 2023 example)
@@ -52,11 +60,10 @@ uses the `!override` merge tag, which requires **Compose 2.24+**.
 ## 3. Clone and configure secrets
 
 ```bash
-sudo mkdir -p /opt/cverify
-sudo chown "$USER":"$USER" /opt/cverify
-git clone <REPO_URL> /opt/cverify/compose
-cd /opt/cverify/compose
+git clone <REPO_URL> /home/ec2-user/swp391-su26-ai-audit-project-swp391_se20a02_group-05
+cd /home/ec2-user/swp391-su26-ai-audit-project-swp391_se20a02_group-05
 git checkout CVerify-uat
+cd CVerify
 
 cp .env.example .env
 nano .env   # fill in every value — see .env.example for what each one does
@@ -99,15 +106,19 @@ reverse proxy runs directly on the host, in front of Docker. Install it once:
 
 ```bash
 # HTTP-only first, so certbot's HTTP-01 challenge can complete
-sudo cp deployment/nginx/cverify.conf /etc/nginx/sites-available/cverify.conf
-# Amazon Linux/RHEL nginx has no sites-enabled by default — either add an
-# `include /etc/nginx/sites-enabled/*.conf;` line to nginx.conf's http{} block
-# and symlink, or copy the file straight into /etc/nginx/conf.d/ instead.
-sudo ln -s /etc/nginx/sites-available/cverify.conf /etc/nginx/sites-enabled/
+sudo cp deployment/nginx/cverify.conf /etc/nginx/conf.d/cverify.conf
 sudo nginx -t && sudo systemctl reload nginx
 
 sudo certbot --nginx -d <DOMAIN> -d www.<DOMAIN> -d api.<DOMAIN>
 ```
+
+Note: `certbot --nginx` rewrites `/etc/nginx/conf.d/cverify.conf` in place to
+wire in the certificate paths and add its own `# managed by Certbot`
+HTTP→HTTPS redirect blocks. After the first run, the live file will no
+longer match `deployment/nginx/cverify.conf` byte-for-byte — that's expected
+and safe. Do **not** blindly overwrite the live file with a fresh copy from
+git on a later deploy; diff first, since the repo's copy lacks Certbot's
+markers.
 
 One certificate covers all three names as SANs — `deployment/nginx/cverify.conf`
 points both the `<DOMAIN>` and `api.<DOMAIN>` server blocks at
@@ -162,7 +173,7 @@ secrets to be configured — see step 6a.
 
 Manual:
 ```bash
-cd /opt/cverify/compose
+cd /home/ec2-user/swp391-su26-ai-audit-project-swp391_se20a02_group-05/CVerify
 bash deployment/scripts/deploy.sh
 ```
 
@@ -191,7 +202,8 @@ value stays baked into the already-built image.
 
 Set these in the repository's Settings → Secrets and variables → Actions:
 - `VPS_HOST`, `VPS_USER`, `VPS_SSH_KEY` (private key with access to
-  `/opt/cverify/compose` on the VPS), `VPS_SSH_PORT` (optional, defaults 22).
+  `/home/ec2-user/swp391-su26-ai-audit-project-swp391_se20a02_group-05` on
+  the VPS), `VPS_SSH_PORT` (optional, defaults 22).
 
 No application secret is ever passed through GitHub — the real `.env` lives
 only on the VPS; the deploy step just `git pull`s and rebuilds there.

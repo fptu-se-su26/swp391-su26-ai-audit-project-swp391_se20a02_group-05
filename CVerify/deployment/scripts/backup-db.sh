@@ -6,8 +6,9 @@
 # ==============================================================================
 set -euo pipefail
 
-ENV_FILE="/opt/cverify/compose/.env"
-BACKUP_DIR="/opt/cverify/backup/postgres"
+COMPOSE_DIR="${COMPOSE_DIR:-/home/ec2-user/swp391-su26-ai-audit-project-swp391_se20a02_group-05/CVerify}"
+ENV_FILE="$COMPOSE_DIR/.env"
+BACKUP_DIR="/home/ec2-user/backups/postgres"
 RETENTION_DAYS=14
 TIMESTAMP=$(date +%Y%m%d_%H%M%S)
 
