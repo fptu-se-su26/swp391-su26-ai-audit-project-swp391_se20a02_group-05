@@ -1,0 +1,64 @@
+# ==============================================================================
+# CVerify — Deploy to VPS
+# ==============================================================================
+# Runs only after "CVerify Core Delivery Pipeline" (.github/workflows/ci.yml)
+# has finished successfully on `CVerify-uat` — this workflow does not
+# rebuild/retest anything itself, it just ships what CI already validated.
+# See deployment/DEPLOYMENT_GUIDE.md for the full runbook.
+#
+# Secrets required (Settings -> Secrets and variables -> Actions):
+#   VPS_HOST, VPS_USER, VPS_SSH_KEY, and optionally VPS_SSH_PORT (default 22).
+# No application secret is ever passed through GitHub — the real .env lives
+# only on the VPS; the deploy step just `git pull`s and rebuilds there.
+# ==============================================================================
+name: Deploy to VPS
+
+on:
+  workflow_run:
+    workflows: ["CVerify Core Delivery Pipeline"]
+    branches: [CVerify-uat]
+    types: [completed]
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    name: Deploy via SSH
+    runs-on: ubuntu-latest
+    if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
+    steps:
+      - name: Deploy via SSH
+        uses: appleboy/ssh-action@2ead5e36573f08b82fbfce1504f1a4b05a647c6f # v1.2.2
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          port: ${{ secrets.VPS_SSH_PORT || 22 }}
+          script: |
+            set -e
+            cd /opt/cverify/compose
+            git pull origin CVerify-uat
+            docker compose -f docker-compose.yml -f deployment/docker-compose.prod.yml \
+              --env-file .env up -d --build --remove-orphans
+            docker system prune -f
+            docker compose ps
+
+      - name: Health check
+        uses: appleboy/ssh-action@2ead5e36573f08b82fbfce1504f1a4b05a647c6f # v1.2.2
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          port: ${{ secrets.VPS_SSH_PORT || 22 }}
+          script: |
+            bash /opt/cverify/scripts/health-check.sh
+
+      - name: Deployment summary
+        run: |
+          echo "## Deployment Summary" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Branch: CVerify-uat" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Commit: ${{ github.event.workflow_run.head_sha || github.sha }}" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Triggered by: ${{ github.actor }}" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Target: ${{ secrets.VPS_HOST }}" >> "$GITHUB_STEP_SUMMARY"

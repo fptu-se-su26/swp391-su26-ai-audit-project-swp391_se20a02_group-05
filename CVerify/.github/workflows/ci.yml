@@ -4,11 +4,11 @@ on:
   push:
     branches:
       - main
-      - cverify-uat
+      - CVerify-uat
   pull_request:
     branches:
       - main
-      - cverify-uat
+      - CVerify-uat
 
 permissions:
   contents: read

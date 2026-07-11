@@ -51,6 +51,11 @@ public class AuthSettings
     public string ResetPasswordUrlFormat => $"{FrontendUrl.TrimEnd('/')}/reset-password?token={{token}}";
     public string VerifyEmailUrlFormat => $"{FrontendUrl.TrimEnd('/')}/verify-email?token={{token}}";
     public string TrustedDomains { get; set; } = "cverify.ai;localhost;127.0.0.1";
+    // Domain attribute applied to auth cookies (access_token/refresh_token/CSRF-TOKEN) so they are
+    // readable by both the frontend host and the API host when they live on different subdomains
+    // (e.g. ".cverify.io.vn" so cverify.io.vn and api.cverify.io.vn both receive them). Leave unset
+    // for single-host/local dev setups (localhost) where a Domain attribute would break the cookie.
+    public string? CookieDomain { get; set; }
     public string GoogleClientId { get; set; } = null!;
     public string? GoogleClientSecret { get; set; }
     public string? GithubClientId { get; set; }

@@ -68,7 +68,11 @@ public class SecurityHeadersMiddleware
                 HttpOnly = false, // Must be readable by Axios on frontend
                 Secure = !isDevelopment,    // Enforce Secure in production, false in development
                 SameSite = SameSiteMode.Lax,
-                Path = "/"
+                Path = "/",
+                // Frontend JS (document.cookie on cverify.io.vn) must be able to read this cookie
+                // even though it is set by the API on api.cverify.io.vn — without a shared parent
+                // Domain, the frontend never sees it and every mutating request fails CSRF checks.
+                Domain = string.IsNullOrWhiteSpace(envConfig.Auth.CookieDomain) ? null : envConfig.Auth.CookieDomain
             };
             context.Response.Cookies.Append("CSRF-TOKEN", csrfToken, cookieOptions);
         }
