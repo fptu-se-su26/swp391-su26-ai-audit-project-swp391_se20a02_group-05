@@ -456,7 +456,7 @@ export default function ForumPage() {
               <Card className="p-8 text-center flex flex-col items-center justify-center gap-4">
                 <HelpCircle className="w-12 h-12 text-danger" />
                 <h3 className="text-lg font-bold">Failed to load discussions</h3>
-                <p className="text-muted-foreground text-sm max-w-sm">{error}</p>
+                <p className="text-muted-foreground text-sm max-w-sm mx-auto text-center">{error}</p>
                 <Button variant="primary"   onPress={fetchTopics}>
                   Try Again
                 </Button>
@@ -465,7 +465,7 @@ export default function ForumPage() {
               <Card className="p-12 text-center flex flex-col items-center justify-center gap-4 border-dashed">
                 <MessageSquare className="w-12 h-12 text-muted-foreground/60" />
                 <h3 className="text-lg font-bold">No discussions found</h3>
-                <p className="text-muted-foreground text-sm max-w-sm">
+                <p className="text-muted-foreground text-sm max-w-sm mx-auto text-center">
                   {selectedCategoryId || selectedTag || searchQuery
                     ? "No results match your active filters. Try broadening your query or clear the filters."
                     : "No discussions have been started here yet. Be the first to start a thread!"}
