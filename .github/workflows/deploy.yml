@@ -38,7 +38,7 @@ jobs:
           port: ${{ secrets.VPS_SSH_PORT || 22 }}
           script: |
             set -e
-            cd /home/ec2-user/swp391-su26-ai-audit-project-swp391_se20a02_group-05
+            cd "$HOME/swp391-su26-ai-audit-project-swp391_se20a02_group-05"
             git pull origin CVerify-uat
             cd CVerify
             docker compose -f docker-compose.yml -f deployment/docker-compose.prod.yml \
@@ -54,7 +54,7 @@ jobs:
           key: ${{ secrets.VPS_SSH_KEY }}
           port: ${{ secrets.VPS_SSH_PORT || 22 }}
           script: |
-            bash /home/ec2-user/swp391-su26-ai-audit-project-swp391_se20a02_group-05/CVerify/deployment/scripts/health-check.sh
+            bash "$HOME/swp391-su26-ai-audit-project-swp391_se20a02_group-05/CVerify/deployment/scripts/health-check.sh"
 
       - name: Deployment summary
         run: |

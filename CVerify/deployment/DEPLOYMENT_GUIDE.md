@@ -24,49 +24,127 @@ successfully on `CVerify-uat`, plus a manual `workflow_dispatch`.
 
 ## 0b. Target VPS
 
-The existing VPS (an AWS EC2 instance, user `ec2-user`) is reused for
-`cverify.com.vn` — it's the same host `cverify.io.vn` was already deployed
-to. If the instance has no Elastic IP attached, its public IP changes on
-every stop/start; `ssh ec2-user@<IP>` failing after a reboot is the first
-thing to check (AWS Console → EC2 → Instances → confirm `running` and note
-the current public IP), not a DNS or Nginx problem.
+The AWS EC2 instance previously used for `cverify.com.vn` is gone —
+production now runs on a **Google Cloud Compute Engine VM**. Standing one up:
+
+```bash
+# Reserve a static external IP first — without this, the VM's public IP
+# changes on every stop/start, exactly like the AWS "no Elastic IP" trap.
+gcloud compute addresses create cverify-ip --region=<REGION>
+gcloud compute addresses describe cverify-ip --region=<REGION> --format='get(address)'
+
+# Create the VM (e2-medium = 2 vCPU / 4 GB RAM is enough for this stack;
+# go e2-small only if budget-constrained — Postgres + Redis + 3 app
+# containers will swap under 2 GB).
+gcloud compute instances create cverify-vps \
+  --zone=<ZONE> \
+  --machine-type=e2-medium \
+  --image-family=ubuntu-2204-lts \
+  --image-project=ubuntu-os-cloud \
+  --boot-disk-size=50GB \
+  --address=cverify-ip \
+  --tags=http-server,https-server
+
+# Firewall: allow 80/443 from anywhere, restrict 22 to your own IP(s) —
+# see section 8 for the full rule set (GCP has no inbound rules open by
+# default, unlike a default AWS Security Group in some templates).
+```
+
+SSH in with `gcloud compute ssh cverify-vps --zone=<ZONE>` the first time —
+this auto-generates an SSH keypair, pushes it to the VM's metadata, and
+creates a Linux user matching your Google account name. Whatever that
+username turns out to be, use it consistently below (this guide's examples
+assume it resolves to `$HOME` on the VM, i.e. `/home/<your-user>`) — there is
+no fixed `ec2-user`-style default account on GCP.
+
+If a VM stop/start ever changes the SSH behavior, check the static address is
+still attached (`gcloud compute addresses list`) before suspecting DNS or
+Nginx.
 
 ## 1. Server layout
 
 ```
-/home/ec2-user/swp391-su26-ai-audit-project-swp391_se20a02_group-05/   <- git root, checked out to CVerify-uat
-/home/ec2-user/swp391-su26-ai-audit-project-swp391_se20a02_group-05/CVerify/  <- app root (docker-compose.yml, deployment/) — all commands below run from here
+$HOME/swp391-su26-ai-audit-project-swp391_se20a02_group-05/   <- git root, checked out to CVerify-uat
+$HOME/swp391-su26-ai-audit-project-swp391_se20a02_group-05/CVerify/  <- app root (docker-compose.yml, deployment/) — all commands below run from here
 /opt/cverify/scripts/          <- copy of deployment/scripts/*.sh (see step 4)
 /etc/letsencrypt/live/<DOMAIN>/  <- certbot certificates
-/etc/nginx/conf.d/cverify.conf  <- deployment/nginx/cverify.conf (Amazon Linux/RHEL nginx has no sites-enabled by default; conf.d is what's actually in use)
+/etc/nginx/sites-available/cverify.conf + symlink in sites-enabled/  <- deployment/nginx/cverify.conf (Ubuntu/Debian nginx uses sites-available + sites-enabled, unlike Amazon Linux's conf.d-only layout)
 ```
 
-## 2. Prerequisites on a fresh VPS (Amazon Linux 2023 example)
+## 2. Prerequisites on a fresh VPS (Ubuntu 22.04 LTS example)
 
 ```bash
-sudo dnf install -y docker git nginx
-sudo systemctl enable --now docker nginx
-sudo usermod -aG docker ec2-user   # re-login after this
+sudo apt update
+sudo apt install -y git nginx ca-certificates curl
 
-# certbot (via pip, since it's not in the default AL2023 repos)
-sudo dnf install -y python3-pip
-sudo pip3 install certbot certbot-nginx
+# Docker Engine + the Compose plugin from Docker's own apt repo, not Ubuntu's
+# bundled `docker.io` package — Ubuntu 22.04's repo version of the Compose
+# plugin lags behind the 2.24+ this stack requires (see note below).
+curl -fsSL https://get.docker.com | sudo sh
+sudo systemctl enable --now docker nginx
+sudo usermod -aG docker "$USER"   # re-login (or `newgrp docker`) after this
+
+# certbot via snap — Ubuntu's officially recommended install path
+sudo apt install -y snapd
+sudo snap install core; sudo snap refresh core
+sudo snap install --classic certbot
+sudo ln -s /snap/bin/certbot /usr/bin/certbot
+
+# Ops Agent — ships RAM/CPU metrics and syslog/nginx/docker logs to Cloud
+# Logging & Monitoring. Matters here specifically because GCP's own
+# hypervisor-level metrics don't include in-guest RAM usage, and this stack
+# (Next.js + ASP.NET Core + FastAPI + Postgres + Redis on 4GB) is close
+# enough to the ceiling that an OOM kill is a real risk worth being alerted on.
+curl -sSO https://dl.google.com/cloudagents/add-google-cloud-ops-agent-repo.sh
+sudo bash add-google-cloud-ops-agent-repo.sh --also-run
 ```
 
 Docker Compose v2 ships as a Docker plugin (`docker compose`, no hyphen) —
 confirm with `docker compose version`. `deployment/docker-compose.prod.yml`
-uses the `!override` merge tag, which requires **Compose 2.24+**.
+uses the `!override` merge tag, which requires **Compose 2.24+**; the
+`get.docker.com` script tracks Docker's current stable release and satisfies
+this, but double-check the installed version before relying on it.
+
+## 2a. Unattended security upgrades (without auto-restarting the app)
+
+Ubuntu's automatic upgrades are worth enabling for OS security patches, but
+left at their default they can also silently upgrade and restart Docker or
+Nginx mid-day. Restrict them to the security pocket and blacklist the
+packages this stack depends on:
+
+```bash
+sudo apt install -y unattended-upgrades
+sudo dpkg-reconfigure --priority=low unattended-upgrades   # answer "Yes"
+```
+
+Then edit `/etc/apt/apt.conf.d/50unattended-upgrades` and add to the
+existing `Unattended-Upgrade::Package-Blacklist` block (create it if the
+line doesn't exist):
+
+```
+Unattended-Upgrade::Package-Blacklist {
+    "docker-ce";
+    "docker-ce-cli";
+    "containerd.io";
+    "nginx";
+};
+```
+
+Docker/Nginx security updates still need to happen — just do them manually
+(`sudo apt upgrade docker-ce nginx` etc.) during a planned maintenance
+window instead of letting cron pick the moment.
 
 ## 3. Clone and configure secrets
 
 ```bash
-git clone <REPO_URL> /home/ec2-user/swp391-su26-ai-audit-project-swp391_se20a02_group-05
-cd /home/ec2-user/swp391-su26-ai-audit-project-swp391_se20a02_group-05
+git clone <REPO_URL> "$HOME/swp391-su26-ai-audit-project-swp391_se20a02_group-05"
+cd "$HOME/swp391-su26-ai-audit-project-swp391_se20a02_group-05"
 git checkout CVerify-uat
 cd CVerify
 
 cp .env.example .env
 nano .env   # fill in every value — see .env.example for what each one does
+chmod 600 .env   # only the deploy user can read it — it holds every production secret
 ```
 
 Minimum production-specific values to set correctly in `.env`:
@@ -106,14 +184,16 @@ reverse proxy runs directly on the host, in front of Docker. Install it once:
 
 ```bash
 # HTTP-only first, so certbot's HTTP-01 challenge can complete
-sudo cp deployment/nginx/cverify.conf /etc/nginx/conf.d/cverify.conf
+sudo cp deployment/nginx/cverify.conf /etc/nginx/sites-available/cverify.conf
+sudo ln -s /etc/nginx/sites-available/cverify.conf /etc/nginx/sites-enabled/cverify.conf
+sudo rm -f /etc/nginx/sites-enabled/default   # avoid it clashing on port 80
 sudo nginx -t && sudo systemctl reload nginx
 
 sudo certbot --nginx -d <DOMAIN> -d www.<DOMAIN> -d api.<DOMAIN>
 ```
 
-Note: `certbot --nginx` rewrites `/etc/nginx/conf.d/cverify.conf` in place to
-wire in the certificate paths and add its own `# managed by Certbot`
+Note: `certbot --nginx` rewrites `/etc/nginx/sites-available/cverify.conf` in
+place to wire in the certificate paths and add its own `# managed by Certbot`
 HTTP→HTTPS redirect blocks. After the first run, the live file will no
 longer match `deployment/nginx/cverify.conf` byte-for-byte — that's expected
 and safe. Do **not** blindly overwrite the live file with a fresh copy from
@@ -145,7 +225,11 @@ challenge on port 80 (step 5) works without any Cloudflare SSL/TLS mode
 caveats. Confirm with `nslookup cverify.com.vn` — it should resolve directly
 to the VPS's own IP, not a Cloudflare edge IP.
 
-DNS records already in place (verified, do not need to be created):
+**Moving from the old AWS VPS to the new GCP VM requires repointing these
+three `A` records to the GCP static IP from step 0b** — everything else
+(MX, mail, TXT) stays untouched:
+
+DNS records already in place (update the target IP, do not need to be recreated):
 - `A cverify.com.vn`, `A www.cverify.com.vn`, `A api.cverify.com.vn` → VPS
 - `MX cverify.com.vn` (priority 10) → `mail.cverify.com.vn`
 - `A mail.cverify.com.vn`, `A mx.cverify.com.vn` → P.A's mail server
@@ -173,7 +257,7 @@ secrets to be configured — see step 6a.
 
 Manual:
 ```bash
-cd /home/ec2-user/swp391-su26-ai-audit-project-swp391_se20a02_group-05/CVerify
+cd "$HOME/swp391-su26-ai-audit-project-swp391_se20a02_group-05/CVerify"
 bash deployment/scripts/deploy.sh
 ```
 
@@ -201,9 +285,19 @@ value stays baked into the already-built image.
 ## 6a. GitHub Actions secrets for automated deploy
 
 Set these in the repository's Settings → Secrets and variables → Actions:
-- `VPS_HOST`, `VPS_USER`, `VPS_SSH_KEY` (private key with access to
-  `/home/ec2-user/swp391-su26-ai-audit-project-swp391_se20a02_group-05` on
-  the VPS), `VPS_SSH_PORT` (optional, defaults 22).
+- `VPS_HOST` — the GCP static external IP (or the domain, once DNS points at
+  it) from step 0b.
+- `VPS_USER` — the Linux username created on the VM (see step 0b; there is
+  no fixed default like AWS's `ec2-user`).
+- `VPS_SSH_KEY` — a **private key** whose matching public key is authorized
+  for `VPS_USER` on the VM. `gcloud compute ssh` manages its own keypair via
+  OS Login/metadata by default, which `appleboy/ssh-action` can't use
+  directly — generate a dedicated deploy keypair instead
+  (`ssh-keygen -t ed25519 -f deploy_key -N ""`), add `deploy_key.pub` to the
+  VM via `gcloud compute instances add-metadata cverify-vps --zone=<ZONE>
+  --metadata-from-file ssh-keys=<(echo "$VPS_USER:$(cat deploy_key.pub)")`,
+  and put `deploy_key`'s contents in the `VPS_SSH_KEY` secret.
+- `VPS_SSH_PORT` (optional, defaults 22).
 
 No application secret is ever passed through GitHub — the real `.env` lives
 only on the VPS; the deploy step just `git pull`s and rebuilds there.
@@ -226,10 +320,25 @@ regression check for the `localhost`-baked-into-frontend class of bug; a
 green `docker compose ps` does not catch it, since all containers report
 healthy independent of what URL the frontend was built with.
 
-## 8. Security Group / firewall
+## 8. GCP firewall rules
+
+GCP VMs have no inbound ports open by default — create explicit rules,
+scoped by the network tags set in step 0b (`http-server`/`https-server`):
+
+```bash
+gcloud compute firewall-rules create cverify-allow-http-https \
+  --allow=tcp:80,tcp:443 \
+  --target-tags=http-server,https-server \
+  --source-ranges=0.0.0.0/0
+
+gcloud compute firewall-rules create cverify-allow-ssh \
+  --allow=tcp:22 \
+  --target-tags=http-server,https-server \
+  --source-ranges=<YOUR_IP>/32   # restrict to known IPs, not 0.0.0.0/0
+```
 
 Only these ports should be reachable from the public internet:
-- `22` (SSH — restrict to known IPs, not `0.0.0.0/0`)
+- `22` (SSH — restricted above)
 - `80`, `443` (Nginx)
 
 `postgres`, `redis`, `cverify-ai`, `cverify-core` bind to `127.0.0.1` in
@@ -238,7 +347,7 @@ other containers/the host, never directly from the internet.
 `cverify-client` is bound to `127.0.0.1` too once
 `deployment/docker-compose.prod.yml` is applied (see step 6) — if you can
 still reach port `3000` from outside the VPS after a prod deploy, something
-is wrong; do not "fix" that by opening port 3000 in the Security Group, fix
+is wrong; do not "fix" that by opening port 3000 in a firewall rule, fix
 the compose/nginx setup instead.
 
 ## 9. Routine operations
@@ -247,9 +356,33 @@ the compose/nginx setup instead.
 |---|---|---|
 | Backup DB | `bash /opt/cverify/scripts/backup-db.sh` | Manual only |
 | Restore DB | `bash /opt/cverify/scripts/restore-db.sh <backup-file>` | Manual only (destructive) |
-| Clean up stale analysis workspaces | `bash deployment/scripts/cleanup-workspaces.sh` | Yes — `ec2-user` crontab, hourly (`:05`), logs to `~/cron-logs/cleanup-workspaces.log` |
+| Clean up stale analysis workspaces | `bash deployment/scripts/cleanup-workspaces.sh` | Yes — the deploy user's crontab, hourly (`:05`), logs to `~/cron-logs/cleanup-workspaces.log` |
 | Renew SSL cert | `bash deployment/scripts/renew-ssl.sh` | Yes — `certbot-renew.timer` (systemd, twice daily at 03:00/15:00 UTC ±30min) running `certbot-renew.service`, which calls this script directly from the git checkout |
 | Redeploy after a `git pull` | `bash deployment/scripts/deploy.sh` (does the pull itself) | Manual, or via `.github/workflows/deploy.yml` on push to `CVerify-uat` |
+| Whole-disk snapshot | — | Yes, via a GCE snapshot schedule (see below) |
+
+## 9a. Disk snapshot schedule (system-level backup, complements DB backup)
+
+`bash backup-db.sh` only covers Postgres data. For the OS/Docker/Nginx
+config layer, attach a snapshot schedule to the boot disk instead of
+scripting it by hand:
+
+```bash
+gcloud compute resource-policies create snapshot-schedule cverify-daily-snapshot \
+  --region="$REGION" \
+  --max-retention-days=10 \
+  --daily-schedule \
+  --start-time=18:00   # UTC — pick an off-peak hour for cverify.com.vn's traffic
+
+gcloud compute disks add-resource-policies cverify-vps \
+  --zone="$ZONE" \
+  --resource-policies=cverify-daily-snapshot
+```
+
+This is a crash-consistent snapshot of the whole disk, not a database-aware
+backup — it's for recovering from OS/config damage (bad `apt upgrade`,
+accidental `rm`, disk corruption), not as a substitute for `backup-db.sh`'s
+Postgres dumps. Keep both.
 
 Do **not** also add a cron entry for `renew-ssl.sh` — `certbot-renew.timer`
 already owns that job, and running both concurrently causes a "Another
@@ -263,4 +396,19 @@ before adding anything new here).
   ever need to change, re-check that DNSSEC signing isn't left in a broken
   state afterward (P.A's panel handles re-signing automatically in normal
   use, but this hasn't been stress-tested against manual record edits).
-- Backup and restore are manual-only — no scheduled backup job exists yet.
+- `backup-db.sh` (Postgres dump) is still manual-only — only the disk-level
+  snapshot (§9a) runs on a schedule. If this needs to be automated too, add
+  a cron entry calling `backup-db.sh` and, optionally, `gcloud storage cp`
+  the resulting `.sql.gz` to a GCS bucket (`Nearline`/`Coldline` class) so
+  backups survive a lost/corrupted boot disk, not just a lost database.
+- **Deliberately deferred** (evaluated, not adopted — reconsider only if the
+  team/infra grows past a single VM):
+  - **OS Login** for SSH access control — would require standing up a
+    dedicated service account for `appleboy/ssh-action` (SSH username
+    becomes `sa_<id>`, not a human-readable one) to keep automated deploys
+    working. Not worth the added CI complexity for one VM with
+    IP-restricted SSH already in place (§8).
+  - **Secret Manager** for `.env` values — real upside (no plaintext secrets
+    on disk) but needs a service account plus a fetch-secrets-at-deploy
+    step. `chmod 600 .env` (already done in §3) covers the same-VM-user
+    threat model cheaply for now.

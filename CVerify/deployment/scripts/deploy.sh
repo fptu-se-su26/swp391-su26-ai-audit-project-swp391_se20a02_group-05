@@ -7,7 +7,7 @@
 # ==============================================================================
 set -euo pipefail
 
-COMPOSE_DIR="${COMPOSE_DIR:-/home/ec2-user/swp391-su26-ai-audit-project-swp391_se20a02_group-05/CVerify}"
+COMPOSE_DIR="${COMPOSE_DIR:-$HOME/swp391-su26-ai-audit-project-swp391_se20a02_group-05/CVerify}"
 cd "$COMPOSE_DIR"
 
 echo "[deploy] Pulling latest code..."
