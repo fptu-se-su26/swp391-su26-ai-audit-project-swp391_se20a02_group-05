@@ -57,6 +57,9 @@ jobs:
           username: ${{ secrets.VPS_USER }}
           key: ${{ secrets.VPS_SSH_KEY }}
           port: ${{ secrets.VPS_SSH_PORT || 22 }}
+          command_timeout: 30m # a cache-busting change to a COPY'd file forces a full,
+          # uncached image rebuild (dotnet publish + npm run build from scratch), which
+          # can exceed the action's 10m default — 30m covers a cold build with headroom.
           script: |
             set -e
             echo "[deploy] Deploying branch '${{ github.ref_name }}' (commit ${{ github.sha }})"
