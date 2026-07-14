@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # ==============================================================================
 # CVerify — Manual deploy script (VPS-side)
-# Mirrors what .github/workflows/deploy.yml does over SSH, for manual use.
+# Mirrors what .github/workflows/deploy-vps.yml does over SSH, for manual use.
 # Run from the repository's CVerify/ subdirectory (see DEPLOYMENT_GUIDE.md for
 # the actual directory layout on the VPS).
 # ==============================================================================
@@ -9,7 +9,7 @@ set -euo pipefail
 
 COMPOSE_DIR="${COMPOSE_DIR:-$HOME/swp391-su26-ai-audit-project-swp391_se20a02_group-05/CVerify}"
 # Which branch to deploy. Mirrors the DEPLOY_BRANCH repo variable used by
-# .github/workflows/deploy.yml; defaults to CVerify-uat (current production
+# .github/workflows/deploy-vps.yml; defaults to CVerify-uat (current production
 # branch). Override for a manual deploy of a different branch:
 #   DEPLOY_BRANCH=main bash deployment/scripts/deploy.sh
 DEPLOY_BRANCH="${DEPLOY_BRANCH:-CVerify-uat}"

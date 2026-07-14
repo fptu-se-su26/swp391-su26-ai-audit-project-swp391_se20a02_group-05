@@ -1,7 +1,7 @@
 # CVerify — Production Deployment Guide
 
 Referenced by [`deployment/scripts/deploy.sh`](scripts/deploy.sh) and the
-repository-root `.github/workflows/deploy.yml`. This is the single source of
+repository-root `.github/workflows/deploy-vps.yml`. This is the single source of
 truth for deploying CVerify to a VPS — if a step here contradicts tribal
 knowledge or an old runbook, this file wins.
 
@@ -18,7 +18,7 @@ workflow YAML at the true root, not inside `CVerify/`.
 production deploys are driven off `CVerify-uat` directly, not `main` — keep
 pushing deploy-bound work to `CVerify-uat`.
 
-`.github/workflows/deploy.yml` triggers on **push to `CVerify-uat`** (plus a
+`.github/workflows/deploy-vps.yml` triggers on **push to `CVerify-uat`** (plus a
 manual `workflow_dispatch`). The branch it deploys is the single
 `on.push.branches` list in that file; the deploy step pulls
 `${{ github.ref_name }}`, so it follows the trigger automatically. See §6 for
@@ -28,7 +28,7 @@ how to cut over to `main` later — a one-line change. **Leave it as
 > **Note (why the trigger is `push`, not `workflow_run`):** an earlier version
 > used `on: workflow_run` to deploy only after CI passed. That never fired —
 > `workflow_run` and `workflow_dispatch` only activate when the workflow file
-> is on the repo's **default branch** (`main`), but `deploy.yml` lives on
+> is on the repo's **default branch** (`main`), but `deploy-vps.yml` lives on
 > `CVerify-uat`. `push` has no such restriction, so it actually runs. CI still
 > runs in parallel on the same push; deploying strictly *after* CI would mean
 > folding this job into `ci.yml` as a gated final stage (not done — keeps the
@@ -262,12 +262,12 @@ repurposed for something else later; nothing in this repo depends on it.
 ## 6. Deploy
 
 Automated: push to `CVerify-uat` (or merge a PR into it) —
-`.github/workflows/deploy.yml` fires on that push, SSHes into the VPS, and runs
+`.github/workflows/deploy-vps.yml` fires on that push, SSHes into the VPS, and runs
 the equivalent of step 6's manual command. Requires the `VPS_HOST`, `VPS_USER`,
 `VPS_SSH_KEY` (and optionally `VPS_SSH_PORT`) repo secrets — see step 6a.
 
 **Which branch deploys — the single switch.** The `on.push.branches` list in
-`deploy.yml` is the one place that controls it:
+`deploy-vps.yml` is the one place that controls it:
 
 ```yaml
 on:
@@ -389,7 +389,7 @@ the compose/nginx setup instead.
 | Restore MinIO | `bash /opt/cverify/scripts/restore-minio.sh <backup-file>` | Manual only (destructive) |
 | Clean up stale analysis workspaces | `bash deployment/scripts/cleanup-workspaces.sh` | Yes — the deploy user's crontab, hourly (`:05`), logs to `~/cron-logs/cleanup-workspaces.log` |
 | Renew SSL cert | `bash deployment/scripts/renew-ssl.sh` | Yes — `certbot-renew.timer` (systemd, twice daily at 03:00/15:00 UTC ±30min) running `certbot-renew.service`, which calls this script directly from the git checkout |
-| Redeploy after a `git pull` | `bash deployment/scripts/deploy.sh` (does the pull itself) | Manual, or via `.github/workflows/deploy.yml` on push to the deploy branch (see §6) |
+| Redeploy after a `git pull` | `bash deployment/scripts/deploy.sh` (does the pull itself) | Manual, or via `.github/workflows/deploy-vps.yml` on push to the deploy branch (see §6) |
 | Whole-disk snapshot | — | Yes, via a GCE snapshot schedule (see below) |
 
 ## 9b. Automated daily backup (PostgreSQL + MinIO)
