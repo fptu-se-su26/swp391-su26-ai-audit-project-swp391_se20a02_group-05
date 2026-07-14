@@ -443,6 +443,24 @@ public class AuthController : ControllerBase
         }
     }
 
+    /// <summary>
+    /// Cookie options for the OAuth CSRF state cookie. The Domain must match the one used for
+    /// access_token: /auth/connect is reached through the frontend host while the provider sends
+    /// the user back to BACKEND_URL's host, so a host-only cookie never survives the round trip.
+    /// </summary>
+    private static CookieOptions BuildOAuthStateCookieOptions(EnvConfiguration envConfig)
+    {
+        var isDevelopment = string.Equals(Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT"), "Development", StringComparison.OrdinalIgnoreCase);
+        return new CookieOptions
+        {
+            HttpOnly = true,
+            Secure = !isDevelopment,
+            SameSite = SameSiteMode.Lax,
+            Path = "/",
+            Domain = string.IsNullOrWhiteSpace(envConfig.Auth.CookieDomain) ? null : envConfig.Auth.CookieDomain
+        };
+    }
+
     [HttpGet("connect/{providerName}")]
     [Authorize]
     public async Task<IActionResult> ConnectProvider(string providerName)
@@ -473,14 +491,8 @@ public class AuthController : ControllerBase
         }
 
         var state = Guid.NewGuid().ToString("N");
-        var isDevelopment = string.Equals(Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT"), "Development", StringComparison.OrdinalIgnoreCase);
-        var cookieOptions = new CookieOptions
-        {
-            HttpOnly = true,
-            Secure = !isDevelopment,
-            SameSite = SameSiteMode.Lax,
-            Expires = DateTimeOffset.UtcNow.AddMinutes(5)
-        };
+        var cookieOptions = BuildOAuthStateCookieOptions(envConfig);
+        cookieOptions.Expires = DateTimeOffset.UtcNow.AddMinutes(5);
         Response.Cookies.Append($"oauth_state_{canonicalName}", state, cookieOptions);
 
         var baseUri = string.IsNullOrEmpty(envConfig.Auth.BackendUrl)
@@ -540,7 +552,7 @@ public class AuthController : ControllerBase
             return Redirect($"{envConfig.Auth.FrontendUrl}/settings?tab=account&error=state_mismatch");
         }
 
-        Response.Cookies.Delete($"oauth_state_{canonicalName}");
+        Response.Cookies.Delete($"oauth_state_{canonicalName}", BuildOAuthStateCookieOptions(envConfig));
 
         var userIdStr = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
         if (string.IsNullOrEmpty(userIdStr) || !Guid.TryParse(userIdStr, out var userId))
