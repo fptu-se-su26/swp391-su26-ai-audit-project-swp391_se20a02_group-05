@@ -1,5 +1,6 @@
 import axios, { type AxiosInstance, type InternalAxiosRequestConfig } from 'axios';
 import { getCookie } from './cookies';
+import { installGetDeduplication } from './dedupe';
 import { AUTH_KEYS } from '@/infrastructure/config/constants';
 
 /**
@@ -25,6 +26,8 @@ export const axiosClient: AxiosInstance = axios.create({
   },
   withCredentials: true,
 });
+
+installGetDeduplication(axiosClient);
 
 // CSRF Request Interceptor — injects anti-forgery token for state-mutating methods
 axiosClient.interceptors.request.use(
