@@ -1,12 +1,30 @@
 # ==============================================================================
 # CVerify — Deploy to VPS
 # ==============================================================================
-# Runs only after "CVerify Core Delivery Pipeline" (.github/workflows/ci.yml)
-# has finished successfully on `CVerify-uat` — this workflow does not
-# rebuild/retest anything itself, it just ships what CI already validated.
+# Triggers on every push to the deployment branch (CVerify-uat) and SSHes into
+# the VPS to update the checkout, rebuild the Docker stack, and restart it.
 # See CVerify/deployment/DEPLOYMENT_GUIDE.md for the full runbook.
 #
-# Secrets required (Settings -> Secrets and variables -> Actions):
+# WHY `push` AND NOT `workflow_run`:
+#   The previous version triggered via `workflow_run` after CI. That NEVER
+#   fired: `workflow_run` (and `workflow_dispatch`) only activate when the
+#   workflow file lives on the repo's DEFAULT branch (main), but this file
+#   lives on CVerify-uat. A `push` trigger has no such restriction — it runs
+#   using the workflow file on the branch that was pushed — so it works from
+#   CVerify-uat directly. (Trade-off: this deploys on push regardless of the CI
+#   result; CI still runs in parallel on the same push. If you later want to
+#   gate deploy on CI passing, the robust way is to move this job into ci.yml
+#   as a final `needs:`-gated stage once the pipeline lives on the default
+#   branch — deliberately not done now to keep the deploy path simple.)
+#
+# WHICH BRANCH DEPLOYS — single switch:
+#   The `on.push.branches` list below is the ONE place to change. The deploy
+#   step pulls `${{ github.ref_name }}` (the branch that was actually pushed),
+#   so it follows automatically — no second value to keep in sync. To cut the
+#   production deploy over from CVerify-uat to main once everything is merged,
+#   change `[CVerify-uat]` to `[main]` here. Leave it as CVerify-uat for now.
+#
+# Secrets required (Settings -> Secrets and variables -> Actions -> Secrets):
 #   VPS_HOST, VPS_USER, VPS_SSH_KEY, and optionally VPS_SSH_PORT (default 22).
 # No application secret is ever passed through GitHub — the real .env lives
 # only on the VPS; the deploy step just `git pull`s and rebuilds there.
@@ -14,20 +32,23 @@
 name: Deploy to VPS
 
 on:
-  workflow_run:
-    workflows: ["CVerify Core Delivery Pipeline"]
-    branches: [CVerify-uat]
-    types: [completed]
-  workflow_dispatch: {}
+  push:
+    branches: [CVerify-uat] # <-- single switch: change to [main] to cut over
+  workflow_dispatch: {} # manual re-deploy (usable once this file is on the default branch)
 
 permissions:
   contents: read
+
+# Never let two deploys run at once (e.g. two quick pushes). A running deploy
+# finishes; the next one queues behind it instead of racing on the same VPS.
+concurrency:
+  group: deploy-vps
+  cancel-in-progress: false
 
 jobs:
   deploy:
     name: Deploy via SSH
     runs-on: ubuntu-latest
-    if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
     steps:
       - name: Deploy via SSH
         uses: appleboy/ssh-action@2ead5e36573f08b82fbfce1504f1a4b05a647c6f # v1.2.2
@@ -38,8 +59,11 @@ jobs:
           port: ${{ secrets.VPS_SSH_PORT || 22 }}
           script: |
             set -e
+            echo "[deploy] Deploying branch '${{ github.ref_name }}' (commit ${{ github.sha }})"
             cd "$HOME/swp391-su26-ai-audit-project-swp391_se20a02_group-05"
-            git pull origin CVerify-uat
+            git fetch origin ${{ github.ref_name }}
+            git checkout ${{ github.ref_name }}
+            git pull origin ${{ github.ref_name }}
             cd CVerify
             docker compose -f docker-compose.yml -f deployment/docker-compose.prod.yml \
               --env-file .env up -d --build --remove-orphans
@@ -57,9 +81,11 @@ jobs:
             bash "$HOME/swp391-su26-ai-audit-project-swp391_se20a02_group-05/CVerify/deployment/scripts/health-check.sh"
 
       - name: Deployment summary
+        if: always()
         run: |
           echo "## Deployment Summary" >> "$GITHUB_STEP_SUMMARY"
-          echo "- Branch: CVerify-uat" >> "$GITHUB_STEP_SUMMARY"
-          echo "- Commit: ${{ github.event.workflow_run.head_sha || github.sha }}" >> "$GITHUB_STEP_SUMMARY"
-          echo "- Triggered by: ${{ github.actor }}" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Result: ${{ job.status }}" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Branch: ${{ github.ref_name }}" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Commit: ${{ github.sha }}" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Triggered by: ${{ github.actor }} (${{ github.event_name }})" >> "$GITHUB_STEP_SUMMARY"
           echo "- Target: ${{ secrets.VPS_HOST }}" >> "$GITHUB_STEP_SUMMARY"

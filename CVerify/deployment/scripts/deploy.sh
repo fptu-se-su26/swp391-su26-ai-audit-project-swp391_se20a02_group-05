@@ -8,10 +8,15 @@
 set -euo pipefail
 
 COMPOSE_DIR="${COMPOSE_DIR:-$HOME/swp391-su26-ai-audit-project-swp391_se20a02_group-05/CVerify}"
+# Which branch to deploy. Mirrors the DEPLOY_BRANCH repo variable used by
+# .github/workflows/deploy.yml; defaults to CVerify-uat (current production
+# branch). Override for a manual deploy of a different branch:
+#   DEPLOY_BRANCH=main bash deployment/scripts/deploy.sh
+DEPLOY_BRANCH="${DEPLOY_BRANCH:-CVerify-uat}"
 cd "$COMPOSE_DIR"
 
-echo "[deploy] Pulling latest code..."
-git pull origin CVerify-uat
+echo "[deploy] Pulling latest code (branch: ${DEPLOY_BRANCH})..."
+git pull origin "$DEPLOY_BRANCH"
 
 echo "[deploy] Building and starting containers..."
 docker compose -f docker-compose.yml -f deployment/docker-compose.prod.yml \

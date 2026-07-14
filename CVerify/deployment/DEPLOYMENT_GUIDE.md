@@ -18,9 +18,21 @@ workflow YAML at the true root, not inside `CVerify/`.
 production deploys are driven off `CVerify-uat` directly, not `main` — keep
 pushing deploy-bound work to `CVerify-uat`.
 
-`.github/workflows/deploy.yml` triggers via `workflow_run` after
-`.github/workflows/ci.yml` ("CVerify Core Delivery Pipeline") completes
-successfully on `CVerify-uat`, plus a manual `workflow_dispatch`.
+`.github/workflows/deploy.yml` triggers on **push to `CVerify-uat`** (plus a
+manual `workflow_dispatch`). The branch it deploys is the single
+`on.push.branches` list in that file; the deploy step pulls
+`${{ github.ref_name }}`, so it follows the trigger automatically. See §6 for
+how to cut over to `main` later — a one-line change. **Leave it as
+`CVerify-uat` for now.**
+
+> **Note (why the trigger is `push`, not `workflow_run`):** an earlier version
+> used `on: workflow_run` to deploy only after CI passed. That never fired —
+> `workflow_run` and `workflow_dispatch` only activate when the workflow file
+> is on the repo's **default branch** (`main`), but `deploy.yml` lives on
+> `CVerify-uat`. `push` has no such restriction, so it actually runs. CI still
+> runs in parallel on the same push; deploying strictly *after* CI would mean
+> folding this job into `ci.yml` as a gated final stage (not done — keeps the
+> deploy path simple).
 
 ## 0b. Target VPS
 
@@ -249,11 +261,27 @@ repurposed for something else later; nothing in this repo depends on it.
 
 ## 6. Deploy
 
-Automated: push to `CVerify-uat` (or merge a PR into it) — once CI
-(`.github/workflows/ci.yml`) passes, `.github/workflows/deploy.yml` SSHes into
-the VPS and runs the equivalent of step 6's manual command. Requires the
-`VPS_HOST`, `VPS_USER`, `VPS_SSH_KEY` (and optionally `VPS_SSH_PORT`) repo
-secrets to be configured — see step 6a.
+Automated: push to `CVerify-uat` (or merge a PR into it) —
+`.github/workflows/deploy.yml` fires on that push, SSHes into the VPS, and runs
+the equivalent of step 6's manual command. Requires the `VPS_HOST`, `VPS_USER`,
+`VPS_SSH_KEY` (and optionally `VPS_SSH_PORT`) repo secrets — see step 6a.
+
+**Which branch deploys — the single switch.** The `on.push.branches` list in
+`deploy.yml` is the one place that controls it:
+
+```yaml
+on:
+  push:
+    branches: [CVerify-uat]   # <-- change to [main] to cut over
+```
+
+The deploy step pulls `${{ github.ref_name }}` (the pushed branch), so it
+follows this list automatically — there is no second value to keep in sync.
+When everything is merged into `main` and the team is ready, change
+`[CVerify-uat]` to `[main]` and commit. The manual `deploy.sh` takes an
+independent `DEPLOY_BRANCH` env override (defaults to `CVerify-uat`):
+`DEPLOY_BRANCH=main bash deployment/scripts/deploy.sh`. **Do not change this
+now** — production still deploys from `CVerify-uat`.
 
 Manual:
 ```bash
@@ -354,12 +382,70 @@ the compose/nginx setup instead.
 
 | Task | Command | Automated? |
 |---|---|---|
-| Backup DB | `bash /opt/cverify/scripts/backup-db.sh` | Manual only |
+| Backup DB + MinIO (both) | `bash /opt/cverify/scripts/backup-all.sh` | **Yes — daily (see §9b)** |
+| Backup DB only | `bash /opt/cverify/scripts/backup-db.sh` | Yes, as part of `backup-all.sh` (§9b) |
+| Backup MinIO only | `bash /opt/cverify/scripts/backup-minio.sh` | Yes, as part of `backup-all.sh` (§9b) |
 | Restore DB | `bash /opt/cverify/scripts/restore-db.sh <backup-file>` | Manual only (destructive) |
+| Restore MinIO | `bash /opt/cverify/scripts/restore-minio.sh <backup-file>` | Manual only (destructive) |
 | Clean up stale analysis workspaces | `bash deployment/scripts/cleanup-workspaces.sh` | Yes — the deploy user's crontab, hourly (`:05`), logs to `~/cron-logs/cleanup-workspaces.log` |
 | Renew SSL cert | `bash deployment/scripts/renew-ssl.sh` | Yes — `certbot-renew.timer` (systemd, twice daily at 03:00/15:00 UTC ±30min) running `certbot-renew.service`, which calls this script directly from the git checkout |
-| Redeploy after a `git pull` | `bash deployment/scripts/deploy.sh` (does the pull itself) | Manual, or via `.github/workflows/deploy.yml` on push to `CVerify-uat` |
+| Redeploy after a `git pull` | `bash deployment/scripts/deploy.sh` (does the pull itself) | Manual, or via `.github/workflows/deploy.yml` on push to the deploy branch (see §6) |
 | Whole-disk snapshot | — | Yes, via a GCE snapshot schedule (see below) |
+
+## 9b. Automated daily backup (PostgreSQL + MinIO)
+
+`deployment/scripts/backup-all.sh` is the single scheduled entry point. It runs
+`backup-db.sh` (Postgres `pg_dump` → `~/backups/postgres/cverify_*.sql.gz`) and
+`backup-minio.sh` (a `tar czf` of the `minio_data` volume →
+`~/backups/minio/cverify_minio_*.tar.gz`), each with **14-day retention**
+(override with `RETENTION_DAYS`). It attempts both even if one fails, and exits
+non-zero if either failed so the scheduler records a failed run.
+
+MinIO is backed up by tarring its `/data` volume from inside a throwaway
+`alpine` container (`--volumes-from cverify-minio`) — no dependency on the
+minimal `minio/minio` image having `tar`/`sh`, and no hard-coded volume name.
+This requires `deployment/docker-compose.prod.yml` to be applied (it defines the
+`minio` service); a base-only stack has no MinIO and `backup-minio.sh` will exit
+with a clear error.
+
+Install the scripts once (same copy step as §4 — re-run it after pulling this
+change so the new scripts land in `/opt/cverify/scripts`):
+
+```bash
+cp deployment/scripts/*.sh /opt/cverify/scripts/
+chmod +x /opt/cverify/scripts/*.sh
+```
+
+**Option A — cron (simplest; matches the cleanup-workspaces pattern).** As the
+deploy user (the one in the `docker` group, whose `$HOME` holds the backups):
+
+```bash
+mkdir -p "$HOME/cron-logs"
+( crontab -l 2>/dev/null; \
+  echo '15 2 * * * /usr/bin/env bash /opt/cverify/scripts/backup-all.sh >> $HOME/cron-logs/backup.log 2>&1' \
+) | crontab -
+crontab -l | grep backup-all   # confirm it's installed
+```
+
+**Option B — systemd timer (parallels `certbot-renew.timer`).** Edit
+`deployment/systemd/cverify-backup.service` first and replace `YOUR_DEPLOY_USER`
+with the deploy user, then:
+
+```bash
+sudo cp deployment/systemd/cverify-backup.service deployment/systemd/cverify-backup.timer /etc/systemd/system/
+sudo systemctl daemon-reload
+sudo systemctl enable --now cverify-backup.timer
+systemctl list-timers | grep cverify-backup   # confirm next run time
+```
+
+Use **one** of the two, not both. Both fire ~02:15 UTC daily — pick an off-peak
+hour for `cverify.com.vn`'s traffic. This complements, and does not replace, the
+whole-disk GCE snapshot in §9a: the snapshot recovers OS/config damage, these
+dumps recover application data (and restore into a fresh DB/MinIO cleanly).
+
+Restore is manual and destructive — see the §9 table:
+`restore-db.sh <file.sql.gz>` and `restore-minio.sh <file.tar.gz>`, each with an
+interactive confirmation prompt.
 
 ## 9a. Disk snapshot schedule (system-level backup, complements DB backup)
 
@@ -396,11 +482,14 @@ before adding anything new here).
   ever need to change, re-check that DNSSEC signing isn't left in a broken
   state afterward (P.A's panel handles re-signing automatically in normal
   use, but this hasn't been stress-tested against manual record edits).
-- `backup-db.sh` (Postgres dump) is still manual-only — only the disk-level
-  snapshot (§9a) runs on a schedule. If this needs to be automated too, add
-  a cron entry calling `backup-db.sh` and, optionally, `gcloud storage cp`
-  the resulting `.sql.gz` to a GCS bucket (`Nearline`/`Coldline` class) so
-  backups survive a lost/corrupted boot disk, not just a lost database.
+- Application-data backup (Postgres **and** MinIO) now runs daily via
+  `backup-all.sh` (§9b) — no longer manual-only. It stores backups **locally on
+  the VPS** (`~/backups/`), so they share fate with the boot disk. The §9a
+  whole-disk GCE snapshot is the current off-box safety net. If you want the
+  `.sql.gz`/`.tar.gz` dumps themselves off-box too, add a `gcloud storage cp`
+  of `~/backups/*` to a GCS bucket (`Nearline`/`Coldline`) after the backup —
+  deliberately left out for now to avoid needing a service account + bucket
+  (out of the "keep it simple, local backups" scope).
 - **Deliberately deferred** (evaluated, not adopted — reconsider only if the
   team/infra grows past a single VM):
   - **OS Login** for SSH access control — would require standing up a

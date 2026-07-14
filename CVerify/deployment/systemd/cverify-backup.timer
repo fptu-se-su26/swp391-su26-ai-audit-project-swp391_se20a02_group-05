@@ -1,0 +1,18 @@
+# ==============================================================================
+# CVerify — daily backup timer (pairs with cverify-backup.service)
+# Fires once a day at ~02:15 UTC. Persistent=true means a backup missed while
+# the VPS was powered off runs on next boot. RandomizedDelaySec spreads load
+# off the exact minute. Adjust OnCalendar to an off-peak hour for your traffic.
+#   Check status: systemctl list-timers | grep cverify-backup
+# ==============================================================================
+[Unit]
+Description=Run CVerify daily backup
+
+[Timer]
+OnCalendar=*-*-* 02:15:00 UTC
+Persistent=true
+RandomizedDelaySec=1800
+Unit=cverify-backup.service
+
+[Install]
+WantedBy=timers.target
