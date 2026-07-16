@@ -14,25 +14,48 @@ workflow YAML at the true root, not inside `CVerify/`.
 
 ## 0. Which branch is production?
 
-**`CVerify-uat`.** `main` had `CVerify-uat` merged into it via PR #102, but
-production deploys are driven off `CVerify-uat` directly, not `main` — keep
-pushing deploy-bound work to `CVerify-uat`.
+**`CVerify-Deployment`.** `CVerify-uat` is now a regular development branch —
+anyone can push to it directly without triggering a production deploy.
+`CVerify-Deployment` is the only branch whose push triggers
+`deploy-vps.yml`. To actually ship what's on `CVerify-uat`, merge or
+fast-forward it into `CVerify-Deployment` (a normal PR, or
+`git push origin CVerify-uat:CVerify-Deployment` once it's ready) — that push
+is what deploys.
 
-`.github/workflows/deploy-vps.yml` triggers on **push to `CVerify-uat`** (plus a
-manual `workflow_dispatch`). The branch it deploys is the single
+(Earlier, `CVerify-uat` itself was the deploy branch. That changed because
+having day-to-day development pushes auto-deploy to production made it
+impossible for more than one person to work on `CVerify-uat` without
+accidentally shipping half-finished work — see the git history of this file
+and of `.github/workflows/deploy-vps.yml` around the cutover commit for the
+old setup.)
+
+`main` had `CVerify-uat` merged into it via PR #102, but production deploys
+are **not** driven off `main` — see §6 for how to cut over to `main` later if
+the team wants that eventually (a one-line change). **Leave it as
+`CVerify-Deployment` for now.**
+
+`.github/workflows/deploy-vps.yml` triggers on **push to `CVerify-Deployment`**
+(plus a manual `workflow_dispatch`). The branch it deploys is the single
 `on.push.branches` list in that file; the deploy step pulls
-`${{ github.ref_name }}`, so it follows the trigger automatically. See §6 for
-how to cut over to `main` later — a one-line change. **Leave it as
-`CVerify-uat` for now.**
+`${{ github.ref_name }}`, so it follows the trigger automatically.
+
+> **Two copies of this file must stay in sync.** Push-triggered workflows run
+> using the copy of the workflow file that lives on the branch that was
+> pushed — not the copy on `main` or any other branch. `CVerify-uat`'s own
+> copy of `deploy-vps.yml` deliberately carries the same
+> `branches: [CVerify-Deployment]` value, so a push to `CVerify-uat` evaluates
+> *its own* copy, sees `CVerify-uat` isn't in the list, and does nothing. If
+> you ever edit the `on.push.branches` switch, edit it identically on both
+> branches — see the comment block at the top of `deploy-vps.yml` itself.
 
 > **Note (why the trigger is `push`, not `workflow_run`):** an earlier version
 > used `on: workflow_run` to deploy only after CI passed. That never fired —
 > `workflow_run` and `workflow_dispatch` only activate when the workflow file
 > is on the repo's **default branch** (`main`), but `deploy-vps.yml` lives on
-> `CVerify-uat`. `push` has no such restriction, so it actually runs. CI still
-> runs in parallel on the same push; deploying strictly *after* CI would mean
-> folding this job into `ci.yml` as a gated final stage (not done — keeps the
-> deploy path simple).
+> `CVerify-Deployment`. `push` has no such restriction, so it actually runs.
+> CI still runs in parallel on the same push; deploying strictly *after* CI
+> would mean folding this job into `ci.yml` as a gated final stage (not done —
+> keeps the deploy path simple).
 
 ## 0b. Target VPS
 
@@ -76,7 +99,7 @@ Nginx.
 ## 1. Server layout
 
 ```
-$HOME/swp391-su26-ai-audit-project-swp391_se20a02_group-05/   <- git root, checked out to CVerify-uat
+$HOME/swp391-su26-ai-audit-project-swp391_se20a02_group-05/   <- git root, checked out to CVerify-Deployment
 $HOME/swp391-su26-ai-audit-project-swp391_se20a02_group-05/CVerify/  <- app root (docker-compose.yml, deployment/) — all commands below run from here
 /opt/cverify/scripts/          <- copy of deployment/scripts/*.sh (see step 4)
 /etc/letsencrypt/live/<DOMAIN>/  <- certbot certificates
@@ -102,13 +125,19 @@ sudo snap install core; sudo snap refresh core
 sudo snap install --classic certbot
 sudo ln -s /snap/bin/certbot /usr/bin/certbot
 
-# Ops Agent — ships RAM/CPU metrics and syslog/nginx/docker logs to Cloud
-# Logging & Monitoring. Matters here specifically because GCP's own
+# Ops Agent — ships RAM/CPU/disk metrics to Cloud Monitoring and syslog to
+# Cloud Logging out of the box. Matters here specifically because GCP's own
 # hypervisor-level metrics don't include in-guest RAM usage, and this stack
 # (Next.js + ASP.NET Core + FastAPI + Postgres + Redis on 4GB) is close
 # enough to the ceiling that an OOM kill is a real risk worth being alerted on.
 curl -sSO https://dl.google.com/cloudagents/add-google-cloud-ops-agent-repo.sh
 sudo bash add-google-cloud-ops-agent-repo.sh --also-run
+
+# nginx and Docker container logs are NOT collected by the agent's defaults —
+# that requires the custom receivers in deployment/ops-agent/config.yaml.
+# Install it and restart the agent to pick it up:
+sudo cp deployment/ops-agent/config.yaml /etc/google-cloud-ops-agent/config.yaml
+sudo systemctl restart google-cloud-ops-agent
 ```
 
 Docker Compose v2 ships as a Docker plugin (`docker compose`, no hyphen) —
@@ -151,7 +180,7 @@ window instead of letting cron pick the moment.
 ```bash
 git clone <REPO_URL> "$HOME/swp391-su26-ai-audit-project-swp391_se20a02_group-05"
 cd "$HOME/swp391-su26-ai-audit-project-swp391_se20a02_group-05"
-git checkout CVerify-uat
+git checkout CVerify-Deployment
 cd CVerify
 
 cp .env.example .env
@@ -261,27 +290,33 @@ repurposed for something else later; nothing in this repo depends on it.
 
 ## 6. Deploy
 
-Automated: push to `CVerify-uat` (or merge a PR into it) —
-`.github/workflows/deploy-vps.yml` fires on that push, SSHes into the VPS, and runs
-the equivalent of step 6's manual command. Requires the `VPS_HOST`, `VPS_USER`,
-`VPS_SSH_KEY` (and optionally `VPS_SSH_PORT`) repo secrets — see step 6a.
+Automated: push to `CVerify-Deployment` (or merge/fast-forward
+`CVerify-uat` into it) — `.github/workflows/deploy-vps.yml` fires on that
+push, SSHes into the VPS, and runs the equivalent of step 6's manual command.
+Requires the `VPS_HOST`, `VPS_USER`, `VPS_SSH_KEY` (and optionally
+`VPS_SSH_PORT`) repo secrets — see step 6a. **Pushing to `CVerify-uat` alone
+does not deploy anything** — see §0.
 
-**Which branch deploys — the single switch.** The `on.push.branches` list in
-`deploy-vps.yml` is the one place that controls it:
+**Which branch deploys — the single switch (on BOTH branches' copies).** The
+`on.push.branches` list in `deploy-vps.yml` is the one place that controls
+it, and it must be edited identically on `CVerify-Deployment`'s copy AND
+`CVerify-uat`'s copy — see the "Two copies of this file must stay in sync"
+note in §0 for why:
 
 ```yaml
 on:
   push:
-    branches: [CVerify-uat]   # <-- change to [main] to cut over
+    branches: [CVerify-Deployment]   # <-- change to [main] to cut over
 ```
 
 The deploy step pulls `${{ github.ref_name }}` (the pushed branch), so it
 follows this list automatically — there is no second value to keep in sync.
 When everything is merged into `main` and the team is ready, change
-`[CVerify-uat]` to `[main]` and commit. The manual `deploy.sh` takes an
-independent `DEPLOY_BRANCH` env override (defaults to `CVerify-uat`):
+`[CVerify-Deployment]` to `[main]` on both branches' copies and commit. The
+manual `deploy.sh` takes an independent `DEPLOY_BRANCH` env override
+(defaults to `CVerify-Deployment`):
 `DEPLOY_BRANCH=main bash deployment/scripts/deploy.sh`. **Do not change this
-now** — production still deploys from `CVerify-uat`.
+now** — production still deploys from `CVerify-Deployment`.
 
 Manual:
 ```bash
@@ -476,8 +511,69 @@ instance of Certbot is already running" lock conflict (hit this directly
 while setting up cron — confirm with `systemctl list-timers | grep certbot`
 before adding anything new here).
 
+## 9c. Monitoring & Alerting (Cloud Monitoring / Cloud Logging)
+
+Project: `cverify-production`. All resources below live in that GCP project
+and were provisioned via `gcloud`, not Terraform — there is no IaC for
+monitoring yet (see "Known gaps" below).
+
+**Notification channel:** one email channel ("CVerify Ops Email") pointed at
+the account that manages this project. All alerting policies below fire into
+it.
+
+**Uptime checks** (`gcloud monitoring uptime list-configs`), 5-minute period,
+HTTPS with SSL validation, run from Google's global checker locations (so
+they also exercise DNS + the public internet path, not just localhost):
+- `CVerify Frontend (cverify.com.vn)` — `GET https://cverify.com.vn/`
+- `CVerify API health (api.cverify.com.vn)` — `GET https://api.cverify.com.vn/health`
+
+**Alerting policies** (`gcloud alpha monitoring policies list`):
+
+| Policy | Condition | Notes |
+|---|---|---|
+| Uptime check failure | Either uptime check fails | Catches VM-down, container-down, and nginx-misconfig cases — more useful than a raw "is the VM running" check |
+| SSL certificate expiring soon | `time_until_ssl_cert_expires` < 14 days on either check | Safety net on top of `certbot-renew.timer` (§5/§9a) in case renewal silently fails |
+| VM memory usage high | `agent.googleapis.com/memory/percent_used` (state=used) > 90% for 5 min | OOM risk — see step 2's rationale |
+| VM CPU usage sustained high | `compute.googleapis.com/instance/cpu/utilization` > 85% for 10 min | Stuck AI-analysis job, runaway container, or abusive traffic |
+| VM boot disk space low | `agent.googleapis.com/disk/percent_used` (device=`/dev/sda1`, state=used) > 85% | Docker image/log buildup; `docker system prune -f` |
+
+**Dashboard:** "CVerify Production (cverify-vps)" in Cloud Monitoring —
+CPU, memory by state, boot disk usage, network throughput, uptime check pass
+rate, and uptime check latency in one view.
+
+**Reading VM logs:** the Ops Agent (§2, config in
+`deployment/ops-agent/config.yaml`) ships three log streams from the VM to
+Cloud Logging, queryable with `gcloud logging read` or the Logs Explorer:
+- `logName="projects/cverify-production/logs/syslog"` — OS-level events (built-in default, no config needed)
+- `logName="projects/cverify-production/logs/nginx_access"` / `nginx_error` — reverse-proxy request/error logs, structured into `httpRequest`
+- `logName="projects/cverify-production/logs/docker_containers"` — every container's stdout/stderr (all of `cverify-client`, `cverify-core`, `cverify-ai`, `postgres`, `redis`, `minio`), parsed into `jsonPayload.log` (message) / `jsonPayload.stream` (stdout vs stderr)
+
+Example — recent errors across all containers:
+```bash
+gcloud logging read 'logName="projects/cverify-production/logs/docker_containers" AND jsonPayload.stream="stderr"' --freshness=1h
+```
+
+**Windows/Git Bash gotcha:** if you run `gcloud monitoring uptime create|update`
+with a `--path=/something` flag from Git Bash on Windows, MSYS's automatic
+POSIX-to-Windows path conversion silently rewrites `/health` into something
+like `/C:/Program Files/Git/health` before gcloud ever sees it — the command
+succeeds and reports success, but the uptime check silently probes a 404 and
+the alerting policy built on it becomes useless. Hit this directly while
+setting these up. Work around it with a doubled leading slash
+(`--path=//health`) or by running the command from PowerShell/a real POSIX
+shell instead. Always sanity-check with
+`gcloud monitoring uptime list-configs --format="yaml(displayName,httpCheck.path)"`
+after creating or updating one.
+
 ## 10. Known gaps (as of this writing — remove each line once fixed)
 
+- The Cloud Monitoring resources in §9c (notification channel, uptime checks,
+  alerting policies, dashboard) were created directly with `gcloud`, not
+  checked into any Terraform/IaC. `deployment/ops-agent/config.yaml` is the
+  only piece of that setup that's version-controlled and reproducible on a
+  fresh VM. If the team wants the monitoring config itself reproducible too
+  (e.g. after an accidental deletion in the console), it needs porting to
+  Terraform or at least a documented `gcloud` recreate script — not done yet.
 - DNSSEC is enabled on `cverify.com.vn` at the registrar — if DNS records
   ever need to change, re-check that DNSSEC signing isn't left in a broken
   state afterward (P.A's panel handles re-signing automatically in normal
