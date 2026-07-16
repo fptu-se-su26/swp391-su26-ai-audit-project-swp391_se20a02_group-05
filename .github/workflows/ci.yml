@@ -6,11 +6,15 @@ on:
       - main
       - cverify-uat
       - CVerify-uat
+      - cverify-deployment
+      - CVerify-Deployment
   pull_request:
     branches:
       - main
       - cverify-uat
       - CVerify-uat
+      - cverify-deployment
+      - CVerify-Deployment
 
 permissions:
   contents: read

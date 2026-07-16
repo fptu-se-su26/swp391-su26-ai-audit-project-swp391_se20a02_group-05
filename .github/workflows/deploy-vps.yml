@@ -1,28 +1,40 @@
 # ==============================================================================
 # CVerify — Deploy to VPS
 # ==============================================================================
-# Triggers on every push to the deployment branch (CVerify-uat) and SSHes into
-# the VPS to update the checkout, rebuild the Docker stack, and restart it.
-# See CVerify/deployment/DEPLOYMENT_GUIDE.md for the full runbook.
+# Triggers on every push to the deployment branch (CVerify-Deployment) and
+# SSHes into the VPS to update the checkout, rebuild the Docker stack, and
+# restart it. See CVerify/deployment/DEPLOYMENT_GUIDE.md for the full runbook.
 #
 # WHY `push` AND NOT `workflow_run`:
 #   The previous version triggered via `workflow_run` after CI. That NEVER
 #   fired: `workflow_run` (and `workflow_dispatch`) only activate when the
 #   workflow file lives on the repo's DEFAULT branch (main), but this file
-#   lives on CVerify-uat. A `push` trigger has no such restriction — it runs
-#   using the workflow file on the branch that was pushed — so it works from
-#   CVerify-uat directly. (Trade-off: this deploys on push regardless of the CI
-#   result; CI still runs in parallel on the same push. If you later want to
-#   gate deploy on CI passing, the robust way is to move this job into ci.yml
-#   as a final `needs:`-gated stage once the pipeline lives on the default
-#   branch — deliberately not done now to keep the deploy path simple.)
+#   lives on CVerify-Deployment. A `push` trigger has no such restriction — it
+#   runs using the workflow file on the branch that was pushed — so it works
+#   from CVerify-Deployment directly. (Trade-off: this deploys on push
+#   regardless of the CI result; CI still runs in parallel on the same push.
+#   If you later want to gate deploy on CI passing, the robust way is to move
+#   this job into ci.yml as a final `needs:`-gated stage once the pipeline
+#   lives on the default branch — deliberately not done now to keep the
+#   deploy path simple.)
 #
-# WHICH BRANCH DEPLOYS — single switch:
-#   The `on.push.branches` list below is the ONE place to change. The deploy
-#   step pulls `${{ github.ref_name }}` (the branch that was actually pushed),
-#   so it follows automatically — no second value to keep in sync. To cut the
-#   production deploy over from CVerify-uat to main once everything is merged,
-#   change `[CVerify-uat]` to `[main]` here. Leave it as CVerify-uat for now.
+# WHICH BRANCH DEPLOYS — single switch, and why there are TWO copies of this
+# file to keep in sync:
+#   Push-triggered workflows run using the copy of THIS FILE that lives on the
+#   branch that was pushed — not the copy on main, not the copy on any other
+#   branch. That means the `on.push.branches` list only stops a push from
+#   deploying if the copy of this file ON THAT BRANCH also excludes it. CVerify-uat
+#   is a regular development branch (people push to it directly) and
+#   deliberately carries the SAME `branches: [CVerify-Deployment]` value below
+#   — so a push to CVerify-uat evaluates its own copy of this file, sees
+#   CVerify-uat is not in the list, and does nothing. Production only deploys
+#   when CVerify-Deployment itself receives a push (typically by
+#   merging/fast-forwarding CVerify-uat into it once work is ready to ship —
+#   see DEPLOYMENT_GUIDE.md section 0). Keeping both copies byte-identical
+#   also means this file never conflicts on a CVerify-uat -> CVerify-Deployment
+#   merge. To cut the production deploy over to main once everything is
+#   merged, change `[CVerify-Deployment]` to `[main]` on BOTH branches' copies
+#   of this file — leave it as CVerify-Deployment for now.
 #
 # Secrets required (Settings -> Secrets and variables -> Actions -> Secrets):
 #   VPS_HOST, VPS_USER, VPS_SSH_KEY, and optionally VPS_SSH_PORT (default 22).
@@ -33,7 +45,7 @@ name: Deploy to VPS
 
 on:
   push:
-    branches: [CVerify-uat] # <-- single switch: change to [main] to cut over
+    branches: [CVerify-Deployment] # <-- single switch: change to [main] to cut over (on BOTH branches' copies, see note above)
   workflow_dispatch: {} # manual re-deploy (usable once this file is on the default branch)
 
 permissions:

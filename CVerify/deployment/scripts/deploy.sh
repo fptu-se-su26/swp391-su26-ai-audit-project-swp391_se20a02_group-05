@@ -9,10 +9,10 @@ set -euo pipefail
 
 COMPOSE_DIR="${COMPOSE_DIR:-$HOME/swp391-su26-ai-audit-project-swp391_se20a02_group-05/CVerify}"
 # Which branch to deploy. Mirrors the DEPLOY_BRANCH repo variable used by
-# .github/workflows/deploy-vps.yml; defaults to CVerify-uat (current production
-# branch). Override for a manual deploy of a different branch:
+# .github/workflows/deploy-vps.yml; defaults to CVerify-Deployment (current
+# production branch). Override for a manual deploy of a different branch:
 #   DEPLOY_BRANCH=main bash deployment/scripts/deploy.sh
-DEPLOY_BRANCH="${DEPLOY_BRANCH:-CVerify-uat}"
+DEPLOY_BRANCH="${DEPLOY_BRANCH:-CVerify-Deployment}"
 cd "$COMPOSE_DIR"
 
 echo "[deploy] Pulling latest code (branch: ${DEPLOY_BRANCH})..."
