@@ -52,6 +52,32 @@ public record AuditLogListItemDto(
     DateTimeOffset CreatedAt
 );
 
+/// <summary>
+/// A monitoring event pushed in by an internal service (e.g. CVerify.AI) over the
+/// HMAC-authenticated ingest endpoint. Recorded as an audit log and surfaced to admins.
+/// </summary>
+public record MonitoringEventIngestDto(
+    string EventType,
+    string Message,
+    string? Severity,
+    string? Source,
+    string? CorrelationId,
+    Dictionary<string, object>? Details,
+    DateTimeOffset? OccurredAt
+);
+
+/// <summary>
+/// Realtime payload broadcast to the "admins" SignalR group so the admin UI can raise a toast.
+/// </summary>
+public record AdminMonitoringAlertDto(
+    Guid Id,
+    string EventType,
+    string Severity,
+    string Source,
+    string Message,
+    DateTimeOffset CreatedAt
+);
+
 
 public record AdminMemberListItemDto(
     Guid Id,
