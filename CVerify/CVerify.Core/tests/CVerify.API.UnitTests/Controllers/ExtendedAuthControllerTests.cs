@@ -1,25 +1,24 @@
 using System;
-using Microsoft.VisualStudio.TestTools.UnitTesting;
+using Xunit;
 
 namespace CVerify.API.UnitTests.Controllers
 {
-    [TestClass]
     public class ExtendedAuthControllerTests
     {
-        [TestMethod]
+        [Fact]
         public void TestLoginEndpoint_ValidPayload_ReturnsOk()
         {
             var request = new { Email = "candidate@cverify.com", Password = "SecurePassword1!" };
-            Assert.IsNotNull(request.Email);
-            Assert.IsTrue(request.Password.Length >= 8);
+            Assert.NotNull(request.Email);
+            Assert.True(request.Password.Length >= 8);
         }
 
-        [TestMethod]
+        [Fact]
         public void TestRegistrationEndpoint_InvalidEmail_ThrowsValidationException()
         {
             var email = "invalid-email-format";
             bool isValid = email.Contains("@");
-            Assert.IsFalse(isValid);
+            Assert.False(isValid);
         }
     }
 }

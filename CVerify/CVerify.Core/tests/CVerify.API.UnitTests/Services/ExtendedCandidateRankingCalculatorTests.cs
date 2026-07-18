@@ -1,12 +1,11 @@
 using System;
-using Microsoft.VisualStudio.TestTools.UnitTesting;
+using Xunit;
 
 namespace CVerify.API.UnitTests.Services
 {
-    [TestClass]
     public class ExtendedCandidateRankingCalculatorTests
     {
-        [TestMethod]
+        [Fact]
         public void CalculateCompositeScore_DefaultWeights_ReturnsCorrectValue()
         {
             double aiScore = 80.0;
@@ -17,29 +16,29 @@ namespace CVerify.API.UnitTests.Services
             double expected = (aiScore * 0.35) + (trustScore * 0.35) + (completeness * 0.15) + (ossImpact * 0.15);
             double actual = CalculateScore(aiScore, trustScore, completeness, ossImpact);
 
-            Assert.AreEqual(expected, actual, 0.001);
+            Assert.Equal(expected, actual, 3);
         }
 
-        [TestMethod]
+        [Fact]
         public void CalculateCompositeScore_ZeroScores_ReturnsZero()
         {
             double actual = CalculateScore(0, 0, 0, 0);
-            Assert.AreEqual(0.0, actual);
+            Assert.Equal(0.0, actual);
         }
 
-        [TestMethod]
+        [Fact]
         public void CalculateCompositeScore_MaxScores_Returns100()
         {
             double actual = CalculateScore(100, 100, 100, 100);
-            Assert.AreEqual(100.0, actual);
+            Assert.Equal(100.0, actual);
         }
 
-        [TestMethod]
+        [Fact]
         public void VerifyPrimaryAuthorship_AboveThreshold_ReturnsTrue()
         {
             double commitRatio = 55.0;
             bool isPrimary = commitRatio >= 50.0;
-            Assert.IsTrue(isPrimary);
+            Assert.True(isPrimary);
         }
 
         private static double CalculateScore(double ai, double trust, double comp, double oss)

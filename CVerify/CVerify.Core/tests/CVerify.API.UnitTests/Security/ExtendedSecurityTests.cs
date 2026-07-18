@@ -2,16 +2,15 @@ using System;
 using System.Collections.Generic;
 using System.Security.Cryptography;
 using System.Text;
-using Microsoft.VisualStudio.TestTools.UnitTesting;
+using Xunit;
 
 namespace CVerify.API.UnitTests.Security
 {
-    [TestClass]
     public class ExtendedSecurityTests
     {
         private const string DummySecret = "DbqDgBM1u2H5lNnUFBgYrRaotpSP9Wda8jASgjIbFh6";
 
-        [TestMethod]
+        [Fact]
         public void TestHmacSignatureValidation_CorrectPayload_ReturnsValid()
         {
             var timestamp = DateTimeOffset.UtcNow.ToUnixTimeSeconds().ToString();
@@ -21,11 +20,11 @@ namespace CVerify.API.UnitTests.Security
 
             var signature = ComputeHmacSignature(timestamp, nonce, clientId, body, DummySecret);
 
-            Assert.IsNotNull(signature);
-            Assert.AreEqual(64, signature.Length);
+            Assert.NotNull(signature);
+            Assert.Equal(64, signature.Length);
         }
 
-        [TestMethod]
+        [Fact]
         public void TestHmacSignatureValidation_TemperedPayload_Fails()
         {
             var timestamp = DateTimeOffset.UtcNow.ToUnixTimeSeconds().ToString();
@@ -36,14 +35,14 @@ namespace CVerify.API.UnitTests.Security
             var signatureOriginal = ComputeHmacSignature(timestamp, nonce, clientId, body, DummySecret);
             var signatureTempered = ComputeHmacSignature(timestamp, nonce, clientId, body + " ", DummySecret);
 
-            Assert.AreNotEqual(signatureOriginal, signatureTempered);
+            Assert.NotEqual(signatureOriginal, signatureTempered);
         }
 
-        [TestMethod]
+        [Fact]
         public void TestPasswordCostFactor_LengthCheck()
         {
             var plainPassword = "SuperSecurePassword123!";
-            Assert.IsTrue(plainPassword.Length >= 8);
+            Assert.True(plainPassword.Length >= 8);
         }
 
         private static string ComputeHmacSignature(string timestamp, string nonce, string clientId, string body, string secret)

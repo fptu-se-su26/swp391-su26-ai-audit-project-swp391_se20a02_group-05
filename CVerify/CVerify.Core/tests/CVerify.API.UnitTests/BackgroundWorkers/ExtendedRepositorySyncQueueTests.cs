@@ -1,16 +1,15 @@
 using System;
-using Microsoft.VisualStudio.TestTools.UnitTesting;
+using Xunit;
 
 namespace CVerify.API.UnitTests.BackgroundWorkers
 {
-    [TestClass]
     public class ExtendedRepositorySyncQueueTests
     {
-        [TestMethod]
+        [Fact]
         public void TestEnqueueSyncJob_AcquiresRedisQueueId()
         {
             var queueId = Guid.NewGuid();
-            Assert.IsNotNull(queueId);
+            Assert.NotNull(queueId);
         }
     }
 }

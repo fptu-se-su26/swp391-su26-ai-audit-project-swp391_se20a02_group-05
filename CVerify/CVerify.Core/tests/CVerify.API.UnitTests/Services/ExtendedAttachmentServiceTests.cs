@@ -1,24 +1,23 @@
 using System;
-using Microsoft.VisualStudio.TestTools.UnitTesting;
+using Xunit;
 
 namespace CVerify.API.UnitTests.Services
 {
-    [TestClass]
     public class ExtendedAttachmentServiceTests
     {
-        [TestMethod]
+        [Fact]
         public void TestGeneratePreSignedUrl_LifespanValidation()
         {
             var lifespan = TimeSpan.FromHours(1);
-            Assert.AreEqual(3600, lifespan.TotalSeconds);
+            Assert.Equal(3600, lifespan.TotalSeconds);
         }
 
-        [TestMethod]
+        [Fact]
         public void TestMimeTypeCheck_ValidPDF_ReturnsTrue()
         {
             var mime = "application/pdf";
             bool isValid = mime == "application/pdf" || mime == "image/png";
-            Assert.IsTrue(isValid);
+            Assert.True(isValid);
         }
     }
 }
