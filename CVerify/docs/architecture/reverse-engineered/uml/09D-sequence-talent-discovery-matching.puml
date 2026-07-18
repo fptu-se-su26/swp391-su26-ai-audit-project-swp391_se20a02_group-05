@@ -1,0 +1,155 @@
+@startuml 09D-sequence-talent-discovery-matching
+' CVerify — Talent discovery search and explainable candidate/job matching.
+' Verified against:
+'   Modules/Intelligence/Controllers/TalentDiscoveryController.cs
+'       [Authorize]:17 (no [Route]; absolute routes per action)
+'       Search:34-82 · GetCandidateProfile:84-166 · EvaluateMatch:168-214
+'   Modules/Intelligence/Services/ExplainableMatchService.cs
+'       EvaluateMatchAsync:34-145 (delete prior evaluation:44-53, capability intelligence:57,
+'       UnifiedJobRequirement build:60-93, engine call:96, MatchingEvaluation insert:99-110,
+'       MatchingFactor loop:113-124, MatchingExplanation loop:127-140)
+'   Modules/Intelligence/Services/UnifiedMatchingEngine.cs
+'       EvaluateMatchAsync:12 · confidence bands:206-208 · factor weights:213-216
+'   Modules/Intelligence/Services/CandidateEvaluationService.cs
+'       EvaluateAndSnapshotCandidateAsync:44 (trust recalc:58, capability projection:101-305,
+'       CandidateSearchProfile upsert:509-521)
+'   Modules/Intelligence/BackgroundWorkers/CandidateRankingProjectionWorker.cs:47 (15 min cadence)
+'   Modules/Profiles/Services/CandidateMatchService.cs
+'       GetCandidateMatchesAsync:57 · TriggerDiscoveryAsync:232-289 · ExecuteDiscoveryPipelineAsync:291-392
+'   Modules/Shared/Domain/Entities/{MatchingEvaluation,MatchingFactor,MatchingExplanation}.cs
+' Ground truth: GROUND-TRUTH.md §4.1 hazard 7 / §4 note (float[] embedding columns are schema only).
+
+title CVerify — Talent Discovery & Explainable Matching
+
+skinparam responseMessageBelowArrow true
+skinparam maxMessageSize 300
+
+actor       "Organization Member\n(HR / REPRESENTATIVE / OWNER)" as HR
+participant "Next.js Client"                       as C
+participant "TalentDiscoveryController"            as TDC
+participant "ExplainableMatchService"              as EMS
+participant "CandidateEvaluationService"           as CES
+participant "UnifiedMatchingEngine"                as UME
+participant "CandidateRankingProjectionWorker\n<<IHostedService, 15 min>>" as PW
+participant "CandidateMatchService"                as CMS
+database    "PostgreSQL"                           as DB
+
+== Projection (asynchronous, upstream of every read) ==
+PW -> CES : EvaluateAndSnapshotCandidateAsync(candidateId)
+CES -> DB : TrustEngine.RecalculateCandidateTrustAsync -> TrustProfile + components
+CES -> DB : RepositoryAssessments / RepositoryCapabilities / CandidateSkills / UserSkills
+CES -> DB : upsert CandidateCapabilityProjection,\nCandidateCapabilities, CandidateCapabilityScores
+CES -> DB : upsert CandidateSearchProfile\n(FullName, Headline, Location, TrustScore, TrustTier,\nCapabilitiesJson, LastProjectedAt)
+CES -> DB : upsert CandidateEvaluationSnapshot\n(IdentityTrustScore, EvidenceTrustScore)
+
+note right of CES #ffdddd
+  `candidate_search_profiles.SearchEmbedding` is a `float[]` column, but
+  **nothing ever writes it** — GROUND-TRUTH §4.1 hazard 7 / §6.1: the AI
+  service has no embedding module (`repository/embedding/__init__.py`
+  is `# Pruned embedding module`) and no vector library is installed.
+  The pgvector image is running, but no vector index or similarity query
+  exists anywhere in the codebase.
+end note
+
+== Search ==
+HR -> C   : search talent (query / location / minTrustScore)
+C  -> TDC : GET /api/v1/intelligence/search?query=&location=&minTrustScore=
+TDC -> DB : CandidateSearchProfiles\nWHERE Location LIKE %location% AND TrustScore >= minTrustScore
+DB --> TDC : projected rows
+TDC -> TDC : in-memory substring filter of `query` over\nFullName | Headline | CapabilitiesJson
+TDC --> C : 200 [ { CandidateId, FullName, Headline, Location,\nTrustScore, TrustTier, CapabilitiesJson, LastProjectedAt } ]
+
+note right of TDC
+  The free-text leg is a client-side-style `Contains` executed **after**
+  materialising the filtered set (`ToListAsync` then `.Where`), so the
+  whole location/trust-filtered table is loaded into memory first.
+  The in-code comment calls this "a fallback if semantic embedding match
+  is pending" — that semantic path does not exist. There is no paging.
+end note
+
+== Candidate intelligence profile ==
+C  -> TDC : GET /api/v1/intelligence/candidate/{id}
+TDC -> DB : CandidateSearchProfiles (404 if absent)
+TDC -> DB : CandidateCapabilities + CapabilityNode + Score + EvidenceLinks count
+TDC -> DB : EvidenceClaims + EvidenceArtifact + Verifications
+TDC -> DB : TrustProfiles + components WHERE TargetEntityId = id AND TargetType = "Candidate"
+TDC --> C : aggregated profile
+note right of TDC
+  `trust_profiles.TargetEntityId` is polymorphic with **no FK**
+  (GROUND-TRUTH §4.1 hazard 5) — the `TargetType = "Candidate"` string
+  is the only thing keeping this join honest.
+end note
+
+== Evaluate a single candidate against a vacancy ==
+C  -> TDC : GET /api/v1/intelligence/match/{jobVacancyId}/{candidateId}
+TDC -> EMS : EvaluateMatchAsync(jobVacancyId, candidateId)
+EMS -> DB : JobVacancy + RequirementSnapshot
+alt vacancy not found
+    EMS --> TDC : ArgumentException -> 404
+end
+EMS -> DB : DELETE prior MatchingEvaluation for (vacancy, candidate)
+note right of EMS
+  The previous evaluation row is removed rather than versioned, so the
+  matching history is non-reproducible: only the latest score survives,
+  and the cascade takes its factors and explanations with it.
+end note
+EMS -> CES : GetCapabilityIntelligenceAsync(candidateId)
+CES -> DB : read the projections written above
+CES --> EMS : CandidateCapabilityIntelligence
+
+EMS -> EMS : build UnifiedJobRequirement\nSkills, Seniority = job.Experience, WorkplaceType,\nRequiresLeadership = any requirement contains "lead"/"manage"
+alt RequirementSnapshot.CapabilitiesJson present
+    EMS -> EMS : capabilities from the published snapshot;\nweight 1.5 for MustHave, else 1.0
+else
+    EMS -> EMS : fallback — one capability per JobVacancy.Skills entry,\nweight 1.0, ExpectedProficiency 2
+end
+
+EMS -> UME : EvaluateMatchAsync(intelligence, jobRequirement)
+UME -> UME : CapabilityMatch (0.40) · RoleMatch (0.30)\n· TrustFactor (0.20) · PreferenceMatch (0.10)
+UME -> UME : ConfidenceLevel = High >= 80 · Medium >= 50 · else Low
+UME --> EMS : UnifiedMatchResult { MatchScore, ConfidenceLevel,\nFactors[], Explanations[] }
+
+note right of UME
+  The engine is fully deterministic C# — no Claude call, no AI service hop
+  on this path. Proficiency and seniority are mapped from free-text labels
+  via `switch` expressions with a default of 2, so an unrecognised label
+  silently scores as mid-level rather than failing.
+end note
+
+EMS -> DB : INSERT MatchingEvaluation\n(AggregateScore = (int)MatchScore, ConfidenceLevel)
+loop for each factor
+    EMS -> DB : INSERT MatchingFactor (FactorName, FactorScore, Weight)
+end
+loop for each explanation
+    EMS -> DB : lookup CapabilityNode by Slug or lowered Name
+    EMS -> DB : INSERT MatchingExplanation\n(ExplanationType, CapabilityNodeId?, AssertionText)
+end
+note right of EMS
+  The CapabilityNode lookup is issued once per explanation inside the
+  loop — a classic N+1, and an unmatched assertion stores a null
+  CapabilityNodeId, leaving the explanation unlinked to the graph.
+end note
+EMS --> TDC : MatchingEvaluation
+TDC -> DB : re-read factors and explanations for the response
+TDC --> C : 200 { Id, JobVacancyId, CandidateId, AggregateScore,\nConfidenceLevel, Factors[], Explanations[] }
+
+== Bulk discovery for a hiring requirement ==
+C  -> CMS : POST /api/v1/hiring-requirements/{id}/candidate-matches/discover
+CMS -> DB : INSERT CandidateDiscoveryRun (Status = Pending)
+CMS -> DB : CreateSessionAsync(requirementId, "candidate-discovery")
+CMS -> CMS : _ = Task.Run(ExecuteDiscoveryPipelineAsync(runId))
+CMS --> C : 200 { runId, status }
+CMS -> DB : Status Searching (20%) -> Matching (50%) -> Ranking (80%)
+note right of CMS #ffdddd
+  Searching and Matching are **cosmetic stages**: each sets a status,
+  publishes progress and then `await Task.Delay(1000)`. All real work
+  happens once, at the Ranking step, inside `GetCandidateMatchesAsync`,
+  which loops the latest assessments and calls `UnifiedMatchingEngine`
+  per candidate. Like the artifact flow, this runs on a detached
+  `Task.Run` and does not survive a restart.
+end note
+CMS -> UME : EvaluateMatchAsync per candidate
+CMS -> DB : run.CandidatesFoundCount, MatchQualitySummary\n("n High Match, n Good Fit, n Potential Fit"), RawResultsJson
+CMS -> DB : session Completed (100%)
+
+@enduml

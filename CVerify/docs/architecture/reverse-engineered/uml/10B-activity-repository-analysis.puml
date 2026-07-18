@@ -1,0 +1,209 @@
+@startuml 10B-activity-repository-analysis
+' CVerify — Repository analysis control flow (Pipeline Line 1).
+' Verified against:
+'   Modules/SourceCode/Controllers/RepositoryAnalysisController.cs:66-85, :197, :269, :375
+'   Modules/SourceCode/Services/RepositoryAnalysisService.cs
+'       EnqueueAnalysisJobAsync:77-196 · ExecuteAnalysisJobAsync:379-1000
+'       (progress weighting:494-510, retry loop:544-615, task execute:565,
+'        aggregate:789, report:822-834, projection:837, outbox:927, complete:917-935,
+'        cancel/timeout handling:937-990) · task alias map:1737-1754
+'   Modules/SourceCode/BackgroundWorkers/BackgroundRepositoryAnalysisProcessor.cs:27-70
+'   Modules/SourceCode/BackgroundWorkers/AnalysisQueueRecoverySweeper.cs
+'   CVerify.AI/app/api/routes/analysis_router.py:122, :205
+'   CVerify.AI/app/pipelines/repository/orchestrators/github_analysis_orchestrator.py
+'       execute_task:288-366 · analyze_structure:623-780 · _get_meta_and_sample:459-478
+' Ground truth: GROUND-TRUTH.md §5.4, §6.2, §6.5.
+
+title CVerify — Repository Analysis Activity (Line 1)
+
+|Core API (request thread)|
+start
+:POST /api/repositories/{repoId}/analyses;
+:load repository via AuthProvider (ownership check);
+if (repository found and owned?) then (no)
+  :404 Repository not found or access denied;
+  stop
+endif
+if (active job already exists for this repo?) then (yes)
+  :return the existing JobId (idempotent);
+  stop
+endif
+if (user has >= 2 active jobs?) then (yes)
+  :429 Too Many Requests;
+  stop
+endif
+:INSERT AnalysisJob (Status = Queued);
+:read pipeline_config.json -> stages[].taskType;
+if (config readable and non-empty?) then (no)
+  :fall back to the hardcoded 9-task list
+  RepoStructure, CommitIntelligence, SkillExtraction,
+  ArchitectureAnalysis, CodeQuality, SecurityAnalysis,
+  RepositoryClassification, RepositorySummary, CvSynthesis;
+  note right
+    The config read is wrapped in a catch that only logs a
+    warning, so a malformed config silently degrades the
+    pipeline instead of failing the request.
+  end note
+endif
+:INSERT one AnalysisTask per taskType (Status = Queued);
+:create AiStreamingSession ("repository-analysis");
+:enqueue jobId;
+:202 Accepted { JobId, Status = "Queued" };
+
+|Recovery sweeper|
+fork
+  :periodically scan for jobs left in an active state
+  with nothing in the in-process queue;
+  :re-enqueue them;
+  note right
+    This worker exists precisely because
+    `IRepositoryAnalysisQueue` is a **singleton in-process
+    queue and is not durable** (GROUND-TRUTH §5.4).
+  end note
+fork again
+|Background worker|
+:dequeue jobId (1 s idle poll);
+:create DI scope;
+:decrypt the stored provider token;
+:load AnalysisTasks in the stored order;
+
+partition "Per-task execution — sequencing owned by .NET" {
+  while (more tasks?) is (yes)
+    :reload job entity;
+    if (job.Status == "Cancelled"?) then (yes)
+      :throw OperationCanceledException;
+      stop
+    endif
+    :reset per-task token / cost counters;
+    :task Running (10%), job.CurrentStep = TaskType,
+    job.Status = RunningAgents;
+    :publish repository:analysis:progress:{jobId};
+    :attempt = 0;
+    repeat
+      :attempt++;
+      :HMAC POST /api/v1/analysis/task/execute
+      { jobId, taskType, repositoryId, repoName, repoOwner,
+        encryptedToken, defaultBranch };
+      if (HTTP 2xx and status != "Failed"?) then (yes)
+        :persist AnalysisTaskResult + telemetry;
+      else (no)
+        :record telemetry even on failure;
+        :classify error retryable?;
+        if (retryable and attempt < 3?) then (yes)
+          :backoff 500 / 1000 / 2000 ms;
+        else (no)
+          :throw — the whole job fails;
+          stop
+        endif
+      endif
+    repeat while (not successful and attempt < 3) is (retry)
+    :task Completed; publish progress
+    (weighted across the configured stage weights, 10% .. 95%);
+  endwhile (no)
+}
+
+|AI service (per task)|
+:verify_hmac_signature dependency;
+:route by task type;
+if (taskType is a Line-2 alias?) then (yes)
+  :CandidateEvaluationOrchestrator;
+elseif (taskType is a Line-3 alias?) then (yes)
+  :JdMatchingOrchestrator;
+else (no)
+  :GitHubAnalysisOrchestrator.execute_task
+  — a **flat if/elif over 22 task types**,
+    no DAG, no dependency resolution;
+endif
+
+partition "L1-001 RepoStructure (hard prerequisite)" {
+  :fetch authenticated GitHub identity;
+  :classify_repository — stars, forks, branches, PRs, issues,
+  commit ratio, contributor distribution, bus factor;
+  if (repo_type == FORK_NO_CONTRIBUTION?) then (yes)
+    :skip clone; is_cloned = false;
+  else (no)
+    if (repo_type == FORK_UPSTREAM_CONTRIBUTION?) then (yes)
+      :switch the clone target to
+      analysis_target_owner / analysis_target_name;
+    endif
+    :git clone --depth 100 --branch {defaultBranch}
+    https://{token}@github.com/{owner}/{name}.git;
+    note right
+      GROUND-TRUTH §6.5 — the PAT is embedded in the clone URL,
+      and on failure the raw git stderr propagates into the error
+      message surfaced through SSE and logs.
+    end note
+    if (clone succeeded?) then (no)
+      :retry without --branch (default branch);
+      if (still failing?) then (yes)
+        :raise "Git clone failed: <git stderr>";
+        stop
+      endif
+    endif
+  endif
+  :os.walk the tree, skipping .git node_modules bin obj
+  dist vendor venv packages __pycache__;
+  :detect technologies from filenames and from the first
+  2000 chars of package manifests;
+  :CodeSampler max_files=10, max_lines_per_file=100;
+  :write temp_clones/{job_id}/meta.json;
+}
+
+partition "Every other task" {
+  :read temp_clones/{job_id}/meta.json;
+  if (meta.json present and is_cloned?) then (no)
+    :raise — L1-001 is a hard prerequisite;
+    stop
+  endif
+  :re-sample the working tree / run git inside clone_dir;
+  :call Claude (stream=True, max_tokens=8192,
+  prompt caching ephemeral; retry on 429/5xx with
+  exponential backoff + jitter at stream creation only);
+  :write temp_clones/{job_id}/{task_type}_result.json;
+  note right
+    **State passes through the worker's local filesystem**, not
+    through payloads — the AI service is stateful per job and
+    every task of a job must land on the same instance.
+  end note
+}
+
+|Background worker|
+:collect all AnalysisTaskResults into partialResults{};
+:HMAC POST /api/v1/analysis/task/aggregate
+{ ..., partialResults, deleteWorkspace = true };
+if (reportData present?) then (no)
+  :throw "Aggregation response did not contain reportData";
+  :job Failed;
+  stop
+endif
+:job SavingReport (97%);
+:INSERT AnalysisReport;
+:upload artifact "RepoIntelligenceReport" to object storage;
+:ProjectIntelligenceDataAsync -> repository_capabilities,
+repository_domains, repository_skill_attributions,
+repository_intelligence_signals;
+note right
+  GROUND-TRUTH §4.1 hazard 2: that cluster has **zero FK
+  constraints** — indexes only. Hazard 1:
+  `ux_repository_assessments_repo_sha` is not actually unique.
+end note
+:update repository LatestRiskLevel / LatestRiskFactorsJson;
+:reload job; if Cancelled -> throw;
+:job Completed (100%);
+:enqueue outbox "RepositorySyncTriggered"
+{ CandidateId, RepositoryId } in the same transaction;
+:session Completed; publish {Completed, 100%};
+
+|Outbox consumers|
+:TalentOutboxBackgroundProcessor (3 s) picks up
+RepositorySyncTriggered and drives the
+repository-intelligence / talent projection pipeline;
+note right
+  One `outbox_messages` table, **two independent consumers**:
+  EmailOutboxBackgroundProcessor (5 s) and
+  TalentOutboxBackgroundProcessor (3 s).
+end note
+end fork
+stop
+
+@enduml

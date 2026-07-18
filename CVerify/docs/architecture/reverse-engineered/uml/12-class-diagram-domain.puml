@@ -1,0 +1,523 @@
+@startuml 12-class-diagram-domain
+' CVerify — Core domain entity classes (focused subset of the 152 tables)
+' Every property name, type, default and navigation below was read from these files:
+'   Modules/Shared/Domain/Entities/User.cs           (incl. nested LinkedEmail + TransitionTo state machine)
+'   Modules/Shared/Domain/Entities/Organization.cs
+'   Modules/Shared/Domain/Entities/Workspace.cs
+'   Modules/Shared/Domain/Entities/HiringRequirement.cs
+'   Modules/Shared/Domain/Entities/JobVacancy.cs
+'   Modules/Shared/Domain/Entities/JobApplication.cs
+'   Modules/Shared/Domain/Entities/MatchingEvaluation.cs
+'   Modules/Shared/Domain/Entities/CapabilityNode.cs
+'   Modules/Shared/Domain/Entities/EvidenceClaim.cs
+'   Modules/Shared/Domain/Entities/TrustProfile.cs
+'   Modules/Shared/Domain/Enums/{UserStatus,AvatarSource,SalaryPeriod,AutoCloseRule,OrganizationRole}.cs
+'   Modules/Profiles/Entities/UserProfile.cs
+'   Modules/Profiles/Entities/CandidateAssessment.cs
+'   Modules/SourceCode/Entities/SourceCodeRepository.cs
+'   Modules/SourceCode/Entities/AnalysisJob.cs
+'   Modules/Shared/Persistence/ApplicationDbContext.cs:318-326  (JobVacancy partial index)
+'   docs/architecture/reverse-engineered/GROUND-TRUTH.md  §2, §4
+' Scope: core entities only. The full schema has 152 tables / 201 FKs — not attempted here.
+
+title CVerify — Core Domain Class Diagram (real C# names, types and navigations)
+
+skinparam shadowing false
+skinparam classAttributeIconSize 0
+hide empty methods
+
+' ============================== enums ========================================
+enum UserStatus <<native PG enum user_status>> {
+  EMAIL_VERIFY_PENDING
+  ACTIVE
+  SUSPENDED
+  BANNED
+  DELETION_PENDING
+  DELETED
+}
+
+enum AvatarSource {
+  Default = 0
+  Uploaded = 1
+  Google = 2
+  GitHub = 3
+  GitLab = 4
+}
+
+enum SalaryPeriod {
+  Monthly = 1
+  Yearly = 2
+}
+
+enum AutoCloseRule {
+  None = 0
+  CloseOnEndDate = 1
+  CloseOnHiringTarget = 2
+  Either = 3
+}
+
+enum OrganizationRole <<code vocabulary only>> {
+  OWNER
+  REPRESENTATIVE
+  HR
+  MEMBER
+}
+
+note bottom of OrganizationRole
+  ⚠ GROUND-TRUTH §2: NO entity property is typed as this enum.
+  OrganizationMembership.Role, OrganizationAuthority.Role and
+  WorkspaceMember.Role are plain `string`.
+  ⚠ "Recruiter" is not a role in this system.
+end note
+
+note bottom of UserStatus
+  The only native PostgreSQL enum in the schema (§4).
+  All other enums are stored as integer or text.
+end note
+
+' ============================== identity =====================================
+class User <<Shared/Domain>> {
+  +Guid Id = Guid.CreateVersion7()
+  +string Email  <<citext>>
+  +string? Username  <<citext, 32>>
+  +DateTimeOffset? LastUsernameChangeAt
+  +string? PasswordHash
+  +DateTimeOffset? PasswordChangedAt
+  +string FullName  <<255>>
+  +string? AvatarUrl
+  +AvatarSource AvatarSource = Default
+  +UserStatus Status = EMAIL_VERIFY_PENDING
+  +DateTimeOffset? EmailVerifiedAt
+  +DateTimeOffset? LastLoginAt
+  +IPAddress? LastLoginIp  <<inet>>
+  +int FailedAttempts
+  +DateTimeOffset? LastFailedAt
+  +DateTimeOffset? LockUntil
+  +bool IsLegalHold = false
+  +DateTimeOffset CreatedAt
+  +DateTimeOffset UpdatedAt
+  +DateTimeOffset? DeletedAt
+  +uint Version  <<ConcurrencyCheck, xmin>>
+  +int SessionVersion = 1
+  --navigations--
+  +ICollection<Role> Roles
+  +ICollection<RefreshToken> RefreshTokens
+  +ICollection<AuthProvider> AuthProviders
+  +List<LinkedEmail> LinkedEmails  <<jsonb>>
+  +ICollection<RoleAssignment> RoleAssignments
+  --
+  +void TransitionTo(UserStatus newStatus)
+}
+
+class LinkedEmail <<owned / jsonb column>> {
+  +Guid Id
+  +string Email
+  +bool IsVerified
+  +DateTimeOffset? VerifiedAt
+  +DateTimeOffset CreatedAt
+}
+
+note right of LinkedEmail
+  ⚠ Not a table. Serialised into users.LinkedEmails (jsonb) — GROUND-TRUTH §4.1 hazard 7.
+end note
+
+class UserProfile <<Profiles>> {
+  +Guid UserId  <<PK = FK>>
+  +string? Username  <<citext, 32>>
+  +string? Bio  <<1000>>
+  +string? Location  <<50>>
+  +string? PhoneNumber  <<15>>
+  +DateTimeOffset? BirthDate
+  +string? Headline  <<50>>
+  +string? Company  <<50>>
+  +string? Pronouns  <<20>>
+  +string? CustomPronouns  <<30>>
+  +string? PublicEmail  <<255>>
+  +string ProfileVisibility = "public"  <<20>>
+  +bool RecruiterVisibility = true
+  +string AiTalentDiscovery = "disabled"  <<20>>
+  +DateTimeOffset CreatedAt
+  +DateTimeOffset UpdatedAt
+  +DateTimeOffset LastProfileUpdateAt
+  +DateTimeOffset? DeletedAt
+  +uint Version  <<ConcurrencyCheck, xmin>>
+  +string? AiSuggestionsJson
+  +List<string> SocialLinks
+}
+
+note right of UserProfile
+  ⚠ GROUND-TRUTH §9: no enumeration was found in code for
+  ProfileVisibility or AiTalentDiscovery — only these defaults.
+end note
+
+User "1" -- "0..1" UserProfile
+User *-- "0..*" LinkedEmail
+User ..> UserStatus
+User ..> AvatarSource
+
+' ============================== tenancy ======================================
+class Organization <<Shared/Domain>> {
+  +Guid Id
+  +string Name  <<255>>
+  +string TaxCode  <<50>>
+  +string Email  <<255>>
+  +string Username  <<100>>
+  +string? RegistrationNumber  <<50>>
+  +string Status = "active"  <<50>>
+  ' comment: active | disputed | archived | superseded | fraudulent
+  +bool IsVerified = false
+  +int VerificationLevel = 0
+  +DateTimeOffset? InitialAdminAssignedAt
+  +string? RepresentativeName / Email / Phone
+  +string? RecoveryAuthority
+  +string? RepresentativeIdentity
+  +string? BannerUrl / LogoUrl  <<2048>>
+  +string? Description
+  +string? OrganizationType
+  +string? OrganizationSize
+  +int BranchCount = 0
+  +int FollowerCount = 0
+  +List<string> IndustryTags / BenefitTags / GalleryUrls
+  +string? ContactName / ContactPhone / ContactEmail
+  +string? City / DetailAddress / GoogleMapsEmbedUrl
+  +string? LinkedinUrl / FacebookUrl / TwitterUrl / Website
+  +string? Mission / Vision / CoreValues / Founded
+  +DateTimeOffset CreatedAt / UpdatedAt
+  +DateTimeOffset? DeletedAt
+  --navigations--
+  +ICollection<OrganizationAuthority> Members
+}
+
+note right of Organization
+  CompanyType / CompanySize exist as [Obsolete] [NotMapped]
+  pass-throughs to OrganizationType / OrganizationSize.
+end note
+
+class Workspace <<Shared/Domain>> {
+  +Guid Id
+  +Guid OrganizationId  <<FK>>
+  +string DisplayName  <<255>>
+  +string Slug  <<100>>
+  +string? Branding
+  +string Status = "active"  <<50>>
+  ' comment: active | recovery_pending | frozen | disputed |
+  '          disputed_archived | archived | superseded | fraudulent
+  +string? Description  <<1000>>
+  +Guid OwnerId  <<FK -> User>>
+  +DateTimeOffset CreatedAt / UpdatedAt
+  +DateTimeOffset? DeletedAt
+  --navigations--
+  +Organization Organization
+  +User Owner
+}
+
+Organization "1" o-- "0..*" Workspace
+User "1" <-- "0..*" Workspace : Owner
+
+' ============================== source code ==================================
+class SourceCodeRepository <<SourceCode>> {
+  +Guid Id
+  +Guid AuthProviderId  <<FK -> AuthProvider>>
+  +Guid? ExternalOrganizationId  <<FK>>
+  +string ExternalRepositoryId  <<255>>
+  +string Name / Owner / OwnerLogin  <<255>>
+  +string? Description / HtmlUrl  <<1000>>
+  +string? DefaultBranch  <<100>>
+  +string OwnerType  <<50>>
+  +bool IsPrivate
+  +string? PrimaryLanguage  <<100>>
+  +int StarsCount / ForksCount / OpenIssuesCount / WatchersCount = 0
+  +DateTimeOffset? LastCommitAt
+  +DateTimeOffset LastUpdatedUtc
+  +DateTimeOffset LastSeenAt
+  +bool IsAccessible = true
+  +bool ArchivedExternally = false
+  +bool IsEnabled = true
+  +bool IsVerified = false
+  +double TrustScore = 0.0
+  +string? CustomSettingsJson
+  +string? Classification  <<255>>
+  +string? AuthenticityType  <<255>>
+  +double LatestRiskScore = 0.0
+  +string LatestRiskLevel = "Low"  <<50>>
+  +string LatestAnalysisStatus = "NeverAnalyzed"  <<50>>
+  +DateTimeOffset? LatestAnalysisCompletedAtUtc
+  +string? LatestRiskFactorsJson  <<jsonb>>
+  +DateTimeOffset CreatedAtUtc / LastSyncedAt
+  --
+  +void ResetAnalysisState()
+}
+
+class AnalysisJob <<SourceCode>> {
+  +Guid Id
+  +Guid RepositoryId  <<FK>>
+  +Guid UserId  <<FK>>
+  +string Status = "Queued"  <<50>>
+  +double Progress = 0.0
+  +string? CurrentStep  <<100>>
+  +string? CommitSha  <<100>>
+  +DateTimeOffset? StartedAt / CompletedAt
+  +string? ErrorMessage  <<2000>>
+  +DateTimeOffset CreatedAtUtc / LastUpdatedUtc
+  --navigations--
+  +SourceCodeRepository Repository
+  +User User
+}
+
+SourceCodeRepository "1" o-- "0..*" AnalysisJob
+User "1" <-- "0..*" AnalysisJob
+
+note right of SourceCodeRepository
+  LatestAnalysisStatus is a SEPARATE state field from AnalysisJob.Status.
+  Observed values written: "NeverAnalyzed", "Pending", "Cancelled",
+  "TimedOut", "Failed" (RepositoryAnalysisService.cs:129,349,952,1113;
+  AnalysisQueueRecoverySweeper.cs:75,101).
+end note
+
+' ============================== assessment ===================================
+class CandidateAssessment <<Profiles>> {
+  +Guid Id
+  +Guid UserId  <<FK>>
+  +string Status = "Queued"  <<50>>
+  +double OverallScore = 0.0
+  +string? CareerLevel  <<20>>       ' L1..L5
+  +string? CareerLevelLabel  <<50>>  ' Junior..Principal
+  +string? PrimaryTendency  <<50>>
+  +string? PrimaryWorkingStyle  <<50>>
+  +string? SummaryHeadline  <<500>>
+  +string? SummaryParagraph  <<2000>>
+  +string? ProfessionalBio  <<1000>>
+  +string PipelineVersion = "2.0.0"  <<20>>
+  +string AssessmentSchemaVersion = "1.0.0"  <<20>>
+  +Guid? CvId
+  +string? PromptVersion  <<50>>
+  +string? ModelVersion  <<100>>
+  +DateTimeOffset LastProfileUpdateAt
+  +DateTimeOffset LastRepositoryAnalysisAt
+  +DateTimeOffset? LastAssessmentAt
+  +string? FailedStage  <<100>>
+  +string? FailureReason
+  +int Version = 1
+  +DateTimeOffset CreatedAtUtc
+  +DateTimeOffset? CompletedAtUtc
+  +double TechnicalDepth / TechnicalBreadth = 0.0
+  +double LeadershipPotential / ExecutionStrength = 0.0
+  +double TrustLevel = 0.0
+  +string? CalculationMode  <<50>>
+  +string? InputFeatureSetHash  <<100>>
+  +string? EvidenceCompleteness  <<50>>
+  +string? CloneRiskClassification  <<50>>
+}
+
+note right of CandidateAssessment
+  ⚠ GROUND-TRUTH §9 / §4.1 hazard 6: CvId references a target
+  that does not exist in the schema — there is no `cvs` table.
+  <<Not verified>>
+end note
+
+class CandidateAssessmentArtifact
+class CandidateSkill
+class CandidateDomainProfile
+class CandidateIntelligenceSignal
+class CandidateBestFitRole
+class CandidateStrengthWeakness
+class CandidateSkillTreeNode
+
+User "1" o-- "0..*" CandidateAssessment
+CandidateAssessment "1" *-- "0..*" CandidateAssessmentArtifact : Artifacts
+CandidateAssessment "1" *-- "0..*" CandidateSkill : Skills
+CandidateAssessment "1" *-- "0..*" CandidateDomainProfile : DomainProfiles
+CandidateAssessment "1" *-- "0..*" CandidateIntelligenceSignal : IntelligenceSignals
+CandidateAssessment "1" *-- "0..*" CandidateBestFitRole : BestFitRoles
+CandidateAssessment "1" *-- "0..*" CandidateStrengthWeakness : StrengthsWeaknesses
+CandidateAssessment "1" *-- "0..*" CandidateSkillTreeNode : SkillTreeNodes
+
+' ============================== hiring =======================================
+class HiringRequirement <<table hiring_requirements>> {
+  +Guid Id
+  +Guid OrganizationId  <<FK>>
+  +Guid WorkspaceId  <<FK>>
+  +string Title  <<255>>
+  +string Department  <<100>>
+  +string Seniority  <<50>>
+  +string WorkplaceType  <<50>>
+  +string? City  <<100>>
+  +string EmploymentType  <<50>>
+  +decimal? SalaryMin / SalaryMax
+  +string? Currency  <<10>>
+  +SalaryPeriod SalaryPeriod = Monthly
+  +bool IsSalaryNegotiable = false
+  +string? TimezoneRange  <<100>>
+  +string? DegreeRequirement  <<100>>
+  +List<string> Benefits / LanguageRequirements
+  +int Headcount = 1
+  +DateTimeOffset? StartDate / EndDate
+  +AutoCloseRule AutoCloseRule = None
+  +int? CandidatesNeededCount
+  +bool IsManuallyClosed = false
+  +string Status = "Draft"  <<20>>
+  +int Version = 1
+  +string? HiringReason  <<100>>
+  +string? BusinessProblem  <<2000>>
+  +DateTimeOffset CreatedAt / UpdatedAt
+  --derived--
+  +string LifecycleStatus  <<NotMapped>>
+  ' Closed | Scheduled | Expired | Active
+}
+
+note right of HiringRequirement
+  LifecycleStatus is a computed [NotMapped] property derived from
+  IsManuallyClosed / StartDate / EndDate. It is NOT the persisted
+  Status column — see 12D-state-hiring-requirement-and-vacancy.puml.
+end note
+
+class BusinessOutcome
+class Responsibility
+class RequirementCapability
+class TechnologyRequirement
+class EvaluationRubric
+class InterviewBlueprint
+class RequirementArtifact
+class RequirementSnapshot
+class CandidateDiscoveryRun
+
+Organization "1" o-- "0..*" HiringRequirement
+Workspace "1" o-- "0..*" HiringRequirement
+HiringRequirement "1" *-- "0..*" BusinessOutcome
+HiringRequirement "1" *-- "0..*" Responsibility
+HiringRequirement "1" *-- "0..*" RequirementCapability
+HiringRequirement "1" *-- "0..*" TechnologyRequirement
+HiringRequirement "1" *-- "0..*" EvaluationRubric
+HiringRequirement "1" *-- "0..*" InterviewBlueprint
+HiringRequirement "1" *-- "0..*" RequirementArtifact
+HiringRequirement "1" *-- "0..*" RequirementSnapshot
+HiringRequirement "1" *-- "0..*" CandidateDiscoveryRun
+
+class JobVacancy <<Shared/Domain>> {
+  +Guid Id
+  +Guid OrganizationId  <<FK>>
+  +string Title  <<255>>
+  +string Department  <<100>>
+  +string WorkplaceType  <<50>>
+  +string City  <<100>>
+  +string Type  <<50>>
+  +string Salary / SalaryMinMax  <<100>>
+  +int Headcount = 1
+  +string Gender  <<50>>
+  +string Experience / Degree  <<100>>
+  +string Category  <<200>>
+  +List<string> Description / Requirements / Benefits
+  +List<string> Tags / Skills / Images
+  +string CoverUrl  <<2048>>
+  +bool IsActive = true
+  +string Status = "Draft"  <<50>>
+  +string AcquisitionStrategy = "Hybrid"  <<50>>
+  ' ManualOnly | AiMatchingOnly | Hybrid
+  +string? DiscoveryProfileJson  <<jsonb>>
+  +Guid? RequirementSnapshotId  <<FK, OnDelete SetNull>>
+  +string? Metadata
+  +Guid? HiringRequirementId  <<FK>>
+  +DateTimeOffset CreatedAt / UpdatedAt
+}
+
+Organization "1" o-- "0..*" JobVacancy
+HiringRequirement "1" o-- "0..*" JobVacancy
+RequirementSnapshot "0..1" <-- "0..*" JobVacancy
+
+class JobApplication <<table job_applications>> {
+  +Guid Id
+  +Guid JobVacancyId  <<FK>>
+  +Guid CandidateId  <<FK -> User>>
+  +string Status = "Applied"  <<50>>
+  ' Applied | Reviewing | Interviewing | Offered | Rejected | Withdrawn
+  +string? GapsSnapshotJson  <<jsonb>>
+  +string? EligibilitySnapshotJson  <<jsonb>>
+  +DateTimeOffset CreatedAt / UpdatedAt
+}
+
+JobVacancy "1" o-- "0..*" JobApplication
+User "1" <-- "0..*" JobApplication : Candidate
+
+class MatchingEvaluation <<table matching_evaluations>> {
+  +Guid Id
+  +Guid JobVacancyId  <<FK>>
+  +Guid CandidateId  <<FK -> User>>
+  +int AggregateScore  ' 0..100
+  +string ConfidenceLevel  <<30>>  ' High | Medium | Low
+  +DateTimeOffset CreatedAt / UpdatedAt
+}
+class MatchingFactor
+class MatchingExplanation
+
+JobVacancy "1" o-- "0..*" MatchingEvaluation
+User "1" <-- "0..*" MatchingEvaluation : Candidate
+MatchingEvaluation "1" *-- "0..*" MatchingFactor : Factors
+MatchingEvaluation "1" *-- "0..*" MatchingExplanation : Explanations
+
+' ============================== capability / evidence / trust ================
+class CapabilityNode <<table capability_nodes>> {
+  +Guid Id
+  +string Name  <<150>>
+  +string Slug  <<150>>
+  +string? Description  <<1000>>
+  +string Category  <<50>>  ' Language | Database | Framework
+  +float[]? VectorEmbedding
+  +DateTimeOffset CreatedAt
+}
+class CapabilityEdge <<self-referencing M2M>>
+
+CapabilityNode "1" -- "0..*" CapabilityEdge : OutgoingEdges
+CapabilityNode "1" -- "0..*" CapabilityEdge : IncomingEdges
+
+note right of CapabilityNode
+  ⚠ GROUND-TRUTH §4.1: VectorEmbedding is a float[] COLUMN, not a table,
+  and it is <b>schema only</b> — the AI service writes no embeddings
+  (repository/embedding is "# Pruned embedding module"). The pgvector
+  image is used but no vector index or similarity query exists.
+end note
+
+class EvidenceClaim <<table evidence_claims>> {
+  +Guid Id
+  +Guid CandidateId  <<FK -> User>>
+  +Guid EvidenceArtifactId  <<FK>>
+  +string AssertionType  <<50>>
+  ' AuthoredCode | ReceivedDegree | WorkedPosition
+  +double ConfidenceScore = 1.0
+  +DateTimeOffset CreatedAt
+}
+class EvidenceArtifact
+class EvidenceVerification
+
+User "1" <-- "0..*" EvidenceClaim : Candidate
+EvidenceArtifact "1" <-- "0..*" EvidenceClaim
+EvidenceClaim "1" *-- "0..*" EvidenceVerification : Verifications
+
+class TrustProfile <<table trust_profiles>> {
+  +Guid Id
+  +Guid TargetEntityId  <<polymorphic, NO FK>>
+  +string TargetType  <<30>>
+  ' Candidate | Recruiter | Organization
+  +DateTimeOffset RecalculatedAt
+}
+class TrustComponent
+class TrustCalculation
+
+TrustProfile "1" *-- "0..*" TrustComponent : Components
+TrustProfile "1" *-- "0..*" TrustCalculation : Calculations
+
+note right of TrustProfile
+  ⚠ GROUND-TRUTH §4.1 hazard 5: TargetEntityId is polymorphic
+  with NO foreign key. Do not draw it as a typed association.
+  Note TargetType's comment mentions "Recruiter", which §2 states
+  is not a role in this system.
+end note
+
+note as N_SCOPE
+  <b>Scope</b>: core entities only.
+  Not shown: 8 Auth tables, 17 Forum tables, 7 Recovery tables,
+  2 AiChat tables, 4 Pipelines tables and the remainder of the
+  72 Shared/System tables. See the ERD diagrams for the full schema
+  and for the FK hazards in GROUND-TRUTH §4.1.
+end note
+
+@enduml

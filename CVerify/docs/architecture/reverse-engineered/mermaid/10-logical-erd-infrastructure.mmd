@@ -1,0 +1,527 @@
+%% ============================================================================
+%% 10 - Logical ERD: Infrastructure / plumbing tables
+%% ----------------------------------------------------------------------------
+%% Covers:
+%%   outbox: outbox_messages
+%%   tokens/sessions: refresh_tokens, verification_tokens,
+%%     reset_password_tokens, recovery_tokens, otp_verifications,
+%%     verification_links, pending_auth_providers
+%%   audit & notification: audit_logs, activity_events, in_app_notifications,
+%%     notification_preferences
+%%   AI streaming: ai_streaming_sessions, ai_streaming_stages,
+%%     ai_streaming_logs, ai_streaming_metrics
+%%   pipeline: pipeline_jobs, pipeline_tasks, artifact_registry_entries,
+%%     prompt_deployments
+%%   read models (all 6): candidate_capability_projections,
+%%     candidate_match_projections, candidate_ranking_projections,
+%%     candidate_search_profiles, candidate_trust_projections,
+%%     candidate_evaluation_snapshots
+%%   recovery (all 7): approved_recovery_sessions, recovery_execution_locks,
+%%     recovery_tokens, organization_recovery_claims,
+%%     representative_rotation_requests, representative_approval_votes,
+%%     representative_authority_histories
+%%   AiChat (2, included here for schema completeness): conversations, messages
+%% ---
+%% Source of truth (in precedence order):
+%%   1. docs/architecture/reverse-engineered/GROUND-TRUTH.md
+%%   2. CVerify.Core/Migrations/ApplicationDbContextModelSnapshot.cs
+%%   3. CVerify.Core/Modules/Shared/Persistence/ApplicationDbContext.cs
+%% ---
+%% Hazards applying to THIS diagram:
+%%  - Hazard 5 (polymorphic columns with NO FK), five of them live here:
+%%      audit_logs.scope_id
+%%      activity_events.resource_id / correlation_id / causation_id
+%%      in_app_notifications.resource_id
+%%      pipeline_jobs.reference_id
+%%    None is drawn as an edge; each is annotated on the entity.
+%%  - Hazard 6: otp_verifications.challenge_id is INDEXED
+%%    (idx_otp_verifications_challenge_id) but references a target that DOES NOT
+%%    EXIST in the schema. Marked <<Not verified>>; no edge drawn.
+%%  - Hazard 7: organization_recovery_claims.documents is a `jsonb` COLUMN, not
+%%    a table. candidate_search_profiles.search_embedding is a `real[]` COLUMN
+%%    and, per ground truth section 4.1, is SCHEMA ONLY - never populated.
+%%    candidate_match_projections.normalized_capabilities is a `uuid[]` COLUMN
+%%    with NO FK to capability_nodes.
+%%  - artifact_registry_entries.job_id is a bare uuid with NO FK and NO index.
+%%    Its intended target (pipeline_jobs vs analysis_jobs) is <<Not verified>>.
+%%  - prompt_deployments and outbox_messages have NO foreign keys at all.
+%% ---
+%% Operational notes verified from ground truth sections 5.4 and 3:
+%%  - outbox_messages is a SINGLE table with TWO independent consumers:
+%%    EmailOutboxBackgroundProcessor and TalentOutboxBackgroundProcessor.
+%%  - The in-process queues (candidate assessment, repository analysis,
+%%    repository sync, email) are NOT durable and are NOT represented in the
+%%    schema at all. AnalysisQueueRecoverySweeper exists to recover lost jobs.
+%%  - PendingLinkCleanupService is never registered, so pending_auth_providers
+%%    is never swept (dead code).
+%%  - refresh_tokens backs cookie-based JWT sessions with rotation + reuse
+%%    detection. replaced_by_token_id and session_id are bare uuids with no FK.
+%% ---
+%% Cross-references:
+%%  - users, organizations, workspaces, roles: see 04
+%%  - trust_profiles (FK'd by candidate_trust_projections): see 06
+%%  - analysis_jobs / analysis_tasks (a SEPARATE, older job model from
+%%    pipeline_jobs / pipeline_tasks): see 07
+%% ============================================================================
+
+erDiagram
+
+    users {
+        uuid id PK
+        citext username UK
+    }
+    organizations {
+        uuid id PK
+        varchar name
+    }
+    workspaces {
+        uuid id PK
+        varchar slug UK
+    }
+    trust_profiles {
+        uuid id PK
+        varchar target_type
+    }
+
+    %% ---------------- Outbox ----------------
+
+    outbox_messages {
+        uuid id PK
+        varchar type
+        text payload
+        timestamptz created_at "idx_outbox_messages_pending"
+        timestamptz processed_at
+        text error
+    }
+
+    %% ---------------- Tokens, sessions, verification ----------------
+
+    refresh_tokens {
+        uuid id PK
+        uuid user_id FK "nullable"
+        uuid organization_id FK "nullable - org logins share this table"
+        varchar token
+        uuid session_id "bare uuid, NO FK"
+        varchar replaced_by_token
+        uuid replaced_by_token_id "bare uuid, NO FK"
+        bool remember_me
+        varchar ip_address
+        varchar user_agent
+        timestamptz expires_at
+        timestamptz revoked_at
+    }
+    verification_tokens {
+        uuid id PK
+        uuid user_id FK
+        varchar token_hash
+        timestamptz expires_at
+        timestamptz consumed_at
+        xid xmin "PG system column used as concurrency token"
+    }
+    reset_password_tokens {
+        uuid id PK
+        uuid user_id FK
+        varchar token_hash
+        timestamptz expires_at
+        timestamptz consumed_at
+        xid xmin
+    }
+    recovery_tokens {
+        uuid id PK
+        uuid user_id FK "nullable"
+        uuid organization_id FK "nullable"
+        int token_type
+        varchar purpose
+        varchar token_hash
+        text metadata_json
+        timestamptz expires_at
+        timestamptz consumed_at
+        timestamptz revoked_at
+        xid xmin
+    }
+    otp_verifications {
+        uuid id PK
+        uuid challenge_id "<<Not verified>> - target does not exist (hazard 6)"
+        varchar email "idx_otp_verifications_email"
+        varchar otp_hash
+        varchar purpose
+        int status
+        int attempts
+        int resend_count
+        timestamptz cooldown_until
+        timestamptz expires_at
+        timestamptz consumed_at
+        timestamptz invalidated_at
+    }
+    verification_links {
+        uuid id PK
+        uuid user_id FK "nullable"
+        uuid organization_id FK "nullable"
+        varchar email
+        varchar company_name
+        varchar tax_code
+        varchar purpose
+        varchar token_hash
+        timestamptz expires_at
+        timestamptz consumed_at
+        varchar consumed_by_ip
+        varchar consumed_by_user_agent
+        timestamptz deleted_at
+    }
+    pending_auth_providers {
+        uuid id PK
+        uuid user_id FK
+        varchar provider_name
+        varchar provider_key
+        varchar provider_account_id
+        varchar encrypted_access_token
+        varchar encrypted_refresh_token
+        timestamptz expires_at
+    }
+
+    users |o--o{ refresh_tokens : "user_id"
+    organizations |o--o{ refresh_tokens : "organization_id"
+    users ||--o{ verification_tokens : "user_id"
+    users ||--o{ reset_password_tokens : "user_id"
+    users |o--o{ recovery_tokens : "user_id"
+    organizations |o--o{ recovery_tokens : "organization_id"
+    users |o--o{ verification_links : "user_id"
+    organizations |o--o{ verification_links : "organization_id"
+    users ||--o{ pending_auth_providers : "user_id"
+
+    %% ---------------- Audit, activity, notifications ----------------
+
+    audit_logs {
+        uuid id PK
+        uuid actor_user_id FK "ON DELETE SET NULL"
+        uuid user_id FK "ON DELETE SET NULL"
+        uuid target_user_id FK "ON DELETE SET NULL"
+        uuid organization_id FK "nullable"
+        varchar event_type
+        varchar scope_type
+        uuid scope_id "POLYMORPHIC - NO FK (hazard 5)"
+        varchar target_role_name "plain string, NO FK to roles"
+        varchar anonymized_actor_hash
+        jsonb details_json
+        jsonb old_state_json
+        jsonb new_state_json
+        varchar ip_address
+        varchar user_agent
+    }
+    activity_events {
+        uuid id PK
+        uuid actor_user_id FK "ON DELETE SET NULL"
+        uuid organization_id FK "nullable"
+        varchar event_type
+        varchar resource_type
+        uuid resource_id "POLYMORPHIC - NO FK (hazard 5)"
+        uuid correlation_id "NO FK (hazard 5)"
+        uuid causation_id "NO FK (hazard 5)"
+        jsonb payload_json
+        varchar visibility
+        bool is_projected "consumed by ActivityEventProjectionWorker"
+    }
+    in_app_notifications {
+        uuid id PK
+        uuid user_id FK
+        uuid activity_event_id FK "ON DELETE SET NULL"
+        varchar notification_type
+        varchar resource_type
+        uuid resource_id "POLYMORPHIC - NO FK (hazard 5)"
+        varchar aggregate_key
+        bool is_aggregated
+        bool is_read
+        jsonb payload_json
+        timestamptz read_at
+        timestamptz deleted_at
+    }
+    notification_preferences {
+        uuid id PK
+        uuid user_id FK,UK
+        varchar notification_type UK
+        varchar channel UK "idx_user_notification_prefs"
+        bool is_enabled
+    }
+
+    users |o--o{ audit_logs : "actor_user_id"
+    users |o--o{ audit_logs : "user_id"
+    users |o--o{ audit_logs : "target_user_id"
+    organizations |o--o{ audit_logs : "organization_id"
+    users |o--o{ activity_events : "actor_user_id"
+    organizations |o--o{ activity_events : "organization_id"
+    users ||--o{ in_app_notifications : "user_id"
+    activity_events |o--o{ in_app_notifications : "activity_event_id"
+    users ||--o{ notification_preferences : "user_id"
+
+    %% ---------------- AI streaming telemetry ----------------
+
+    ai_streaming_sessions {
+        uuid id PK
+        uuid user_id FK "nullable"
+        uuid workspace_id FK "nullable"
+        varchar pipeline_id
+        varchar pipeline_version
+        varchar provider
+        varchar model_name
+        varchar status
+        varchar current_step
+        float8 progress
+        int total_input_tokens
+        int total_output_tokens
+        numeric total_cost_usd
+        jsonb expected_outputs
+        jsonb summary_data
+        varchar error_message
+    }
+    ai_streaming_stages {
+        uuid id PK
+        uuid session_id FK
+        varchar stage_id "string identifier, not a uuid FK"
+        varchar parent_stage_id "string identifier, NO FK - self-nesting by value"
+        varchar stage_name
+        varchar status
+        float8 progress
+        bigint duration_ms
+        int retry_count
+        jsonb details
+    }
+    ai_streaming_logs {
+        uuid id PK
+        uuid session_id FK
+        varchar stage_id "string identifier, NO FK"
+        varchar component
+        varchar log_level
+        text message
+    }
+    ai_streaming_metrics {
+        uuid id PK
+        uuid session_id FK
+        varchar stage_id "string identifier, NO FK"
+        varchar metric_name
+        float8 metric_value
+    }
+
+    users |o--o{ ai_streaming_sessions : "user_id"
+    workspaces |o--o{ ai_streaming_sessions : "workspace_id"
+    ai_streaming_sessions ||--o{ ai_streaming_stages : "session_id"
+    ai_streaming_sessions ||--o{ ai_streaming_logs : "session_id"
+    ai_streaming_sessions ||--o{ ai_streaming_metrics : "session_id"
+
+    %% ---------------- Generic pipeline & artifacts ----------------
+
+    pipeline_jobs {
+        uuid id PK
+        varchar pipeline_type
+        uuid reference_id "POLYMORPHIC - NO FK (hazard 5)"
+        varchar status
+        numeric progress
+        numeric cumulative_cost_usd
+        numeric max_budget_usd
+        int retry_count
+        varchar error_message
+    }
+    pipeline_tasks {
+        uuid id PK
+        uuid job_id FK
+        varchar task_identifier
+        varchar task_name
+        varchar status
+        varchar worker_id
+        timestamptz lease_expires_at
+        numeric cost_usd
+        int retry_count
+        text error_details
+    }
+    artifact_registry_entries {
+        uuid id PK
+        text artifact_id
+        uuid job_id "bare uuid, NO FK and NO index; target <<Not verified>>"
+        text name
+        text storage_path
+        text checksum
+        text metadata_json
+    }
+    prompt_deployments {
+        varchar prompt_id PK "varchar(50); table has NO foreign keys"
+        varchar active_version
+        varchar sha256hash
+        timestamptz updated_at_utc
+    }
+
+    pipeline_jobs ||--o{ pipeline_tasks : "job_id"
+
+    %% ---------------- Candidate read models (6) ----------------
+
+    candidate_capability_projections {
+        uuid candidate_id PK,FK "1:1 with users"
+        jsonb capabilities_json
+        timestamptz projected_at
+    }
+    candidate_match_projections {
+        uuid candidate_id PK,FK "1:1 with users"
+        varchar profile_summary
+        uuid_ARRAY normalized_capabilities "uuid[] COLUMN, NO FK to capability_nodes"
+        timestamptz last_projected_at
+    }
+    candidate_ranking_projections {
+        uuid candidate_id PK,FK "1:1; refreshed by CandidateRankingProjectionWorker"
+        float8 composite_score
+        float8 ai_score
+        float8 trust_score
+        float8 evidence_trust_score
+        float8 profile_completeness
+        int global_rank_position
+        int previous_global_rank_position
+        varchar full_name
+        varchar username
+        varchar headline
+        varchar bio
+        varchar location
+        varchar avatar_url
+        varchar primary_domain
+        varchar career_level_label
+        varchar open_to_work_status
+        bool available_for_hire
+        int followers_count
+        int following_count
+        int verified_repo_count
+        int verified_contribution_count
+        int total_stars_count
+        int total_forks_count
+        jsonb top_capabilities_json
+    }
+    candidate_search_profiles {
+        uuid candidate_id PK,FK "1:1 with users"
+        varchar full_name
+        varchar headline
+        varchar location
+        int trust_score
+        varchar trust_tier
+        jsonb capabilities_json
+        real_ARRAY search_embedding "real[] COLUMN; schema only - never populated"
+        timestamptz last_projected_at
+    }
+    candidate_trust_projections {
+        uuid candidate_id PK,FK "1:1 with users"
+        uuid trust_profile_id FK "-> trust_profiles (see 06)"
+        int aggregate_score
+        varchar trust_tier
+    }
+    candidate_evaluation_snapshots {
+        uuid candidate_id PK,FK "1:1 with users"
+        float8 identity_trust_score
+        float8 evidence_trust_score
+        float8 profile_completeness
+        varchar verification_state "value set <<Not verified>>"
+        timestamptz evaluated_at
+    }
+
+    users ||--o| candidate_capability_projections : "candidate_id"
+    users ||--o| candidate_match_projections : "candidate_id"
+    users ||--o| candidate_ranking_projections : "candidate_id"
+    users ||--o| candidate_search_profiles : "candidate_id"
+    users ||--o| candidate_trust_projections : "candidate_id"
+    users ||--o| candidate_evaluation_snapshots : "candidate_id"
+    trust_profiles ||--o{ candidate_trust_projections : "trust_profile_id"
+
+    %% ---------------- Recovery module (7 tables) ----------------
+
+    organization_recovery_claims {
+        uuid id PK
+        uuid organization_id FK
+        varchar representative_full_name
+        varchar representative_position
+        varchar recovery_email
+        varchar phone_number
+        jsonb documents "jsonb COLUMN, not a table (hazard 7)"
+        text document_ocr_metadata
+        text document_suspicious_metadata
+        text historical_claim_flags
+        text ip_device_flags
+        text workspace_activity_flags
+        int risk_score
+        varchar risk_level
+        varchar status
+        varchar suggested_recovery_strategy
+        varchar reviewed_by
+        varchar second_reviewer_by
+        text rejection_reason
+    }
+    approved_recovery_sessions {
+        uuid id PK
+        uuid organization_id FK
+        varchar recovery_token_hash UK "ix_approved_recovery_sessions_recovery_token_hash"
+        varchar verified_recovery_email
+        varchar approved_representative
+        varchar approved_by
+        varchar suggested_strategy
+        bool is_consumed
+        varchar used_by_ip
+        varchar used_by_device
+        timestamptz expires_at
+        timestamptz revoked_at
+    }
+    recovery_execution_locks {
+        uuid id PK
+        uuid recovery_session_id FK
+        varchar status
+        timestamptz acquired_at
+        timestamptz completed_at
+    }
+    representative_rotation_requests {
+        uuid id PK
+        uuid organization_id FK
+        varchar current_representative
+        varchar requested_representative
+        varchar requested_email
+        varchar requested_phone
+        varchar admin_approval_status
+        varchar support_approval_status
+        varchar verification_call_status
+        text verification_call_notes
+        varchar final_decision
+        timestamptz expires_at
+    }
+    representative_approval_votes {
+        uuid id PK
+        uuid request_id FK
+        uuid approver_user_id FK
+        varchar approver_role "plain string, NO FK to roles"
+        varchar decision
+        timestamptz timestamp
+    }
+    representative_authority_histories {
+        uuid id PK
+        uuid organization_id FK
+        varchar previous_representative
+        varchar new_representative
+        varchar rotated_by
+        varchar support_reviewer
+        timestamptz effective_at
+    }
+
+    organizations ||--o{ organization_recovery_claims : "organization_id"
+    organizations ||--o{ approved_recovery_sessions : "organization_id"
+    approved_recovery_sessions ||--o{ recovery_execution_locks : "recovery_session_id"
+    organizations ||--o{ representative_rotation_requests : "organization_id"
+    representative_rotation_requests ||--o{ representative_approval_votes : "request_id"
+    users ||--o{ representative_approval_votes : "approver_user_id"
+    organizations ||--o{ representative_authority_histories : "organization_id"
+
+    %% ---------------- AiChat (2 tables) ----------------
+
+    conversations {
+        uuid id PK
+        uuid user_id FK
+        varchar title
+    }
+    messages {
+        uuid id PK
+        uuid conversation_id FK
+        text role
+        text content
+        text streaming_state
+    }
+
+    users ||--o{ conversations : "user_id"
+    conversations ||--o{ messages : "conversation_id"

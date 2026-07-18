@@ -1,0 +1,146 @@
+@startuml 06-layered-architecture
+' CVerify — REAL layering of the Core API (modular monolith, NOT clean/onion architecture)
+' Verified against:
+'   CVerify.Core/Program.cs                                   (DI registration, middleware order :610-623,
+'                                                              JwtBearerEvents :506-533)
+'   CVerify.Core/Modules/Shared/Persistence/ApplicationDbContext.cs
+'   CVerify.Core/Modules/Shared/Persistence/IIdentityRepository.cs + IdentityRepository.cs
+'   CVerify.Core/Modules/SourceCode/Services/RepositoryAnalysisService.cs   (injects ApplicationDbContext directly)
+'   CVerify.Core/Modules/Profiles/Services/CandidateAssessmentService.cs    (injects ApplicationDbContext directly)
+'   CVerify.Core/Modules/Shared/System/Services/HiringRequirementService.cs (injects ApplicationDbContext directly)
+'   CVerify.Core/Modules/Auth/Middleware/SessionValidationMiddleware.cs
+'   CVerify.Core/Modules/SourceCode/BackgroundWorkers/AnalysisQueueRecoverySweeper.cs
+'   deployment/nginx/cverify.conf
+'   client/src/infrastructure/http/axios-client.ts
+'   docs/architecture/reverse-engineered/GROUND-TRUTH.md  §1, §3, §5.4, §7, §8
+
+title CVerify — Actual Layering (modular monolith)\nControllers -> Services -> EF Core DbContext. No domain layer, no repository layer (one exception).
+
+skinparam componentStyle rectangle
+skinparam shadowing false
+skinparam defaultTextAlignment center
+
+legend top left
+  <b>Honesty note</b>
+  This is NOT a DDD onion. There is no Domain layer, no Application/Infrastructure
+  split, and no repository abstraction for 8 of the 9 modules. Services take
+  ApplicationDbContext by constructor injection and write EF Core LINQ inline.
+  <b>IIdentityRepository is the only repository interface in the codebase.</b>
+end legend
+
+package "L1 · Presentation" as L1 #F4F8FF {
+  [Next.js 16.2 App Router\nReact 19.2 · Zustand · axios\nSignalR client] as WEB
+  note bottom of WEB
+    Cookie auth + CSRF header, single-flight refresh queue.
+    ⚠ SSE calls diverge: use-streaming-store.ts:405,624 appends a
+    ?token= query param read from localStorage/sessionStorage.
+  end note
+}
+
+package "L2 · Edge" as L2 #FFF8F0 {
+  [nginx (host-installed, not containerised)\nupstreams 127.0.0.1:3000 / 127.0.0.1:5247\nzones cverify_general 10r/s · cverify_auth 5r/m] as NGINX
+  note bottom of NGINX
+    TLS termination (Let's Encrypt, 3 SANs).
+    Dedicated SSE location: gzip off, proxy_buffering off, 300s.
+    HSTS/nosniff/DENY/Referrer-Policy/Permissions-Policy — no CSP.
+  end note
+}
+
+package "L3 · API / Controllers  (ASP.NET Core .NET 10)" as L3 #F2FFF2 {
+  [34 controllers\n5 SSE endpoints · 2 SignalR hubs] as CTRL
+  note bottom of CTRL
+    Controllers also perform imperative org-scoped authorization
+    inline: _authService.AuthorizeAsync(userId, orgId, permission).
+    Authorization logic is therefore NOT confined to a filter layer.
+  end note
+}
+
+package "L4 · Application / Services  (per module)" as L4 #FFFFF0 {
+  [AuthService · AccountService] as SVC_AUTH
+  [RepositoryAnalysisService\nSourceCodeProviderService] as SVC_SRC
+  [CandidateAssessmentService\nProfileService · CandidateMatchService] as SVC_PROF
+  [HiringRequirementService\nJobEligibilityService] as SVC_SYS
+  [Forum · AiChat · Recovery · Admin\n· Intelligence services] as SVC_MISC
+}
+
+package "L5 · Persistence" as L5 #FFF0F5 {
+  [ApplicationDbContext\n(EF Core, 152 entity sets)] as DBCTX
+  [IIdentityRepository\nIdentityRepository] as IDREPO
+  note right of IDREPO
+    The ONLY repository abstraction in the solution.
+    Used for role/permission loading during login.
+  end note
+}
+
+database "PostgreSQL 16\npgvector/pgvector:0.7.0-pg16\n152 tables · 201 FKs\nextensions: citext, pgcrypto\n1 native enum: user_status" as PG
+
+' ---- vertical cross-cutting spans -------------------------------------------
+package "Cross-cutting (span L3–L5)" as XC #F7F7F7 {
+  [Authentication\nJWT HS256 in HttpOnly cookies\nSessionValidationMiddleware] as X_AUTH
+  [Authorization\nHasPermission -> PermissionPolicyProvider\n-> PermissionHandler -> PermissionEvaluator] as X_AUTHZ
+  [Logging / Diagnostics\nRequestLogging · ExceptionHandler\nAppLoggingBackgroundWorker · AuditLog] as X_LOG
+  [Outbox\noutbox_messages (single table)\n2 independent consumers] as X_OBX
+  [Background workers\n15 registered hosted services] as X_BG
+}
+
+WEB   --> NGINX  : HTTPS · SSE · WebSocket
+NGINX --> CTRL   : proxy_pass
+CTRL  --> SVC_AUTH
+CTRL  --> SVC_SRC
+CTRL  --> SVC_PROF
+CTRL  --> SVC_SYS
+CTRL  --> SVC_MISC
+
+SVC_AUTH  --> DBCTX : <b>direct EF Core</b>
+SVC_SRC   --> DBCTX : <b>direct EF Core</b>
+SVC_PROF  --> DBCTX : <b>direct EF Core</b>
+SVC_SYS   --> DBCTX : <b>direct EF Core</b>
+SVC_MISC  --> DBCTX : <b>direct EF Core</b>
+SVC_AUTH  --> IDREPO : roles + permissions only
+IDREPO    --> DBCTX
+DBCTX     --> PG    : Npgsql
+
+' cross-cutting attachment points
+X_AUTH  ..> CTRL
+X_AUTH  ..> DBCTX
+X_AUTHZ ..> CTRL
+X_AUTHZ ..> SVC_AUTH
+X_LOG   ..> CTRL
+X_LOG   ..> DBCTX
+X_OBX   ..> SVC_AUTH
+X_OBX   ..> DBCTX
+X_BG    ..> SVC_SRC
+X_BG    ..> SVC_PROF
+X_BG    ..> DBCTX
+
+note right of X_AUTH
+  Middleware order (Program.cs:610-623):
+  RequestLogging -> ExceptionHandler -> CORS ->
+  SecurityHeaders -> RateLimiter -> Authentication ->
+  <b>SessionValidation</b> -> Authorization -> endpoints.
+  SessionValidationMiddleware sits BETWEEN authn and authz.
+end note
+
+note right of X_AUTHZ
+  Three coexisting mechanisms:
+  1. [Authorize(Roles=...)] — Recovery controllers only
+  2. [HasPermission("...")] — permission string IS the policy name
+  3. imperative AuthorizeAsync(userId, orgId, permission) in controller bodies
+  ⚠ AppPermissions.cs is an EMPTY class; all 9 permission strings are raw literals.
+end note
+
+note right of X_BG
+  ⚠ All queues (ICandidateAssessmentQueue, IRepositoryAnalysisQueue,
+  IRepositorySyncQueue, IEmailQueue) are singleton IN-PROCESS and NOT durable.
+  AnalysisQueueRecoverySweeper exists to recover jobs lost across restarts.
+  ⚠ PendingLinkCleanupService is a complete BackgroundService that is
+  never registered — dead code.
+end note
+
+note right of X_OBX
+  Written in the same transaction as the business change.
+  Consumers: EmailOutboxBackgroundProcessor (5s) and
+  TalentOutboxBackgroundProcessor (3s).
+end note
+
+@enduml

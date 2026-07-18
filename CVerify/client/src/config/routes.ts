@@ -223,7 +223,7 @@ export const routesConfig: Record<string, RouteMetadata> = {
 };
 
 const BASE_RESERVED_WORDS = [
-  "admin", "api", "login", "register", "settings", "dashboard", "profile", "privacy", "terms", "support", "help",
+  "admin", "api", "login", "register", "settings", "dashboard", "profile", "privacy", "privacy-policy", "terms", "support", "help",
   "chat", "business", "user", "organization", "auth", "system", "unauthorized", "company-onboarding",
   "company-verification", "continue-with-email", "forgot-password", "gateway", "reset-password", "verify-email",
   "workspace-setup", "company-setup", "cv", "ranking", "forum", "jobs", "invitations"

@@ -1,0 +1,53 @@
+%% CVerify — System Context Diagram
+%%
+%% Every actor, system and integration below is verified in source.
+%% Provenance for each external system is given in the edge label or comment.
+%%
+%% Actor roles are taken from the roles/permissions actually enforced in code:
+%%   - Roles seeded/used: SUPER_ADMIN, ADMIN, USER            (PermissionSeeder.cs, AuthService.cs:978)
+%%   - Organization roles: OWNER, REPRESENTATIVE, HR, MEMBER  (OrganizationPermissions.cs, OrganizationRole enum)
+%% "Recruiter" is NOT a role name in this system; recruiting is performed by
+%% organization members holding HR / REPRESENTATIVE / OWNER organization roles.
+
+graph TB
+    classDef actor    fill:#0b3d5c,stroke:#7fd1ff,stroke-width:2px,color:#eaf7ff
+    classDef system   fill:#123a2a,stroke:#5fd0a0,stroke-width:3px,color:#e8fff5
+    classDef external fill:#2c2c34,stroke:#9aa0aa,stroke-width:1.5px,color:#f0f2f5
+    classDef store    fill:#4a3410,stroke:#f0b429,stroke-width:1.5px,color:#fff8e6
+
+    Guest["<b>Guest</b><br/>unauthenticated visitor"]:::actor
+    Candidate["<b>Candidate</b><br/>role USER"]:::actor
+    OrgMember["<b>Organization Member</b><br/>org roles OWNER / REPRESENTATIVE / HR / MEMBER<br/><i>performs the recruiter function</i>"]:::actor
+    Admin["<b>Platform Administrator</b><br/>roles SUPER_ADMIN / ADMIN"]:::actor
+
+    CVerify["<b>CVerify Platform</b><br/><br/>Candidate capability verification and<br/>evidence-based talent matching<br/><br/>Next.js client · ASP.NET Core API · FastAPI AI service"]:::system
+
+    Claude["<b>Anthropic Claude API</b><br/>claude-3-5-sonnet-20241022 (default)<br/>claude-3-haiku (vision OCR, disabled by default)"]:::external
+    GitHub["<b>GitHub REST API</b><br/>api.github.com<br/>identity · repos · commits · issues · PRs"]:::external
+    GitLab["<b>GitLab REST API</b><br/>gitlab.com/api/v4<br/>OAuth · user · projects"]:::external
+    Google["<b>Google Identity</b><br/>ID-token verification"]:::external
+    VietQR["<b>VietQR API</b><br/>api.vietqr.io<br/>Vietnamese business-registry lookup"]:::external
+    Mail["<b>Email Transport</b><br/>SMTP (MailKit) · SendGrid REST<br/>failover-capable"]:::external
+
+    Postgres[("<b>PostgreSQL 16</b><br/>pgvector image<br/>EF Core, snake_case")]:::store
+    Redis[("<b>Redis 7.2</b><br/>cache · distributed locks<br/>pub/sub · HMAC nonce store")]:::store
+    Blob[("<b>Object Storage</b><br/>S3-compatible<br/>MinIO in production<br/>Cloudflare R2 also supported")]:::store
+
+    Guest -->|"browse public jobs, profiles,<br/>forum, org directory, rankings"| CVerify
+    Candidate -->|"build CV, link GitHub/GitLab,<br/>trigger assessment, apply to jobs,<br/>AI chat, forum"| CVerify
+    OrgMember -->|"create hiring requirements,<br/>publish vacancies, discover and<br/>match talent, manage members"| CVerify
+    Admin -->|"manage users/roles/permissions,<br/>review recovery claims,<br/>moderate forum, audit logs"| CVerify
+
+    CVerify -->|"HTTPS · SSE streaming<br/>prompt caching enabled"| Claude
+    CVerify -->|"HTTPS · OAuth PAT<br/>clone via git --depth 100"| GitHub
+    CVerify -->|"HTTPS · OAuth"| GitLab
+    CVerify -->|"ID-token validation"| Google
+    CVerify -->|"organization verification"| VietQR
+    CVerify -->|"transactional email<br/>via outbox pattern"| Mail
+
+    CVerify -->|"EF Core"| Postgres
+    CVerify -->|"StackExchange.Redis"| Redis
+    CVerify -->|"AWS SDK S3, SigV4,<br/>ForcePathStyle"| Blob
+
+    CVerify -.->|"SignalR /hubs/notifications<br/>+ 5 SSE progress streams"| Candidate
+    CVerify -.->|"SignalR /hubs/admin<br/>group 'admins'"| Admin

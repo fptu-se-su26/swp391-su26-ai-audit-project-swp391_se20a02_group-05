@@ -1,0 +1,329 @@
+%% ============================================================================
+%% 04 - Logical ERD: Identity, Organization, Workspace, Authorization
+%% ----------------------------------------------------------------------------
+%% Covers: users, user_profiles, organizations, organization_credentials,
+%% organization_verifications, pending_organization_ownerships, workspaces,
+%% workspace_members, workspace_posts, workspace_archive_snapshots,
+%% organization_memberships, organization_authorities, roles, permissions,
+%% role_permissions, user_roles, role_assignments, admin_members,
+%% admin_invitations (+ admin_invitation_roles), organization_invitations
+%% (+ organization_invitation_roles), organization_followers, user_followers.
+%% ---
+%% Source of truth (in precedence order):
+%%   1. docs/architecture/reverse-engineered/GROUND-TRUTH.md
+%%   2. CVerify.Core/Migrations/ApplicationDbContextModelSnapshot.cs
+%%   3. CVerify.Core/Modules/Shared/Persistence/ApplicationDbContext.cs
+%% ---
+%% Hazards applying to THIS diagram:
+%%  - Hazard 3: organization_followers.user_id is part of the composite PK but
+%%    has NO FK constraint, while organization_id DOES. Asymmetric - drawn as a
+%%    real FK on the org side and a [logical] dotted edge on the user side.
+%%    Contrast user_followers, which is a clean symmetric self-referencing M2M.
+%%  - Hazard 5 (polymorphic columns, no FK): role_assignments.scope_id,
+%%    roles.tenant_id, organization_invitation_roles.scope_id.
+%%    workspace_archive_snapshots.organization_id is likewise a bare uuid.
+%%  - Ground truth section 2: OrganizationRole (OWNER / REPRESENTATIVE / HR /
+%%    MEMBER) is a CODE-LEVEL vocabulary. organization_memberships.role,
+%%    organization_authorities.role and workspace_members.role are plain
+%%    `character varying(50)`. There is no DB enum and no roles FK for them.
+%%  - Ground truth section 2: there is NO "Recruiter" role/entity in this system.
+%%  - roles/permissions/role_assignments here are the RBAC mechanism; the
+%%    permission-string mechanism ([HasPermission]) is code-only and stores
+%%    nothing extra in the schema (AppPermissions.cs is an empty class).
+%% ---
+%% Cross-references:
+%%  - users -> CV/profile cluster: see 05-logical-erd-profile-cv.mmd
+%%  - users -> candidate_assessments / capabilities: see 06
+%%  - users -> auth_providers (OAuth): see 07-logical-erd-sourcecode-analysis.mmd
+%%  - organizations/workspaces -> hiring_requirements, job_vacancies: see 08
+%%  - organizations -> forum_categories / forum_topics: see 09
+%%  - users/organizations -> audit_logs, activity_events, tokens: see 10
+%% ============================================================================
+
+erDiagram
+
+    users {
+        uuid id PK
+        citext email UK "ix_users_email"
+        citext username UK "ix_users_username"
+        varchar full_name
+        text password_hash
+        user_status status "native PG enum user_status"
+        jsonb linked_emails "column, not a table (hazard 7)"
+        int session_version
+        int failed_attempts
+        timestamptz lock_until
+        timestamptz email_verified_at
+        inet last_login_ip
+        bool is_legal_hold
+        timestamptz deleted_at
+        bigint version
+    }
+
+    user_profiles {
+        uuid user_id PK,FK "1:1 with users, ON DELETE CASCADE"
+        citext username UK "idx_user_profiles_username_active"
+        varchar headline
+        varchar bio
+        varchar location
+        varchar company
+        varchar phone_number
+        varchar public_email
+        varchar profile_visibility "value set not enumerated in code"
+        varchar ai_talent_discovery "value set not enumerated in code"
+        bool recruiter_visibility
+        text ai_suggestions_json
+        bigint version
+    }
+
+    organizations {
+        uuid id PK
+        varchar name
+        varchar username UK "idx_organizations_username_active"
+        varchar tax_code UK "idx_organizations_tax_code_active"
+        varchar email
+        varchar status
+        bool is_verified
+        int verification_level
+        varchar representative_name
+        varchar representative_email
+        varchar recovery_authority
+        int follower_count
+        timestamptz deleted_at
+    }
+
+    organization_credentials {
+        uuid organization_id PK,FK "1:1, ON DELETE RESTRICT"
+        varchar username UK "idx_organization_credentials_username_active"
+        text password_hash
+        int failed_login_attempts
+        timestamptz lockout_end
+    }
+
+    organization_verifications {
+        uuid id PK
+        uuid organization_id FK
+        varchar verification_type
+        varchar verified_value
+        bool is_verified
+        varchar verified_by
+        text metadata
+    }
+
+    pending_organization_ownerships {
+        uuid id PK
+        uuid organization_id FK,UK
+        varchar owner_email UK "idx_pending_org_ownership_unique"
+        uuid consumed_by_user_id FK "ON DELETE SET NULL"
+        timestamptz expires_at
+        timestamptz consumed_at
+    }
+
+    workspaces {
+        uuid id PK
+        uuid organization_id FK
+        uuid owner_id FK
+        varchar slug UK "idx_workspaces_slug_active"
+        varchar display_name
+        varchar status
+        text branding
+        timestamptz deleted_at
+    }
+
+    workspace_members {
+        uuid id PK
+        uuid workspace_id FK,UK
+        uuid user_id FK,UK
+        varchar role "plain string, not an enum"
+        timestamptz joined_at
+    }
+
+    workspace_posts {
+        uuid id PK
+        uuid organization_id FK
+        uuid created_by_user_id FK
+        varchar category
+        text content
+        int likes
+        int shares_count
+    }
+
+    workspace_archive_snapshots {
+        uuid id PK
+        uuid workspace_id FK
+        uuid organization_id "bare uuid, NO FK"
+        varchar archived_by
+        text snapshot_data_json
+    }
+
+    organization_memberships {
+        uuid id PK
+        uuid organization_id FK,UK
+        uuid user_id FK,UK
+        varchar role "OWNER|REPRESENTATIVE|HR|MEMBER - plain varchar(50)"
+        varchar status
+        timestamptz joined_at
+    }
+
+    organization_authorities {
+        uuid id PK
+        uuid organization_id FK
+        uuid user_id FK
+        varchar role "plain varchar(50), not an enum"
+        timestamptz joined_at
+    }
+
+    roles {
+        uuid id PK
+        varchar name UK "ix_roles_name AND idx_roles_tenant_id_name"
+        varchar display_name
+        varchar domain
+        uuid tenant_id UK "polymorphic, NO FK (hazard 5)"
+        uuid parent_role_id FK "self-ref, ON DELETE RESTRICT"
+        bool is_system
+        bool is_active
+        timestamptz deleted_at
+    }
+
+    permissions {
+        uuid id PK
+        varchar name UK "ix_permissions_name"
+        varchar display_name
+        varchar module
+        bool is_system
+    }
+
+    role_permissions {
+        uuid permission_id PK,FK
+        uuid role_id PK,FK
+        timestamptz assigned_at
+    }
+
+    user_roles {
+        uuid role_id PK,FK
+        uuid user_id PK,FK
+        timestamptz assigned_at
+    }
+
+    role_assignments {
+        uuid id PK
+        uuid user_id FK,UK
+        uuid role_id FK,UK
+        varchar scope_type UK "GLOBAL|ORGANIZATION|WORKSPACE"
+        uuid scope_id UK "polymorphic, NO FK (hazard 5)"
+        timestamptz assigned_at
+    }
+
+    admin_members {
+        uuid id PK
+        uuid user_id FK
+        uuid assigned_by_user_id FK "ON DELETE SET NULL"
+        varchar status
+        int session_version
+    }
+
+    admin_invitations {
+        uuid id PK
+        citext invitee_email
+        varchar token_hash UK "idx_admin_invitations_token_hash"
+        uuid invited_by_user_id FK "ON DELETE SET NULL"
+        uuid consumed_by_user_id FK "ON DELETE SET NULL"
+        varchar status
+        timestamptz expires_at
+        timestamptz accepted_at
+    }
+
+    admin_invitation_roles {
+        uuid id PK
+        uuid invitation_id FK
+        uuid role_id FK
+    }
+
+    organization_invitations {
+        uuid id PK
+        uuid organization_id FK
+        varchar invitee_email
+        varchar token_hash UK "idx_org_invitations_token_hash"
+        uuid invited_by_user_id FK "ON DELETE SET NULL"
+        uuid consumed_by_user_id FK "ON DELETE SET NULL"
+        varchar status
+        timestamptz expires_at
+        timestamptz declined_at
+    }
+
+    organization_invitation_roles {
+        uuid id PK
+        uuid invitation_id FK
+        uuid role_id FK
+        varchar scope_type
+        uuid scope_id "polymorphic, NO FK (hazard 5)"
+    }
+
+    organization_followers {
+        uuid user_id PK "PK member but NO FK (hazard 3)"
+        uuid organization_id PK,FK
+        timestamptz followed_at
+    }
+
+    user_followers {
+        uuid follower_id PK,FK
+        uuid followee_id PK,FK
+        timestamptz followed_at
+    }
+
+    %% ---------------- Relationships ----------------
+
+    %% users <-> profile / org membership
+    users ||--o| user_profiles : "user_id"
+    organizations ||--o| organization_credentials : "organization_id"
+    organizations ||--o{ organization_verifications : "organization_id"
+    organizations ||--o{ pending_organization_ownerships : "organization_id"
+    users |o--o{ pending_organization_ownerships : "consumed_by_user_id"
+
+    organizations ||--o{ organization_memberships : "organization_id"
+    users ||--o{ organization_memberships : "user_id"
+    organizations ||--o{ organization_authorities : "organization_id"
+    users ||--o{ organization_authorities : "user_id"
+
+    %% workspaces
+    organizations ||--o{ workspaces : "organization_id"
+    users ||--o{ workspaces : "owner_id"
+    workspaces ||--o{ workspace_members : "workspace_id"
+    users ||--o{ workspace_members : "user_id"
+    organizations ||--o{ workspace_posts : "organization_id"
+    users ||--o{ workspace_posts : "created_by_user_id"
+    workspaces ||--o{ workspace_archive_snapshots : "workspace_id"
+    %% [logical] workspace_archive_snapshots.organization_id is a bare uuid column
+    %% with no FK and no index - included for completeness only.
+    organizations ||..o{ workspace_archive_snapshots : "[logical] organization_id"
+
+    %% RBAC
+    roles |o--o{ roles : "parent_role_id"
+    roles ||--o{ role_permissions : "role_id"
+    permissions ||--o{ role_permissions : "permission_id"
+    roles ||--o{ user_roles : "role_id"
+    users ||--o{ user_roles : "user_id"
+    roles ||--o{ role_assignments : "role_id"
+    users ||--o{ role_assignments : "user_id"
+
+    %% admin surface
+    users ||--o{ admin_members : "user_id"
+    users |o--o{ admin_members : "assigned_by_user_id"
+    users |o--o{ admin_invitations : "invited_by_user_id"
+    users |o--o{ admin_invitations : "consumed_by_user_id"
+    admin_invitations ||--o{ admin_invitation_roles : "invitation_id"
+    roles ||--o{ admin_invitation_roles : "role_id"
+
+    %% organization invitations
+    organizations ||--o{ organization_invitations : "organization_id"
+    users |o--o{ organization_invitations : "invited_by_user_id"
+    users |o--o{ organization_invitations : "consumed_by_user_id"
+    organization_invitations ||--o{ organization_invitation_roles : "invitation_id"
+    roles ||--o{ organization_invitation_roles : "role_id"
+
+    %% follow graph
+    organizations ||--o{ organization_followers : "organization_id"
+    %% [logical] hazard 3 - user_id is in the composite PK but carries NO FK.
+    users ||..o{ organization_followers : "[logical] user_id"
+    users ||--o{ user_followers : "follower_id"
+    users ||--o{ user_followers : "followee_id"
