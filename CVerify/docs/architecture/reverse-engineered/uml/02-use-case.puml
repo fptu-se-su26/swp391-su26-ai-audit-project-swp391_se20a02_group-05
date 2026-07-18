@@ -1,0 +1,375 @@
+@startuml 02-use-case
+' CVerify — Use Case model, derived from the 34 real controllers (no invented endpoints).
+' Verified against (route + auth attributes read directly):
+'   Modules/Auth/Controllers/AuthController.cs                    (login:55, register:126, verify-email:139,
+'                                                                  connect/{provider}:464, callback:535, send-otp:1075,
+'                                                                  register-organization:1164, setup-workspace:1210)
+'   Modules/Auth/Controllers/OrganizationController.cs            ([Route "api/organizations"]:24, GET:77 AllowAnonymous,
+'                                                                  PATCH:402, follow:551, posts:1008, jobs:1176)
+'   Modules/Auth/Controllers/WorkspaceController.cs               ([Route "api/workspace"]:25, members:740 AllowAnonymous,
+'                                                                  workspaces CRUD:1443-2172)
+'   Modules/Auth/Controllers/MemberController.cs                  (:23 api/organizations/{orgSlug}/members)
+'   Modules/Auth/Controllers/OrganizationRoleController.cs        (:17 roles; BusinessRoleController :185-187 subclass)
+'   Modules/Auth/Controllers/InvitationController.cs              (:73-203)
+'   Modules/Profiles/Controllers/*.cs                             (Profile:17, Education/Project/Achievement/WorkExperience,
+'                                                                  Career:14, Evidence:15, CandidateAssessment:19)
+'   Modules/SourceCode/Controllers/SourceCodeProvidersController.cs (:15), RepositoryAnalysisController.cs (:20),
+'                                                                  AiJobsController.cs (:16-17 [AllowAnonymous])
+'   Modules/Intelligence/Controllers/TalentDiscoveryController.cs (:34, :84, :168)
+'   Modules/Shared/System/Controllers/HiringRequirementController.cs (:22), JobVacancyController.cs (:42-288),
+'                                                                  PublicJobController.cs (:42-487), StreamingController.cs (:19),
+'                                                                  NotificationController.cs (:18), SystemController.cs (:7-8)
+'   Modules/Forum/Controllers/ForumController.cs                  (:15)
+'   Modules/Admin/Controllers/{AuditLogs,Permissions,RolesAdmin,UsersAdmin}Controller.cs
+'   Modules/Recovery/Controllers/{Recovery,Level2Recovery,PasswordRecovery}Controller.cs
+'   Modules/Shared/Email/Controllers/EmailTestController.cs       (:17-18 — NO auth attribute)
+'   Modules/AiChat/Controllers/AiChatController.cs                (:29-31)
+' Ground truth: GROUND-TRUTH.md §2 (roles), §5 (API surface), §5.1 (unauthenticated endpoints), §5.2 (duplicates).
+
+title CVerify — Use Cases (derived from actual controller routes)
+
+left to right direction
+skinparam packageStyle rectangle
+skinparam actorStyle awesome
+
+actor "Guest\n(unauthenticated)"            as Guest
+actor "Candidate\n(system role USER)"       as Candidate
+actor "Organization Member"                 as OrgMember
+actor "OWNER"                               as Owner
+actor "REPRESENTATIVE"                      as Rep
+actor "HR"                                  as HR
+actor "MEMBER"                              as Member
+actor "Platform Administrator"              as PlatformAdmin
+actor "SUPER_ADMIN"                         as SuperAdmin
+actor "ADMIN"                               as Admin
+actor "AI Service\n(CVerify.AI, HMAC client)" as AIService  <<system>>
+
+note top of OrgMember
+  GROUND-TRUTH §2: **"Recruiter" is NOT a role in this system.**
+  Recruiting work is done by organization members holding
+  OWNER / REPRESENTATIVE / HR. The four organization roles are a
+  code-level vocabulary (`OrganizationRole` enum) — no entity
+  property is typed as the enum; `OrganizationMembership.Role`,
+  `OrganizationAuthority.Role` and `WorkspaceMember.Role` are
+  plain `string` columns.
+end note
+
+note top of PlatformAdmin
+  System roles are SUPER_ADMIN / ADMIN / USER.
+  Only the Recovery controllers use `[Authorize(Roles=...)]`;
+  Admin controllers use `[HasPermission("admin:*")]`, resolved
+  through IAdminAuthorizationService (none of those permission
+  strings are seeded by PermissionSeeder).
+end note
+
+Owner        --|> OrgMember
+Rep          --|> OrgMember
+HR           --|> OrgMember
+Member       --|> OrgMember
+OrgMember    --|> Candidate
+SuperAdmin   --|> PlatformAdmin
+Admin        --|> PlatformAdmin
+Candidate    --|> Guest
+
+package "Auth & Identity" {
+  usecase "Register account"                       as UC_Register
+  usecase "Verify email"                           as UC_VerifyEmail
+  usecase "Log in"                                 as UC_Login
+  usecase "Issue JWT cookie pair"                  as UC_IssueTokens
+  usecase "Refresh session (rotate token)"         as UC_Refresh
+  usecase "Log out"                                as UC_Logout
+  usecase "Recover password"                       as UC_ForgotPwd
+  usecase "Verify email OTP step-up"               as UC_Otp
+  usecase "Connect OAuth provider\n(Google / GitHub)" as UC_Connect
+  usecase "Manage linked providers"                as UC_Providers
+  usecase "Request account deletion"               as UC_DeleteMe
+  usecase "Reactivate pending-deletion account"    as UC_Reactivate
+}
+
+package "Organization & Workspace" {
+  usecase "Register organization"                  as UC_RegOrg
+  usecase "Set up workspace"                       as UC_SetupWs
+  usecase "Browse organization profile"            as UC_ViewOrg
+  usecase "Follow organization"                    as UC_FollowOrg
+  usecase "Update organization profile"            as UC_EditOrg
+  usecase "Upload org banner / avatar / media"     as UC_OrgMedia
+  usecase "Publish organization post"              as UC_OrgPost
+  usecase "Invite member"                          as UC_Invite
+  usecase "Accept / decline invitation"            as UC_AcceptInvite
+  usecase "Manage members"                         as UC_ManageMembers
+  usecase "Manage organization roles"              as UC_OrgRoles
+  usecase "Manage workspaces"                      as UC_Workspaces
+  usecase "Read organization audit log"            as UC_OrgAudit
+}
+
+package "Candidate Profile" {
+  usecase "Maintain CV profile"                    as UC_Profile
+  usecase "Maintain education / projects /\nwork experience / achievements" as UC_CvSections
+  usecase "Set career preferences"                 as UC_Career
+  usecase "Upload evidence attachment"             as UC_UploadEvidence
+  usecase "Download evidence (signed URL)"         as UC_DownloadEvidence
+  usecase "View public profile / ranking"          as UC_PublicProfile
+  usecase "Follow candidate"                       as UC_FollowUser
+}
+
+package "Source Code & Repository Analysis" {
+  usecase "List provider repositories"             as UC_ListRepos
+  usecase "Sync provider repositories"             as UC_SyncRepos
+  usecase "Trigger repository analysis"            as UC_TriggerRepo
+  usecase "Execute L1 analysis task"               as UC_L1Task
+  usecase "Aggregate analysis into report"         as UC_L1Aggregate
+  usecase "Stream analysis progress (SSE)"         as UC_RepoSse
+  usecase "Cancel / retry analysis"                as UC_RepoCancel
+  usecase "View analysis cost breakdown"           as UC_RepoCost
+  usecase "Serve AI job artifact to AI service"    as UC_Artifact
+}
+
+package "Candidate Assessment (Line 2)" {
+  usecase "Check assessment readiness"             as UC_Readiness
+  usecase "Trigger candidate assessment"           as UC_TriggerAssess
+  usecase "Run 16-task candidate DAG"              as UC_RunDag
+  usecase "Stream assessment progress (SSE)"       as UC_AssessSse
+  usecase "View assessment / skill tree"           as UC_ViewAssess
+  usecase "Cancel assessment"                      as UC_CancelAssess
+  usecase "Reprocess assessment (admin route)"     as UC_Reprocess
+}
+
+package "Hiring & Talent Intelligence" {
+  usecase "Create hiring requirement"              as UC_CreateReq
+  usecase "Generate requirement artifacts"         as UC_GenArtifacts
+  usecase "Regenerate a single artifact"           as UC_GenOneArtifact
+  usecase "Stream artifact progress (SSE)"         as UC_ReqSse
+  usecase "Publish requirement snapshot"           as UC_PublishReq
+  usecase "Create / publish job vacancy"           as UC_Vacancy
+  usecase "Discover candidate matches"             as UC_Discover
+  usecase "Evaluate candidate/job match"           as UC_Match
+  usecase "Search talent"                          as UC_TalentSearch
+  usecase "View candidate intelligence profile"    as UC_TalentProfile
+  usecase "Review job applicants"                  as UC_Applicants
+}
+
+package "Public Jobs" {
+  usecase "Browse public jobs"                     as UC_BrowseJobs
+  usecase "Check application eligibility"          as UC_Eligibility
+  usecase "Apply to job"                           as UC_Apply
+  usecase "View my applications"                   as UC_MyApps
+}
+
+package "Forum" {
+  usecase "Browse categories / topics / tags"      as UC_ForumBrowse
+  usecase "Post topic / reply"                     as UC_ForumPost
+  usecase "Vote / react / bookmark / follow"       as UC_ForumEngage
+  usecase "Report content"                         as UC_ForumReport
+  usecase "Moderate forum"                         as UC_ForumModerate
+  usecase "Manage categories / tags"               as UC_ForumManage
+}
+
+package "AI Chat & Streaming" {
+  usecase "Chat with AI assistant (SSE)"           as UC_Chat
+  usecase "Inspect streaming session / logs / costs" as UC_Sessions
+  usecase "Retry streaming stage"                  as UC_RetryStage
+}
+
+package "Notifications" {
+  usecase "Read / dismiss notifications"           as UC_Notify
+  usecase "Manage notification preferences"        as UC_NotifyPrefs
+}
+
+package "Platform Administration" {
+  usecase "Manage platform users"                  as UC_AdminUsers
+  usecase "Manage platform roles & permissions"    as UC_AdminRoles
+  usecase "Read AI audit log"                      as UC_AdminAudit
+  usecase "Send platform invitation"               as UC_AdminInvite
+}
+
+package "Account Recovery" {
+  usecase "Recover candidate account"              as UC_RecCandidate
+  usecase "Recover organization account"           as UC_RecOrg
+  usecase "Submit organization reclaim claim"      as UC_Reclaim
+  usecase "Review reclaim claim"                   as UC_ReviewClaim
+  usecase "Cast Level-2 recovery vote"             as UC_L2Vote
+  usecase "Approve Level-2 rotation request"       as UC_L2Approve
+}
+
+package "System & Email diagnostics" {
+  usecase "Query system health / version / status" as UC_SysStatus
+  usecase "Send test email / read email log"       as UC_EmailTest
+}
+
+' ---------- Guest ----------
+Guest --> UC_Register
+Guest --> UC_VerifyEmail
+Guest --> UC_Login
+Guest --> UC_ForgotPwd
+Guest --> UC_Otp
+Guest --> UC_Reactivate
+Guest --> UC_RegOrg
+Guest --> UC_ViewOrg
+Guest --> UC_PublicProfile
+Guest --> UC_BrowseJobs
+Guest --> UC_ForumBrowse
+Guest --> UC_RecCandidate
+Guest --> UC_RecOrg
+Guest --> UC_Reclaim
+Guest --> UC_SysStatus
+Guest --> UC_EmailTest
+
+' ---------- Candidate ----------
+Candidate --> UC_Logout
+Candidate --> UC_Connect
+Candidate --> UC_Providers
+Candidate --> UC_DeleteMe
+Candidate --> UC_Profile
+Candidate --> UC_CvSections
+Candidate --> UC_Career
+Candidate --> UC_UploadEvidence
+Candidate --> UC_DownloadEvidence
+Candidate --> UC_FollowUser
+Candidate --> UC_ListRepos
+Candidate --> UC_SyncRepos
+Candidate --> UC_TriggerRepo
+Candidate --> UC_RepoSse
+Candidate --> UC_RepoCancel
+Candidate --> UC_RepoCost
+Candidate --> UC_Readiness
+Candidate --> UC_TriggerAssess
+Candidate --> UC_AssessSse
+Candidate --> UC_ViewAssess
+Candidate --> UC_CancelAssess
+Candidate --> UC_Eligibility
+Candidate --> UC_Apply
+Candidate --> UC_MyApps
+Candidate --> UC_ForumPost
+Candidate --> UC_ForumEngage
+Candidate --> UC_ForumReport
+Candidate --> UC_Chat
+Candidate --> UC_Sessions
+Candidate --> UC_Notify
+Candidate --> UC_NotifyPrefs
+Candidate --> UC_AcceptInvite
+Candidate --> UC_FollowOrg
+
+' ---------- Organization roles ----------
+OrgMember --> UC_ViewOrg
+OrgMember --> UC_OrgAudit
+Owner     --> UC_SetupWs
+Owner     --> UC_EditOrg
+Owner     --> UC_OrgRoles
+Owner     --> UC_Workspaces
+Owner     --> UC_ManageMembers
+Rep       --> UC_EditOrg
+Rep       --> UC_OrgMedia
+Rep       --> UC_OrgPost
+Rep       --> UC_Invite
+HR        --> UC_Invite
+HR        --> UC_ManageMembers
+HR        --> UC_CreateReq
+HR        --> UC_GenArtifacts
+HR        --> UC_GenOneArtifact
+HR        --> UC_ReqSse
+HR        --> UC_PublishReq
+HR        --> UC_Vacancy
+HR        --> UC_Discover
+HR        --> UC_Match
+HR        --> UC_TalentSearch
+HR        --> UC_TalentProfile
+HR        --> UC_Applicants
+Rep       --> UC_CreateReq
+Rep       --> UC_Vacancy
+
+note right of HR
+  Authorization for these is imperative and organization-scoped:
+  `_authService.AuthorizeAsync(userId, orgId, "permission:name:SCOPETYPE:scopeId")`
+  inside the controller body — not an attribute. An ORGANIZATION-scoped
+  grant implicitly covers child WORKSPACE scopes
+  (PermissionEvaluator.cs:95,111).
+end note
+
+' ---------- Platform admin ----------
+PlatformAdmin --> UC_AdminUsers
+PlatformAdmin --> UC_AdminRoles
+PlatformAdmin --> UC_AdminAudit
+PlatformAdmin --> UC_AdminInvite
+PlatformAdmin --> UC_ForumModerate
+PlatformAdmin --> UC_ForumManage
+SuperAdmin    --> UC_ReviewClaim
+SuperAdmin    --> UC_L2Approve
+Admin         --> UC_ReviewClaim
+Admin         --> UC_L2Approve
+
+' ---------- AI service (secondary/system actor) ----------
+UC_RunDag      --> AIService
+UC_L1Task      --> AIService
+UC_L1Aggregate --> AIService
+UC_GenArtifacts --> AIService
+UC_Chat        --> AIService
+AIService      --> UC_Artifact
+
+note bottom of AIService
+  The Core API is always the *caller* into CVerify.AI over the
+  named HttpClient "AiServiceClient" (5-min timeout), every request
+  HMAC-signed by HmacSignatureService. The one reverse call is the AI
+  service fetching `GET api/v1/ai-jobs/{jobId}/artifacts/{key}`.
+end note
+
+' ---------- include / extend ----------
+UC_Login          .> UC_IssueTokens    : <<include>>
+UC_Register       .> UC_VerifyEmail    : <<include>>
+UC_Refresh        .> UC_IssueTokens    : <<include>>
+UC_Otp            .> UC_Login          : <<extend>>
+UC_RegOrg         .> UC_SetupWs        : <<include>>
+UC_Invite         .> UC_AcceptInvite   : <<extend>>
+UC_TriggerAssess  .> UC_Readiness      : <<include>>
+UC_TriggerAssess  .> UC_RunDag         : <<include>>
+UC_AssessSse      .> UC_TriggerAssess  : <<extend>>
+UC_TriggerRepo    .> UC_L1Task         : <<include>>
+UC_TriggerRepo    .> UC_L1Aggregate    : <<include>>
+UC_RepoSse        .> UC_TriggerRepo    : <<extend>>
+UC_RepoCancel     .> UC_TriggerRepo    : <<extend>>
+UC_GenArtifacts   .> UC_CreateReq      : <<include>>
+UC_GenOneArtifact .> UC_GenArtifacts   : <<extend>>
+UC_ReqSse         .> UC_GenArtifacts   : <<extend>>
+UC_PublishReq     .> UC_GenArtifacts   : <<include>>
+UC_Vacancy        .> UC_PublishReq     : <<include>>
+UC_Discover       .> UC_Match          : <<include>>
+UC_Apply          .> UC_Eligibility    : <<include>>
+UC_UploadEvidence .> UC_DownloadEvidence : <<extend>>
+UC_Reclaim        .> UC_ReviewClaim    : <<extend>>
+UC_L2Vote         .> UC_L2Approve      : <<extend>>
+
+note as N_Unauth #ffdddd
+  **GROUND-TRUTH §5.1 — verified unauthenticated but sensitive.**
+  There is no global fallback authorization policy, so a missing
+  attribute means genuinely anonymous:
+  * `EmailTestController` — all 6 endpoints have **no auth attribute at all**
+    (send-verification, generate-token, GET/DELETE `api/emailtest/logs`)
+  * `SystemController` — all 6 endpoints, no auth attributes
+  * `GET api/v1/ai-jobs/{jobId}/artifacts/{key}` — class-level `[AllowAnonymous]`
+    ("allow internal microservice to call without bearer auth");
+    any in-body guard is <<Not verified>>
+  * `GET api/v1/candidate-assessments/dev-trigger` — `[AllowAnonymous]`,
+    hardcodes user 019ecc1b-44e6-7600-803f-11249088ae92
+  * `POST api/v1/admin/candidate-assessments/reprocess` (both routes) —
+    `[AllowAnonymous]` on an admin route
+  * `GET api/repositories/{repoId}/dev-reset-and-analyze` — `[AllowAnonymous]`
+  * `POST api/auth/recovery/level2/vote` — `[AllowAnonymous]` on an admin
+    quorum action; presumed token-gated in body, <<Not verified>>
+  * `GET api/workspace/{slug}/members` is `[AllowAnonymous]` while the
+    near-identical `api/organizations/{slug}/members` is not (§5.2)
+end note
+
+UC_EmailTest  .. N_Unauth
+UC_SysStatus  .. N_Unauth
+UC_Artifact   .. N_Unauth
+UC_Reprocess  .. N_Unauth
+UC_L2Vote     .. N_Unauth
+
+note as N_Dup
+  §5.2 duplicate surfaces: `api/organizations/*` and `api/workspace/*`
+  are near-identical controllers, and `BusinessRoleController` merely
+  subclasses `OrganizationRoleController` to re-expose all 9 role
+  actions under `api/business/{orgSlug}/roles/*`. Modelled once here.
+end note
+N_Dup .. UC_OrgRoles
+
+@enduml

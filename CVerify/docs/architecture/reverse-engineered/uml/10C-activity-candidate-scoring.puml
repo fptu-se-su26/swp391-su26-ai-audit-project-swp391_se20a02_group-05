@@ -1,0 +1,227 @@
+@startuml 10C-activity-candidate-scoring
+' CVerify — Deterministic candidate scoring model.
+' Verified against:
+'   CVerify.AI/app/pipelines/candidate/scoring_engine.py
+'       score_candidate_deterministic:455-560 (inline policy defaults:462-471,
+'           scoring_policy.json load attempt:472-478, proficiency fallback:482-512,
+'           has_verified_repos:514, verified:515-521, self-declared:526-533,
+'           aggregate:534-539, cohort normalise:541-542, uncertainty band:543)
+'       calculate_verified_score:29-195  (log1p impact with company/role scalers:150-180)
+'       calculate_self_declared_score:197-322 (leadership multiplier 1.15:~160)
+'       aggregate_scores:323-385 (0.85/0.15 blend, 0.40 ceiling:336-349)
+'       normalize_score_to_cohort:387-422 (11-point linear interpolation)
+'       calculate_uncertainty_band:424-440 (margin 5% .. 20%)
+'       classify_seniority:442-453
+'   CVerify.AI/app/pipelines/candidate/cohort_snapshot_v1.json (cohortVersion v1.0.0,
+'       snapshotDate 2026-06-16, totalCandidates 1000, 11 percentile bins)
+'   CVerify.AI/app/pipelines/candidate/tasks/career_level.py
+'       CareerLevelGate:390-505 (dependencies ["L2-005"]:400, hard floors:428-460,
+'       Type-1 repo requirement:461-471, deterministic overwrite of the LLM output:485-492)
+'   CVerify.AI/app/pipelines/candidate/tasks/composer.py:58, :113 (same JSON paths, different depth)
+' Ground truth: GROUND-TRUTH.md §6.3.
+
+title CVerify — Candidate Scoring (deterministic 5-dimension model)
+
+start
+:score_candidate_deterministic(cv, repository_assessments,
+skill_proficiencies, historical scores);
+
+partition "Policy resolution" {
+  :start from the **inlined default policy**
+  skillDepth   weight 0.35, scale_A 22.0, scale_B 0.05
+  ownership    weight 0.25, scale_A 22.0, scale_B 0.20
+  architecture weight 0.20, scale_A 22.0, scale_B 0.05
+  problemSolving weight 0.12, scale_A 22.0, scale_B 0.10
+  impact       weight 0.08, scale_A 20.0, scale_B 1.00;
+  if (scoring_policy.json exists at the loaded path?) then (yes)
+    :override the defaults;
+  else (no)
+    :keep the inlined defaults;
+  endif
+  note right #ffdddd
+    GROUND-TRUTH §6.3: **`scoring_policy.json` does not exist at the path
+    the code loads it from.** Three call sites each carry their own copy of
+    these defaults, so the "configurable policy" is inert and any drift
+    between the three copies is silent.
+  end note
+}
+
+if (skill_proficiencies supplied by L2-002?) then (no)
+  :derive them from repository skillAttributions —
+  average contributionWeight banded as
+  >= 0.8 Expert (4.0) · >= 0.5 Practitioner (3.0)
+  · >= 0.2 Working (2.0) · else Awareness (1.0);
+endif
+
+fork
+  partition "Verified track (repository evidence)" {
+    :skillDepth, ownership, architecture, problemSolving from
+    repository capabilities, skill attributions and ownership signals;
+    :verified projects = those linked to an analyzed repo or with
+    verificationLevel AiAnalyzed / RepositoryLinked;
+    :impact = log1p(scale_B x verified_months)
+    x company_scale x role_scale x scale_A;
+    note right
+      company_scale is 1.15 if the free-text description mentions one of
+      seven hardcoded employers (google, apple, facebook, meta, netflix,
+      amazon, microsoft); role_scale is 1.6 / 1.4 / 1.2 / 0.8 from
+      substring matches on the role title. Both are unverified strings the
+      candidate typed — they scale a "verified" dimension.
+    end note
+    :score_verified = sum(dimension x weight);
+  }
+fork again
+  partition "Self-declared track (CV only)" {
+    :same five dimensions computed from CV skills, projects and experiences;
+    :total_months from experiences (fallback: recompute from dates);
+    :leadership_mult = 1.15 if any experience isLeadership;
+    :impact = log1p(scale_B x total_months)
+    x company_scale x role_scale x leadership_mult x scale_A;
+    :score_self_declared = sum(dimension x weight);
+  }
+end fork
+
+partition "Blend" {
+  if (has_verified_repos — len(repository_assessments) > 0?) then (yes)
+    :verified_weight = 0.85
+    self_declared_weight = 0.15
+    scale_ceiling = 1.00;
+  else (no)
+    :verified_weight = 0.00
+    self_declared_weight = 1.00
+    **scale_ceiling = 0.40**;
+    note right
+      The 0.40 ceiling is applied per dimension
+      (`combine_dim` multiplies the blend by the ceiling), so a
+      candidate with no verified repository can never exceed 40% of
+      the scale on **any** dimension — the cap is structural, not a
+      post-hoc clamp on the overall score.
+      Note the gate is `len(repository_assessments) > 0`, not "at
+      least one that succeeded", so a repo whose assessment failed
+      still lifts the ceiling to 1.00.
+    end note
+  endif
+  :combined[dim] = (verified[dim] x verified_weight
+  + self_declared[dim] x self_declared_weight) x scale_ceiling;
+  :overall = sum(combined[dim] x weight[dim]);
+}
+
+partition "Cohort normalisation" {
+  if (cohort_snapshot_v1.json readable at the loaded path?) then (yes)
+    :sort the percentile bins by score;
+    if (raw <= first bin?) then (yes)
+      :percentile = first bin;
+    elseif (raw >= last bin?) then (yes)
+      :percentile = last bin;
+    else (no)
+      :linear interpolation between the two surrounding
+      of the 11 bins;
+    endif
+  else (no)
+    :fallback — percentile = clamp(raw, 0, 100),
+    cohortVersion "v0.0.0-fallback";
+  endif
+  note right #ffdddd
+    The snapshot is synthetic: cohortVersion v1.0.0,
+    snapshotDate 2026-06-16, `totalCandidates: 1000`, 11 hand-written
+    bins. Percentiles are therefore relative to a fabricated cohort,
+    not to the live user base.
+
+    **Additionally verified here (beyond GROUND-TRUTH §6.3):** the path
+    `scoring_engine.py` builds is `dirname(dirname(__file__))` =
+    `app/pipelines/`, but the file actually lives at
+    `app/pipelines/candidate/cohort_snapshot_v1.json`. From
+    `scoring_engine.py` **both** JSON files miss and the fallbacks fire.
+    The same expression in `tasks/composer.py` and
+    `tasks/improvement_engine.py` is one directory deeper and resolves
+    correctly — so the cohort snapshot loads for those two callers and
+    not for this one. Same constant, two different behaviours.
+  end note
+}
+
+partition "Uncertainty band" {
+  :ratio = clamp(self_declared_score / max(combined_score, 1.0), 0, 1);
+  :margin = 5.0 + 15.0 x ratio
+  (+/-5% fully verified, +/-20% fully self-declared);
+  :cohortPercentileRange = { min: percentile - margin,
+  max: percentile + margin, margin }
+  clamped to [0, 100];
+}
+
+partition "Seniority classification (heuristic)" {
+  :classify_seniority(complexity, leadership, maturity, ownership)
+  L5 Principal >= 85 / 80 / 85 / 75
+  L4 Staff     >= 75 / 65 / 75 / 60
+  L3 Senior    >= 55 / 40 / 60 / 45
+  L2 Middle    >= 30 / 15 / 35 / 30
+  L1 Junior    >= 10 /  - / 15 / 15
+  else Intern;
+}
+
+partition "L2-006 CareerLevelGate — hard floors that override the LLM" {
+  :input = calibratedLevel from L2-005,
+  plus architectureScore, problemSolvingScore, impactScore;
+  if (calibratedLevel == L3?) then (yes)
+    if (architecture < 100?) then (yes)
+      :violation; final_level = L2;
+    endif
+    if (problemSolving < 80?) then (yes)
+      :violation; final_level = L2;
+    endif
+  elseif (calibratedLevel == L4?) then (yes)
+    if (architecture < 180?) then (yes)
+      :violation; final_level = L3;
+    endif
+    if (impact < 110?) then (yes)
+      :violation; final_level = L3;
+    endif
+  elseif (calibratedLevel == L5?) then (yes)
+    if (architecture < 250?) then (yes)
+      :violation; final_level = L4;
+    endif
+    if (impact < 150?) then (yes)
+      :violation; final_level = L4;
+    endif
+  endif
+  if (final_level in {L3, L4, L5} and no repository with
+      cvVerificationLevel "AiAnalyzed" or trustLevel 3?) then (yes)
+    :violation "Seniority levels (L3+) require at least one
+    verified Type 1 (AI Analyzed) repository";
+    :final_level = L2;
+  endif
+  :gate_passed = (no violations);
+
+  :call Claude with the gate prompt and the violation list;
+  :**overwrite the model's answer** —
+  ai_data["gatePassed"]      = gate_passed
+  ai_data["finalLevel"]      = final_level
+  ai_data["finalLevelLabel"] = level_map[final_level]
+  ai_data["finalScore"]      = calibrated_score
+  ai_data["gateViolations"]  = gate_violations
+  (gateRationale replaced too when the gate failed);
+  note right #ffdddd
+    The Claude call happens **after** the decision is already made and
+    its structured verdict is unconditionally discarded. Only the
+    unlisted narrative fields of the model's JSON survive, so the LLM
+    can never raise or lower the level — it can only describe it, and
+    its prose can contradict the numbers if it disagrees.
+    A malformed response still fails the whole task, because
+    `_extract_json` raises after the json_repair fallback.
+  end note
+  :emit LEVEL_ESTIMATE_UPDATED pipeline event;
+}
+
+:return candidateScore, dimension breakdown, finalLevel /
+finalLevelLabel, cohortPercentile, cohortVersion,
+cohortPercentileRange, careerLevelConfidence (hardcoded 0.85);
+stop
+
+note bottom #ffdddd
+  Two further inert artefacts on this path (GROUND-TRUTH §6.3, §6.6):
+  * `risk_policy.json` declares `type_multipliers`, which is **never read**;
+  * `weighted_scoring_engine.py` (repository line) has **zero importers**.
+  And per §6.1, no SFIA level or O*NET code participates in any of the
+  arithmetic above — `onetCode` is written to output and never read.
+end note
+
+@enduml

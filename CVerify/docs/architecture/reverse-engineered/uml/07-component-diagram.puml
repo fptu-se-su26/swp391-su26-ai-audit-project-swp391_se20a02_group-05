@@ -1,0 +1,152 @@
+@startuml 07-component-diagram
+' CVerify — Component diagram with provided/required interfaces and real protocols
+' Verified against:
+'   docker-compose.yml · deployment/docker-compose.prod.yml · deployment/nginx/cverify.conf
+'   CVerify.Core/Program.cs                                  (AiServiceClient named HttpClient, SignalR hubs,
+'                                                             Redis, S3 client via R2_* keys)
+'   CVerify.Core/Modules/Shared/Hubs/                        (NotificationHub) · Modules/Admin/Hubs/ (AdminHub)
+'   CVerify.Core/Modules/Auth/Controllers/AuthController.cs:520,529,634,672,696
+'   CVerify.Core/Modules/Auth/Services/AuthService.cs:1892,1897,1963,1984,2707-2734 (VietQR named client)
+'   CVerify.Core/appsettings.json:33                          (SendGrid section)
+'   CVerify.AI/app/main.py:152,165,214                        (router include, /health, /api/v1/chat/stream)
+'   CVerify.AI/app/api/routes/analysis_router.py:55-406       (9 routed endpoints)
+'   CVerify.AI/app/core/middleware/hmac_auth.py
+'   CVerify.AI/app/pipelines/{repository,candidate,jd,requirement}/
+'   docs/architecture/reverse-engineered/GROUND-TRUTH.md  §1, §5, §5.3, §6
+
+title CVerify — Component Diagram (interfaces and protocols as implemented)
+
+skinparam componentStyle rectangle
+skinparam shadowing false
+
+actor "Browser user" as U
+
+component "Next.js Client\n(cverify-client)" as CLIENT
+component "nginx\n(host-installed)" as NGINX
+
+component "Core API — cverify-core\nASP.NET Core .NET 10 modular monolith" as CORE {
+  component "Auth" as M_AUTH
+  component "Profiles" as M_PROF
+  component "SourceCode" as M_SRC
+  component "Recovery" as M_REC
+  component "Forum" as M_FORUM
+  component "AiChat" as M_CHAT
+  component "Admin" as M_ADMIN
+  component "Intelligence" as M_INTEL
+  component "Shared" as M_SHARED
+}
+
+component "AI Service — cverify-ai\nFastAPI · Python 3.11" as AI {
+  component "Line 1 — Repository pipeline\ngithub_analysis_orchestrator.py\n22 tasks, flat if/elif dispatcher" as P1
+  component "Line 2 — Candidate pipeline\n16-task validated DAG (cycle-checked)" as P2
+  component "Line 3 — JD matching\n13 standalone tasks, no DAG" as P3
+  component "Line 4 — Requirement artifacts\n1 Claude call -> 5 artifacts" as P4
+}
+
+database "PostgreSQL 16\npgvector image" as PG
+database "Redis 7.2.4" as REDIS
+node "MinIO\n(S3-compatible)" as MINIO
+
+cloud "Anthropic Claude API" as CLAUDE
+cloud "GitHub\n(OAuth + REST)" as GH
+cloud "GitLab\n(OAuth + REST v4)" as GL
+cloud "Google OAuth 2.0" as GOOG
+cloud "VietQR\nbusiness registry" as VQR
+cloud "SMTP / SendGrid" as MAIL
+
+' ---- provided / required interfaces ----------------------------------------
+interface "HTTPS :443" as I_HTTPS
+interface "SSE\ntext/event-stream" as I_SSE
+interface "SignalR\nWebSocket" as I_WS
+interface "HMAC-signed HTTP\n(X-Signature, X-Client-Id,\nX-Timestamp, X-Nonce,\nX-Correlation-Id)" as I_HMAC
+interface "Redis pub/sub\n+ key/value" as I_REDIS
+interface "S3 API\nForcePathStyle=true" as I_S3
+interface "Npgsql / EF Core" as I_PG
+
+U --> CLIENT
+CLIENT --> I_HTTPS
+I_HTTPS -- NGINX
+NGINX --> CORE : proxy_pass\n127.0.0.1:5247
+NGINX --> CLIENT : proxy_pass\n127.0.0.1:3000
+
+CORE -up- I_SSE
+CLIENT --> I_SSE : 5 SSE endpoints
+note right of I_SSE
+  POST api/ai/chat/stream
+  GET  api/v1/candidate-assessments/progress/{userId}
+  GET  api/v1/hiring-requirements/{id}/progress-stream
+  GET  api/v1/streaming/sessions/{id}/progress-stream
+  GET  api/repository-analyses/jobs/{jobId}/progress-stream
+  ⚠ nginx SSE regex coverage of all 5 is <<Not verified>>.
+end note
+
+CORE -up- I_WS
+CLIENT --> I_WS : /hubs/notifications, /hubs/admin
+note right of I_WS
+  NotificationHub — no groups, no client-invokable methods.
+  AdminHub — group "admins", gated on SUPER_ADMIN/ADMIN.
+  Fan-out is Redis pub/sub channel "cverify:notifications".
+end note
+
+CORE --> I_HMAC
+I_HMAC -- AI
+note bottom of I_HMAC
+  Named HttpClient "AiServiceClient", 5-minute timeout.
+  HMACSHA256(METHOD + URL + BODY + TIMESTAMP + NONCE, SharedSecret).
+  8 endpoints called: /chat/stream, /repository/assess,
+  /candidate/assess/stream, /candidate/assess/score,
+  /hiring-requirements/generate/stream,
+  /hiring-requirements/generate-artifact/stream,
+  /analysis/task/execute, /analysis/task/aggregate.
+  ⚠ POST /api/v1/analysis/jobs/{job_id}/cancel has NO HMAC guard.
+end note
+
+AI --> CORE : callback (HTTP)\nGET api/v1/ai-jobs/{jobId}/artifacts/{key}
+note on link
+  Class-level [AllowAnonymous]; comment says
+  "allow internal microservice to call without bearer auth".
+  Any in-body guard is <<Not verified>>.
+end note
+
+CORE --> I_PG
+I_PG -- PG
+CORE --> I_REDIS
+AI --> I_REDIS : cancellation poll ai:cancel:{correlation_id}
+I_REDIS -- REDIS
+CORE --> I_S3
+I_S3 -- MINIO
+note right of I_S3
+  Env keys keep R2_* names because the S3 client is generic.
+  Cloudflare R2 is supported by the same client but MinIO is
+  what is deployed.
+end note
+
+AI --> CLAUDE : HTTPS, stream=True, max_tokens=8192\nprompt caching cache_control: ephemeral
+note right of CLAUDE
+  Default model claude-3-5-sonnet-20241022.
+  Only other model: hardcoded claude-3-haiku-20240307
+  for vision OCR (gated OFF by default).
+end note
+
+AI --> GH : git clone over HTTPS\n⚠ clone URL embeds the PAT
+M_AUTH --> GH  : OAuth 2.0 + api.github.com/user
+M_AUTH --> GL  : OAuth 2.0 + gitlab.com/api/v4/user
+M_AUTH --> GOOG: OAuth 2.0 (accounts.google.com)
+M_AUTH --> VQR : HTTPS, named client "VietQR"\n(tax-code lookup, retry w/ backoff)
+M_SHARED --> MAIL : SMTP or SendGrid\n(EmailSettings__Provider)
+
+note bottom of AI
+  ⚠ Absent despite the documented claim: OCR/text-extraction modules
+  (dead code), embedding module (pruned), SFIA levels, O*NET lookup.
+  ⚠ prompt_sanitizer.py / malicious_repo_detector.py /
+  input_boundary.validate_token_count are stubs and imported nowhere.
+end note
+
+note bottom of CORE
+  9 modules. Boundaries enforced by
+  tests/CVerify.API.UnitTests/Architecture/ModularBoundaryTests.cs.
+  ⚠ CORS "AllowFrontend" hardcodes http://localhost:3000 and
+  http://127.0.0.1:3000 in ALL environments including Production.
+end note
+
+@enduml

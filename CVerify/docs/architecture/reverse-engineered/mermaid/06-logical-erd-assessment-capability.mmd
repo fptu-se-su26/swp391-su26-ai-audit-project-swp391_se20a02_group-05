@@ -1,0 +1,336 @@
+%% ============================================================================
+%% 06 - Logical ERD: Candidate Assessment, Capability taxonomy, Evidence, Trust
+%% ----------------------------------------------------------------------------
+%% Covers:
+%%   candidate_assessments + its 7 children (candidate_assessment_artifacts,
+%%     candidate_best_fit_roles, candidate_domain_profiles,
+%%     candidate_intelligence_signals, candidate_skill_tree_nodes,
+%%     candidate_skills, candidate_strengths_weaknesses)
+%%   capability taxonomy: capability_nodes, capability_edges,
+%%     capability_registries, capability_hierarchies, capability_aliases,
+%%     capability_catalog_items
+%%   candidate_capabilities + candidate_capability_scores /
+%%     candidate_capability_histories / candidate_capability_evidences
+%%   evidence cluster: evidence_sources, evidence_artifacts, evidence_claims,
+%%     evidence_verifications
+%%   trust cluster: trust_profiles, trust_calculations, trust_components
+%% ---
+%% Source of truth (in precedence order):
+%%   1. docs/architecture/reverse-engineered/GROUND-TRUTH.md
+%%   2. CVerify.Core/Migrations/ApplicationDbContextModelSnapshot.cs
+%%   3. CVerify.Core/Modules/Shared/Persistence/ApplicationDbContext.cs
+%% ---
+%% Hazards applying to THIS diagram:
+%%  - Hazard 6: candidate_assessments.cv_id references a target that DOES NOT
+%%    EXIST in the schema. There is no `cvs` table. Marked <<Not verified>>;
+%%    no edge is drawn for it.
+%%  - Hazard 5: trust_profiles.target_entity_id is POLYMORPHIC with NO FK. It is
+%%    covered only by ix_trust_profiles_target_entity_id_target_type. Drawn as a
+%%    [logical] edge to users because candidate_trust_projections.candidate_id
+%%    is a users FK, but target_type's full value set is <<Not verified>>.
+%%  - Hazard 7: capability_nodes.vector_embedding is a `real[]` COLUMN, not a
+%%    table. Ground truth section 4.1 also warns these embedding columns are
+%%    SCHEMA ONLY - the AI service writes no embeddings, and no vector index or
+%%    similarity query exists anywhere in the codebase.
+%% ---
+%% Structural notes verified from the snapshot:
+%%  - There are TWO parallel capability vocabularies with NO FK between them:
+%%      * capability_nodes (uuid PK, slug UK) - the graph used by
+%%        candidate_capabilities and matching_explanations
+%%      * capability_registries (varchar capability_id PK) - the versioned
+%%        taxonomy used by capability_hierarchies and capability_aliases
+%%    They are NOT joined in the database. Do not draw an edge between them.
+%%  - capability_catalog_items.capability_id is a varchar PK and has NO FK to
+%%    capability_registries; its only FK is workspace_id.
+%%  - requirement_capabilities.capability_id (see 08) is likewise a bare
+%%    varchar(100) with no FK.
+%%  - candidate_capability_evidences and capability_hierarchies / capability_edges
+%%    are true M2M junctions (composite PK of FKs) per ground truth section 4.2.
+%% ---
+%% Cross-references:
+%%  - users: see 04-logical-erd-identity-org.mmd
+%%  - matching_explanations also FKs capability_nodes and evidence_artifacts:
+%%    see 08-logical-erd-hiring-jobs.mmd
+%%  - candidate_trust_projections (trust_profile_id FK) and the other five
+%%    candidate_* projections/snapshots: see 10-logical-erd-infrastructure.mmd
+%%  - workspaces (parent of capability_catalog_items): see 04
+%% ============================================================================
+
+erDiagram
+
+    users {
+        uuid id PK
+        citext username UK
+    }
+    workspaces {
+        uuid id PK
+        varchar slug UK
+    }
+
+    %% ---------------- Candidate assessment aggregate ----------------
+
+    candidate_assessments {
+        uuid id PK
+        uuid user_id FK,UK "ux_candidate_assessments_user_version"
+        int version UK
+        uuid cv_id "<<Not verified>> - target table does not exist (hazard 6)"
+        varchar status
+        float8 overall_score
+        float8 technical_depth
+        float8 technical_breadth
+        float8 execution_strength
+        float8 leadership_potential
+        float8 trust_level
+        varchar career_level
+        varchar career_level_label
+        varchar primary_working_style
+        varchar primary_tendency
+        varchar clone_risk_classification
+        varchar evidence_completeness
+        varchar calculation_mode
+        varchar summary_headline
+        varchar summary_paragraph
+        varchar professional_bio
+        varchar input_feature_set_hash
+        varchar model_version
+        varchar prompt_version
+        varchar pipeline_version
+        varchar assessment_schema_version
+        varchar failed_stage
+        text failure_reason
+    }
+
+    candidate_assessment_artifacts {
+        uuid id PK
+        uuid assessment_id FK,UK
+        varchar artifact_type UK "ux_candidate_assessment_artifacts_type"
+        text json_data
+    }
+    candidate_best_fit_roles {
+        uuid id PK
+        uuid candidate_assessment_id FK
+        varchar role_title
+        int rank
+        float8 match_score
+        float8 confidence
+        jsonb evidence
+        jsonb engine_metadata
+        varchar matching_engine_version
+    }
+    candidate_domain_profiles {
+        uuid id PK
+        uuid candidate_assessment_id FK
+        varchar domain_name
+        float8 score
+        float8 confidence
+        varchar seniority
+        jsonb supporting_evidence
+    }
+    candidate_intelligence_signals {
+        uuid id PK
+        uuid candidate_assessment_id FK
+        float8 ownership_signal
+        float8 complexity_signal
+        float8 consistency_signal
+        float8 delivery_signal
+        float8 engineering_maturity_signal
+        float8 leadership_signal
+        float8 problem_solving_signal
+        float8 scope_signal
+    }
+    candidate_skill_tree_nodes {
+        uuid id PK
+        uuid candidate_assessment_id FK
+        uuid parent_id FK "self-ref, ON DELETE RESTRICT"
+        varchar display_name
+        varchar category
+        varchar proficiency_level
+        float8 confidence_score
+        float8 estimated_experience_months
+        jsonb supporting_evidence
+    }
+    candidate_skills {
+        uuid id PK
+        uuid candidate_assessment_id FK
+        varchar skill_name "AI-extracted (contrast user_skills in 05)"
+        varchar level
+        float8 score
+        float8 confidence
+        jsonb evidence_sources
+    }
+    candidate_strengths_weaknesses {
+        uuid id PK
+        uuid candidate_assessment_id FK
+        varchar finding_type "STRENGTH / WEAKNESS discriminator"
+        varchar topic
+        varchar description
+        jsonb evidence
+    }
+
+    users ||--o{ candidate_assessments : "user_id"
+    candidate_assessments ||--o{ candidate_assessment_artifacts : "assessment_id"
+    candidate_assessments ||--o{ candidate_best_fit_roles : "candidate_assessment_id"
+    candidate_assessments ||--o{ candidate_domain_profiles : "candidate_assessment_id"
+    candidate_assessments ||--o{ candidate_intelligence_signals : "candidate_assessment_id"
+    candidate_assessments ||--o{ candidate_skill_tree_nodes : "candidate_assessment_id"
+    candidate_assessments ||--o{ candidate_skills : "candidate_assessment_id"
+    candidate_assessments ||--o{ candidate_strengths_weaknesses : "candidate_assessment_id"
+    candidate_skill_tree_nodes |o--o{ candidate_skill_tree_nodes : "parent_id"
+
+    %% ---------------- Capability taxonomy (two disjoint vocabularies) --------
+
+    capability_nodes {
+        uuid id PK
+        varchar slug UK "ix_capability_nodes_slug"
+        varchar name
+        varchar category
+        varchar description
+        real_ARRAY vector_embedding "real[] COLUMN, not a table; schema only - never written"
+    }
+    capability_edges {
+        uuid source_node_id PK,FK
+        uuid target_node_id PK,FK
+        varchar relationship_type PK
+        float8 weight
+    }
+    capability_registries {
+        varchar capability_id PK "varchar(100), NOT a uuid"
+        varchar display_name
+        varchar category
+        varchar capability_version
+        varchar taxonomy_version
+        varchar status
+        varchar deprecated_by_id FK "self-ref, ON DELETE SET NULL"
+        jsonb migration_mappings
+        timestamptz effective_date
+    }
+    capability_hierarchies {
+        varchar parent_id PK,FK
+        varchar child_id PK,FK
+    }
+    capability_aliases {
+        varchar alias_name PK
+        varchar canonical_id FK
+    }
+    capability_catalog_items {
+        varchar capability_id PK "varchar(100); NO FK to capability_registries"
+        uuid workspace_id FK "the ONLY FK on this table"
+        varchar display_name
+        varchar category
+        varchar status
+        bool is_custom
+        text_ARRAY skills "text[] column"
+        text_ARRAY expected_evidence "text[] column"
+    }
+
+    capability_nodes ||--o{ capability_edges : "source_node_id"
+    capability_nodes ||--o{ capability_edges : "target_node_id"
+    capability_registries ||--o{ capability_hierarchies : "parent_id"
+    capability_registries ||--o{ capability_hierarchies : "child_id"
+    capability_registries ||--o{ capability_aliases : "canonical_id"
+    capability_registries |o--o{ capability_registries : "deprecated_by_id"
+    workspaces |o--o{ capability_catalog_items : "workspace_id"
+
+    %% ---------------- Candidate capability instances ----------------
+
+    candidate_capabilities {
+        uuid id PK
+        uuid candidate_id FK,UK "-> users"
+        uuid capability_node_id FK,UK "-> capability_nodes"
+        timestamptz created_at
+        timestamptz updated_at
+    }
+    candidate_capability_scores {
+        uuid candidate_capability_id PK,FK "1:1 with candidate_capabilities"
+        float8 proficiency_score
+        float8 recency_index
+        varchar expertise_level
+        timestamptz calculated_at
+    }
+    candidate_capability_histories {
+        uuid id PK
+        uuid candidate_capability_id FK
+        float8 proficiency_score
+        timestamptz recorded_at
+    }
+    candidate_capability_evidences {
+        uuid candidate_capability_id PK,FK
+        uuid evidence_artifact_id PK,FK
+        timestamptz added_at
+    }
+
+    users ||--o{ candidate_capabilities : "candidate_id"
+    capability_nodes ||--o{ candidate_capabilities : "capability_node_id"
+    candidate_capabilities ||--o| candidate_capability_scores : "candidate_capability_id"
+    candidate_capabilities ||--o{ candidate_capability_histories : "candidate_capability_id"
+    candidate_capabilities ||--o{ candidate_capability_evidences : "candidate_capability_id"
+    evidence_artifacts ||--o{ candidate_capability_evidences : "evidence_artifact_id"
+
+    %% ---------------- Evidence cluster ----------------
+
+    evidence_sources {
+        uuid id PK
+        varchar name
+        varchar provider_type
+        jsonb connection_config
+        bool is_active
+    }
+    evidence_artifacts {
+        uuid id PK
+        uuid source_id FK
+        varchar artifact_type
+        varchar external_identifier
+        varchar cryptographic_signature
+        jsonb payload
+    }
+    evidence_claims {
+        uuid id PK
+        uuid candidate_id FK,UK "-> users"
+        uuid evidence_artifact_id FK,UK
+        varchar assertion_type
+        float8 confidence_score
+    }
+    evidence_verifications {
+        uuid id PK
+        uuid evidence_claim_id FK
+        varchar verification_type
+        varchar status
+        jsonb verification_log
+        timestamptz verified_at
+        timestamptz expires_at
+    }
+
+    evidence_sources ||--o{ evidence_artifacts : "source_id"
+    users ||--o{ evidence_claims : "candidate_id"
+    evidence_artifacts ||--o{ evidence_claims : "evidence_artifact_id"
+    evidence_claims ||--o{ evidence_verifications : "evidence_claim_id"
+
+    %% ---------------- Trust cluster ----------------
+
+    trust_profiles {
+        uuid id PK
+        uuid target_entity_id "POLYMORPHIC - NO FK (hazard 5)"
+        varchar target_type "value set <<Not verified>>"
+        timestamptz recalculated_at
+    }
+    trust_calculations {
+        uuid id PK
+        uuid trust_profile_id FK
+        int aggregate_score
+        jsonb calculation_details
+        timestamptz calculated_at
+    }
+    trust_components {
+        uuid id PK
+        uuid trust_profile_id FK
+        varchar component_name
+        int component_score
+        float8 weight
+        jsonb explanation_metadata
+    }
+
+    trust_profiles ||--o{ trust_calculations : "trust_profile_id"
+    trust_profiles ||--o{ trust_components : "trust_profile_id"
+    %% [logical] hazard 5 - no FK constraint; target_entity_id is discriminated
+    %% by target_type and only covered by a composite index.
+    users ||..o{ trust_profiles : "[logical] target_entity_id + target_type"

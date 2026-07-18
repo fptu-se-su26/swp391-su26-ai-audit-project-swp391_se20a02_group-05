@@ -1,0 +1,208 @@
+@startuml 09E-sequence-github-repository-analysis
+' CVerify — GitHub repository analysis (Pipeline Line 1), trigger -> per-task HMAC calls -> aggregate -> report.
+' Verified against:
+'   Modules/SourceCode/Controllers/RepositoryAnalysisController.cs
+'       [Route "api"]:20 [Authorize]:21 · TriggerAnalysis:66-85 · dev-reset-and-analyze:114 [AllowAnonymous]
+'       progress-stream (SSE):269 · cancel:197 · task retry:375 · costs:399
+'   Modules/SourceCode/Services/RepositoryAnalysisService.cs
+'       EnqueueAnalysisJobAsync:77-196 (dedupe:90-99, per-user cap 2:102-111, job insert:113-127,
+'           pipeline_config.json stages:132-160, AnalysisTask rows:162-176,
+'           CreateSessionAsync:181-190, EnqueueJobAsync:193)
+'       ExecuteAnalysisJobAsync:379-1000 (progress weights:494-510, task Running:529-542,
+'           retry loop maxAttempts=3:544-615, /api/v1/analysis/task/execute:565,
+'           HMAC headers:571-576, aggregate payload:779-788,
+'           /api/v1/analysis/task/aggregate:789, AnalysisReport insert:822-831,
+'           artifact upload:834, relational projection:837,
+'           outbox RepositorySyncTriggered:927, Completed:917-935)
+'       task alias map:1737-1754 · PublishTaskProgressEventAsync:1439 (channel repository:analysis:progress:{jobId}:1513)
+'   Modules/SourceCode/Services/BackgroundRepositoryAnalysisQueue.cs  (in-process singleton)
+'   Modules/SourceCode/BackgroundWorkers/BackgroundRepositoryAnalysisProcessor.cs:27-70
+'   Modules/SourceCode/BackgroundWorkers/AnalysisQueueRecoverySweeper.cs
+'   CVerify.AI/app/api/routes/analysis_router.py:122 (task/execute), :205 (task/aggregate), :389 (cancel — no HMAC)
+'   CVerify.AI/app/pipelines/repository/orchestrators/github_analysis_orchestrator.py
+'       execute_task:288-366 (flat if/elif dispatcher) · analyze_structure:623-780
+'       _get_meta_and_sample:459-478 (reads meta.json, raises if not is_cloned)
+' Ground truth: GROUND-TRUTH.md §5.4 (queues non-durable), §6.2 (Line 1: flat dispatcher, no internal DAG,
+'               filesystem state), §6.5 (PAT in clone URL, git stderr in SSE payloads).
+
+title CVerify — GitHub Repository Analysis (Pipeline Line 1)
+
+skinparam responseMessageBelowArrow true
+skinparam maxMessageSize 300
+
+actor       "Candidate"                                      as U
+participant "Next.js Client"                                 as C
+participant "RepositoryAnalysisController"                   as RC
+participant "RepositoryAnalysisService"                      as SVC
+participant "BackgroundRepositoryAnalysisQueue\n<<singleton, in-process>>" as Q
+participant "BackgroundRepositoryAnalysisProcessor\n<<IHostedService>>"    as W
+participant "AnalysisQueueRecoverySweeper\n<<IHostedService>>"             as SW
+participant "HmacSignatureService"                           as HMAC
+participant "CVerify.AI\nanalysis_router"                    as AI
+participant "GitHubAnalysisOrchestrator"                     as ORCH
+participant "GitHub"                                         as GH
+participant "AI worker filesystem\ntemp_clones/{job_id}/"    as FS
+participant "Anthropic Claude"                               as CLAUDE
+database    "PostgreSQL"                                     as DB
+database    "Redis"                                          as R
+
+== Trigger ==
+U  -> C  : "Analyze repository"
+C  -> RC : POST /api/repositories/{repoId}/analyses
+RC -> SVC : EnqueueAnalysisJobAsync(userId, repoId)
+SVC -> DB : repo belongs to user via AuthProvider (else 404)
+SVC -> DB : existing active job for this repo?
+alt active job exists
+    SVC --> RC : return that job id (idempotent)
+end
+SVC -> DB : count user's active jobs
+alt >= 2
+    SVC --> RC : InvalidOperationException -> 429 Too Many Requests
+end
+SVC -> DB : INSERT AnalysisJob (Status = Queued)
+SVC -> SVC : read pipeline_config.json -> stages[].taskType
+note right of SVC
+  If pipeline_config.json is missing or unparsable the exception is only
+  logged and a hardcoded 9-task fallback list is used:
+  RepoStructure, CommitIntelligence, SkillExtraction, ArchitectureAnalysis,
+  CodeQuality, SecurityAnalysis, RepositoryClassification,
+  RepositorySummary, CvSynthesis.
+end note
+SVC -> DB : INSERT one AnalysisTask per taskType (Status = Queued)
+SVC -> DB : CreateSessionAsync(jobId, "repository-analysis")
+SVC -> Q  : EnqueueJobAsync(jobId)
+RC --> C  : 202 Accepted { JobId, Status = "Queued" }
+
+note over Q, SW #ffdddd
+  `IRepositoryAnalysisQueue` is a **singleton in-process queue — not durable**
+  (GROUND-TRUTH §5.4). `AnalysisQueueRecoverySweeper` exists *specifically*
+  to re-enqueue jobs whose rows are still in an active state after a restart.
+end note
+SW -> DB : scan for orphaned active jobs
+SW -> Q  : re-enqueue
+
+== Execution — ordering is owned by the .NET caller ==
+W  -> Q  : DequeueJobAsync()  (1 s idle delay)
+W  -> SVC : ExecuteAnalysisJobAsync(jobId)
+SVC -> DB : decrypt provider token; load AnalysisTasks in configured order
+
+loop for each AnalysisTask, in the order the .NET side stored them
+    SVC -> DB : task Running (10%); job.CurrentStep = TaskType; job.Status = RunningAgents
+    SVC -> R  : PUBLISH repository:analysis:progress:{jobId}
+    loop attempt 1..3 while not successful
+        SVC -> HMAC : CreateSignatureHeaders("POST", "/api/v1/analysis/task/execute", body)
+        SVC -> AI  : POST /api/v1/analysis/task/execute\n{ jobId, taskType, repositoryId, repoName, repoOwner,\nencryptedToken, defaultBranch }\nX-Client-Id, X-Timestamp, X-Nonce, X-Correlation-Id = jobId, X-Signature
+        AI -> ORCH : execute_task(task_type, job_id, ...)
+        note over ORCH
+          `execute_task` is a **flat if/elif dispatcher over 22 task types**
+          (L1-001…L1-018 plus SecurityAnalysis, RepositoryClassification,
+          RepositorySummary, CvSynthesis). There is **no DAG and no
+          dependency resolution inside the AI service** — it will happily
+          run L1-011 first and fail, because sequencing is entirely the
+          .NET caller's responsibility (GROUND-TRUTH §6.2).
+        end note
+        AI --> SVC : { status, resultData, telemetry, errorMessage, retryable }
+        alt status == Failed and retryable and attempt < 3
+            SVC -> SVC : backoff 500 ms / 1000 ms / 2000 ms, retry
+        end
+    end
+    SVC -> DB : AnalysisTaskResult + token/cost telemetry; task Completed
+    SVC -> R  : PUBLISH task progress event
+end
+
+== L1-001 RepoStructure — the hard prerequisite ==
+ORCH -> GH  : GitHubIdentityService.fetch_user_identity(token)
+ORCH -> GH  : classify_repository — stars, forks, branches, PRs, issues,\ncommit ratio, contributor distribution, bus factor
+alt repo_type == FORK_NO_CONTRIBUTION
+    ORCH -> ORCH : skip clone entirely (is_cloned = false)
+else
+    ORCH -> GH : git -c credential.helper= clone --depth 100\n--branch {defaultBranch} https://{token}@github.com/{owner}/{name}.git
+    alt clone fails
+        ORCH -> GH : retry without --branch (default branch fallback)
+        alt still fails
+            ORCH --> AI : raise Exception("Git clone failed: " + git stderr)
+        end
+    end
+end
+note right of ORCH #ffdddd
+  GROUND-TRUTH §6.5: the clone URL **embeds the PAT**
+  (`https://{token}@github.com/...`), and on failure the raw git stderr is
+  propagated into the error message that ends up in SSE payloads and logs.
+  For FORK_UPSTREAM_CONTRIBUTION the clone target is silently switched to
+  `classification.analysis_target_{owner,name}` — the upstream repo, not
+  the one the user selected.
+end note
+ORCH -> FS  : os.walk(clone_dir), skipping .git node_modules bin obj dist\nvendor venv packages __pycache__
+ORCH -> ORCH : tech detection from filenames + package manifests\n(package.json, requirements.txt, go.mod, pom.xml, cargo.toml,\ndocker-compose.yml, *.csproj — first 2000 chars each)
+ORCH -> FS  : CodeSampler max_files=10, max_lines_per_file=100
+ORCH -> FS  : write meta.json (classification, technologies, filenames,\nsampled_files, is_cloned, trust/adversarial metrics, coverage_pct)
+ORCH --> AI : result
+
+== Subsequent tasks read the filesystem cache ==
+loop L1-002 … L1-018 / SecurityAnalysis / Classification / Summary / CvSynthesis
+    ORCH -> FS : _get_meta_and_sample — read temp_clones/{job_id}/meta.json
+    alt meta.json missing or is_cloned == false
+        ORCH --> AI : raise — L1-001 is a hard prerequisite
+    end
+    ORCH -> FS : re-sample the working tree / run git in clone_dir
+    ORCH -> CLAUDE : stream=True, max_tokens=8192, prompt caching ephemeral
+    ORCH -> FS : write {task_type}_result.json
+end
+note over FS #ffdddd
+  **Inter-task state passes through the worker's local filesystem**
+  (`temp_clones/{job_id}/`), not through the request/response payloads or
+  any shared store. That makes the AI service stateful and pins every task
+  of a job to the same container instance; it cannot be scaled out
+  horizontally without a shared volume, and a container restart mid-job
+  loses the clone and every cached result.
+end note
+
+== Aggregation & report ==
+SVC -> DB : collect AnalysisTaskResults -> partialResults{taskType: json}
+SVC -> HMAC : CreateSignatureHeaders("POST", "/api/v1/analysis/task/aggregate", body)
+SVC -> AI  : POST /api/v1/analysis/task/aggregate\n{ jobId, repositoryId, repoOwner, repoName,\npartialResults, deleteWorkspace = true }
+AI -> ORCH : aggregate_results(...)
+ORCH -> FS : read remaining caches, then delete temp_clones/{job_id}
+ORCH --> SVC : { status: "Success", reportData }
+alt reportData empty
+    SVC --> W : throw "Aggregation response did not contain reportData"
+end
+SVC -> DB : job SavingReport (97%)
+SVC -> DB : INSERT AnalysisReport (ReportData = reportData)
+SVC -> DB : SaveAndRegisterArtifactAsync(jobId, "RepoIntelligenceReport", reportData)
+SVC -> DB : ProjectIntelligenceDataAsync -> repository_capabilities / domains /\nskill_attributions / intelligence_signals
+note right of SVC
+  GROUND-TRUTH §4.1 hazard 2: that projected cluster has **zero FK
+  constraints** back to `repository_assessments` — indexes only. Also
+  hazard 1: `ux_repository_assessments_repo_sha` is named like a unique
+  constraint but is **not unique**.
+end note
+SVC -> DB : repository LatestRiskLevel / LatestRiskFactorsJson
+SVC -> DB : job Completed (100%)
+SVC -> DB : outbox "RepositorySyncTriggered" { CandidateId, RepositoryId }\n(same transaction as the completion write)
+SVC -> R  : PUBLISH {Completed, 100%}
+
+note right of DB
+  Two independent consumers poll the single `outbox_messages` table:
+  `EmailOutboxBackgroundProcessor` (5 s) and
+  `TalentOutboxBackgroundProcessor` (3 s) — the latter is what carries
+  this event into the repository-intelligence / talent projection pipeline.
+end note
+
+== Progress stream and cancellation ==
+C  -> RC : GET /api/repository-analyses/jobs/{jobId}/progress-stream  (text/event-stream)
+RC -> R  : SUBSCRIBE repository:analysis:progress:{jobId}
+R  --> RC : live events
+RC --> C : data: <event> … data: [DONE]
+
+C  -> RC : POST /api/repository-analyses/jobs/{jobId}/cancel
+RC -> DB : job Status = Cancelled
+note right of RC #ffdddd
+  Cancellation is cooperative: `ExecuteAnalysisJobAsync` reloads the job
+  entity between tasks and throws if it reads Cancelled. A task already
+  in flight in the AI service runs to completion. The AI service's own
+  `POST /api/v1/analysis/jobs/{job_id}/cancel` is, uniquely among the
+  12 AI endpoints, **not HMAC-protected** (GROUND-TRUTH §5.1).
+end note
+
+@enduml

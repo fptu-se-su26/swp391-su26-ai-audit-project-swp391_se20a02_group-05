@@ -1,0 +1,249 @@
+@startuml 11-swimlane-hiring-to-evaluation
+' CVerify — End-to-end swimlane: hiring requirement -> artifacts -> vacancy -> discovery -> matching -> evaluation.
+' Verified against:
+'   Modules/Shared/System/Controllers/HiringRequirementController.cs
+'       create:74 · generate-artifacts:166-204 (detached Task.Run:184) · artifacts:206
+'       candidate-matches:375 · discover:392 · publish:440 · progress-stream:466
+'   Modules/Shared/System/Services/HiringRequirementService.cs
+'       GenerateArtifactsAsync:564-736 (AI path "/api/v1/hiring-requirements/generate/stream":627,
+'           HMAC:635-640, SSE loop:644-718, SaveArtifactAsync:711)
+'       PublishAsync:271-405 (RequirementSnapshot + ArtifactSnapshots:374-404)
+'   Modules/Shared/System/Controllers/JobVacancyController.cs
+'       GET requirement vacancy:42 · create-draft:120 · update posting:241 · publish:288
+'   Modules/Profiles/Services/CandidateMatchService.cs
+'       TriggerDiscoveryAsync:232-289 · ExecuteDiscoveryPipelineAsync:291-392
+'       GetCandidateMatchesAsync:57-208 (engine call:180)
+'   Modules/Intelligence/Services/ExplainableMatchService.cs:34-145
+'   Modules/Intelligence/Services/UnifiedMatchingEngine.cs:206-216
+'   Modules/Intelligence/Services/CandidateEvaluationService.cs:44, :509-521
+'   Modules/Intelligence/BackgroundWorkers/CandidateRankingProjectionWorker.cs (15 min)
+'   Modules/Shared/System/Services/HmacSignatureService.cs
+'   CVerify.AI/app/api/routes/analysis_router.py:317
+'   CVerify.AI/app/pipelines/requirement/orchestrator.py:45-190
+' Ground truth: GROUND-TRUTH.md §2 (roles), §5.3 (HMAC), §5.4 (workers), §6.2 (Line 4), §6.4 (Claude).
+
+title CVerify — Hiring Requirement to Candidate Evaluation (end to end)
+
+|Organization Member|
+start
+:draft a hiring requirement
+(HR / REPRESENTATIVE / OWNER — there is no "Recruiter" role);
+
+|Next.js Client|
+:POST /api/v1/hiring-requirements
+(axios, HttpOnly cookies + X-CSRF-Token);
+
+|Core API|
+:authorize imperatively —
+_authService.AuthorizeAsync(userId, orgId,
+"permission:name:SCOPETYPE:scopeId");
+note right
+  An ORGANIZATION-scoped grant implicitly covers child WORKSPACE
+  scopes (PermissionEvaluator.cs:95,111). This is one of three
+  coexisting authorization mechanisms in the codebase.
+end note
+
+|PostgreSQL|
+:INSERT HiringRequirement + capabilities
+(Status = Draft);
+
+|Organization Member|
+:"Generate artifacts";
+
+|Next.js Client|
+:POST /api/v1/hiring-requirements/{id}/generate-artifacts;
+:open GET /api/v1/hiring-requirements/{id}/progress-stream (SSE);
+
+|Core API|
+:202 Accepted { jobId = id, status = "Generating" };
+:spawn a **detached Task.Run** with its own DI scope
+and CancellationToken.None;
+note right #ffdddd
+  Artifact generation is not queued and not hosted by an
+  IHostedService — nothing recovers it across a restart.
+  Contrast the repository pipeline, which at least has
+  AnalysisQueueRecoverySweeper.
+end note
+
+|Background Worker|
+:status -> Generating; create AiStreamingSession
+("jd-generation", "Claude 3.5 Sonnet");
+:HmacSignatureService.CreateSignatureHeaders
+HMACSHA256(METHOD + URL + BODY + TIMESTAMP + NONCE, SharedSecret);
+:POST /api/v1/hiring-requirements/generate/stream
+X-Client-Id, X-Timestamp, X-Nonce,
+X-Correlation-Id, X-Signature;
+
+|AI Service|
+:verify_hmac_signature;
+:build the unified requirements prompt;
+
+|Anthropic Claude|
+:one streaming completion
+(stream=True, max_tokens=8192,
+cache_control: ephemeral);
+
+|AI Service|
+:_repair_and_extract_json (json_repair fallback);
+if (UnifiedRequirementArtifactsResponse validates?) then (no)
+  :re-prompt with the validation error appended
+  (self-correction, max 2 retries);
+  if (still invalid after 2 retries?) then (yes)
+    :raise "Failed to generate valid artifact schema";
+    stop
+  endif
+endif
+:fan out the single validated object as five SSE events —
+JobDescription (40%), EvaluationRubric (60%),
+InterviewBlueprint (80%), JobPostMetadata (90%),
+CandidateDiscoveryProfile (95%);
+note right #ffdddd
+  GROUND-TRUTH §6.2: `generate_artifact_stream` **ignores its
+  `artifact_type` argument** and delegates straight to
+  `generate_all_artifacts_async`, so a request to regenerate one
+  artifact silently rewrites all five.
+end note
+
+|Background Worker|
+while (more SSE events?) is (yes)
+  :UpdateSessionProgress / UpsertStage / AddLog;
+  :AddMetric input_tokens, output_tokens, cost_usd;
+  :SaveArtifactAsync(requirementId, artifactType, jsonData);
+endwhile (no)
+
+|PostgreSQL|
+:RequirementArtifact / EvaluationRubric /
+InterviewBlueprint rows; session Completed;
+
+|Next.js Client|
+:SSE events rendered live, then [DONE];
+
+|Organization Member|
+:review the artifacts, then publish;
+
+|Next.js Client|
+:POST /api/v1/hiring-requirements/{id}/publish;
+
+|Core API|
+:PublishAsync — freeze the artifact set;
+
+|PostgreSQL|
+:INSERT RequirementSnapshot + ArtifactSnapshots
+(a JobDescription snapshot is synthesised if absent);
+
+|Organization Member|
+:create the vacancy from the requirement;
+
+|Next.js Client|
+:POST /api/v1/job-vacancies/requirement/{id}/create-draft;
+:PUT  /api/v1/job-postings/{id};
+:POST /api/v1/job-postings/{id}/publish;
+
+|Core API|
+:validate and publish the posting;
+
+|PostgreSQL|
+:JobVacancy linked to the RequirementSnapshot;
+
+' ---- the candidate-side projection that discovery depends on ----
+|Background Worker|
+fork
+  :CandidateRankingProjectionWorker (every 15 min)
+  -> CandidateEvaluationService.EvaluateAndSnapshotCandidateAsync;
+  :recalculate trust; consolidate verified repository
+  capabilities with self-declared skills;
+  |PostgreSQL|
+  :upsert CandidateCapabilityProjection, CandidateCapabilities,
+  CandidateCapabilityScores, CandidateSearchProfile,
+  CandidateEvaluationSnapshot;
+  note right #ffdddd
+    `candidate_search_profiles.SearchEmbedding` is a `float[]` column
+    that **nothing ever writes** — the AI service has no embedding
+    module and no vector library is installed (GROUND-TRUTH §6.1).
+    The pgvector image runs, but no similarity query exists.
+  end note
+fork again
+  |Background Worker|
+  :TalentOutboxBackgroundProcessor (3 s) consumes
+  "RepositorySyncTriggered" from `outbox_messages`
+  after each repository analysis completes,
+  refreshing the same projections;
+end fork
+
+|Organization Member|
+:"Discover candidates";
+
+|Next.js Client|
+:POST /api/v1/hiring-requirements/{id}/candidate-matches/discover;
+
+|Core API|
+:INSERT CandidateDiscoveryRun (Pending);
+:create AiStreamingSession ("candidate-discovery");
+:spawn a detached Task.Run; return { runId, status };
+
+|Background Worker|
+:Searching (20%) — status + progress, then Task.Delay(1000);
+:Matching (50%) — status + progress, then Task.Delay(1000);
+note right #ffdddd
+  Both stages are cosmetic: no candidate is searched or matched in
+  them. All real work happens once, at Ranking.
+end note
+:Ranking (80%) -> GetCandidateMatchesAsync;
+:for each candidate with a latest assessment,
+build UnifiedJobRequirement from the published snapshot
+(MustHave weight 1.5, else 1.0; fallback to JobVacancy.Skills)
+and call UnifiedMatchingEngine;
+
+|Core API|
+:UnifiedMatchingEngine — pure deterministic C#, no AI hop
+CapabilityMatch 0.40 · RoleMatch 0.30
+· TrustFactor 0.20 · PreferenceMatch 0.10
+ConfidenceLevel High >= 80 · Medium >= 50 · else Low;
+
+|PostgreSQL|
+:CandidateDiscoveryRun -> Completed
+CandidatesFoundCount, RawResultsJson,
+MatchQualitySummary "n High Match, n Good Fit, n Potential Fit";
+
+|Organization Member|
+:open one candidate for an explainable evaluation;
+
+|Next.js Client|
+:GET /api/v1/intelligence/match/{jobVacancyId}/{candidateId};
+
+|Core API|
+:ExplainableMatchService.EvaluateMatchAsync;
+:DELETE any prior MatchingEvaluation for the pair;
+note right
+  The previous evaluation is destroyed rather than versioned, so
+  matching results are not reproducible after a re-run.
+end note
+:GetCapabilityIntelligenceAsync(candidateId);
+:UnifiedMatchingEngine.EvaluateMatchAsync;
+
+|PostgreSQL|
+:INSERT MatchingEvaluation (AggregateScore, ConfidenceLevel);
+:INSERT MatchingFactor per factor;
+:INSERT MatchingExplanation per assertion
+(CapabilityNodeId resolved by Slug or lowered Name,
+null when unresolved);
+
+|Next.js Client|
+:render score, factor breakdown and explanations;
+
+|Organization Member|
+:review evaluation output and decide;
+stop
+
+note bottom
+  **Not shown because it does not exist.** No stage in this flow parses,
+  OCRs or embeds an uploaded CV; no SFIA level or O*NET code influences
+  any score (GROUND-TRUTH §6.1). Candidate evidence enters this flow only
+  through the repository-analysis and candidate-assessment pipelines.
+  Also note that untrusted repository code, commit messages and CV text
+  reach Claude prompts with **no injection screening** — `prompt_sanitizer.py`,
+  `malicious_repo_detector.py` and `input_boundary.validate_token_count`
+  are stubs and none of the three is imported anywhere (§6.5).
+end note
+
+@enduml

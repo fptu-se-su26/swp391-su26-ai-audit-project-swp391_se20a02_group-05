@@ -1,0 +1,69 @@
+%% CVerify — lifecycle of a single authenticated API request
+%%
+%% Sources verified:
+%%   docs/architecture/reverse-engineered/GROUND-TRUTH.md
+%%     §3 middleware order (Program.cs:610-623), cookie auth (Program.cs:506-533),
+%%        TokenService.SetTokenInsideCookie:139
+%%     §2 the three coexisting authorization mechanisms
+%%     §5.1 CORS "AllowFrontend" hardcodes localhost:3000 in ALL environments
+%%   CVerify/deployment/nginx/cverify.conf (edge behaviour before the app)
+%%
+%% Middleware order is drawn EXACTLY as registered. SessionValidationMiddleware
+%% sits BETWEEN UseAuthentication() and UseAuthorization() — that ordering is
+%% load-bearing and is the reason it can reject a token whose session chain was
+%% revoked by refresh-reuse detection.
+
+sequenceDiagram
+    autonumber
+    participant B as Browser
+    participant N as nginx (host, :443)
+    participant RL as 1. RequestLoggingMiddleware
+    participant EX as 2. ExceptionHandlerMiddleware
+    participant CO as 3. CORS ("AllowFrontend")
+    participant SH as 4. SecurityHeadersMiddleware
+    participant RA as 5. RateLimiter
+    participant AU as 6. Authentication (JwtBearer)
+    participant SV as 7. SessionValidationMiddleware
+    participant AZ as 8. Authorization
+    participant C as Controller action
+    participant DB as PostgreSQL / Redis
+
+    B->>N: GET https://api.cverify.com.vn/api/... <br/>Cookie: access_token=<JWT HS256>
+    Note over N: TLS termination · limit_req cverify_general 10r/s<br/>(cverify_auth 5r/m on login/register/forgot/reset)<br/>adds X-Real-IP / X-Forwarded-For / X-Forwarded-Proto<br/>HSTS · nosniff · DENY · Referrer-Policy · Permissions-Policy<br/>NO Content-Security-Policy is set
+    N->>RL: proxy_pass 127.0.0.1:5247 (path unchanged, "/api" prefix kept)
+
+    RL->>EX: begin request scope, correlation id, timing
+    Note over EX: wraps everything downstream;<br/>unhandled exceptions become a normalized error response
+
+    EX->>CO:
+    Note over CO: policy "AllowFrontend" hardcodes<br/>http://localhost:3000 and http://127.0.0.1:3000<br/>in ALL environments including Production
+
+    CO->>SH:
+    Note over SH: application-level security response headers<br/>(in addition to nginx's)
+
+    SH->>RA:
+    Note over RA: ASP.NET Core rate limiter, IP-partitioned.<br/>Real client IP depends on ForwardedHeaders being<br/>configured — see CODE_CHANGES_REQUIRED.md
+
+    RA->>AU:
+    Note over AU: JwtBearerEvents.OnMessageReceived UNCONDITIONALLY sets<br/>context.Token = Request.Cookies["access_token"].<br/>An Authorization: Bearer header is therefore IGNORED.<br/>Cookie: HttpOnly, Secure (non-dev), SameSite=Lax, Path=/,<br/>Domain = Auth.CookieDomain (shared parent domain)
+    AU-->>B: 401 if the cookie is missing, expired (15 min) or the signature fails
+
+    AU->>SV: ClaimsPrincipal
+    SV->>DB: look up the session / token chain
+    Note over SV: runs BETWEEN UseAuthentication() and UseAuthorization().<br/>Rejects tokens whose session chain was revoked by<br/>TOKEN_REUSE_DETECTED during refresh rotation.
+    SV-->>B: 401 if the session is revoked or invalid
+
+    SV->>AZ: validated principal + session
+    Note over AZ: three coexisting mechanisms:<br/>(1) [Authorize(Roles="SUPER_ADMIN,ADMIN")] — Recovery controllers only<br/>(2) [HasPermission("...")] — the permission string IS the policy name,<br/>&nbsp;&nbsp;&nbsp;&nbsp;resolved by PermissionPolicyProvider -> PermissionHandler<br/>&nbsp;&nbsp;&nbsp;&nbsp;with colon-segment wildcard matching<br/>(3) org-scoped checks are NOT here — they run imperatively inside the action
+    AZ-->>B: 403 if the policy is not satisfied
+
+    AZ->>C: endpoint invocation
+    C->>C: _authService.AuthorizeAsync(userId, orgId, permission)<br/>scope string "permission:name:SCOPETYPE:scopeId";<br/>an ORGANIZATION grant implicitly covers child WORKSPACE scopes
+    C->>DB: read / write (business change + outbox row in ONE transaction)
+    DB-->>C:
+    C-->>EX: result
+    EX-->>RL: response
+    RL-->>N: response (+ timing log)
+    N-->>B: HTTPS response
+
+    Note over B,DB: NOT on this path — verified absences:<br/>• no API gateway, no service mesh, no WAF, no CDN<br/>• no global fallback authorization policy, so a controller with<br/>&nbsp;&nbsp;no auth attribute (EmailTestController, SystemController) skips<br/>&nbsp;&nbsp;steps 6-8 entirely and reaches the action anonymously<br/>• AppPermissions.cs is an empty class — every [HasPermission]<br/>&nbsp;&nbsp;passes a raw string literal (9 distinct values in total)
