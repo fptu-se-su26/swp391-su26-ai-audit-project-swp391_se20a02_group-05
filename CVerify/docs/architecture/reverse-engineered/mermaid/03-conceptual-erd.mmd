@@ -1,0 +1,303 @@
+%% ============================================================================
+%% 03 - CVerify Conceptual ERD (business entities only)
+%% ----------------------------------------------------------------------------
+%% Covers: the ~30 domain entities a business reader needs. Deliberately EXCLUDES
+%% plumbing (outbox_messages, *_tokens, audit_logs, activity_events,
+%% ai_streaming_*, pipeline_*, *_projections, *_snapshots, recovery_*).
+%% Attributes are trimmed to domain-meaningful columns only; see the logical
+%% ERDs (04-10) for full column/key/index detail.
+%% ---
+%% Source of truth (in precedence order):
+%%   1. docs/architecture/reverse-engineered/GROUND-TRUTH.md
+%%   2. CVerify.Core/Migrations/ApplicationDbContextModelSnapshot.cs
+%%   3. CVerify.Core/Modules/Shared/Persistence/ApplicationDbContext.cs
+%% Full schema: 152 tables / 201 declared FKs. This diagram shows 30 tables.
+%% ---
+%% Hazards applying to THIS diagram:
+%%  - Hazard 2: repository_assessments -> repository_* satellites have ZERO FK
+%%    constraints. Not shown here (satellites are in 07); repository_assessments
+%%    itself has NO FK to source_code_repositories or analysis_jobs either -
+%%    repository_id / analysis_job_id are indexed uuids only. Drawn [logical].
+%%  - Hazard 3: organization_followers.user_id is in the PK but has NO FK.
+%%    Not drawn here; see 04.
+%%  - Hazard 6: candidate_assessments.cv_id references a target that does not
+%%    exist in the schema (there is no `cvs` table). Marked <<Not verified>>.
+%%  - Ground truth section 2: "Recruiter" is NOT a role. Recruiting is done by
+%%    organization members holding OWNER / REPRESENTATIVE / HR. No Recruiter
+%%    entity exists and none is invented here.
+%%  - organization_memberships.role / workspace_members.role are plain `varchar`,
+%%    NOT a DB enum (OrganizationRole is a code-level vocabulary only).
+%% ============================================================================
+
+erDiagram
+
+    %% ---------- Identity & organization (detail in 04) ----------
+    users {
+        uuid id PK
+        citext email UK
+        citext username UK
+        user_status status "only native PG enum in the schema"
+        text password_hash
+        jsonb linked_emails "column, not a table"
+    }
+    user_profiles {
+        uuid user_id PK,FK
+        citext username UK
+        varchar headline
+        varchar profile_visibility "value set not enumerated in code"
+        varchar ai_talent_discovery "value set not enumerated in code"
+        bool recruiter_visibility
+    }
+    organizations {
+        uuid id PK
+        varchar name
+        varchar username UK
+        varchar tax_code UK
+        bool is_verified
+        int verification_level
+    }
+    workspaces {
+        uuid id PK
+        uuid organization_id FK
+        uuid owner_id FK
+        varchar slug UK
+        varchar display_name
+    }
+    organization_memberships {
+        uuid id PK
+        uuid organization_id FK
+        uuid user_id FK
+        varchar role "OWNER|REPRESENTATIVE|HR|MEMBER - plain string"
+        varchar status
+    }
+    roles {
+        uuid id PK
+        varchar name UK
+        varchar domain
+        uuid tenant_id "polymorphic, NO FK"
+        uuid parent_role_id FK
+    }
+    permissions {
+        uuid id PK
+        varchar name UK
+        varchar module
+    }
+
+    users ||--o| user_profiles : "user_id"
+    organizations ||--o{ workspaces : "organization_id"
+    users ||--o{ workspaces : "owner_id"
+    organizations ||--o{ organization_memberships : "organization_id"
+    users ||--o{ organization_memberships : "user_id"
+    roles |o--o{ roles : "parent_role_id"
+
+    %% ---------- Candidate CV / profile (detail in 05) ----------
+    education_entries {
+        uuid id PK
+        uuid user_id FK
+        varchar school_name
+        varchar degree
+    }
+    work_experience_entries {
+        uuid id PK
+        uuid user_id FK
+        varchar company
+        varchar job_title
+        bool is_leadership
+    }
+    project_entries {
+        uuid id PK
+        uuid user_id FK
+        varchar name
+        int verification_status
+        int verification_level
+    }
+    user_skills {
+        uuid id PK
+        uuid user_id FK
+        varchar skill
+    }
+    career_preferences {
+        uuid user_id PK,FK
+        bool available_for_hire
+        varchar open_to_work_status
+        numeric expected_salary_min
+        numeric expected_salary_max
+    }
+
+    users ||--o{ education_entries : "user_id"
+    users ||--o{ work_experience_entries : "user_id"
+    users ||--o{ project_entries : "user_id"
+    users ||--o{ user_skills : "user_id"
+    users ||--o| career_preferences : "user_id"
+
+    %% ---------- Source code evidence (detail in 07) ----------
+    auth_providers {
+        uuid id PK
+        uuid user_id FK
+        varchar provider_name UK
+        varchar provider_key UK
+        varchar encrypted_access_token
+    }
+    source_code_repositories {
+        uuid id PK
+        uuid auth_provider_id FK
+        uuid external_organization_id FK
+        varchar external_repository_id UK
+        varchar name
+        bool is_verified
+        float8 trust_score
+    }
+    analysis_jobs {
+        uuid id PK
+        uuid repository_id FK
+        uuid user_id FK
+        varchar commit_sha
+        varchar status
+    }
+    repository_assessments {
+        uuid id PK
+        uuid repository_id "indexed, NO FK"
+        uuid analysis_job_id "indexed, NO FK"
+        varchar commit_sha
+        float8 overall_score
+        jsonb tech_stack
+    }
+
+    users ||--o{ auth_providers : "user_id"
+    auth_providers ||--o{ source_code_repositories : "auth_provider_id"
+    source_code_repositories ||--o{ analysis_jobs : "repository_id"
+    users ||--o{ analysis_jobs : "user_id"
+    %% [logical] no FK constraint - repository_id / analysis_job_id are plain
+    %% indexed uuid columns on repository_assessments (see 07, hazard 2).
+    source_code_repositories ||..o{ repository_assessments : "[logical] repository_id"
+    analysis_jobs ||..o| repository_assessments : "[logical] analysis_job_id"
+
+    %% ---------- Candidate assessment & capability (detail in 06) ----------
+    candidate_assessments {
+        uuid id PK
+        uuid user_id FK,UK
+        int version UK
+        uuid cv_id "<<Not verified>> no cvs table exists"
+        float8 overall_score
+        float8 trust_level
+        varchar career_level
+        varchar status
+    }
+    capability_nodes {
+        uuid id PK
+        varchar slug UK
+        varchar name
+        varchar category
+    }
+    candidate_capabilities {
+        uuid id PK
+        uuid candidate_id FK,UK
+        uuid capability_node_id FK,UK
+    }
+    evidence_artifacts {
+        uuid id PK
+        uuid source_id FK
+        varchar artifact_type
+        varchar cryptographic_signature
+    }
+    trust_profiles {
+        uuid id PK
+        uuid target_entity_id "polymorphic, NO FK"
+        varchar target_type
+    }
+
+    users ||--o{ candidate_assessments : "user_id"
+    users ||--o{ candidate_capabilities : "candidate_id"
+    capability_nodes ||--o{ candidate_capabilities : "capability_node_id"
+    candidate_capabilities }o--o{ evidence_artifacts : "candidate_capability_evidences"
+    %% [logical] trust_profiles.target_entity_id is polymorphic (hazard 5).
+    users ||..o{ trust_profiles : "[logical] target_entity_id"
+
+    %% ---------- Hiring & jobs (detail in 08) ----------
+    hiring_requirements {
+        uuid id PK
+        uuid organization_id FK
+        uuid workspace_id FK
+        varchar title
+        varchar seniority
+        int headcount
+        varchar status
+    }
+    requirement_snapshots {
+        uuid id PK
+        uuid hiring_requirement_id FK
+        int version
+        timestamptz snapshotted_at
+    }
+    job_vacancies {
+        uuid id PK
+        uuid organization_id FK
+        uuid hiring_requirement_id FK
+        uuid requirement_snapshot_id FK
+        varchar title
+        bool is_active
+    }
+    job_applications {
+        uuid id PK
+        uuid job_vacancy_id FK,UK
+        uuid candidate_id FK,UK
+        varchar status
+    }
+    matching_evaluations {
+        uuid id PK
+        uuid job_vacancy_id FK,UK
+        uuid candidate_id FK,UK
+        int aggregate_score
+        varchar confidence_level
+    }
+    candidate_discovery_runs {
+        uuid id PK
+        uuid hiring_requirement_id FK
+        uuid triggered_by_id FK
+        int candidates_found_count
+        int status
+    }
+
+    organizations ||--o{ hiring_requirements : "organization_id"
+    workspaces ||--o{ hiring_requirements : "workspace_id"
+    hiring_requirements ||--o{ requirement_snapshots : "hiring_requirement_id"
+    organizations ||--o{ job_vacancies : "organization_id"
+    hiring_requirements |o--o{ job_vacancies : "hiring_requirement_id"
+    requirement_snapshots |o--o{ job_vacancies : "requirement_snapshot_id"
+    job_vacancies ||--o{ job_applications : "job_vacancy_id"
+    users ||--o{ job_applications : "candidate_id"
+    job_vacancies ||--o{ matching_evaluations : "job_vacancy_id"
+    users ||--o{ matching_evaluations : "candidate_id"
+    hiring_requirements ||--o{ candidate_discovery_runs : "hiring_requirement_id"
+    users |o--o{ candidate_discovery_runs : "triggered_by_id"
+
+    %% ---------- Community (detail in 09) ----------
+    forum_categories {
+        uuid id PK
+        uuid organization_id FK
+        varchar slug
+        bool is_private
+    }
+    forum_topics {
+        uuid id PK
+        uuid category_id FK
+        uuid author_id FK
+        uuid organization_id FK
+        varchar slug UK
+        bool is_solved
+    }
+    forum_replies {
+        uuid id PK
+        uuid topic_id FK
+        uuid author_id FK
+        uuid parent_reply_id FK
+        bool is_accepted_solution
+    }
+
+    organizations |o--o{ forum_categories : "organization_id"
+    forum_categories ||--o{ forum_topics : "category_id"
+    users ||--o{ forum_topics : "author_id"
+    organizations |o--o{ forum_topics : "organization_id"
+    forum_topics ||--o{ forum_replies : "topic_id"
+    users ||--o{ forum_replies : "author_id"
+    forum_replies |o--o{ forum_replies : "parent_reply_id"

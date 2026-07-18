@@ -1,0 +1,326 @@
+%% ============================================================================
+%% 08 - Logical ERD: Hiring Requirements, Snapshots, Vacancies, Matching
+%% ----------------------------------------------------------------------------
+%% Covers: hiring_requirements + children (business_outcomes, responsibilities,
+%% technology_requirements, requirement_capabilities, evidence_signals,
+%% evaluation_rubrics, interview_blueprints, requirement_artifacts),
+%% requirement_snapshots + snapshot children (evaluation_rubric_snapshots,
+%% interview_blueprint_snapshots, requirement_artifact_snapshots,
+%% requirement_vector_snapshots), job_vacancies, job_applications,
+%% job_interactions, matching_evaluations / matching_factors /
+%% matching_explanations, candidate_discovery_runs.
+%% ---
+%% Source of truth (in precedence order):
+%%   1. docs/architecture/reverse-engineered/GROUND-TRUTH.md
+%%   2. CVerify.Core/Migrations/ApplicationDbContextModelSnapshot.cs
+%%   3. CVerify.Core/Modules/Shared/Persistence/ApplicationDbContext.cs
+%% ---
+%% Hazards applying to THIS diagram:
+%%  - Hazard 7: requirement_snapshots denormalises its children into jsonb
+%%    COLUMNS (business_outcomes_json, responsibilities_json, capabilities_json,
+%%    technology_requirements_json) and text[] columns (benefits,
+%%    language_requirements). These are COLUMNS, not tables - do not draw edges
+%%    from requirement_snapshots to business_outcomes / responsibilities /
+%%    requirement_capabilities / technology_requirements. No such FK exists.
+%%    Likewise requirement_vector_snapshots.vector is a `real[]` column, and per
+%%    ground truth section 4.1 the embedding columns are SCHEMA ONLY - the AI
+%%    service writes no embeddings and no similarity query exists.
+%%    job_vacancies also carries text[] columns (benefits, description, images,
+%%    requirements, skills, tags) and jsonb discovery_profile_json.
+%%  - requirement_capabilities.capability_id is a bare `character varying(100)`
+%%    with NO FK to capability_registries or capability_catalog_items. There is
+%%    no enforced link between a hiring requirement and the capability taxonomy.
+%%    Drawn [logical] with the target left <<Not verified>>.
+%%  - Ground truth section 2: there is NO "Recruiter" role. The actors here are
+%%    organization members holding OWNER / REPRESENTATIVE / HR.
+%%  - technology_requirements.sfia_level is an integer, but ground truth section
+%%    6.1 records that "SFIA" in this system is name-only - no SFIA file, no
+%%    3-letter codes, no version. Do not present it as real SFIA mapping.
+%% ---
+%% Cross-references:
+%%  - organizations, workspaces, users: see 04-logical-erd-identity-org.mmd
+%%  - capability_nodes and evidence_artifacts, both FK'd by matching_explanations:
+%%    see 06-logical-erd-assessment-capability.mmd
+%%  - candidate_match_projections / candidate_ranking_projections (read models
+%%    that back discovery and ranking): see 10-logical-erd-infrastructure.mmd
+%% ============================================================================
+
+erDiagram
+
+    users {
+        uuid id PK
+        citext username UK
+    }
+    organizations {
+        uuid id PK
+        varchar name
+    }
+    workspaces {
+        uuid id PK
+        varchar slug UK
+    }
+    capability_nodes {
+        uuid id PK
+        varchar slug UK
+    }
+    evidence_artifacts {
+        uuid id PK
+        varchar artifact_type
+    }
+
+    %% ---------------- Hiring requirement aggregate ----------------
+
+    hiring_requirements {
+        uuid id PK
+        uuid organization_id FK
+        uuid workspace_id FK
+        varchar title
+        varchar department
+        varchar seniority
+        varchar employment_type
+        varchar workplace_type
+        varchar city
+        varchar timezone_range
+        int headcount
+        int candidates_needed_count
+        varchar business_problem
+        varchar hiring_reason
+        varchar degree_requirement
+        numeric salary_min
+        numeric salary_max
+        varchar currency
+        int salary_period
+        bool is_salary_negotiable
+        int auto_close_rule
+        bool is_manually_closed
+        varchar status
+        int version
+        text_ARRAY benefits "text[] column, NOT a table"
+        text_ARRAY language_requirements "text[] column, NOT a table"
+    }
+
+    business_outcomes {
+        uuid id PK
+        uuid hiring_requirement_id FK
+        varchar text
+    }
+    responsibilities {
+        uuid id PK
+        uuid hiring_requirement_id FK
+        varchar text
+        text ownership_level
+        text priority
+        bool is_leadership
+    }
+    technology_requirements {
+        uuid id PK
+        uuid hiring_requirement_id FK
+        varchar name
+        text priority
+        int sfia_level "name-only; not real SFIA (ground truth 6.1)"
+    }
+    requirement_capabilities {
+        uuid id PK
+        uuid hiring_requirement_id FK
+        varchar capability_id "bare varchar(100), NO FK to any taxonomy table"
+        varchar name
+        varchar category
+        int expected_proficiency
+        text ownership_level
+        text priority
+    }
+    evidence_signals {
+        uuid id PK
+        uuid requirement_capability_id FK
+        varchar signal_type
+        varchar expected_metric
+        varchar rationale
+        jsonb metadata
+    }
+    evaluation_rubrics {
+        uuid id PK
+        uuid hiring_requirement_id FK
+        jsonb capability_weights
+        jsonb evidence_requirements
+        jsonb scoring_rules
+    }
+    interview_blueprints {
+        uuid id PK
+        uuid hiring_requirement_id FK
+        jsonb dimensions
+        jsonb capability_questions
+    }
+    requirement_artifacts {
+        uuid id PK
+        uuid hiring_requirement_id FK
+        varchar artifact_type
+        text markdown_content
+        jsonb structured_content_json
+        varchar status
+        varchar prompt_template_id
+        varchar prompt_version
+        varchar prompt_hash
+        varchar model_info
+        jsonb generation_metadata_json
+        jsonb regeneration_history_json
+    }
+
+    organizations ||--o{ hiring_requirements : "organization_id"
+    workspaces ||--o{ hiring_requirements : "workspace_id"
+    hiring_requirements ||--o{ business_outcomes : "hiring_requirement_id"
+    hiring_requirements ||--o{ responsibilities : "hiring_requirement_id"
+    hiring_requirements ||--o{ technology_requirements : "hiring_requirement_id"
+    hiring_requirements ||--o{ requirement_capabilities : "hiring_requirement_id"
+    requirement_capabilities ||--o{ evidence_signals : "requirement_capability_id"
+    hiring_requirements ||--o{ evaluation_rubrics : "hiring_requirement_id"
+    hiring_requirements ||--o{ interview_blueprints : "hiring_requirement_id"
+    hiring_requirements ||--o{ requirement_artifacts : "hiring_requirement_id"
+
+    %% ---------------- Immutable snapshots of a requirement version ----------
+
+    requirement_snapshots {
+        uuid id PK
+        uuid hiring_requirement_id FK
+        int version
+        timestamptz snapshotted_at
+        varchar title
+        varchar business_problem
+        jsonb business_outcomes_json "denormalised COLUMN, not an FK (hazard 7)"
+        jsonb responsibilities_json "denormalised COLUMN, not an FK"
+        jsonb capabilities_json "denormalised COLUMN, not an FK"
+        jsonb technology_requirements_json "denormalised COLUMN, not an FK"
+        text_ARRAY benefits "text[] column"
+        text_ARRAY language_requirements "text[] column"
+    }
+    evaluation_rubric_snapshots {
+        uuid requirement_snapshot_id PK,FK "1:1"
+        jsonb capability_weights
+        jsonb evidence_requirements
+        jsonb scoring_rules
+    }
+    interview_blueprint_snapshots {
+        uuid requirement_snapshot_id PK,FK "1:1"
+        jsonb dimensions
+        jsonb capability_questions
+    }
+    requirement_vector_snapshots {
+        uuid requirement_snapshot_id PK,FK "1:1"
+        int dimension
+        real_ARRAY vector "real[] COLUMN; schema only - never populated"
+    }
+    requirement_artifact_snapshots {
+        uuid id PK
+        uuid requirement_snapshot_id FK "1:N"
+        varchar artifact_type
+        text markdown_content
+        jsonb structured_content_json
+    }
+
+    hiring_requirements ||--o{ requirement_snapshots : "hiring_requirement_id"
+    requirement_snapshots ||--o| evaluation_rubric_snapshots : "requirement_snapshot_id"
+    requirement_snapshots ||--o| interview_blueprint_snapshots : "requirement_snapshot_id"
+    requirement_snapshots ||--o| requirement_vector_snapshots : "requirement_snapshot_id"
+    requirement_snapshots ||--o{ requirement_artifact_snapshots : "requirement_snapshot_id"
+
+    %% [logical] requirement_capabilities.capability_id has NO FK. The intended
+    %% target (capability_registries.capability_id vs
+    %% capability_catalog_items.capability_id) is <<Not verified>>; both are
+    %% varchar(100) PKs. No concrete edge is drawn - see 06 for both tables.
+
+    %% ---------------- Vacancies, applications, interactions ----------------
+
+    job_vacancies {
+        uuid id PK
+        uuid organization_id FK
+        uuid hiring_requirement_id FK "nullable"
+        uuid requirement_snapshot_id FK "ON DELETE SET NULL"
+        varchar title
+        varchar category
+        varchar department
+        varchar city
+        varchar workplace_type
+        varchar type
+        varchar experience
+        varchar degree
+        varchar gender
+        int headcount
+        varchar salary
+        varchar salary_min_max
+        varchar status
+        bool is_active
+        varchar acquisition_strategy
+        jsonb discovery_profile_json
+        text_ARRAY skills "text[] column"
+        text_ARRAY requirements "text[] column"
+        text_ARRAY benefits "text[] column"
+        text_ARRAY tags "text[] column"
+        text_ARRAY images "text[] column"
+        text_ARRAY description "text[] column"
+    }
+    job_applications {
+        uuid id PK
+        uuid job_vacancy_id FK,UK
+        uuid candidate_id FK,UK "ix_job_applications_job_vacancy_id_candidate_id"
+        varchar status
+        jsonb eligibility_snapshot_json
+        jsonb gaps_snapshot_json
+    }
+    job_interactions {
+        uuid id PK
+        uuid user_id FK,UK
+        uuid job_vacancy_id FK,UK
+        varchar interaction_type UK "ix_job_interactions_user_id_job_vacancy_id_interaction_type"
+        timestamptz interaction_at
+    }
+
+    organizations ||--o{ job_vacancies : "organization_id"
+    hiring_requirements |o--o{ job_vacancies : "hiring_requirement_id"
+    requirement_snapshots |o--o{ job_vacancies : "requirement_snapshot_id"
+    job_vacancies ||--o{ job_applications : "job_vacancy_id"
+    users ||--o{ job_applications : "candidate_id"
+    job_vacancies ||--o{ job_interactions : "job_vacancy_id"
+    users ||--o{ job_interactions : "user_id"
+
+    %% ---------------- Matching & discovery ----------------
+
+    matching_evaluations {
+        uuid id PK
+        uuid job_vacancy_id FK,UK
+        uuid candidate_id FK,UK "ix_matching_evaluations_job_vacancy_id_candidate_id"
+        int aggregate_score
+        varchar confidence_level
+    }
+    matching_factors {
+        uuid id PK
+        uuid matching_evaluation_id FK
+        varchar factor_name
+        int factor_score
+        float8 weight
+    }
+    matching_explanations {
+        uuid id PK
+        uuid matching_evaluation_id FK
+        uuid capability_node_id FK "nullable -> capability_nodes (see 06)"
+        uuid supporting_artifact_id FK "nullable -> evidence_artifacts (see 06)"
+        varchar explanation_type
+        text assertion_text
+    }
+    candidate_discovery_runs {
+        uuid id PK
+        uuid hiring_requirement_id FK
+        uuid triggered_by_id FK "ON DELETE SET NULL"
+        int status "integer-backed enum"
+        int candidates_found_count
+        varchar match_quality_summary
+        text raw_results_json
+        varchar error_message
+    }
+
+    job_vacancies ||--o{ matching_evaluations : "job_vacancy_id"
+    users ||--o{ matching_evaluations : "candidate_id"
+    matching_evaluations ||--o{ matching_factors : "matching_evaluation_id"
+    matching_evaluations ||--o{ matching_explanations : "matching_evaluation_id"
+    capability_nodes |o--o{ matching_explanations : "capability_node_id"
+    evidence_artifacts |o--o{ matching_explanations : "supporting_artifact_id"
+    hiring_requirements ||--o{ candidate_discovery_runs : "hiring_requirement_id"
+    users |o--o{ candidate_discovery_runs : "triggered_by_id"

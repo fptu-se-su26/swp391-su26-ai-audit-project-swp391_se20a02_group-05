@@ -1,0 +1,129 @@
+@startuml 12D-state-hiring-requirement-and-vacancy
+' CVerify — TWO state machines: hiring_requirements.Status and job_vacancies.Status
+' Verified against:
+'   Modules/Shared/Domain/Entities/HiringRequirement.cs:92-93
+'       [MaxLength(20)] public string Status { get; set; } = "Draft"; // Draft, Published, Archived
+'   Modules/Shared/Domain/Entities/HiringRequirement.cs:78-89   (LifecycleStatus, [NotMapped], separate concept)
+'   Modules/Shared/System/Services/HiringRequirementService.cs
+'       :80    CreateAsync                -> Status = "Draft"
+'       :289   guard: reject if already "Published"
+'       :295   PublishAsync               -> req.Status = "Published"
+'       :582   guard: cannot regenerate artifacts for a published requirement
+'       :587   GenerateArtifactsAsync     -> req.Status = "Generating"
+'       :718   on success                 -> req.Status = "Ready"
+'       :727   on exception (catch)       -> req.Status = "Draft"   (rollback)
+'       :1325  BulkArchiveAsync           -> req.Status = "Archived"
+'       :1353  guard: requires "Published"
+'       :1381  CreateNewVersionAsync      -> Status = "Draft"  ("New version starts as Draft")
+'       :1530  derived vacancy draft      -> Status = "Draft"
+'   Modules/Shared/System/Controllers/HiringRequirementController.cs:476  (guard on "Published")
+'   Modules/Shared/System/Controllers/JobVacancyController.cs:140
+'       requires req.Status == "Ready" OR "Published" before a vacancy may be derived
+'   Modules/Shared/Domain/Entities/JobVacancy.cs:79-80
+'       [MaxLength(50)] public string Status { get; set; } = "Draft"; // Draft, Published, Archived
+'   Modules/Shared/System/Controllers/PublicJobController.cs:56,:478,:532
+'   Modules/Shared/Persistence/ApplicationDbContext.cs:325-328  (partial index)
+'   docs/architecture/reverse-engineered/GROUND-TRUTH.md  §6.2 (Line 4 requirement-artifact pipeline)
+
+title Hiring requirement and job vacancy lifecycles (two independent string status columns)
+
+skinparam shadowing false
+skinparam state {
+  BackgroundColor<<terminal>> #FFECEC
+}
+
+' =====================================================================
+state "hiring_requirements.Status" as HR {
+
+  [*] --> HR_Draft : HiringRequirementService.CreateAsync (:80)\nStatus = "Draft"
+
+  state "Draft" as HR_Draft
+  state "Generating" as HR_Generating #FFF6E6
+  state "Ready" as HR_Ready #FFF6E6
+  state "Published" as HR_Published
+  state "Archived" as HR_Archived <<terminal>>
+
+  HR_Draft --> HR_Generating : GenerateArtifactsAsync (:587)\nguarded: throws if already Published (:582)\nopens an AI streaming session ("jd-generation")
+  HR_Generating --> HR_Ready : AI Line 4 returns all 5 artifacts (:718)\nstreaming session -> "Completed"
+  HR_Generating --> HR_Draft : exception in the generation catch block (:727)\n<b>rollback</b>; streaming session -> "Failed"
+  HR_Ready --> HR_Published : PublishAsync (:295)\nguarded: throws if already Published (:289)
+  HR_Draft --> HR_Published : PublishAsync (:295)
+  HR_Draft --> HR_Archived : BulkArchiveAsync (:1325)
+  HR_Ready --> HR_Archived : BulkArchiveAsync (:1325)
+  HR_Published --> HR_Archived : BulkArchiveAsync (:1325)
+
+  HR_Published --> HR_Draft : CreateNewVersionAsync (:1381)\ncreates a NEW row, Version+1, "New version starts as Draft"
+}
+
+note bottom of HR #FFF0F0
+  <b>Stale-comment discrepancy — recorded as required</b>
+  HiringRequirement.cs:93 comments the column as
+      // Draft, Published, Archived
+  but HiringRequirementService writes <b>five</b> values:
+      Draft · <b>Generating</b> · <b>Ready</b> · Published · Archived
+  "Generating" and "Ready" are the AI artifact-generation states and are
+  completely undocumented on the entity. They are load-bearing:
+  JobVacancyController.cs:140 refuses to derive a vacancy unless the
+  requirement is "Ready" or "Published".
+
+  <b>Correction to the reverse-engineering brief.</b> The brief stated the
+  service "also writes Active and Cancelled" to hiring_requirements.Status.
+  That is not supported by the source. HiringRequirementService.cs:1212
+  writes Status = "Active" to a <b>CapabilityCatalogItem</b>, :1266 writes
+  "Archived" to the same entity, and :920/:935/:973 write
+  "Cancelled"/"Failed" to a <b>RequirementArtifact</b>. Every assignment to
+  `req.Status` (the HiringRequirement) is one of the five drawn above.
+end note
+
+note right of HR_Draft
+  Separate from this column, HiringRequirement exposes a computed
+  [NotMapped] <b>LifecycleStatus</b> (entity :78-89) returning
+  Closed | Scheduled | Expired | Active, derived from
+  IsManuallyClosed / StartDate / EndDate. It is NOT persisted and
+  is NOT the state machine above — two different notions of "status"
+  coexist on the same entity.
+end note
+
+' =====================================================================
+state "job_vacancies.Status" as JV {
+
+  [*] --> JV_Draft : PublicJobController.Create (:532) or\nHiringRequirementService derived draft (:1530)\nStatus = "Draft"
+
+  state "Draft" as JV_Draft
+  state "Published" as JV_Published
+  state "Archived" as JV_Archived <<terminal>>
+
+  JV_Draft --> JV_Published : PublicJobController.UpdateStatus (:478)\njob.Status = dto.Status
+  JV_Published --> JV_Archived : PublicJobController.UpdateStatus (:478)
+  JV_Draft --> JV_Archived : PublicJobController.UpdateStatus (:478)
+  JV_Published --> JV_Draft : PublicJobController.UpdateStatus (:478)
+  JV_Archived --> JV_Published : PublicJobController.UpdateStatus (:478)
+}
+
+note bottom of JV
+  <b>Only "Published" + IsActive makes a vacancy publicly visible.</b>
+  PublicJobController.cs:56 filters
+      .Where(j => j.Status == "Published" && j.IsActive)
+  and ApplicationDbContext.cs:325-328 backs exactly that predicate with a
+  <b>partial index</b>:
+      HasIndex(jv => new { jv.Status, jv.IsActive })
+        .HasDatabaseName("idx_job_vacancies_published_active")
+        .HasFilter("status = 'Published' AND is_active = TRUE")
+  Consequence: the index depends on the literal string 'Published'.
+  Renaming or re-casing that value silently makes the partial index
+  match zero rows and turns the public job listing into a sequential scan.
+  Also note IsActive is an independent boolean — a Published vacancy
+  with IsActive = false is invisible without any status change.
+end note
+
+note as N_JV_TRANS #FFF0F0
+  <b>No transition guard on job_vacancies.Status.</b>
+  PublicJobController.cs:478 assigns `job.Status = dto.Status;` straight
+  from the request body (comment: "e.g. Draft, Published, Archived").
+  There is no switch table, no validation and no enum, so any string up
+  to 50 characters can be persisted. The three states drawn are the
+  documented/observed set, and every pairwise edge between them is
+  reachable — including backwards.
+end note
+
+@enduml
