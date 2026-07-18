@@ -24,6 +24,7 @@ from pydantic import BaseModel
 
 # Initialize logging
 from app.core.monitoring.observability import setup_logging, UIStreamingManager, TraceContext, span_context
+from app.core.clients.monitoring_client import emit_monitoring_event
 
 setup_logging()
 
@@ -144,6 +145,21 @@ async def add_trace_context_middleware(request: Request, call_next):
                 "errorType": "UNKNOWN_EXCEPTION"
             }
         )
+        # Best-effort: surface unhandled failures to Core so admins get a realtime alert.
+        # Fire-and-forget — emit_monitoring_event never raises and must not delay the response.
+        asyncio.create_task(emit_monitoring_event(
+            event_type="unhandled_exception",
+            message=f"Unhandled exception during {request.method} {request.url.path}: {e}",
+            severity="error",
+            source="cverify-ai.request-pipeline",
+            details={
+                "method": request.method,
+                "path": request.url.path,
+                "latencyMs": duration,
+                "exceptionType": type(e).__name__,
+            },
+            correlation_id=correlation_id,
+        ))
         raise e
     finally:
         TraceContext.reset(token)
