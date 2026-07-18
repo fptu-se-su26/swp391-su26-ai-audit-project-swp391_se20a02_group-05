@@ -1,24 +1,24 @@
 # Legal Information
 
-This document summarizes the proprietary licensing posture for CVerify. If any
-statement here conflicts with `LICENSE`, the `LICENSE` file controls.
+This document summarizes the proprietary licensing posture for CVerify.
+If any statement here conflicts with `LICENSE`, the `LICENSE` file controls.
 
-Related files in this directory:
+## Related Files
 
 | File | Purpose |
-|---|---|
+| --- | --- |
 | `LICENSE` | Governing proprietary (All Rights Reserved) license terms |
 | `COPYRIGHT` | Copyright ownership notice |
 | `NOTICE` | Attribution and third-party license reminder |
 | `LEGAL.md` | This summary of usage and permission requirements |
 
+A matching `LICENSE` file is also maintained at the repository root for
+repository-level visibility.
+
 ## Proprietary License
 
 CVerify is proprietary software. All rights are reserved by the CVerify Team.
-
-The full license terms are set out in the `LICENSE` file in this directory.
-A matching `LICENSE` file is also maintained at the repository root for
-repository-level visibility.
+The complete license terms appear in the `LICENSE` file in this directory.
 
 ## Copyright Ownership
 
