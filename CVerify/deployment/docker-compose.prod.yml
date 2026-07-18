@@ -1,0 +1,179 @@
+# ==============================================================================
+# CVERIFY PRODUCTION OVERRIDE
+# ==============================================================================
+# This is an OVERRIDE file. It does not replace the repository's root
+# docker-compose.yml — it is meant to be run together with it:
+#
+#   docker compose -f docker-compose.yml -f deployment/docker-compose.prod.yml \
+#     --env-file .env up -d --build
+#
+# It does NOT redefine networks, volumes, healthchecks, or depends_on — those
+# are already correct in the base file and are left untouched here. This file
+# only:
+#   1. Right-sizes resource limits for a small production VPS (2 vCPU / 4 GB
+#      RAM / 80 GB NVMe — smaller than the base file's dev-oriented limits)
+#   2. Sets restart policy and tighter log rotation for production
+#   3. Points the frontend build at the public API subdomain (API_DOMAIN) and
+#      wires SSR's internal, in-network API URL — see DOMAIN/API_DOMAIN in
+#      .env.example
+#
+# Rebuilding the client image is REQUIRED after applying this override — the
+# NEXT_PUBLIC_API_URL build arg is inlined into the frontend bundle at build
+# time, not read at container start.
+# ==============================================================================
+
+services:
+  # ----------------------------------------------------------------------------
+  # PostgreSQL — right-sized for a 4GB host; tune postgresql.conf separately
+  # inside the container if you go deeper (out of scope for a compose override).
+  # ----------------------------------------------------------------------------
+  postgres:
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: '0.75'
+          memory: 768M
+        reservations:
+          memory: 256M
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # ----------------------------------------------------------------------------
+  # Redis
+  # ----------------------------------------------------------------------------
+  redis:
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: '0.25'
+          memory: 320M
+        reservations:
+          memory: 64M
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # ----------------------------------------------------------------------------
+  # AI Service — memory limit is tighter than the base file's dev default to
+  # fit the real 4GB host. Monitor `docker stats` during real repository-
+  # analysis jobs; if this ceiling gets hit routinely, the fix is a bigger
+  # VPS, not a smaller limit.
+  # ----------------------------------------------------------------------------
+  cverify-ai:
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 900M
+        reservations:
+          memory: 384M
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # ----------------------------------------------------------------------------
+  # Backend API — resource limits tightened for the real host.
+  # ----------------------------------------------------------------------------
+  cverify-core:
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: '0.75'
+          memory: 700M
+        reservations:
+          memory: 256M
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # ----------------------------------------------------------------------------
+  # Frontend — the build ARG must be the public API domain (api.cverify.com.vn),
+  # not localhost:5247, because Next.js inlines NEXT_PUBLIC_* at build time.
+  # The API lives on its own subdomain (routed by deployment/nginx/cverify.conf
+  # straight to cverify-core), separate from the frontend's own domain — see
+  # DOMAIN vs API_DOMAIN in .env.example.
+  #
+  # Binds to loopback so Nginx is the only public entry point, matching how
+  # every other service in this stack is already bound in the base file.
+  # ----------------------------------------------------------------------------
+  cverify-client:
+    build:
+      args:
+        - NEXT_PUBLIC_API_URL=https://${API_DOMAIN}/api
+        - NEXT_PUBLIC_GOOGLE_CLIENT_ID=${NEXT_PUBLIC_GOOGLE_CLIENT_ID}
+    restart: unless-stopped
+    environment:
+      NEXT_PUBLIC_API_URL: https://${API_DOMAIN}/api
+      # SSR (server components / route handlers) runs inside this container,
+      # so it can reach cverify-core over the Docker network directly instead
+      # of round-tripping through the public domain — see
+      # client/src/infrastructure/http/axios-client.ts:11, which already
+      # prefers INTERNAL_API_URL server-side but had nothing setting it.
+      INTERNAL_API_URL: http://cverify-core:5000/api
+    # `ports` merges as a list across compose files by default (concatenation,
+    # not replacement), so without `!override` this entry ADDS to the base
+    # file's public "3000:3000" mapping instead of replacing it — the client
+    # would stay exposed on 0.0.0.0:3000 even with this override applied.
+    # Requires Docker Compose 2.24+ for the `!override` merge tag.
+    ports: !override
+      - "127.0.0.1:${CLIENT_PORT:-3000}:3000"
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 512M
+        reservations:
+          memory: 128M
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # ----------------------------------------------------------------------------
+  # MinIO -- self-hosted S3-compatible object storage, replacing Cloudflare R2.
+  # Program.cs already targets a generic S3-compatible endpoint via
+  # R2_ENDPOINT/ACCESS_KEY_ID/SECRET_ACCESS_KEY with ForcePathStyle=true, which
+  # MinIO satisfies natively -- no application code changes required.
+  # ----------------------------------------------------------------------------
+  minio:
+    image: minio/minio:latest
+    container_name: cverify-minio
+    restart: unless-stopped
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
+    command: server /data --console-address ":9001"
+    volumes:
+      - minio_data:/data
+    networks:
+      - cverify-infra-net
+    deploy:
+      resources:
+        limits:
+          cpus: "0.25"
+          memory: 256M
+        reservations:
+          memory: 128M
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+volumes:
+  minio_data:
+    driver: local

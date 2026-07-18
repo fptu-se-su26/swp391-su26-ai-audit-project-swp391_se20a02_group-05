@@ -145,7 +145,11 @@ public class TokenService : ITokenService
             Secure = !isDevelopment, // Secure only in production, false in local development HTTP
             SameSite = SameSiteMode.Lax,
             Path = "/",
-            Expires = expires ?? DateTime.UtcNow.AddDays(7)
+            Expires = expires ?? DateTime.UtcNow.AddDays(7),
+            // Frontend (cverify.com.vn) reads this cookie during SSR while the API lives on
+            // api.cverify.com.vn — without a shared parent Domain the cookie is host-only to
+            // whichever origin set it and never reaches the other subdomain.
+            Domain = string.IsNullOrWhiteSpace(_config.Auth.CookieDomain) ? null : _config.Auth.CookieDomain
         };
 
         _httpContextAccessor.HttpContext?.Response.Cookies.Append(tokenName, tokenValue, cookieOptions);
@@ -159,7 +163,10 @@ public class TokenService : ITokenService
             HttpOnly = true,
             Secure = !isDevelopment,
             SameSite = SameSiteMode.Lax,
-            Path = "/"
+            Path = "/",
+            // Must match the Domain used in SetTokenInsideCookie or the browser treats this as a
+            // different cookie and the original one is never actually deleted.
+            Domain = string.IsNullOrWhiteSpace(_config.Auth.CookieDomain) ? null : _config.Auth.CookieDomain
         };
 
         _httpContextAccessor.HttpContext?.Response.Cookies.Delete(tokenName, cookieOptions);

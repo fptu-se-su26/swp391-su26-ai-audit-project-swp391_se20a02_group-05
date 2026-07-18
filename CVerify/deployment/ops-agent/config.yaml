@@ -1,0 +1,33 @@
+# CVerify custom Ops Agent config — adds nginx and Docker container log
+# collection on top of the agent's built-in defaults (host CPU/memory/disk
+# metrics + syslog, which keep working unmodified since this file is merged
+# with, not a replacement for, the agent's defaults). See
+# CVerify/deployment/DEPLOYMENT_GUIDE.md step 2 and section 11.
+#
+# Docker's json-file log driver (docker-compose.yml/docker-compose.prod.yml
+# already set this) wraps each line as {"log":..., "stream":..., "time":...}
+# — parse_json below promotes that into jsonPayload and uses Docker's "time"
+# as the LogEntry timestamp. Query in Cloud Logging with e.g.
+# jsonPayload.log:"error" AND logName="projects/PROJECT/logs/docker_containers".
+logging:
+  receivers:
+    nginx_access:
+      type: nginx_access
+    nginx_error:
+      type: nginx_error
+    docker_containers:
+      type: files
+      include_paths:
+        - /var/lib/docker/containers/*/*-json.log
+  processors:
+    parse_docker_json:
+      type: parse_json
+      time_key: time
+      time_format: "%Y-%m-%dT%H:%M:%S.%L%Z"
+  service:
+    pipelines:
+      nginx_pipeline:
+        receivers: [nginx_access, nginx_error]
+      docker_pipeline:
+        receivers: [docker_containers]
+        processors: [parse_docker_json]

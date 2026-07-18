@@ -410,6 +410,7 @@ builder.Services.AddScoped<IPasswordRecoveryService, PasswordRecoveryService>();
 builder.Services.AddScoped<IPermissionService, PermissionService>();
 builder.Services.AddScoped<IAdminAuthorizationService, AdminAuthorizationService>();
 builder.Services.AddScoped<IAdminMemberService, AdminMemberService>();
+builder.Services.AddScoped<IMonitoringAuditService, MonitoringAuditService>();
 builder.Services.AddScoped<IIdentityStateResolver, IdentityStateResolver>();
 builder.Services.AddScoped<IRecoveryExecutionEngine, RecoveryExecutionEngine>();
 builder.Services.AddScoped<IRecoveryTokenService, RecoveryTokenService>();

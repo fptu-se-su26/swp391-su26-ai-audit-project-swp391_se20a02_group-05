@@ -583,15 +583,27 @@ class GitHubAnalysisOrchestrator(IGitHubAnalysisOrchestrator):
         text = text.strip()
         first_brace = text.find('{')
         last_brace = text.rfind('}')
-        
+
         if first_brace != -1:
+            # Claude occasionally appends trailing prose after the JSON object (despite
+            # being told not to) -- if that prose contains any '}' character (e.g. citing
+            # code like `interface{}`), text.rfind('}') lands past the object's real end,
+            # and json.loads on that over-wide slice fails with "Extra data". raw_decode
+            # parses exactly one JSON value starting at first_brace and ignores whatever
+            # follows it, which handles this case regardless of what the trailing text is.
+            try:
+                obj, _ = json.JSONDecoder().raw_decode(text[first_brace:])
+                return obj
+            except Exception as e:
+                logger.warning(f"raw_decode failed to parse a single JSON value at first_brace: {e}. Falling back to bounded slice + repair.", extra={"correlation_id": correlation_id})
+
             if last_brace != -1 and last_brace > first_brace:
                 json_candidate = text[first_brace:last_brace + 1]
                 try:
                     return json.loads(json_candidate)
                 except Exception as e:
                     logger.warning(f"Failed to parse raw extracted JSON block: {e}. Attempting repair fallback.", extra={"correlation_id": correlation_id})
-            
+
             try:
                 # Scan from first_brace to the absolute end of the generated text to capture and heal truncated suffix
                 full_candidate = text[first_brace:]

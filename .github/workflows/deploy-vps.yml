@@ -1,0 +1,106 @@
+# ==============================================================================
+# CVerify — Deploy to VPS
+# ==============================================================================
+# Triggers on every push to the deployment branch (CVerify-Deployment) and
+# SSHes into the VPS to update the checkout, rebuild the Docker stack, and
+# restart it. See CVerify/deployment/DEPLOYMENT_GUIDE.md for the full runbook.
+#
+# WHY `push` AND NOT `workflow_run`:
+#   The previous version triggered via `workflow_run` after CI. That NEVER
+#   fired: `workflow_run` (and `workflow_dispatch`) only activate when the
+#   workflow file lives on the repo's DEFAULT branch (main), but this file
+#   lives on CVerify-Deployment. A `push` trigger has no such restriction — it
+#   runs using the workflow file on the branch that was pushed — so it works
+#   from CVerify-Deployment directly. (Trade-off: this deploys on push
+#   regardless of the CI result; CI still runs in parallel on the same push.
+#   If you later want to gate deploy on CI passing, the robust way is to move
+#   this job into ci.yml as a final `needs:`-gated stage once the pipeline
+#   lives on the default branch — deliberately not done now to keep the
+#   deploy path simple.)
+#
+# WHICH BRANCH DEPLOYS — single switch, and why there are TWO copies of this
+# file to keep in sync:
+#   Push-triggered workflows run using the copy of THIS FILE that lives on the
+#   branch that was pushed — not the copy on main, not the copy on any other
+#   branch. That means the `on.push.branches` list only stops a push from
+#   deploying if the copy of this file ON THAT BRANCH also excludes it. CVerify-uat
+#   is a regular development branch (people push to it directly) and
+#   deliberately carries the SAME `branches: [CVerify-Deployment]` value below
+#   — so a push to CVerify-uat evaluates its own copy of this file, sees
+#   CVerify-uat is not in the list, and does nothing. Production only deploys
+#   when CVerify-Deployment itself receives a push (typically by
+#   merging/fast-forwarding CVerify-uat into it once work is ready to ship —
+#   see DEPLOYMENT_GUIDE.md section 0). Keeping both copies byte-identical
+#   also means this file never conflicts on a CVerify-uat -> CVerify-Deployment
+#   merge. To cut the production deploy over to main once everything is
+#   merged, change `[CVerify-Deployment]` to `[main]` on BOTH branches' copies
+#   of this file — leave it as CVerify-Deployment for now.
+#
+# Secrets required (Settings -> Secrets and variables -> Actions -> Secrets):
+#   VPS_HOST, VPS_USER, VPS_SSH_KEY, and optionally VPS_SSH_PORT (default 22).
+# No application secret is ever passed through GitHub — the real .env lives
+# only on the VPS; the deploy step just `git pull`s and rebuilds there.
+# ==============================================================================
+name: Deploy to VPS
+
+on:
+  push:
+    branches: [CVerify-Deployment] # <-- single switch: change to [main] to cut over (on BOTH branches' copies, see note above)
+  workflow_dispatch: {} # manual re-deploy (usable once this file is on the default branch)
+
+permissions:
+  contents: read
+
+# Never let two deploys run at once (e.g. two quick pushes). A running deploy
+# finishes; the next one queues behind it instead of racing on the same VPS.
+concurrency:
+  group: deploy-vps
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: Deploy via SSH
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deploy via SSH
+        uses: appleboy/ssh-action@2ead5e36573f08b82fbfce1504f1a4b05a647c6f # v1.2.2
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          port: ${{ secrets.VPS_SSH_PORT || 22 }}
+          command_timeout: 30m # a cache-busting change to a COPY'd file forces a full,
+          # uncached image rebuild (dotnet publish + npm run build from scratch), which
+          # can exceed the action's 10m default — 30m covers a cold build with headroom.
+          script: |
+            set -e
+            echo "[deploy] Deploying branch '${{ github.ref_name }}' (commit ${{ github.sha }})"
+            cd "$HOME/swp391-su26-ai-audit-project-swp391_se20a02_group-05"
+            git fetch origin ${{ github.ref_name }}
+            git checkout ${{ github.ref_name }}
+            git pull origin ${{ github.ref_name }}
+            cd CVerify
+            docker compose -f docker-compose.yml -f deployment/docker-compose.prod.yml \
+              --env-file .env up -d --build --remove-orphans
+            docker system prune -f
+            docker compose ps
+
+      - name: Health check
+        uses: appleboy/ssh-action@2ead5e36573f08b82fbfce1504f1a4b05a647c6f # v1.2.2
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          port: ${{ secrets.VPS_SSH_PORT || 22 }}
+          script: |
+            bash "$HOME/swp391-su26-ai-audit-project-swp391_se20a02_group-05/CVerify/deployment/scripts/health-check.sh"
+
+      - name: Deployment summary
+        if: always()
+        run: |
+          echo "## Deployment Summary" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Result: ${{ job.status }}" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Branch: ${{ github.ref_name }}" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Commit: ${{ github.sha }}" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Triggered by: ${{ github.actor }} (${{ github.event_name }})" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Target: ${{ secrets.VPS_HOST }}" >> "$GITHUB_STEP_SUMMARY"

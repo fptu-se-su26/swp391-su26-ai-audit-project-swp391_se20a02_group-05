@@ -1,0 +1,25 @@
+# ==============================================================================
+# CVerify — daily backup (PostgreSQL + MinIO)
+# Install: sudo cp deployment/systemd/cverify-backup.* /etc/systemd/system/
+#          sudo systemctl daemon-reload
+#          sudo systemctl enable --now cverify-backup.timer
+#
+# BEFORE enabling: replace YOUR_DEPLOY_USER below with the Linux user that owns
+# the deployment (the same user that runs `docker` and whose $HOME holds the
+# git checkout) — see DEPLOYMENT_GUIDE.md §0b/§9b. That user must be in the
+# `docker` group. Backups are written under that user's ~/backups/.
+#
+# This is the systemd alternative to the cron one-liner in §9b — use one or the
+# other, not both.
+# ==============================================================================
+[Unit]
+Description=CVerify daily backup (PostgreSQL + MinIO)
+After=docker.service
+Requires=docker.service
+
+[Service]
+Type=oneshot
+User=YOUR_DEPLOY_USER
+ExecStart=/usr/bin/env bash /opt/cverify/scripts/backup-all.sh
+# Backups can take a while on a large minio_data volume; don't let systemd kill it.
+TimeoutStartSec=1800
