@@ -42,4 +42,39 @@ public class HmacSignatureService : IHmacSignatureService
 
         return (signature, timestamp, nonce);
     }
+
+    public bool VerifySignature(
+        string method,
+        string url,
+        string body,
+        string timestamp,
+        string nonce,
+        string signature,
+        int maxClockSkewSeconds = 300)
+    {
+        if (string.IsNullOrWhiteSpace(timestamp) || string.IsNullOrWhiteSpace(nonce) || string.IsNullOrWhiteSpace(signature))
+        {
+            return false;
+        }
+
+        // Reject requests with a timestamp outside the allowed skew window to limit replay.
+        if (!long.TryParse(timestamp, out var unixSeconds))
+        {
+            return false;
+        }
+
+        var now = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+        if (Math.Abs(now - unixSeconds) > maxClockSkewSeconds)
+        {
+            return false;
+        }
+
+        var expected = ComputeSignature(method, url, body, timestamp, nonce);
+
+        // Constant-time comparison over the lowercase hex representations.
+        var expectedBytes = Encoding.UTF8.GetBytes(expected);
+        var providedBytes = Encoding.UTF8.GetBytes(signature.ToLowerInvariant());
+
+        return CryptographicOperations.FixedTimeEquals(expectedBytes, providedBytes);
+    }
 }
