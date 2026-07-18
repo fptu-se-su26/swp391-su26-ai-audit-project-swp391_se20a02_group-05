@@ -35,6 +35,6 @@
 | Người thực hiện | Trần Nhất Long (với hỗ trợ Cursor AI) |
 | Loại thay đổi | Documentation |
 | Mô tả | Chuyển CVerify sang Proprietary (All Rights Reserved); thêm tài liệu pháp lý độc lập; không sửa README.md; không đổi source code |
-| Files | `LICENSE`, `CVerify/LICENSE`, `CVerify/LEGAL.md`, `CVerify/NOTICE`, `CVerify/COPYRIGHT`, `docs/Tran Nhat Long/#6/*` |
+| Files | `LICENSE`, `CVerify/LICENSE`, `CVerify/LEGAL.md`, `CVerify/NOTICE`, `CVerify/COPYRIGHT`, `docs/Tran Nhat Long/#11/*` |
 | AI hỗ trợ | Có — soạn và tách commit theo prompt |
 | Minh chứng | Branch `CVerify-Deployment`, commits `docs: add proprietary license` … `docs: final legal documentation cleanup` |
