@@ -2,11 +2,15 @@ CVerify
 Copyright (c) 2026 CVerify Team
 All Rights Reserved.
 
-This product is proprietary and confidential. See the LICENSE and LEGAL.md
-files in this directory for the full terms governing use, redistribution,
-reverse engineering, and permission requirements.
+This product is proprietary and confidential.
 
-Third-party open-source components that may be included as dependencies remain
-subject to their respective licenses. Those third-party licenses do not grant
-any rights to CVerify itself beyond what is expressly permitted by the
-copyright holder.
+Governing terms:
+- LICENSE (this directory) — proprietary All Rights Reserved license
+- LICENSE (repository root) — same proprietary terms for repository visibility
+- COPYRIGHT — copyright ownership notice
+- LEGAL.md — usage, redistribution, reverse engineering, and permission summary
+
+Third-party open-source components included as dependencies, vendored assets,
+or agent skill packages remain subject to their respective licenses. Those
+third-party licenses do not grant any rights to CVerify itself beyond what is
+expressly permitted by the copyright holder.
