@@ -1,0 +1,54 @@
+%% CVerify.AI — CLAIMED pipeline vs IMPLEMENTED pipeline
+%%
+%% The upper lane is the pipeline commonly described in project documentation
+%% and in the diagram brief. The lower lane is what the source code actually
+%% executes. This diagram exists so the gap is explicit rather than implied.
+%%
+%% Verification method: import-graph analysis over CVerify.AI/app/**.
+%% A module is marked DEAD when no file under app/ imports it (tests-only usage
+%% does not count as participation in a runtime pipeline).
+
+flowchart LR
+    classDef ok      fill:#123a2a,stroke:#5fd0a0,stroke-width:2px,color:#e8fff5
+    classDef dead    fill:#3a1414,stroke:#ff6b6b,stroke-width:2px,color:#ffe8e8
+    classDef nameonly fill:#4a3410,stroke:#f0b429,stroke-width:2px,color:#fff8e6
+    classDef absent  fill:#2a2a30,stroke:#6b7280,stroke-width:2px,color:#c8ccd4,stroke-dasharray:5 4
+
+    subgraph CLAIMED["❌ CLAIMED PIPELINE — not supported by source"]
+        direction LR
+        C1[Resume file] --> C2[OCR] --> C3[Text Extraction] --> C4[Embedding]
+        C4 --> C5[Skill Extraction] --> C6[SFIA Mapping] --> C7["O*NET Mapping"]
+        C7 --> C8[Candidate Scoring] --> C9[Evaluation Report]
+    end
+
+    subgraph ACTUAL["✅ IMPLEMENTED PIPELINE — verified in source"]
+        direction LR
+        A1["CV arrives as parsed dict<br/>in the HTTP request body<br/><small>analysis_router.py</small>"]:::ok
+        A2["L2-001 SkillTaxonomyMapper<br/>LLM call + ~190-entry Python dict<br/><small>taxonomy_mapper.py / skill_taxonomy.py</small>"]:::ok
+        A3["L2-002..L2-013<br/>16-task validated DAG<br/>hybrid LLM + deterministic overrides"]:::ok
+        A4["Deterministic 5-dimension scoring<br/>skillDepth · ownership · architecture<br/>problemSolving · impact<br/><small>scoring_engine.py</small>"]:::ok
+        A5["Cohort percentile normalisation<br/><small>cohort_snapshot_v1.json</small>"]:::ok
+        A6["L2-014 Composer → L2-015 Improvement<br/>contract-validated report"]:::ok
+        A1 --> A2 --> A3 --> A4 --> A5 --> A6
+    end
+
+    subgraph GAPS["Where each claimed stage actually stands"]
+        direction TB
+        G1["OCR / Text Extraction<br/><b>DEAD CODE</b><br/>5 extractors exist under shared/extractors/<br/>but NO module under app/ imports them.<br/>Referenced only by tests/test_new_features.py.<br/>PDF path is markitdown text-layer only — no OCR.<br/>Vision OCR gated on ENABLE_VISION_CERTIFICATE_OCR,<br/>which defaults to False."]:::dead
+
+        G2["Embedding<br/><b>DOES NOT EXIST</b><br/>repository/embedding/__init__.py contains exactly<br/>one line: '# Pruned embedding module'.<br/>requirements.txt has 13 packages, none of them<br/>an embedding or vector library.<br/>No cosine / ANN / vector store anywhere."]:::absent
+
+        G3["SFIA Mapping<br/><b>NAME ONLY</b><br/>A field named sfiaCategory holding free text<br/>such as 'Software Development'.<br/>Real SFIA uses 3-letter codes (PROG, DBAD, ARCH)<br/>plus Levels 1-7.<br/>No SFIA data file, no levels, no version pin."]:::nameonly
+
+        G4["O*NET Mapping<br/><b>CONSTANTS ONLY</b><br/>Correctly-formatted O*NET-SOC codes (e.g. 15-1252.00)<br/>hand-copied into a Python dict.<br/>No O*NET data file, no API client, no lookup.<br/>onetCode is written to output and then never read<br/>by any scoring or gating logic."]:::nameonly
+
+        G5["Skill Extraction + Scoring + Report<br/><b>GENUINELY IMPLEMENTED</b><br/>and substantially richer than the claim:<br/>a validated 16-task DAG where deterministic<br/>gates override the model's answer."]:::ok
+    end
+
+    C2 -.-> G1
+    C3 -.-> G1
+    C4 -.-> G2
+    C6 -.-> G3
+    C7 -.-> G4
+    C5 -.-> G5
+    C8 -.-> G5

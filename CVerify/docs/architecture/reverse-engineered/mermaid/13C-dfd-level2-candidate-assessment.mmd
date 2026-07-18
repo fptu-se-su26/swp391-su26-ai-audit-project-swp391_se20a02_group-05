@@ -1,0 +1,87 @@
+%% CVerify — Data Flow Diagram, Level 2: process 4 "Candidate Assessment"
+%%
+%% Sources verified:
+%%   docs/architecture/reverse-engineered/GROUND-TRUTH.md
+%%     §3 (middleware order, cookie auth) · §5.3 (HMAC scheme + endpoint list)
+%%     §5.4 (background workers, in-process queues) · §6.2 (16-task Line 2 DAG)
+%%     §6.3 (deterministic scoring) · §6.4 (Claude integration, cancellation)
+%%     §6.5 (security stubs — none of the three sanitizers is imported)
+%%   docs/architecture/reverse-engineered/mermaid/17-ai-pipeline-candidate-dag.mmd
+%%     (the 16 tasks and their declared dependencies)
+%%
+%% Trust boundaries are drawn explicitly. The 16-task DAG is shown at its
+%% boundary only — see 17-ai-pipeline-candidate-dag.mmd for the task-level edges.
+
+flowchart TB
+    classDef entity  fill:#0b3d5c,stroke:#7fd1ff,stroke-width:2px,color:#eaf7ff
+    classDef process fill:#123a2a,stroke:#5fd0a0,stroke-width:2px,color:#e8fff5
+    classDef store   fill:#2c2c34,stroke:#9aa0aa,stroke-width:1.5px,color:#f0f2f5
+    classDef ext     fill:#4a3410,stroke:#f0b429,stroke-width:2px,color:#fff8e6
+    classDef warn    fill:#4a1530,stroke:#ff7fb0,stroke-width:2px,color:#ffe8f2
+
+    %% ======================= TRUST BOUNDARY A =======================
+    subgraph TB_A["TRUST BOUNDARY A — untrusted, public internet"]
+        CAND["Candidate (USER)<br/><i>browser, HttpOnly cookie</i>"]:::entity
+        UNTRUSTED["Untrusted input reaching the pipeline:<br/>CV text · repository source code ·<br/>commit messages · README content"]:::warn
+    end
+
+    %% ======================= TRUST BOUNDARY B =======================
+    subgraph TB_B["TRUST BOUNDARY B — host nginx (TLS termination, rate limiting)"]
+        NGINX["nginx :443<br/><i>limit_req cverify_general 10r/s;<br/>SSE location: gzip off, proxy_buffering off, 300s</i>"]:::process
+    end
+
+    %% ======================= TRUST BOUNDARY C =======================
+    subgraph TB_C["TRUST BOUNDARY C — cverify-core (authenticated .NET process)"]
+        MW["4.1 Middleware chain<br/><i>Authentication (cookie-&gt;token) -&gt;<br/>SessionValidation -&gt; Authorization</i>"]:::process
+        CTRL["4.2 CandidateAssessmentController<br/><i>POST trigger · GET progress/{userId} (SSE)</i>"]:::process
+        QUEUE["4.3 ICandidateAssessmentQueue<br/><b>in-process singleton — NOT durable</b><br/><i>Channel in memory; jobs are lost on restart</i>"]:::warn
+        WORKER["4.4 BackgroundCandidateAssessmentProcessor<br/><i>+ BackfillProcessor + AnalysisQueueRecoverySweeper</i>"]:::process
+        HMACSIGN["4.5 HmacSignatureService (signer)<br/><i>HMACSHA256(METHOD+URL+BODY+TIMESTAMP+NONCE, SharedSecret)</i><br/>headers X-Client-Id, X-Timestamp, X-Nonce,<br/>X-Correlation-Id, X-Signature"]:::process
+        SSE["4.6 SSE progress channel<br/><i>GET /api/v1/candidate-assessments/progress/{userId}</i><br/>text/event-stream"]:::process
+        PERSIST["4.7 Assessment persistence<br/><i>candidate_assessments, capability evidence,<br/>candidate_evaluation_snapshots</i>"]:::process
+    end
+
+    %% ======================= HMAC BOUNDARY =======================
+    HMACV{{"TRUST BOUNDARY D — HMAC verification boundary<br/>hmac_auth.py on cverify-ai<br/><b>11 of 12 AI endpoints are HMAC-gated</b>"}}:::warn
+
+    %% ======================= TRUST BOUNDARY E =======================
+    subgraph TB_E["TRUST BOUNDARY E — cverify-ai (FastAPI, backend + infra networks)"]
+        ORCH["4.8 Line 2 orchestrator<br/><i>PipelineDAG(...).validate() — cycle-checked<br/>at construction</i>"]:::process
+        DAG["4.9 16-task validated DAG<br/>roots L2-001, L2-007, L2-008, L2-011<br/>sink L2-015<br/><i>L2-004/005/006/009/010 are hybrid:<br/>the deterministic result overrides the LLM</i>"]:::process
+        SCORE["4.10 Deterministic scoring<br/><i>skillDepth .35 · ownership .25 · architecture .20 ·<br/>problemSolving .12 · impact .08;<br/>verified/self-declared blend .85/.15 with a .40 ceiling;<br/>cohort_snapshot_v1.json (synthetic, 1000 candidates)</i>"]:::process
+        CANCEL["4.11 Cancellation poll<br/><i>Redis key ai:cancel:{correlation_id}</i>"]:::process
+    end
+
+    %% ======================= External + stores =======================
+    CLAUDE["Anthropic Claude API<br/><i>stream=True, max_tokens=8192,<br/>cache_control: ephemeral;<br/>retry on 429/5xx at stream CREATION only</i>"]:::ext
+    D1[("D1b/D1c PostgreSQL<br/>candidate_assessments ·<br/>repository_assessments ·<br/>capability evidence")]:::store
+    D2[("D2 Redis<br/>ai:cancel:{correlation_id}")]:::store
+    D4[("D4 /app/temp_clones/{job_id}<br/>{task_type}_result.json")]:::store
+    ART["GET /api/v1/ai-jobs/{jobId}/artifacts/{key}<br/><b>[AllowAnonymous] — reverse callback,<br/>no HMAC on this direction</b>"]:::warn
+
+    %% ======================= Flows =======================
+    CAND -->|"HTTPS trigger + SSE subscribe"| NGINX
+    UNTRUSTED -.->|"carried inside CV / repo payloads"| NGINX
+    NGINX --> MW
+    MW -->|"ClaimsPrincipal + validated session"| CTRL
+    CTRL -->|"enqueue job"| QUEUE
+    QUEUE --> WORKER
+    WORKER --> HMACSIGN
+    HMACSIGN -->|"POST /candidate/assess/stream<br/>POST /candidate/assess/score"| HMACV
+    HMACV -->|"signature valid"| ORCH
+    ORCH --> DAG
+    DAG --> SCORE
+    DAG <-->|"reads Line 1 task outputs"| D4
+    DAG -->|"prompts containing untrusted repo/CV text"| CLAUDE
+    CLAUDE -->|"streamed completions"| DAG
+    CANCEL <--> D2
+    CANCEL -.->|"aborts in-flight tasks"| DAG
+    ORCH -->|"needs a Line 1 artifact"| ART
+    ART -->|"artifact bytes"| ORCH
+    SCORE -->|"SSE task-progress events back over the HMAC channel"| SSE
+    SSE -->|"text/event-stream through nginx"| CAND
+    SCORE --> PERSIST
+    PERSIST <--> D1
+
+    %% ======================= Explicit hazards =======================
+    H1["HAZARDS ON THESE BOUNDARIES — all verified in source:<br/>• Boundary D is bypassed for POST /api/v1/analysis/jobs/{job_id}/cancel — <b>no HMAC</b>.<br/>• The reverse callback endpoint is class-level [AllowAnonymous]; any in-body guard is &lt;&lt;Not verified&gt;&gt;.<br/>• GET /api/v1/candidate-assessments/dev-trigger is [AllowAnonymous].<br/>• POST /api/v1/admin/candidate-assessments/reprocess is [AllowAnonymous] on an admin route.<br/>• hmac_auth.py:78 logs the correct computed signature on mismatch — a signing oracle.<br/>• prompt_sanitizer / malicious_repo_detector / validate_token_count are stubs AND are imported nowhere:<br/>&nbsp;&nbsp;untrusted code and CV text cross boundary D and reach Claude prompts with no injection screening.<br/>• The SSE channel is the one place the frontend appends a ?token= query parameter read from<br/>&nbsp;&nbsp;localStorage instead of using the HttpOnly cookie — those URLs land in nginx access logs,<br/>&nbsp;&nbsp;which the Ops Agent ships to Cloud Logging."]:::warn

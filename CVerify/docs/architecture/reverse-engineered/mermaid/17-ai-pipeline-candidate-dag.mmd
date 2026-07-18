@@ -1,0 +1,91 @@
+%% CVerify.AI — Candidate Evaluation Pipeline ("Line 2") — ACTUAL DAG
+%% Source of truth: CVerify.AI/app/pipelines/candidate/dag.py
+%%                  CVerify.AI/app/pipelines/candidate/tasks/*.py  (`dependencies` property)
+%%                  CVerify.AI/app/pipelines/candidate/orchestrator.py (PipelineDAG(...).validate())
+%%
+%% Edges below are transcribed from each task's declared `dependencies`.
+%% The DAG is validated at orchestrator construction time (cycle detection +
+%% every input_keys/output_keys must exist on PipelineContext).
+%%
+%% Roots (no dependencies): L2-001, L2-007, L2-008, L2-011
+%% Sink:                    L2-015
+%%
+%% NOTE: L2-016 (SkillTreeGenerator) is NOT declared as a dependency of
+%% L2-014 (CandidateProfileComposer), even though the composer's docstring
+%% claims "all upstream". The streaming orchestrator nevertheless executes
+%% 016 before 014. Drawn as declared, with the discrepancy annotated.
+
+flowchart TD
+    classDef root      fill:#0b3d5c,stroke:#7fd1ff,stroke-width:2px,color:#eaf7ff
+    classDef llm       fill:#123a2a,stroke:#5fd0a0,stroke-width:1.5px,color:#e8fff5
+    classDef hybrid    fill:#4a3410,stroke:#f0b429,stroke-width:2px,color:#fff8e6
+    classDef det       fill:#2c2c34,stroke:#9aa0aa,stroke-width:1.5px,color:#f0f2f5
+    classDef sink      fill:#4a1530,stroke:#ff7fb0,stroke-width:2px,color:#ffe8f2
+
+    L2_001["L2-001 SkillTaxonomyMapper<br/><i>LLM + dictionary fallback</i>"]:::root
+    L2_007["L2-007 EngineeringMaturityAssessor<br/><i>LLM</i>"]:::root
+    L2_008["L2-008 ProblemSolvingAnalyzer<br/><i>LLM</i>"]:::root
+    L2_011["L2-011 ExperienceConfidenceMultiplier<br/><i>deterministic — no LLM</i>"]:::root
+
+    L2_002["L2-002 SkillProficiencyEstimator<br/><i>LLM</i>"]:::llm
+    L2_003["L2-003 StrengthWeaknessAnalyzer<br/><i>LLM</i>"]:::llm
+    L2_004["L2-004 CareerLevelMapper<br/><i>hybrid — deterministic wins</i>"]:::hybrid
+    L2_005["L2-005 CareerLevelCalibrator<br/><i>hybrid — deterministic wins</i>"]:::hybrid
+    L2_006["L2-006 CareerLevelGate<br/><i>hybrid — hard floors override LLM</i>"]:::hybrid
+    L2_009["L2-009 TechnicalTendencyClassifier<br/><i>hybrid — deterministic wins</i>"]:::hybrid
+    L2_010["L2-010 WorkingStyleClassifier<br/><i>hybrid — deterministic wins</i>"]:::hybrid
+    L2_012["L2-012 MultiRoleRecommendationEngine<br/><i>LLM</i>"]:::llm
+    L2_013["L2-013 CandidateSummaryGenerator<br/><i>LLM</i>"]:::llm
+    L2_016["L2-016 SkillTreeGenerator<br/><i>LLM</i>"]:::llm
+    L2_014["L2-014 CandidateProfileComposer<br/><i>deterministic — no LLM</i>"]:::det
+    L2_015["L2-015 CandidateImprovementEngine<br/><i>LLM</i>"]:::sink
+
+    L2_001 --> L2_002
+    L2_001 --> L2_016
+
+    L2_002 --> L2_003
+    L2_002 --> L2_004
+    L2_002 --> L2_009
+    L2_002 --> L2_016
+
+    L2_003 --> L2_004
+    L2_003 --> L2_009
+    L2_003 --> L2_010
+
+    L2_004 --> L2_005
+    L2_005 --> L2_006
+
+    L2_006 --> L2_012
+    L2_006 --> L2_013
+
+    L2_007 --> L2_013
+    L2_008 --> L2_013
+
+    L2_009 --> L2_012
+    L2_009 --> L2_013
+
+    L2_010 --> L2_012
+    L2_010 --> L2_013
+
+    L2_011 --> L2_016
+
+    L2_012 --> L2_013
+
+    %% L2-014 composes the results of all thirteen preceding tasks (L2-001..L2-013)
+    L2_001 --> L2_014
+    L2_002 --> L2_014
+    L2_003 --> L2_014
+    L2_004 --> L2_014
+    L2_005 --> L2_014
+    L2_006 --> L2_014
+    L2_007 --> L2_014
+    L2_008 --> L2_014
+    L2_009 --> L2_014
+    L2_010 --> L2_014
+    L2_011 --> L2_014
+    L2_012 --> L2_014
+    L2_013 --> L2_014
+
+    L2_016 -.->|"executed before 014 by the stream<br/>orchestrator, but NOT a declared dependency"| L2_014
+
+    L2_014 --> L2_015

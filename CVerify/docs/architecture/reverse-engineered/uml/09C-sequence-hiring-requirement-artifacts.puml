@@ -1,0 +1,154 @@
+@startuml 09C-sequence-hiring-requirement-artifacts
+' CVerify — Hiring requirement artifact generation (Pipeline Line 4).
+' Verified against:
+'   Modules/Shared/System/Controllers/HiringRequirementController.cs
+'       [Route "api/v1/hiring-requirements"]:22, [Authorize]:23
+'       GenerateArtifacts:166-204 (fire-and-forget Task.Run:184)
+'       GetArtifacts:206 · GenerateArtifact (single):309 · CancelArtifacts:352
+'       progress-stream (SSE):466
+'   Modules/Shared/System/Services/HiringRequirementService.cs
+'       GenerateArtifactsAsync:564-736  -> path "/api/v1/hiring-requirements/generate/stream":627,
+'                                          HMAC headers:635-640, SSE loop:644-718,
+'                                          SaveArtifactAsync:711, session Completed:720
+'       GenerateArtifactAsync:738-930   -> path "/api/v1/hiring-requirements/generate-artifact/stream":823,
+'                                          HMAC headers:831-836, SSE loop:838-908
+'       PublishAsync:271-405 (RequirementSnapshot + ArtifactSnapshots)
+'   Modules/Shared/System/Services/HmacSignatureService.cs
+'   CVerify.AI/app/api/routes/analysis_router.py:317, :354
+'   CVerify.AI/app/pipelines/requirement/orchestrator.py
+'       generate_artifact_stream:67-76 · generate_all_artifacts_async:78-190
+'       _call_claude_with_validation:45-65 (Pydantic self-correction retry, max_retries=2)
+' Ground truth: GROUND-TRUTH.md §6.2 (Line 4: one Claude call -> 5 artifacts; artifact_type ignored).
+
+title CVerify — Hiring Requirement Artifact Generation
+
+skinparam responseMessageBelowArrow true
+skinparam maxMessageSize 300
+
+actor       "Organization Member\n(HR / REPRESENTATIVE / OWNER)" as HR
+participant "Next.js Client"                     as C
+participant "HiringRequirementController"        as HC
+participant "HiringRequirementService"           as SVC
+participant "HmacSignatureService"               as HMAC
+participant "CVerify.AI\nanalysis_router"        as AI
+participant "RequirementArtifactsOrchestrator"   as ORCH
+participant "Anthropic Claude"                   as CLAUDE
+database    "PostgreSQL"                         as DB
+database    "Redis"                              as R
+
+== Trigger (generate everything) ==
+HR -> C  : "Generate artifacts"
+C  -> HC : POST /api/v1/hiring-requirements/{id}/generate-artifacts
+HC -> SVC : GetByIdAsync(id)
+alt not found
+    HC --> C : 404
+end
+HC -> HC : _ = Task.Run(scoped GenerateArtifactsAsync(id, userId))
+HC --> C : 202 Accepted { jobId = id, status = "Generating" }
+
+note right of HC #ffdddd
+  Generation runs on a **detached `Task.Run` with a fresh DI scope and
+  `CancellationToken.None`** — it is not routed through any
+  IHostedService or queue. Nothing tracks it across a process restart;
+  the only record is the AiStreamingSession row moving to Running.
+  `jobId` returned to the client is just the requirement id.
+end note
+
+SVC -> DB : requirement status -> Generating
+SVC -> DB : CreateSessionAsync(id, "jd-generation", model "Claude 3.5 Sonnet", provider "Anthropic")
+SVC -> DB : UpdateSessionStatusAsync(id, "Running")
+SVC -> HMAC : CreateSignatureHeaders("POST",\n"/api/v1/hiring-requirements/generate/stream", body)
+HMAC --> SVC : HMACSHA256(METHOD + URL + BODY + TIMESTAMP + NONCE, SharedSecret)
+SVC -> AI  : POST /api/v1/hiring-requirements/generate/stream\nX-Client-Id: cverify-core, X-Timestamp, X-Nonce,\nX-Correlation-Id = requirementId, X-Signature\n(ResponseHeadersRead)
+
+== AI service: one Claude call, five artifacts ==
+AI -> ORCH : generate_all_artifacts_async(requirement_data, correlation_id)
+ORCH --> SVC : data: {Running, GenerateUnifiedRequirements, 10%}
+
+group _call_claude_with_validation (max_retries = 2)
+    ORCH -> CLAUDE : system + get_unified_requirements_prompt(requirement_data)\nstream=True, max_tokens=8192
+    CLAUDE --> ORCH : raw text
+    ORCH -> ORCH : _repair_and_extract_json (json_repair fallback)
+    ORCH -> ORCH : UnifiedRequirementArtifactsResponse(**parsed)
+    alt Pydantic validation fails
+        ORCH -> CLAUDE : re-prompt with the validation error appended\n("Your previous response failed validation with: ...")
+        note right of ORCH
+          Self-correction is capped at 2 retries; the third failure raises
+          "Failed to generate valid artifact schema after 2 correction attempts".
+        end note
+    end
+end
+
+note over ORCH
+  **A single Claude response produces all five artifacts.** They are not
+  five model calls — the orchestrator slices one validated Pydantic object
+  and fans it out as five successive SSE events.
+end note
+
+ORCH --> SVC : data: {GenerateJobDescription, 40%, artifactType "JobDescription", jsonData}
+ORCH --> SVC : data: {GenerateEvaluationRubric, 60%, artifactType "EvaluationRubric", jsonData}
+ORCH --> SVC : data: {GenerateInterviewBlueprint, 80%, artifactType "InterviewBlueprint", jsonData}
+ORCH --> SVC : data: {GenerateJobPostMetadata, 90%, artifactType "JobPostMetadata", jsonData}
+ORCH --> SVC : data: {GenerateCandidateDiscoveryProfile, 95%, artifactType "CandidateDiscoveryProfile", jsonData}
+ORCH --> SVC : data: {Completed, 100%}
+
+loop for each streamed event
+    SVC -> DB : UpdateSessionProgressAsync / UpsertStageAsync / AddLogAsync
+    SVC -> DB : AddMetricAsync input_tokens / output_tokens / cost_usd
+    SVC -> DB : SaveArtifactAsync(requirementId, artifactType, jsonData)\n-> RequirementArtifact | EvaluationRubric | InterviewBlueprint
+    SVC -> R  : PUBLISH hiring requirement progress
+end
+SVC -> DB : requirement status -> Generated; session -> Completed
+alt any exception
+    SVC -> DB : requirement status -> Failed
+    SVC -> DB : UpdateSessionStatusAsync(id, "Failed", errorMessage)
+end
+
+== Regenerate one artifact (POST {id}/artifacts/generate) ==
+C  -> HC : POST /api/v1/hiring-requirements/{id}/artifacts/generate { artifactType }
+HC -> SVC : GenerateArtifactAsync(id, artifactType, userId)
+SVC -> HMAC : CreateSignatureHeaders("POST",\n"/api/v1/hiring-requirements/generate-artifact/stream", body)
+SVC -> AI  : POST /api/v1/hiring-requirements/generate-artifact/stream\n{ ..., artifactType }
+AI -> ORCH : generate_artifact_stream(requirement_data, artifact_type, ...)
+
+note over ORCH #ffdddd
+  **BUG — GROUND-TRUTH §6.2: `generate_artifact_stream` ignores its
+  `artifact_type` argument.** The whole body of the function is:
+
+      async for progress in self.generate_all_artifacts_async(...):
+          yield progress
+
+  (orchestrator.py:67-76, comment "Regenerate all artifacts together
+  to ensure data consistency"). Consequences:
+  * asking to regenerate only the InterviewBlueprint silently rewrites
+    the JobDescription, EvaluationRubric, JobPostMetadata and
+    CandidateDiscoveryProfile as well — any manual edits are lost;
+  * cost and latency of a "single artifact" request equal a full run;
+  * the .NET caller still believes it requested one type, and its
+    cancel/status bookkeeping (`RequirementArtifacts` row for that
+    artifactType) reflects only one of the five writes.
+end note
+
+ORCH --> SVC : five artifactType events again (identical to the full run)
+SVC -> DB   : SaveArtifactAsync x5
+
+== Progress stream & publish ==
+C  -> HC : GET /api/v1/hiring-requirements/{id}/progress-stream   (text/event-stream)
+HC -> R  : SUBSCRIBE requirement progress channel
+R  --> HC : live events
+HC --> C : data: <event> … data: [DONE]
+
+HR -> C  : "Publish"
+C  -> HC : POST /api/v1/hiring-requirements/{id}/publish
+HC -> SVC : PublishAsync(id)
+SVC -> DB : INSERT RequirementSnapshot + ArtifactSnapshots\n(a JobDescription snapshot is synthesised if absent)
+HC --> C : 200 { snapshotId, version, publishedAt }
+
+note right of SVC
+  The snapshot is what downstream matching reads
+  (`JobVacancy.RequirementSnapshot.CapabilitiesJson`), so publishing
+  freezes the artifact set at that moment — a later silent
+  regenerate-all does **not** retroactively change a published snapshot.
+end note
+
+@enduml

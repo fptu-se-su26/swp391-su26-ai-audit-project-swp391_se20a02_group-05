@@ -1,0 +1,139 @@
+@startuml 08-deployment-diagram
+' CVerify — Deployment topology. GCP Compute Engine, NOT AWS.
+' Verified against:
+'   docker-compose.yml                       (5 services, 3 bridge networks, 3 named volumes,
+'                                             127.0.0.1 port bindings, depends_on conditions)
+'   deployment/docker-compose.prod.yml       (adds minio + minio_data volume;
+'                                             cverify-client `ports: !override` -> 127.0.0.1)
+'   deployment/nginx/cverify.conf:31-32,34-45,48-50,66-71,110,125,156,166,175,200-227
+'   .github/workflows/deploy-vps.yml:44-48,62-98   (push to CVerify-Deployment, appleboy/ssh-action v1.2.2)
+'   .github/workflows/ci.yml
+'   docs/architecture/reverse-engineered/GROUND-TRUTH.md  §7
+
+title CVerify — Deployment (Google Cloud Compute Engine e2-medium, single VM)
+
+skinparam shadowing false
+skinparam linetype ortho
+
+note as N_AWS #FFF0F0
+  <b>⚠ NOT AWS.</b> GROUND-TRUTH §7: the brief assumed AWS EC2 + Cloudflare + R2.
+  All three are wrong. The AWS EC2 instance "is gone" (DEPLOYMENT_GUIDE.md §0b).
+  There is NO CDN and NO proxy — DNS resolves straight to the VM.
+  Object storage is self-hosted MinIO; env keys keep R2_* names only because
+  the S3 client is generic.
+end note
+
+node "Browser\n(end user)" as BROWSER
+
+cloud "P.A Vietnam DNS\nDNSSEC enabled\ncverify.com.vn\napi.cverify.com.vn" as DNS
+
+node "GitHub Actions runner\nubuntu-latest" as GHA {
+  artifact "ci.yml — CVerify Core Delivery Pipeline\n5 jobs: frontend-ci · backend-ci ·\nbackend-integration-tests · ai-service-ci ·\ndocker-validation" as CI
+  artifact "deploy-vps.yml\non push -> CVerify-Deployment\nappleboy/ssh-action v1.2.2, 30 min timeout\nthen health-check.sh" as CD
+}
+
+node "GCP Compute Engine VM  «cverify-vps»\ne2-medium · 2 vCPU / 4 GB RAM · Ubuntu 22.04\nproject cverify-production · treated as a plain VPS" as VM {
+
+  node "nginx (host-installed, NOT containerised)\n:80 and :443" as NGINX {
+    artifact "TLS: Let's Encrypt, 1 cert / 3 SANs" as TLS
+    artifact "limit_req_zone cverify_general 10r/s\nlimit_req_zone cverify_auth      5r/m" as RL
+    artifact "upstream cverify_client_upstream -> 127.0.0.1:3000\nupstream cverify_core_upstream   -> 127.0.0.1:5247" as UPS
+    artifact "locations: /hubs/ (WebSocket) · SSE regex\n(gzip off, proxy_buffering off, 300s) ·\n/api/ · auth rate-limited regex ·\n= /api/health · /_next/static/ · /" as LOC
+  }
+
+  node "GCP Ops Agent\n-> Cloud Monitoring / Cloud Logging\n2 uptime checks · 5 alert policies" as OPS
+
+  node "Docker Engine" as DOCKER {
+
+    node "cverify-client\nNext.js standalone\ncontainer :3000" as C_CLIENT
+    node "cverify-core\nASP.NET Core .NET 10\ncontainer :5000" as C_CORE
+    node "cverify-ai\nFastAPI Python 3.11\ncontainer :8000" as C_AI
+    node "cverify-postgres\npgvector/pgvector:0.7.0-pg16\ncontainer :5432" as C_PG
+    node "cverify-redis\nredis:7.2.4-alpine3.19\ncontainer :6379" as C_REDIS
+    node "cverify-minio\nminio/minio:latest\n:9000 api, :9001 console\n<b>prod overlay only, no host ports</b>" as C_MINIO
+
+    frame "network cverify-frontend-net (bridge)" as NET_F
+    frame "network cverify-backend-net (bridge)" as NET_B
+    frame "network cverify-infra-net (bridge)" as NET_I
+
+    database "volume postgres_data" as V_PG
+    database "volume redis_data" as V_REDIS
+    database "volume cverify_workspaces\n-> /app/temp_clones" as V_WS
+    database "volume minio_data\n(prod overlay)" as V_MINIO
+  }
+}
+
+cloud "Anthropic Claude API" as CLAUDE
+cloud "GitHub / GitLab / Google OAuth\n+ Git clone over HTTPS" as EXT_OAUTH
+cloud "VietQR business registry" as EXT_VQR
+cloud "SMTP / SendGrid" as EXT_MAIL
+
+' ---------------- edges -------------------------------------------------------
+BROWSER --> DNS      : resolve
+BROWSER --> NGINX    : HTTPS :443\n(no CDN, no proxy in front)
+DNS ..> VM           : A record -> VM public IP
+
+GHA --> VM : <b>SSH deploy</b>\ndocker compose -f docker-compose.yml\n-f deployment/docker-compose.prod.yml up -d --build
+
+note on link #FFF0F0
+  ⚠ Deploy is NOT gated on CI. ci.yml runs in parallel on the
+  same push, so a red build still ships. The workflow header
+  documents this as a conscious trade-off.
+  Coverage is uploaded by CI but no threshold is enforced.
+end note
+
+NGINX --> C_CLIENT : 127.0.0.1:3000 -> 3000
+NGINX --> C_CORE   : 127.0.0.1:5247 -> 5000
+
+note bottom of NGINX
+  Port bindings are loopback-only in production.
+  The base compose file publishes the client on "0.0.0.0:3000";
+  the prod overlay uses <b>ports: !override</b> to replace it with
+  "127.0.0.1:3000" — without !override the list would CONCATENATE
+  and leave the client publicly exposed. Requires Compose 2.24+.
+  postgres/redis/ai are already bound to 127.0.0.1 in the base file.
+  MinIO publishes no host ports at all.
+end note
+
+C_CLIENT -- NET_F
+C_CORE   -- NET_F
+C_CORE   -- NET_B
+C_CORE   -- NET_I
+C_AI     -- NET_B
+C_AI     -- NET_I
+C_PG     -- NET_I
+C_REDIS  -- NET_I
+C_MINIO  -- NET_I
+
+C_PG    --> V_PG
+C_REDIS --> V_REDIS
+C_AI    --> V_WS
+C_MINIO --> V_MINIO
+
+C_CORE --> C_AI    : http://cverify-ai:8000 (HMAC-signed)
+C_CORE --> C_PG    : postgres:5432
+C_CORE --> C_REDIS : redis:6379
+C_CORE --> C_MINIO : S3 API, ForcePathStyle=true
+C_AI   --> C_REDIS : redis:6379 (cancellation keys)
+C_AI   --> C_CORE  : http://cverify-core:5000 (artifact callback)
+C_CLIENT --> C_CORE : INTERNAL_API_URL http://cverify-core:5000/api (SSR only)
+
+C_AI   --> CLAUDE
+C_AI   --> EXT_OAUTH : git clone
+C_CORE --> EXT_OAUTH
+C_CORE --> EXT_VQR
+C_CORE --> EXT_MAIL
+
+VM ..> OPS : Ops Agent
+
+note right of C_AI #FFF0F0
+  ⚠ cverify-core declares
+  depends_on: cverify-ai: service_healthy,
+  but cverify-ai declares NO healthcheck.
+end note
+
+note right of V_PG
+  DR: daily GCE persistent-disk snapshots.
+end note
+
+@enduml

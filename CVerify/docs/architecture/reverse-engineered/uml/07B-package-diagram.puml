@@ -1,0 +1,145 @@
+@startuml 07B-package-diagram
+' CVerify — Package structure: .NET modules and Python packages, with dependency direction
+' Verified against (directory listings taken from the working tree at commit 7eb5ff2):
+'   CVerify.Core/Modules/{Admin,AiChat,Auth,Forum,Intelligence,Profiles,Recovery,Shared,SourceCode}
+'   CVerify.Core/Modules/Shared/{Configuration,Diagnostics,Domain,Email,Exceptions,Hubs,
+'                                Persistence,Security,Storage,System}
+'   CVerify.Core/Pipelines/{RepositoryIntelligencePipeline,Shared}
+'   CVerify.Core/Modules/Shared/Persistence/{ApplicationDbContext.cs,IIdentityRepository.cs}
+'   CVerify.Core/tests/CVerify.API.UnitTests/Architecture/ModularBoundaryTests.cs
+'   CVerify.AI/app/{main.py,agents,api/routes,core,parsing,pipelines}
+'   CVerify.AI/app/core/{clients,middleware,monitoring,security,services}
+'   CVerify.AI/app/pipelines/{candidate,jd,repository,requirement,shared}
+'   CVerify.AI/app/pipelines/repository/{embedding,github,orchestrators,scoring,skills}
+'   docs/architecture/reverse-engineered/GROUND-TRUTH.md  §4 (table counts), §6.2, §6.6
+
+title CVerify — Package Structure and Dependency Direction
+
+skinparam shadowing false
+skinparam packageStyle rectangle
+skinparam linetype ortho
+
+' ============================== .NET =========================================
+package "CVerify.Core" as CORE {
+
+  package "Modules/Shared" as SHARED #F0F6FF {
+    package "Domain\n(Entities · Enums)" as SH_DOMAIN
+    package "Persistence\nApplicationDbContext\nIIdentityRepository" as SH_PERSIST
+    package "System\n(Controllers · Services\n· BackgroundWorkers)" as SH_SYSTEM
+    package "Email (Entities)" as SH_EMAIL
+    package "Hubs · Security · Storage\nConfiguration · Diagnostics\nExceptions" as SH_INFRA
+  }
+
+  package "Modules/Auth\nEntities: 8 tables" as M_AUTH
+  package "Modules/Profiles\nEntities: 30 tables" as M_PROF
+  package "Modules/SourceCode\nEntities: 9 tables" as M_SRC
+  package "Modules/Forum\nEntities: 17 tables" as M_FORUM
+  package "Modules/Recovery\nEntities: 7 tables" as M_REC
+  package "Modules/AiChat\nEntities: 2 tables" as M_CHAT
+
+  package "Modules/Admin\n<b><<owns no Entities>></b>" as M_ADMIN #FFF0F0
+  package "Modules/Intelligence\n<b><<owns no Entities>></b>" as M_INTEL #FFF0F0
+
+  package "Pipelines\nRepositoryIntelligencePipeline\n· Shared (DagScheduler)\n4 tables" as P_PIPE
+}
+
+note right of M_ADMIN
+  ⚠ GROUND-TRUTH §4: Modules/Admin and Modules/Intelligence
+  have NO Entities/ directory — they own no tables.
+  Admin tables (AdminMember, AdminInvitation,
+  AdminInvitationRole, AuditLog, …) live in
+  Modules/Shared/Domain/Entities/.
+  Admin has Controllers, DTOs, Hubs, Services only.
+  Intelligence has BackgroundWorkers, Controllers, Services only.
+end note
+
+note bottom of SHARED
+  Modules/Shared/Domain/Entities holds 72 of the 152 tables
+  (Shared/System namespace) plus 1 in Shared/Email.
+  Every other module depends on Shared; Shared depends on none of them.
+end note
+
+M_AUTH  --> SHARED
+M_PROF  --> SHARED
+M_SRC   --> SHARED
+M_FORUM --> SHARED
+M_REC   --> SHARED
+M_CHAT  --> SHARED
+M_ADMIN --> SHARED
+M_INTEL --> SHARED
+P_PIPE  --> SHARED
+
+M_PROF  --> M_SRC   : reads repository analysis state
+M_SRC   --> M_AUTH  : SourceCodeRepository -> AuthProvider (FK)
+M_REC   --> M_AUTH  : recovery issues sessions/tokens
+
+SH_DOMAIN <-- SH_PERSIST
+SH_SYSTEM --> SH_PERSIST
+SH_EMAIL  <-- SH_PERSIST
+SH_INFRA  <-- SH_SYSTEM
+
+note as N_BOUND
+  Module boundaries are ENFORCED by
+  tests/CVerify.API.UnitTests/Architecture/ModularBoundaryTests.cs.
+  Dependencies point inward toward Modules/Shared only —
+  there is no separate Domain or Infrastructure assembly.
+end note
+
+' ============================== Python =======================================
+package "CVerify.AI/app" as AIAPP #F6FFF6 {
+
+  package "main.py\nFastAPI app\n/health · /readiness\nPOST /api/v1/chat/stream" as A_MAIN
+  package "api/routes\nanalysis_router.py\n(9 routed endpoints)" as A_ROUTES
+
+  package "core" as A_CORE {
+    package "clients\nrepo_intelligence_client" as A_CLIENTS
+    package "middleware\nhmac_auth" as A_MW
+    package "services\nclaude_service\ntoken_accounting_service" as A_SVC
+    package "monitoring\nai_cost_tracker · observability\n· pipeline_metrics <<all pass>>" as A_MON
+    package "security\nprompt_sanitizer <<stub>>\nmalicious_repo_detector <<stub>>\ninput_boundary <<stub>>" as A_SEC #FFF0F0
+    package "config.py" as A_CFG
+  }
+
+  package "pipelines" as A_PIPE {
+    package "repository (Line 1)\ngithub · orchestrators\nscoring · skills\nembedding <<pruned>>" as A_P1
+    package "candidate (Line 2)\ndag.py · orchestrator\nscoring_engine · tasks\ncohort_snapshot_v1.json" as A_P2
+    package "jd (Line 3)\norchestrator.py" as A_P3
+    package "requirement (Line 4)\ncontracts · orchestrator" as A_P4
+    package "shared\nai · extractors <<dead>>" as A_PSH #FFF0F0
+  }
+
+  package "agents\nbase.py — IAgent\n<<no implementations>>" as A_AGENTS #FFF0F0
+  package "parsing\n(__init__.py only)" as A_PARSE #FFF0F0
+}
+
+A_MAIN   --> A_ROUTES
+A_MAIN   --> A_MW
+A_ROUTES --> A_P1
+A_ROUTES --> A_P2
+A_ROUTES --> A_P3
+A_ROUTES --> A_P4
+A_P1 --> A_SVC
+A_P2 --> A_SVC
+A_P3 --> A_SVC
+A_P4 --> A_SVC
+A_P1 --> A_CLIENTS
+A_SVC --> A_CFG
+A_SVC --> A_MON
+
+note bottom of A_SEC
+  ⚠ None of the three security modules is imported anywhere.
+  prompt_sanitizer returns is_suspicious=False always;
+  malicious_repo_detector returns False always;
+  input_boundary.validate_token_count is `pass`.
+end note
+
+note bottom of A_PSH
+  ⚠ Dead / phantom code (GROUND-TRUTH §6.6):
+  shared/extractors (5 extractors, no app module imports them),
+  repository/embedding ("# Pruned embedding module"),
+  skills/data/skill_ontology.json, weighted_scoring_engine.py,
+  repo_selector.py (`return repos`),
+  architecture_pattern_detector.py (`return []`).
+end note
+
+@enduml

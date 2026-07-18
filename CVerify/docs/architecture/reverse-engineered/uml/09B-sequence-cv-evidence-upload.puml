@@ -1,0 +1,132 @@
+@startuml 09B-sequence-cv-evidence-upload
+' CVerify — CV / evidence attachment upload and retrieval.
+' Verified against:
+'   Modules/Profiles/Controllers/EvidenceController.cs
+'       [Route "api/v1/users/evidence"]:15, [Authorize]:16,
+'       UploadEvidence:39-70 · GetEvidenceDownload:72-80 · DeleteEvidence:82-90
+'   Modules/Profiles/Services/AttachmentService.cs
+'       UploadAttachmentAsync (module resolution, UploadFileAsync, ProfileAttachment insert,
+'       GetSignedUrlAsync 1 h) · GetAttachmentSignedUrlAsync · DeleteAttachmentAsync
+'   Modules/Shared/Storage/Services/R2StorageService.cs
+'       ValidateFile:82-131 · UploadFileAsync:137-232 (Polly retry :52-79) · GetSignedUrlAsync:278-303
+'   Modules/Shared/Storage/Constants/StorageConstants.cs   (size limits, MIME allowlists, extension blocklist)
+'   Modules/Shared/Storage/Utilities/StorageKeyGenerator.cs (GenerateKey — ULID key layout)
+'   Modules/Shared/Storage/Services/EncryptedFileStorageService.cs (AES-GCM path — recovery claims only)
+' Ground truth: GROUND-TRUTH.md §6.1 (no OCR/parsing pipeline), §7 (MinIO in prod behind R2_* env names).
+
+title CVerify — Evidence Upload (POST api/v1/users/evidence/upload)
+
+skinparam responseMessageBelowArrow true
+skinparam maxMessageSize 300
+
+actor       "Candidate"                            as U
+participant "Next.js Client"                       as C
+participant "nginx (host-installed)"               as N
+participant "EvidenceController"                   as EC
+participant "AttachmentService"                    as AS
+participant "R2StorageService\n(IStorageService)"  as R2
+participant "StorageKeyGenerator"                  as KG
+database    "PostgreSQL"                           as DB
+database    "MinIO\n(S3-compatible, prod)"         as S3
+
+== Upload ==
+U  -> C  : select file (+ entityType, entityId)
+C  -> N  : POST /api/v1/users/evidence/upload  (multipart/form-data, cookies)
+N  -> EC : proxied to 127.0.0.1:5247
+EC -> EC : reject if file null/empty or entityType blank -> 400
+EC -> AS : UploadAttachmentAsync(userId, entityType, entityId,\nstream, fileName, contentType)
+
+AS -> AS : entityType -> StorageModule\n"Avatar" => Profile; otherwise Evidence
+AS -> R2 : UploadFileAsync(stream, fileName, contentType, module)
+
+group ValidateFile — the only inspection performed on the file
+    R2 -> R2 : stream readable?
+    R2 -> R2 : extension not in UnsafeExtensions\n(.exe .bat .cmd .sh .js .vbs .scr .com .msi)
+    R2 -> R2 : size <= module limit\n(Profile 2 MB · Certificate 10 MB · Evidence 20 MB\n· Temporary 5 MB · default 5 MB)
+    R2 -> R2 : MIME in AllowedImageTypes (jpeg/png/webp/gif)\nor AllowedDocumentTypes (pdf, doc, docx);\nProfile module accepts images only
+    note right of R2
+      Size is only checked when `fileStream.CanSeek` is true.
+      The MIME type is the client-supplied Content-Type — no magic-byte
+      sniffing, so the check is advisory rather than authoritative.
+    end note
+end
+
+R2 -> KG : GenerateKey(fileName, module)
+KG --> R2 : {prefix}/{yyyy}/{MM}/{dd}/{ULID}{ext}\nprefix ∈ profiles|achievements|certificates|evidence|temp
+R2 -> R2 : copy to seekable MemoryStream (so Polly can retry)
+R2 -> R2 : metadata userId (from ClaimTypes.NameIdentifier\nvia IHttpContextAccessor, else "system"), module, uploadedAt
+R2 -> S3 : PutObject(bucket = R2.BucketName, key, DisablePayloadSigning = true)\nPolly: 3 attempts, exponential + jitter on 5xx/IO/timeout
+S3 --> R2 : ok
+R2 --> AS : StorageFileDto { Bucket, ObjectKey, MimeType, Size }
+
+AS -> DB : INSERT ProfileAttachment\n(UserId, EntityType, EntityId, FileName,\nFilePath = ObjectKey, FileSize, FileType)
+AS -> R2 : GetSignedUrlAsync(objectKey, 1 h)
+R2 -> S3 : GetPreSignedURL(GET, expires +1 h)
+AS --> EC : AttachmentResponse { id, fileName, size, type, signedUrl }
+EC --> C  : 201 Created (Location -> GET {id}/download)
+
+note over EC, S3 #ffdddd
+  **GROUND-TRUTH §6.1 — there is NO OCR / parsing pipeline on upload.**
+  The bytes are validated, keyed, encrypted-at-rest by the storage
+  backend only, stored, and a row is written. Nothing else happens:
+  * no text extraction — the 5 extractors in `CVerify.AI/shared/extractors/`
+    are dead code; no module under `app/` imports them (tests only)
+  * no embedding — `repository/embedding/__init__.py` is literally
+    `# Pruned embedding module`, and no vector library is in requirements.txt
+  * no skill extraction, no SFIA/O*NET mapping, no scoring is triggered
+  * the AI service is never called on this path
+  The uploaded file influences an assessment only if a human later
+  references it; `profile_attachments.EntityId` is polymorphic with
+  **no FK** (GROUND-TRUTH §4.1 hazard 5).
+end note
+
+== Download ==
+U  -> C  : open attachment
+C  -> EC : GET /api/v1/users/evidence/{id}/download
+EC -> AS : GetAttachmentSignedUrlAsync(userId, id)
+AS -> DB : ProfileAttachments where Id = id AND UserId = userId
+alt not found / not owner
+    AS --> EC : ResourceNotFoundException -> 404
+end
+AS -> R2 : GetSignedUrlAsync(FilePath, 1 h)
+EC --> C : 302 Redirect to the presigned URL
+note right of EC
+  Ownership is enforced by the `UserId == CurrentUserId` predicate in
+  the query — there is no organization- or role-scoped sharing path.
+  Once issued, the presigned URL is a bearer capability valid for 1 h
+  regardless of subsequent permission changes.
+end note
+
+== Delete ==
+C  -> EC : DELETE /api/v1/users/evidence/{id}
+EC -> AS : DeleteAttachmentAsync(userId, id)
+AS -> S3 : DeleteObject(FilePath)
+note right of AS
+  A storage failure here is swallowed — it is caught and written with
+  `Console.WriteLine`, then the DB soft-delete proceeds anyway. The
+  object can therefore be orphaned in the bucket with no row pointing
+  at it and no retry mechanism.
+end note
+AS -> DB : set DeletedAt (soft delete)
+EC --> C : 204 No Content
+
+note as N_Enc
+  A second, unrelated storage service exists:
+  `EncryptedFileStorageService` performs client-side chunked AES-256-GCM
+  (64 KB blocks, per-chunk nonce derived from a 12-byte base nonce plus a
+  big-endian counter) and writes to `claims/{claimId}/{sha256}.bin`.
+  It is used **only** by the organization-recovery reclaim flow, not by
+  evidence upload. Its key is SHA-256 of the configured JWT signing key,
+  so rotating the JWT key would make every stored claim document
+  undecryptable.
+end note
+N_Enc .. R2
+
+note as N_Deploy
+  Class names, log strings and env keys all say "Cloudflare R2", but
+  GROUND-TRUTH §7 confirms production runs **self-hosted MinIO** — the
+  `R2_*` names were kept because the AWS S3 SDK client is generic.
+end note
+N_Deploy .. S3
+
+@enduml

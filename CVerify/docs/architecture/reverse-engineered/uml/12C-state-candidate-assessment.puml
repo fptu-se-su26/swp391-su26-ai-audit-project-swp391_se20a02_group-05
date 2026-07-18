@@ -1,0 +1,81 @@
+@startuml 12C-state-candidate-assessment
+' CVerify — candidate_assessments.Status lifecycle
+' Verified against:
+'   Modules/Profiles/Entities/CandidateAssessment.cs:22-24
+'       [MaxLength(50)] public string Status { get; set; } = "Queued";
+'       // Queued, Running, Completed, Failed          <-- the stale comment
+'   Modules/Profiles/Services/CandidateAssessmentService.cs
+'       :166 TriggerAssessmentAsync   -> :204  new CandidateAssessment { Status = "Queued" }
+'       :304 ProcessAssessmentJobAsync-> :340  assessment.Status = "Running"
+'                                      -> :785  assessment.Status = "Completed"
+'                                      -> :860  assessment.Status = "Cancelled"   (OperationCanceledException path)
+'                                      -> :891  freshAssess.Status = "Cancelled"  (re-fetched row)
+'                                      -> :911  assessment.Status = "Failed"
+'       :1697 CancelAssessmentAsync    -> :1710 assessment.Status = "Cancelled"
+'   Modules/Profiles/BackgroundWorkers/BackgroundCandidateAssessmentBackfillProcessor.cs:128
+'       ca.Status = "Queued"   (backfill re-queue)
+'   Modules/Profiles/BackgroundWorkers/BackgroundCandidateAssessmentProcessor.cs (queue consumer)
+'   docs/architecture/reverse-engineered/GROUND-TRUTH.md  §5 (SSE progress endpoint), §5.4, §6.2 (Line 2 DAG)
+
+title candidate_assessments.Status — CandidateAssessment lifecycle (plain string column, no enum)
+
+skinparam shadowing false
+skinparam state {
+  BackgroundColor<<terminal>> #FFECEC
+}
+
+[*] --> Queued : CandidateAssessmentService.TriggerAssessmentAsync\nnew CandidateAssessment { Status = "Queued" }\nenqueued on ICandidateAssessmentQueue
+
+state Queued
+state Running
+state Completed <<terminal>>
+state Failed <<terminal>>
+state Cancelled <<terminal>>
+
+Queued --> Running : BackgroundCandidateAssessmentProcessor picks the job\nProcessAssessmentJobAsync -> Status = "Running"\n(AI service Line 2: 16-task validated DAG)
+Running --> Completed : DAG sink task L2-015 done\nStatus = "Completed"; CompletedAtUtc set
+Running --> Failed : exception during processing\nStatus = "Failed"; FailedStage + FailureReason populated
+Running --> Cancelled : OperationCanceledException inside\nProcessAssessmentJobAsync (:860 / :891 on the re-fetched row)
+Queued --> Cancelled : CandidateAssessmentService.CancelAssessmentAsync (:1710)
+Running --> Cancelled : CandidateAssessmentService.CancelAssessmentAsync (:1710)
+
+Failed --> Queued : BackgroundCandidateAssessmentBackfillProcessor (:128)\nre-queues eligible assessments
+Cancelled --> Queued : BackgroundCandidateAssessmentBackfillProcessor (:128)
+
+Completed --> [*]
+Failed --> [*]
+Cancelled --> [*]
+
+note as N_STALE #FFF0F0
+  <b>Stale-comment discrepancy</b>
+  CandidateAssessment.cs:24 comments the column as
+    // Queued, Running, Completed, Failed
+  — four values. The service also writes <b>"Cancelled"</b> in three
+  places (CandidateAssessmentService.cs:860, :891, :1710), so the real
+  value set is five. The comment has not been updated.
+end note
+
+note right of Running
+  Progress is streamed to the client over SSE
+  (GET api/v1/candidate-assessments/progress/{userId})
+  via PublishProgressAsync / PublishRawProgressAsync, and
+  cancellation is additionally signalled to the AI service
+  through the Redis key ai:cancel:{correlation_id}.
+end note
+
+note right of Cancelled
+  Cancellation is written twice on the failure path: once on the
+  tracked `assessment` instance (:860) and once on a freshly
+  re-fetched row (:891), because the tracked entity may be stale
+  after the cancellation token fired mid-pipeline.
+end note
+
+note as N_QUEUE
+  ⚠ ICandidateAssessmentQueue is a singleton IN-PROCESS queue and is
+  NOT durable (GROUND-TRUTH §5.4). Unlike repository analysis jobs,
+  there is no dedicated startup sweeper for candidate assessments —
+  a process restart leaves rows stranded in Queued or Running until
+  the backfill processor picks them up.
+end note
+
+@enduml

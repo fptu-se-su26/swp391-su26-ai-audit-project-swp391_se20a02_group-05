@@ -1,0 +1,136 @@
+%% CVerify — Data Flow Diagram, Level 1 (decomposition of process 0)
+%%
+%% Sources verified:
+%%   docs/architecture/reverse-engineered/GROUND-TRUTH.md §1-§6
+%%     §2 roles/authorization · §3 auth mechanism · §4 table clusters by namespace
+%%     §5 controllers, SSE endpoints, SignalR hubs, 15 hosted services, outbox
+%%     §6 AI pipelines
+%%   CVerify/docker-compose.yml (service topology, networks)
+%%
+%% Process numbering follows the real module/controller boundaries, not a
+%% textbook decomposition. Nothing here is invented: every store maps to a
+%% declaring namespace in the EF model, and every worker named is one of the
+%% 15 registered IHostedService implementations.
+
+flowchart TB
+    classDef entity  fill:#0b3d5c,stroke:#7fd1ff,stroke-width:2px,color:#eaf7ff
+    classDef process fill:#123a2a,stroke:#5fd0a0,stroke-width:2px,color:#e8fff5
+    classDef store   fill:#2c2c34,stroke:#9aa0aa,stroke-width:1.5px,color:#f0f2f5
+    classDef ext     fill:#4a3410,stroke:#f0b429,stroke-width:2px,color:#fff8e6
+    classDef warn    fill:#4a1530,stroke:#ff7fb0,stroke-width:1.5px,color:#ffe8f2
+
+    %% ---------------- External entities ----------------
+    subgraph EXT["External entities"]
+        GUEST["Guest"]:::entity
+        CAND["Candidate (USER)"]:::entity
+        ORGM["Organization Member<br/>OWNER / REPRESENTATIVE / HR / MEMBER"]:::entity
+        ADMIN["Administrator<br/>SUPER_ADMIN / ADMIN"]:::entity
+        SCM["GitHub / GitLab"]:::ext
+        CLAUDE["Anthropic Claude API"]:::ext
+        MAIL["SMTP / SendGrid"]:::ext
+    end
+
+    %% ---------------- Processes ----------------
+    P1["1 Authentication &amp; Session<br/><i>JWT HS256 in HttpOnly cookies,<br/>refresh rotation + reuse detection,<br/>email-delivered OTP step-up</i>"]:::process
+    P2["2 Profile / CV Management<br/><i>user_profiles, attachments,<br/>CV upload to object storage</i>"]:::process
+    P3["3 Source-Code Analysis Orchestration<br/><i>Line 1: 22 dispatchable tasks,<br/>flat if/elif dispatcher — ordering owned by .NET</i>"]:::process
+    P4["4 Candidate Assessment<br/><i>Line 2: 16-task validated DAG<br/>see 13C-dfd-level2-candidate-assessment.mmd</i>"]:::process
+    P5["5 Hiring Requirement &amp;<br/>Artifact Generation<br/><i>Line 4: 1 Claude call -&gt; 5 artifacts,<br/>Pydantic self-correction retry</i>"]:::process
+    P6["6 Talent Discovery &amp; Matching<br/><i>Line 3: 13 standalone tasks, no DAG;<br/>CandidateRankingProjectionWorker (15 min)</i>"]:::process
+    P7["7 Forum<br/><i>17 tables: topics, posts, tags,<br/>badges, moderation queue</i>"]:::process
+    P8["8 Notification &amp; Outbox Delivery<br/><i>EmailOutboxBackgroundProcessor (5s),<br/>TalentOutboxBackgroundProcessor (3s),<br/>RedisNotificationSubscriberWorker</i>"]:::process
+    P9["9 Administration<br/><i>roles, permissions, AI audit,<br/>moderation, account recovery</i>"]:::process
+
+    %% ---------------- Data stores ----------------
+    subgraph PG["D1 PostgreSQL 16 (pgvector image) — table clusters by declaring namespace"]
+        D1A[("D1a Auth — 8 tables<br/>users, refresh tokens,<br/>otp_verifications, sessions")]:::store
+        D1B[("D1b Profiles — 30 tables<br/>user_profiles, capabilities,<br/>candidate_assessments, attachments")]:::store
+        D1C[("D1c SourceCode — 9 tables<br/>repositories, repository_assessments,<br/>cv_repository_mappings")]:::store
+        D1D[("D1d Forum — 17 tables")]:::store
+        D1E[("D1e Recovery — 7 tables")]:::store
+        D1F[("D1f Shared/System — 72 tables<br/>outbox_messages, audit_logs,<br/>activity_events, roles, permissions,<br/>in_app_notifications")]:::store
+        D1G[("D1g Pipelines — 4 tables<br/>pipeline_jobs")]:::store
+        D1H[("D1h AiChat — 2 tables")]:::store
+    end
+
+    D2[("D2 Redis 7.2<br/>rate limits · lock:token:rotate:{token} ·<br/>ai:cancel:{correlation_id} ·<br/>pub/sub channel cverify:notifications")]:::store
+    D3[("D3 MinIO<br/>CVs, attachments, job artifacts")]:::store
+    D4[("D4 /app/temp_clones/{job_id}<br/>clone + {task_type}_result.json")]:::store
+
+    Q["In-process singleton queues<br/><i>NOT durable</i><br/>ICandidateAssessmentQueue ·<br/>IRepositoryAnalysisQueue ·<br/>IRepositorySyncQueue · IEmailQueue"]:::warn
+
+    %% ---------------- Flows: actors -> processes ----------------
+    GUEST --> P1
+    GUEST --> P7
+    CAND --> P1
+    CAND --> P2
+    CAND --> P3
+    ORGM --> P5
+    ORGM --> P6
+    ORGM --> P7
+    ADMIN --> P9
+
+    %% ---------------- Auth ----------------
+    P1 <--> D1A
+    P1 <--> D2
+    P1 -->|"OAuth authorize / token"| SCM
+    P1 -->|"verification + OTP mail<br/>via outbox_messages"| P8
+    P1 -.->|"cookie identity consumed by<br/>every other process"| P2
+    P1 -.-> P3
+    P1 -.-> P5
+    P1 -.-> P7
+    P1 -.-> P9
+
+    %% ---------------- Profile / CV ----------------
+    P2 <--> D1B
+    P2 -->|"PUT cv / attachment"| D3
+    P2 -->|"enqueue assessment"| Q
+
+    %% ---------------- Repository analysis ----------------
+    P3 <--> D1C
+    P3 -->|"enqueue analysis / sync job"| Q
+    P3 -->|"clone (PAT in URL), commit + repo metadata"| SCM
+    P3 -->|"HMAC-signed POST /analysis/task/execute<br/>and /analysis/task/aggregate"| CLAUDE
+    P3 <-->|"per-task result JSON<br/>(pipeline state passes through the filesystem)"| D4
+    P3 -->|"SSE progress-stream"| CAND
+    P3 -->|"outbox row -&gt; talent pipeline trigger"| D1F
+
+    %% ---------------- Candidate assessment ----------------
+    Q -->|"BackgroundCandidateAssessmentProcessor<br/>+ Backfill + AnalysisQueueRecoverySweeper"| P4
+    P4 <--> D1B
+    P4 <--> D1C
+    P4 -->|"HMAC-signed /candidate/assess/stream<br/>and /candidate/assess/score"| CLAUDE
+    P4 -->|"cancel flag poll"| D2
+    P4 -->|"SSE /api/v1/candidate-assessments/progress/{userId}"| CAND
+
+    %% ---------------- Hiring requirements ----------------
+    P5 <--> D1B
+    P5 <--> D1G
+    P5 -->|"HMAC-signed /hiring-requirements/generate/stream<br/>and /generate-artifact/stream"| CLAUDE
+    P5 -->|"SSE /api/v1/hiring-requirements/{id}/progress-stream"| ORGM
+
+    %% ---------------- Talent discovery ----------------
+    D1F -->|"outbox rows read by<br/>TalentOutboxBackgroundProcessor"| P6
+    P6 <--> D1B
+    P6 -->|"ranked matches"| ORGM
+
+    %% ---------------- Forum ----------------
+    P7 <--> D1D
+    P7 -->|"moderation queue items"| P9
+    P7 --> P8
+
+    %% ---------------- Notification / outbox ----------------
+    P8 <--> D1F
+    P8 -->|"SMTP send"| MAIL
+    P8 <-->|"publish/subscribe cverify:notifications"| D2
+    P8 -->|"SignalR /hubs/notifications"| CAND
+    P8 -->|"SignalR /hubs/admin (group admins)"| ADMIN
+
+    %% ---------------- Administration ----------------
+    P9 <--> D1F
+    P9 <--> D1E
+    P9 <--> D1H
+    P9 --> P8
+
+    %% ---------------- Verified hazards ----------------
+    W1["Verified hazards drawn as-is:<br/>• Queues are in-process singletons — jobs are lost on restart;<br/>&nbsp;&nbsp;AnalysisQueueRecoverySweeper exists to recover them.<br/>• outbox_messages has TWO independent consumers (email + talent).<br/>• EmailTestController and SystemController have no auth attribute at all.<br/>• No embeddings are ever written — the float[] columns stay empty."]:::warn

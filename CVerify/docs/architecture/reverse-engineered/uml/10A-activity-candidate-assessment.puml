@@ -1,0 +1,203 @@
+@startuml 10A-activity-candidate-assessment
+' CVerify — Candidate assessment control flow (Pipeline Line 2).
+' Verified against:
+'   Modules/Profiles/Controllers/CandidateAssessmentController.cs:90-98 (trigger), :229-348 (SSE)
+'   Modules/Profiles/Services/CandidateAssessmentService.cs
+'       TriggerAssessmentAsync:166-234 · ProcessAssessmentJobAsync:304-928
+'       (CancelAfter 10 min:308, Status guard:320-324, Redis lock:326-336,
+'        repo pre-assessment:391-493, payload:608-630, AI stream:633-715,
+'        artifact persistence:709-712, CandidateProfile enforcement:718-732,
+'        completion:861-882, cancel/fail paths:893-925)
+'   Modules/Profiles/BackgroundWorkers/BackgroundCandidateAssessmentProcessor.cs:27-70
+'   CVerify.AI/app/pipelines/candidate/orchestrate_stream.py:14-31, :224-396
+'   CVerify.AI/app/pipelines/candidate/orchestrator.py:89-90
+'   CVerify.AI/app/pipelines/candidate/tasks/*.py (dependencies())
+' Ground truth: GROUND-TRUTH.md §5.4, §6.2, §6.4.
+
+title CVerify — Candidate Assessment Activity (Line 2)
+
+|Core API (request thread)|
+start
+:POST /api/v1/candidate-assessments;
+:load UserProfile;
+if (profile missing?) then (yes)
+  :throw ProfileNotFound;
+  stop
+endif
+if (assessment already Queued or Running?) then (yes)
+  :throw ASSESSMENT_ALREADY_ACTIVE;
+  stop
+endif
+:GetReadinessStatusAsync;
+if (ready? — at least one analyzed repo linked to the CV) then (no)
+  :throw PROFILE_INCOMPLETE;
+  stop
+endif
+:INSERT CandidateAssessment
+Status = Queued, Version = max + 1
+PipelineVersion 2.2.0, SchemaVersion 1.2.0;
+:create AiStreamingSession ("candidate-assessment");
+:enqueue assessmentId;
+note right
+  In-process singleton queue (GROUND-TRUTH §5.4).
+  Not durable — a restart here strands the row in "Queued"
+  with no sweeper to recover it.
+end note
+:return 202 Accepted;
+
+|Background worker|
+:dequeue assessmentId (1 s idle poll);
+:create DI scope;
+:load assessment;
+if (Status != "Queued"?) then (yes)
+  :log warning and drop;
+  stop
+endif
+:linked CTS, CancelAfter(10 min);
+if (Redis LockTake candidate:assessment:lock:{userId} (10 min)?) then (not acquired)
+  :log warning and drop;
+  stop
+endif
+:Status = Running;
+:publish {Running, Initialize, 0%};
+
+partition "Per-repository pre-assessment (Line 1 results)" {
+  :query active ProjectRepositoryLinks
+  and completed AnalysisJobs;
+  :take at most 5 CV-linked jobs;
+  if (no repos AND no projects AND no work experience?) then (yes)
+    :throw NO_PORTFOLIO_CONTENT;
+    stop
+  endif
+  while (more selected jobs?) is (yes)
+    if (cached RepositoryAssessment with matching
+        pipeline / model / prompt / schema version?) then (yes)
+      :reuse it;
+    else (no)
+      :HMAC POST /api/v1/repository/assess;
+      if (2xx?) then (yes)
+        :store complexityScore, qualityScore,
+        techStack, patterns; Status = Completed;
+      else (no)
+        :mark RepositoryAssessment Failed
+        and continue with the remaining repos;
+        note right
+          A failed repo assessment does **not** abort the
+          run — the candidate is simply scored on less
+          evidence, silently.
+        end note
+      endif
+    endif
+  endwhile (no)
+}
+
+:build payload
+{ cv: profile, skills, experiences, educations,
+  certifications, projects; repositoryAssessments };
+:HMAC-sign and POST
+/api/v1/candidate/assess/stream
+(ResponseHeadersRead);
+
+|AI service|
+:yield FetchLine1 (5%);
+:include every repository — the 30% ownership and
+clone-risk readiness gates are logged but not enforced;
+note right
+  The gate code computes `ownership_score` and
+  `clone_classification` and then appends the repo
+  regardless, logging "Repo included despite failing
+  readiness gates check". The failure branch below is
+  therefore only reachable when the caller sent an
+  empty eligible set.
+end note
+:yield ConsolidateLine1 (10%)
+build repoIntelligenceReport, skillEvidenceGraph,
+commitTimelineData, commitIntentData, codeQualityData;
+
+partition "16-task DAG (L2-001 … L2-015)" {
+  :PipelineDAG(tasks).validate()
+  — topological sort / cycle detection,
+    PipelineContext schema check on all input and output keys,
+    unused-output scan;
+  note right
+    Roots L2-001, L2-007, L2-008, L2-011; sink L2-015.
+    Declared edges: 002<-001; 003<-002; 004<-002,003;
+    005<-004; 006<-005; 009<-002,003; 010<-003;
+    012<-006,009,010; 013<-006,007,008,009,010,012;
+    016<-001,002,011; 014<-001..013; 015<-014.
+    **The DAG validates but does not schedule**: the stream
+    orchestrator walks a hard-coded 16-entry STAGES list
+    sequentially, so no parallelism is exploited.
+  end note
+  while (more stages?) is (yes)
+    :yield {Running, L2-0xx, pct};
+    :call Claude (stream=True, max_tokens=8192,
+    cache_control ephemeral);
+    if (task is hybrid — L2-004/005/006/009/010?) then (yes)
+      :compute the deterministic result and
+      **overwrite** the corresponding LLM keys;
+    endif
+    if (task Completed?) then (no)
+      :yield {Failed, step, message};
+      stop
+    endif
+    :merge resultData into the accumulative `inputs` dict;
+    :yield {Completed, step, artifactType, jsonData,
+    inputTokens, outputTokens, costUsd, modelName};
+  endwhile (no)
+}
+:yield [DONE];
+
+|Background worker|
+while (more SSE lines?) is (yes)
+  :UpdateSessionProgress / UpsertStage / AddLog / AddMetric;
+  :publish to Redis candidate:assessment:progress:{userId};
+  if (event artifactType present?) then (yes)
+    :SaveOrUpdateArtifactAsync;
+  endif
+  if (event status == Failed?) then (yes)
+    :record FailedStage / FailureReason;
+    :Status = Failed; publish {Failed, 100%};
+    stop
+  endif
+endwhile (no)
+
+:read the "CandidateProfile" artifact;
+if (artifact present?) then (no)
+  :throw "Final CandidateProfile artifact was not found";
+  :Status = Failed;
+  stop
+endif
+if (schemaVersion in {candidate-profile-v2, candidate-profile-v3}?) then (no)
+  :reject — strict composer v2/v3 enforcement;
+  :Status = Failed;
+  stop
+endif
+:ProjectRelationalDataAsync;
+:SaveCandidateRelationalProfileAsync;
+:SaveCandidateSkillTreeAsync;
+:Status = Completed, CompletedAtUtc;
+:publish {Completed, CandidateProfileComposer, 100%};
+:release Redis lock;
+
+|Next.js Client|
+:GET /api/v1/candidate-assessments/progress/{userId};
+if (userId == authenticated user?) then (no)
+  :403 Access denied;
+  stop
+endif
+:replay historical events from AiStreamingSession;
+if (session already terminal?) then (yes)
+  :emit [DONE];
+  stop
+endif
+:SUBSCRIBE Redis channel;
+:re-check status (race guard after subscribe);
+while (terminal status not seen and client connected?) is (yes)
+  :drop events at or before the last replayed timestamp;
+  :write `data: <event>`;
+endwhile (no)
+:emit [DONE]; UNSUBSCRIBE;
+stop
+
+@enduml
