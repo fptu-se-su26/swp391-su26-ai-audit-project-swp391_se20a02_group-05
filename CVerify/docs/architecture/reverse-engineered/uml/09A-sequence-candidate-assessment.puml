@@ -1,0 +1,175 @@
+@startuml 09A-sequence-candidate-assessment
+' CVerify — Candidate assessment (Pipeline Line 2), trigger -> queue -> AI DAG -> persistence -> SSE.
+' Verified against:
+'   Modules/Profiles/Controllers/CandidateAssessmentController.cs
+'       TriggerAssessment:90-98 · GetProgressStream:229-348 (SSE) · dev-trigger:114-128 [AllowAnonymous]
+'   Modules/Profiles/Services/CandidateAssessmentService.cs
+'       TriggerAssessmentAsync:166-234 (concurrency check:177, readiness:186, insert:199-216,
+'                                       CreateSessionAsync:219, EnqueueAssessmentAsync:231)
+'       ProcessAssessmentJobAsync:304-928 (CancelAfter 10 min:308, Redis lock:326-336,
+'                                       repo assess loop:393-493, /repository/assess:443,
+'                                       payload build:608-630, /candidate/assess/stream:633,
+'                                       HMAC headers:641-646, SSE read loop:655-715,
+'                                       artifact persist:709-712, CandidateProfile check:718-724)
+'       PublishRawProgressAsync:966-970 (channel candidate:assessment:progress:{userId})
+'   Modules/Profiles/Services/BackgroundCandidateAssessmentQueue.cs  (in-process singleton)
+'   Modules/Profiles/BackgroundWorkers/BackgroundCandidateAssessmentProcessor.cs:27-70
+'   Modules/Shared/System/Services/HmacSignatureService.cs
+'   CVerify.AI/app/api/routes/analysis_router.py:89 (/api/v1/candidate/assess/stream)
+'   CVerify.AI/app/pipelines/candidate/orchestrate_stream.py:14-31 (STAGES), :306-388 (execution loop)
+'   CVerify.AI/app/pipelines/candidate/orchestrator.py:89-90 (PipelineDAG + validate)
+' Ground truth: GROUND-TRUTH.md §5.3, §5.4, §6.2 (Line 2 = 16-task validated DAG).
+
+title CVerify — Candidate Assessment (POST api/v1/candidate-assessments)
+
+skinparam responseMessageBelowArrow true
+skinparam maxMessageSize 280
+
+actor       "Candidate"                                   as U
+participant "Next.js Client"                              as C
+participant "CandidateAssessmentController"               as CT
+participant "CandidateAssessmentService"                  as SVC
+participant "BackgroundCandidateAssessmentQueue\n<<singleton, in-process>>" as Q
+participant "BackgroundCandidateAssessmentProcessor\n<<IHostedService>>"    as W
+participant "HmacSignatureService"                        as HMAC
+participant "CVerify.AI\nanalysis_router"                 as AI
+participant "CandidateAssessmentStreamOrchestrator"       as ORCH
+participant "Anthropic Claude"                            as CLAUDE
+database    "PostgreSQL"                                  as DB
+database    "Redis"                                       as R
+
+== Trigger ==
+U  -> C  : "Run assessment"
+C  -> CT : POST /api/v1/candidate-assessments  (cookie auth)
+CT -> SVC : TriggerAssessmentAsync(userId)
+SVC -> DB : any assessment in Queued|Running?
+alt already active
+    SVC --> C : 400 ASSESSMENT_ALREADY_ACTIVE
+end
+SVC -> SVC : GetReadinessStatusAsync
+alt not ready
+    SVC --> C : 400 PROFILE_INCOMPLETE\n(at least one analyzed repo linked to the CV)
+end
+SVC -> DB : INSERT CandidateAssessment\n(Status=Queued, Version=max+1,\nPipelineVersion 2.2.0, CvId = UserId)
+note right of SVC
+  `CvId = userId` is a deliberate placeholder — there is no `cvs`
+  table in the schema, so `candidate_assessments.CvId` has no real
+  target (GROUND-TRUTH §4.1 hazard 6, marked <<Not verified>>).
+end note
+SVC -> DB : AiStreamingSession (pipelineId "candidate-assessment")
+SVC -> Q  : EnqueueAssessmentAsync(assessmentId)
+CT --> C  : 202 Accepted { id, status: Queued }
+
+note over Q #ffdddd
+  **The queue is a singleton in-process channel — not durable**
+  (GROUND-TRUTH §5.4). If the API process restarts, queued
+  candidate-assessment jobs are lost. Unlike the repository
+  pipeline there is no equivalent of `AnalysisQueueRecoverySweeper`
+  for this queue, so the row simply stays "Queued" forever.
+end note
+
+== Background execution ==
+W  -> Q  : DequeueAssessmentAsync()  (1 s idle delay)
+W  -> SVC : ProcessAssessmentJobAsync(assessmentId)  (scoped DI)
+SVC -> SVC : linked CTS, CancelAfter(10 min)
+SVC -> R  : LockTakeAsync candidate:assessment:lock:{userId} (10 min)
+alt lock not acquired
+    SVC --> W : abandon silently (job left Queued)
+end
+SVC -> DB : Status = Running
+SVC -> R  : publish progress {Running, Initialize, 0%}
+
+group Per-repository pre-assessment (max 5 CV-linked repos)
+    SVC -> DB : ProjectRepositoryLinks + completed AnalysisJobs
+    loop for each selected AnalysisJob
+        alt cached RepositoryAssessment with matching\npipeline/model/prompt/schema version exists
+            SVC -> DB : reuse existing assessment
+        else
+            SVC -> HMAC : CreateSignatureHeaders("POST", "/api/v1/repository/assess", body)
+            SVC -> AI  : POST /api/v1/repository/assess\nX-Client-Id, X-Timestamp, X-Nonce,\nX-Correlation-Id = assessmentId, X-Signature
+            AI  --> SVC : complexityScore, qualityScore, primaryLanguages,\nverifiedPatterns, cloneRiskClassification
+            SVC -> DB : RepositoryAssessment = Completed
+        end
+    end
+end
+
+SVC -> DB : load profile, skills, experiences,\neducations, certifications, projects
+SVC -> HMAC : CreateSignatureHeaders("POST", "/api/v1/candidate/assess/stream", body)
+SVC -> AI  : POST /api/v1/candidate/assess/stream\n{ cv, repositoryAssessments, backgroundRepositories }\n(HttpCompletionOption.ResponseHeadersRead)
+
+== 16-task candidate DAG (AI service) ==
+AI -> ORCH : orchestrate_async(cv, repositoryAssessments, correlation_id)
+ORCH --> SVC : data: {Running, FetchLine1, 5%}
+ORCH --> SVC : data: {Running, ConsolidateLine1, 10%}
+note over ORCH
+  Roots L2-001, L2-007, L2-008, L2-011; sink L2-015.
+  `PipelineDAG.validate()` runs at orchestrator construction:
+  topological sort (cycle detection), PipelineContext schema
+  check on every input_keys/output_keys, and an unused-output scan.
+  L2-004/005/006/009/010 are **hybrid** — a deterministic result
+  overwrites the LLM's answer after the Claude call returns.
+end note
+note over ORCH #ffdddd
+  Surprise: although the DAG is built and validated,
+  `orchestrate_stream.STAGES` executes the 16 tasks
+  **sequentially from a hard-coded list**, not from the
+  topological order the DAG computed. The DAG therefore acts
+  as a compile-time validator, not as the runtime scheduler,
+  and no task-level parallelism is exploited.
+end note
+
+loop for each of the 16 stages L2-001 … L2-015
+    ORCH --> SVC : data: {Running, L2-0xx, pct}
+    ORCH -> CLAUDE : stream=True, max_tokens=8192,\nprompt caching cache_control: ephemeral
+    CLAUDE --> ORCH : JSON (json_repair fallback on malformed output)
+    ORCH -> ORCH : merge result_data back into `inputs`\n(accumulative context, no re-fetch)
+    ORCH --> SVC : data: {Completed, L2-0xx, artifactType, jsonData,\ninputTokens, outputTokens, costUsd, modelName}
+    SVC -> DB  : UpdateSessionProgress / UpsertStage / AddLog / AddMetric
+    SVC -> DB  : SaveOrUpdateArtifactAsync(assessmentId, artifactType, jsonData)
+    SVC -> R   : PUBLISH candidate:assessment:progress:{userId}  (camelCase payload)
+    alt stage status == Failed
+        SVC -> DB : FailedStage / FailureReason
+        SVC -> R  : publish {Failed, step, 100%}
+        SVC --> W : throw — pipeline aborted
+    end
+end
+ORCH --> SVC : data: [DONE]
+
+== Persistence & completion ==
+SVC -> DB : read CandidateAssessmentArtifacts where ArtifactType = "CandidateProfile"
+alt artifact missing
+    SVC --> W : throw "Final CandidateProfile artifact was not found"
+end
+SVC -> SVC : enforce schemaVersion ∈ {candidate-profile-v2, candidate-profile-v3}
+SVC -> DB : ProjectRelationalDataAsync / SaveCandidateRelationalProfileAsync\n/ SaveCandidateSkillTreeAsync
+SVC -> DB : Status = Completed, CompletedAtUtc
+SVC -> R  : publish {Completed, CandidateProfileComposer, 100%}
+SVC -> R  : LockRelease candidate:assessment:lock:{userId}
+
+== SSE progress channel (parallel to the whole flow) ==
+C  -> CT : GET /api/v1/candidate-assessments/progress/{userId}
+CT -> CT : reject with 403 if userId != CurrentUserId
+CT -> DB : GetFormattedHistoryAsync(assessmentId) — replay past events
+CT --> C : data: <historical events>
+alt session already terminal (Completed|Failed|Cancelled)
+    CT --> C : data: [DONE]
+end
+CT -> R  : SUBSCRIBE candidate:assessment:progress:{userId}
+CT -> DB : re-check status after subscribing (race guard)
+loop until terminal status or client disconnect
+    R  --> CT : live event
+    CT -> CT : drop event whose timestamp <= last replayed timestamp
+    CT --> C : data: <event>
+end
+CT --> C : data: [DONE]
+CT -> R  : UNSUBSCRIBE
+
+note over C, CT
+  GROUND-TRUTH §8: the client's streaming store appends a `token`
+  query parameter read from localStorage/sessionStorage for SSE,
+  diverging from the HttpOnly-cookie auth used everywhere else.
+  nginx access logs (shipped to Cloud Logging) would then contain
+  the token. Whether that key is ever populated is <<Not verified>>.
+end note
+
+@enduml

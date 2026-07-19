@@ -1,0 +1,75 @@
+%% CVerify — CI/CD pipeline (as it actually runs)
+%%
+%% Sources verified:
+%%   .github/workflows/ci.yml           — "CVerify Core Delivery Pipeline", 5 jobs
+%%   .github/workflows/deploy-vps.yml   — "Deploy to VPS", push trigger + rationale header
+%%   CVerify/deployment/scripts/health-check.sh (invoked by the deploy workflow)
+%%   docs/architecture/reverse-engineered/GROUND-TRUTH.md §7
+%%
+%% THE CRITICAL FACT THIS DIAGRAM EXISTS TO SHOW:
+%%   deploy-vps.yml triggers on `push` to CVerify-Deployment, exactly like ci.yml.
+%%   It has NO `needs:` and NO `workflow_run` dependency on CI. The two workflows
+%%   RACE on the same push, so a red CI build still ships to production.
+%%   The workflow header documents this as a conscious trade-off.
+%%
+%% Not present in this pipeline: container registry, staging environment,
+%% blue/green or canary rollout, automated rollback, coverage threshold gate.
+
+flowchart TB
+    classDef dev     fill:#0b3d5c,stroke:#7fd1ff,stroke-width:2px,color:#eaf7ff
+    classDef ci      fill:#123a2a,stroke:#5fd0a0,stroke-width:2px,color:#e8fff5
+    classDef cd      fill:#4a3410,stroke:#f0b429,stroke-width:2px,color:#fff8e6
+    classDef infra   fill:#2c2c34,stroke:#9aa0aa,stroke-width:1.5px,color:#f0f2f5
+    classDef warn    fill:#4a1530,stroke:#ff7fb0,stroke-width:2px,color:#ffe8f2
+
+    DEV["Developer"]:::dev
+    PUSH["git push<br/><i>branch CVerify-Deployment</i>"]:::dev
+    GH["GitHub<br/><i>push event</i>"]:::dev
+
+    DEV --> PUSH --> GH
+
+    %% =================== CI ===================
+    subgraph CI["Workflow: ci.yml — &quot;CVerify Core Delivery Pipeline&quot; (ubuntu-latest)"]
+        direction TB
+        FE["frontend-ci<br/><i>Frontend Build &amp; Lint</i><br/>Node 22 · npm ci · ESLint · next build<br/><b>needs: —</b>"]:::ci
+        BE["backend-ci<br/><i>Backend Formatting, Build &amp; Unit Tests</i><br/>.NET SDK 10 · dotnet format --verify · build ·<br/>unit tests + coverage artifact<br/><b>needs: —</b>"]:::ci
+        AI["ai-service-ci<br/><i>AI Service Setup &amp; Tests</i><br/>Python 3.11 · pip install · pytest + coverage<br/><b>needs: —</b>"]:::ci
+        IT["backend-integration-tests<br/><i>Backend Integration Tests</i><br/>Testcontainers · coverage artifact<br/><b>needs: backend-ci</b>"]:::ci
+        DV["docker-validation<br/><i>Docker Image Build Validation</i><br/>Buildx dry-run of core, ai, client images<br/><b>needs: [frontend-ci, backend-integration-tests, ai-service-ci]</b>"]:::ci
+
+        BE --> IT
+        FE --> DV
+        IT --> DV
+        AI --> DV
+    end
+
+    COV["Coverage artifacts uploaded<br/>dotnet-unit-coverage-report ·<br/>dotnet-integration-coverage-report ·<br/>ai-coverage-report<br/><b>NO threshold is enforced</b>"]:::warn
+    DV --> COV
+
+    %% =================== CD ===================
+    subgraph CD["Workflow: deploy-vps.yml — &quot;Deploy to VPS&quot; (concurrency group deploy-vps, cancel-in-progress: false)"]
+        direction TB
+        D1["job: deploy — Deploy via SSH<br/><i>appleboy/ssh-action v1.2.2 · command_timeout: 30m</i><br/>secrets VPS_HOST / VPS_USER / VPS_SSH_KEY / VPS_SSH_PORT"]:::cd
+        D2["set -e; cd $HOME/&lt;repo&gt;<br/>git fetch / checkout / pull origin CVerify-Deployment<br/>cd CVerify"]:::cd
+        D3["docker compose -f docker-compose.yml<br/>-f deployment/docker-compose.prod.yml<br/>--env-file .env up -d --build --remove-orphans<br/><i>images are built ON the VM — no registry</i>"]:::cd
+        D4["docker system prune -f<br/>docker compose ps"]:::cd
+        D5["step: Health check<br/><i>second SSH session runs<br/>deployment/scripts/health-check.sh</i>"]:::cd
+        D6["step: Deployment summary<br/><i>if: always() -&gt; GITHUB_STEP_SUMMARY</i>"]:::cd
+
+        D1 --> D2 --> D3 --> D4 --> D5 --> D6
+    end
+
+    VM[("GCE VM cverify-vps<br/>6 containers restarted in place")]:::infra
+    D3 --> VM
+    D5 -.->|"probes the running stack"| VM
+
+    %% =================== The race ===================
+    GH ==>|"push event #1"| FE
+    GH ==>|"push event #1"| BE
+    GH ==>|"push event #1"| AI
+    GH ==>|"SAME push event — no needs:, no workflow_run"| D1
+
+    RACE["<b>DEPLOY IS NOT GATED ON CI.</b><br/>Both workflows start from the same push and run in parallel.<br/>Deploy typically finishes while CI is still running, so a<br/>failing frontend-ci / backend-ci / ai-service-ci / docker-validation<br/>does NOT stop the release. There is no rollback step.<br/><br/>Why: `workflow_run` only fires for workflow files on the repo's<br/>DEFAULT branch (main), and this file lives on CVerify-Deployment.<br/>Documented as a deliberate trade-off in the workflow header."]:::warn
+
+    CI -.-> RACE
+    CD -.-> RACE

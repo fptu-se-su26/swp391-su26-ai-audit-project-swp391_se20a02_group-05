@@ -1,0 +1,166 @@
+@startuml 09F-sequence-authentication
+' CVerify — Authentication: register -> verify -> login -> authenticated request -> refresh -> logout
+' Verified against:
+'   Modules/Auth/Controllers/AuthController.cs
+'   Modules/Auth/Services/AuthService.cs        (RegisterAsync:950, VerifyEmailAsync:1084,
+'                                                LoginAsync:158, RefreshTokenAsync:558, LogoutAsync:536)
+'   Modules/Auth/Services/TokenService.cs       (GenerateJwtToken, SetTokenInsideCookie:139)
+'   Modules/Auth/Middleware/SessionValidationMiddleware.cs
+'   Program.cs:506-533 (JwtBearerEvents.OnMessageReceived), :610-623 (middleware order)
+
+title CVerify — Authentication Flow (JWT in HttpOnly cookies)
+
+skinparam responseMessageBelowArrow true
+skinparam sequenceMessageAlign center
+skinparam maxMessageSize 260
+
+actor       User        as U
+participant "Next.js Client\n(axios, withCredentials)" as C
+participant "nginx\ncverify_auth zone 5r/m"           as N
+participant "AuthController"                          as AC
+participant "AuthService"                             as AS
+participant "TokenService"                            as TS
+participant "SessionValidationMiddleware"             as MW
+database    "PostgreSQL"                              as DB
+database    "Redis"                                   as R
+queue       "OutboxMessages"                          as OB
+participant "EmailOutboxBackgroundProcessor"          as EW
+participant "Email Transport"                         as MAIL
+
+== Registration ==
+U  -> C  : submit email + password
+C  -> N  : POST /api/auth/register
+N  -> AC : rate-limited (RegisterLimit, per IP)
+AC -> AS : RegisterAsync(dto)
+AS -> AS : ValidateAndThrowAsync (password policy)
+AS -> DB : FindUserByEmailAsync(normalised email)
+alt existing user in EMAIL_VERIFY_PENDING
+    AS -> AS : ResendVerificationEmailAsync (idempotent)
+else email already active
+    AS --> AC : throw DuplicateEmailException
+end
+AS -> AS : BCrypt.HashPassword
+group single DB transaction
+    AS -> DB : INSERT User (Status = EMAIL_VERIFY_PENDING)
+    AS -> AS : EmailTokenGenerator.GenerateSecureToken()
+    AS -> DB : INSERT VerificationToken (SHA-256 hash, 5 min TTL)
+    note right of AS
+      Only the SHA-256 hash is stored.
+      Link host is validated against
+      envConfig.Auth.TrustedDomains, else
+      AuthErrorCodes.UntrustedRedirect.
+    end note
+    AS -> OB : AddAndAuditOutboxMessage("EmailVerification")
+end
+AS -> R  : InvalidateCacheAsync (identity state)
+AC --> C : 200 (no tokens issued)
+
+EW -> OB : poll every 5s (Redis lock 20s)
+EW -> MAIL : send verification email
+EW -> OB : mark processed
+
+== Email verification ==
+U  -> C  : click link
+C  -> AC : POST /api/auth/verify-email { token }
+AC -> AS : VerifyEmailAsync(token)
+AS -> DB : lookup VerificationTokens by SHA-256(token)
+alt consumed or expired
+    AS --> AC : reject
+else valid
+    AS -> DB : set ConsumedAt; ActivateUserAsync(user)
+    AS -> OB : AddAndAuditOutboxMessage("WelcomeNotice")
+end
+
+== Login ==
+U  -> C  : email + password
+C  -> N  : POST /api/auth/login
+N  -> AC : rate-limited
+AC -> AS : LoginAsync(dto)
+AS -> DB : FindUserByVerifiedEmailAsync
+note right of AS
+  Falls back to LegacyEmailCompatibilityHelper
+  .ApplyOldGmailNormalization for gmail addresses.
+end note
+alt Status = DELETION_PENDING
+    AS -> R  : cache reactivate:token:{t} (10 min)
+    AS --> C : next-step REACTIVATE:{token}
+else account disabled or locked
+    AS --> C : reject
+else EMAIL_VERIFY_PENDING and not super-admin
+    AS --> C : next-step VERIFY_EMAIL (no tokens)
+else success
+    AS -> AS : VerifyPassword; ResetFailedAttemptsAsync
+    AS -> AS : BootstrapInitialAdminAsync(user.Email)
+    AS -> DB : load roles + permissions (IIdentityRepository)
+    AS -> R  : CacheUserAuthDataAsync
+    AS -> AS : sessionId = Guid.CreateVersion7()
+    AS -> TS : GenerateJwtToken(claims incl. session_version, jti, sid, org_id)
+    AS -> TS : GenerateRefreshToken()
+    AS -> DB : SaveRefreshTokenAsync(userId, token, sessionId, rememberMe)
+    TS -> C  : Set-Cookie access_token  (15 min)
+    TS -> C  : Set-Cookie refresh_token (7d if RememberMe, else 24h)
+    note right of TS
+      HttpOnly, Secure (non-dev), SameSite=Lax, Path=/,
+      Domain = Auth.CookieDomain — a shared parent domain so
+      cverify.com.vn can read a cookie set by api.cverify.com.vn.
+    end note
+end
+
+== Authenticated request ==
+C  -> N  : GET /api/auth/me  (cookies + X-CSRF-Token on mutating verbs)
+N  -> MW : UseAuthentication has already run
+note over MW
+  JwtBearerEvents.OnMessageReceived unconditionally sets
+  context.Token = Request.Cookies["access_token"].
+  An Authorization: Bearer header is therefore IGNORED.
+end note
+MW -> R  : auth:user:{id}:session_version  (24h TTL)
+alt cache miss
+    MW -> DB : Users.SessionVersion
+end
+MW -> MW : compare JWT session_version with stored value
+MW -> R  : auth:session:{sid}:active  (30 min TTL)
+alt mismatch, revoked session, or Status != ACTIVE
+    MW -> C  : delete both cookies
+    MW --> C : 401, pipeline short-circuited
+else valid
+    MW -> AC : continue to UseAuthorization
+    AC --> C : 200 profile
+end
+
+== Token refresh (single-flight) ==
+C  -> AC : POST /api/auth/refresh-token   (on any 401)
+note left of C
+  Client queues concurrent 401s behind one
+  in-flight refresh and replays them after.
+end note
+AC -> AS : RefreshTokenAsync(cookie)
+AS -> R  : acquire lock:token:rotate:{token}  (5 x 200ms, 10s TTL)
+AS -> R  : acquire lock:user:sessions:{id}
+AS -> DB : re-fetch token inside the lock
+AS -> AS : ValidateRefreshToken -> Invalid | Expired | Reused | WithinGracePeriod | Valid
+alt Reused
+    AS -> DB : RevokeSessionChainAsync(sessionId)  (transactional)
+    AS -> AS : log TOKEN_REUSE_DETECTED; audit TOKEN_THEFT_DETECTED
+    AS --> C : throw AuthException(InvalidToken)
+else WithinGracePeriod
+    AS --> C : return existing ReplacedByTokenId replacement
+    note right of AS
+      Multi-tab race: avoids rotating twice.
+    end note
+else Valid
+    AS -> TS : issue new access + refresh cookies
+end
+
+== Logout ==
+U  -> C  : logout
+C  -> AC : POST /api/auth/logout
+AC -> AS : LogoutAsync
+AS -> DB : set RevokedAt on refresh token
+AS -> TS : RemoveTokenFromCookie x2
+note right of TS
+  Deletion must send the SAME Domain attribute,
+  otherwise the cookie is not matched and not cleared.
+end note
+
+@enduml

@@ -1,0 +1,142 @@
+@startuml 12E-state-organization-recovery
+' CVerify — THREE recovery state machines
+' Verified against:
+'   Modules/Recovery/Entities/OrganizationRecoveryClaim.cs:53-54
+'       [MaxLength(50)] public string Status { get; set; } = "Pending";
+'       // "Pending", "UnderAnalysis", "Approved", "Rejected"
+'   Modules/Recovery/Entities/RepresentativeRotationRequest.cs:42-52
+'       SupportApprovalStatus = "pending_review"  // pending_review, approved, rejected
+'       AdminApprovalStatus   = "pending_review"  // pending_review, approved, rejected
+'       FinalDecision         = "pending_review"  // pending_review, awaiting_admin_approval,
+'                                                 // awaiting_support_approval, approved, rejected, expired
+'       VerificationCallStatus = "not_started"    // not_started, scheduled, verified, failed
+'   Modules/Recovery/Entities/RecoveryExecutionLock.cs:17-18
+'       [MaxLength(50)] public string Status { get; set; } = "Locked";  // Locked, InProgress, Succeeded, Failed
+'   Modules/Recovery/BackgroundWorkers/RecoveryClaimBackgroundWorker.cs:63,:76,:92   (10 s poll)
+'   Modules/Recovery/Services/RecoveryService.cs:342,:386,:418,:521,:531,:538,:559,:571
+'   Modules/Recovery/Services/OrganizationReclaimService.cs:342,:386,:418,:521,:531,:538,:559,:571
+'   Modules/Recovery/Services/Level2RecoveryService.cs:110,:196,:204,:230,:267,:295,:316,:459
+'   Modules/Recovery/Services/RecoveryExecutionEngine.cs:49 ExecuteOptionAAsync, :262 ExecuteOptionBAsync
+'   docs/architecture/reverse-engineered/GROUND-TRUTH.md  §2 (Recovery controllers are the only
+'       role-gated ones), §5.1 (POST api/auth/recovery/level2/vote is [AllowAnonymous]), §5.4
+
+title Organization recovery — claim, representative rotation, and execution lock
+
+skinparam shadowing false
+skinparam state {
+  BackgroundColor<<terminal>> #FFECEC
+}
+
+' =====================================================================
+state "organization_recovery_claims.Status" as CLAIM {
+
+  [*] --> C_Pending : claim submitted\nRiskScore / RiskLevel (Low|Medium|High) and\nSuggestedRecoveryStrategy (OptionA|OptionB) computed
+
+  state "Pending" as C_Pending
+  state "UnderAnalysis" as C_Under
+  state "PendingReview" as C_PendingReview #FFF6E6
+  state "Approved" as C_Approved <<terminal>>
+  state "Rejected" as C_Rejected <<terminal>>
+
+  C_Pending --> C_Under : RecoveryClaimBackgroundWorker (:63)\npolls every 10 s, claims the row for fraud analysis
+  C_Under --> C_PendingReview : automated analysis finished (:76)\nfraud-signal flags written (DocumentOcrMetadata,\nDocumentSuspiciousMetadata, WorkspaceActivityFlags,\nIpDeviceFlags, HistoricalClaimFlags)
+  C_Under --> C_Pending : analysis threw (:92)\n<b>"Rollback to retry later"</b>
+  C_PendingReview --> C_Approved : RecoveryService/OrganizationReclaimService (:386)\nsets ReviewedBy / ReviewedAt
+  C_PendingReview --> C_Rejected : (:418) sets RejectionReason
+  C_Pending --> C_Approved : (:386) manual review without waiting for the sweep
+  C_Pending --> C_Rejected : (:418)
+}
+
+note bottom of CLAIM #FFF0F0
+  <b>Stale-comment discrepancy</b>
+  OrganizationRecoveryClaim.cs:54 comments the column as
+      // "Pending", "UnderAnalysis", "Approved", "Rejected"
+  but RecoveryClaimBackgroundWorker.cs:76 also writes <b>"PendingReview"</b>,
+  which is undocumented on the entity. The real value set is five.
+  Idempotency guard at RecoveryService.cs:342 / OrganizationReclaimService.cs:342
+  rejects any further decision once Status is "Approved" or "Rejected".
+
+  ⚠ SecondReviewerBy exists on the entity for a "dual approval workflow",
+  but no second-reviewer state is encoded in Status — the dual-approval
+  step is not represented in this column.
+
+  ⚠ RecoveryService.cs and OrganizationReclaimService.cs carry the same
+  logic at identical line numbers (342/386/418/521/531/538/559/571) —
+  a duplicated surface, like api/organizations vs api/workspace (§5.2).
+end note
+
+' =====================================================================
+state "representative_rotation_requests.FinalDecision" as ROT {
+
+  [*] --> R_Pending : Level2RecoveryService (:110)\nnew RepresentativeRotationRequest { FinalDecision = "pending_review" }\nExpiresAt set at creation
+
+  state "pending_review" as R_Pending
+  state "awaiting_admin_approval" as R_AwaitAdmin
+  state "awaiting_support_approval" as R_AwaitSupport
+  state "approved" as R_Approved <<terminal>>
+  state "rejected" as R_Rejected <<terminal>>
+  state "expired" as R_Expired <<terminal>>
+
+  R_Pending --> R_AwaitAdmin : SUPPORT approves first (:230)\nSupportApprovalStatus = "approved"
+  R_Pending --> R_AwaitSupport : ADMIN approves first (:316)\nAdminApprovalStatus = "approved"
+  R_Pending --> R_Rejected : either side rejects (:204 support, :295 admin)
+  R_AwaitAdmin --> R_Approved : admin side also approves (:459)
+  R_AwaitSupport --> R_Approved : support side also approves (:459)
+  R_AwaitAdmin --> R_Rejected : admin rejects (:295)
+  R_AwaitSupport --> R_Rejected : support rejects (:204)
+  R_Pending --> R_Expired : ExpiresAt passed
+  R_AwaitAdmin --> R_Expired : ExpiresAt passed
+  R_AwaitSupport --> R_Expired : ExpiresAt passed
+}
+
+note bottom of ROT
+  <b>Two-key approval.</b> FinalDecision is a derived rollup of the two
+  independent columns SupportApprovalStatus and AdminApprovalStatus
+  (each: pending_review | approved | rejected). Whichever side approves
+  first moves FinalDecision into the "awaiting_<i>other side</i>" state;
+  "approved" (:459) requires both. Terminal guard at :196 and :267:
+  once FinalDecision is approved / rejected / expired, further votes are refused.
+
+  A third, orthogonal column tracks the out-of-band identity check:
+  VerificationCallStatus = not_started | scheduled | verified | failed.
+  It is not folded into FinalDecision.
+
+  ⚠ GROUND-TRUTH §5.1: POST api/auth/recovery/level2/vote is
+  <b>[AllowAnonymous]</b> on this admin quorum action. Whether an in-body
+  token gate protects it is <<Not verified>>.
+  ⚠ No background worker was found that writes "expired"; the transitions
+  to expired are drawn from the entity's documented value set plus the
+  ExpiresAt column and the :196/:267 terminal guards.
+end note
+
+' =====================================================================
+state "recovery_execution_locks.Status" as LOCK {
+
+  [*] --> L_Locked : entity default\nRecoveryExecutionLock.Status = "Locked"
+
+  state "Locked" as L_Locked #F2F2F2
+  state "InProgress" as L_InProgress
+  state "Succeeded" as L_Succeeded <<terminal>>
+  state "Failed" as L_Failed <<terminal>>
+
+  [*] --> L_InProgress : RecoveryService.cs:531\n<b>new RecoveryExecutionLock { Status = "InProgress" }</b>\n(first acquisition for a RecoverySessionId)
+  L_Locked --> L_InProgress : :538 re-acquire on an existing row
+  L_Failed --> L_InProgress : :538 retry after a failed execution
+  L_InProgress --> L_Succeeded : recovery executed (:559)\nCompletedAt set
+  L_InProgress --> L_Failed : execution threw (:571)
+}
+
+note bottom of LOCK
+  <b>Idempotency barrier.</b> RecoveryService.cs:521 refuses to start when an
+  existing lock for the session is "InProgress" or "Succeeded" — this is what
+  stops a double-execution of RecoveryExecutionEngine.ExecuteOptionAAsync /
+  ExecuteOptionBAsync, both of which call user.TransitionTo(ACTIVE) and
+  create workspaces.
+
+  ⚠ Discrepancy: "Locked" is the C# property initialiser and is listed in the
+  entity comment, but <b>no code path ever assigns it</b>. Every lock row is
+  constructed with Status = "InProgress" explicitly (:531), so "Locked" is
+  reachable only if a row is inserted without setting Status. Drawn greyed.
+end note
+
+@enduml

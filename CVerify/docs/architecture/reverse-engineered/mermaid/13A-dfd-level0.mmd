@@ -1,0 +1,65 @@
+%% CVerify — Data Flow Diagram, Level 0 (context diagram)
+%%
+%% Sources verified:
+%%   docs/architecture/reverse-engineered/GROUND-TRUTH.md  §1, §2, §3, §5, §6, §7
+%%   CVerify/docker-compose.yml · CVerify/deployment/docker-compose.prod.yml
+%%   CVerify/deployment/nginx/cverify.conf
+%%
+%% Deliberate omissions (they do not exist in this system):
+%%   - no CDN, no cloud load balancer, no managed database, no message broker
+%%     other than Redis pub/sub, no external object store (MinIO is self-hosted).
+%%   - "Recruiter" is NOT a role (GROUND-TRUTH §2). Recruiting is done by
+%%     Organization Members holding OWNER / REPRESENTATIVE / HR.
+
+flowchart LR
+    classDef entity  fill:#0b3d5c,stroke:#7fd1ff,stroke-width:2px,color:#eaf7ff
+    classDef process fill:#123a2a,stroke:#5fd0a0,stroke-width:2px,color:#e8fff5
+    classDef store   fill:#2c2c34,stroke:#9aa0aa,stroke-width:1.5px,color:#f0f2f5
+    classDef note    fill:#4a1530,stroke:#ff7fb0,stroke-width:1.5px,color:#ffe8f2
+
+    %% ---------------- External entities ----------------
+    GUEST["Guest<br/><i>unauthenticated visitor</i>"]:::entity
+    CAND["Candidate<br/><i>system role USER</i>"]:::entity
+    ORG["Organization Member<br/><i>OWNER / REPRESENTATIVE / HR / MEMBER</i>"]:::entity
+    ADMIN["Administrator<br/><i>SUPER_ADMIN / ADMIN</i>"]:::entity
+    SCM["GitHub / GitLab<br/><i>OAuth + repository APIs</i>"]:::entity
+    CLAUDE["Anthropic Claude API<br/><i>claude-3-5-sonnet-20241022</i>"]:::entity
+    MAIL["Email Transport<br/><i>SMTP / SendGrid</i>"]:::entity
+
+    %% ---------------- The single process ----------------
+    P0(("0<br/>CVerify<br/>Talent Verification Platform")):::process
+
+    %% ---------------- Data stores ----------------
+    D1[("D1  PostgreSQL 16 + pgvector<br/>152 tables · 201 FKs")]:::store
+    D2[("D2  Redis 7.2<br/>cache · locks · pub/sub · cancel flags")]:::store
+    D3[("D3  MinIO object storage<br/>CVs, attachments, artifacts")]:::store
+    D4[("D4  Container filesystem<br/>/app/temp_clones/{job_id}<br/>repo clones + task result JSON")]:::store
+
+    %% ---------------- Flows ----------------
+    GUEST -->|"public profiles, forum reads,<br/>register / login request"| P0
+    P0 -->|"public pages, verification badges"| GUEST
+
+    CAND -->|"credentials + OTP, CV upload,<br/>repository link, profile edits"| P0
+    P0 -->|"assessment scores, skill tree,<br/>improvement plan, SSE progress"| CAND
+
+    ORG -->|"hiring requirements, candidate search,<br/>member + role administration"| P0
+    P0 -->|"ranked candidate matches,<br/>generated requirement artifacts"| ORG
+
+    ADMIN -->|"moderation actions, role/permission grants,<br/>AI audit queries, recovery quorum votes"| P0
+    P0 -->|"audit logs, moderation queue,<br/>admin SignalR hub events"| ADMIN
+
+    P0 -->|"OAuth token exchange, clone URL,<br/>repo + commit metadata requests"| SCM
+    SCM -->|"identity, repositories, commits, source code"| P0
+
+    P0 -->|"HMAC-signed prompts<br/>(repo code, commit messages, CV text)"| CLAUDE
+    CLAUDE -->|"streamed completions"| P0
+
+    P0 -->|"verification / OTP / notification mail<br/>via outbox_messages"| MAIL
+
+    %% ---------------- Store access ----------------
+    P0 <-->|"relational reads/writes,<br/>outbox in the same transaction"| D1
+    P0 <-->|"sessions, rate limits, refresh-rotation locks,<br/>cverify:notifications pub/sub"| D2
+    P0 <-->|"S3 PUT/GET (path-style, R2_* env names)"| D3
+    P0 <-->|"clone + per-task result JSON<br/>(AI pipeline state passes through the filesystem)"| D4
+
+    NOTE["Not present anywhere in this context:<br/>CDN · cloud load balancer · managed DB ·<br/>durable message broker · vector/embedding store<br/>(pgvector image is used, but no embeddings are written)"]:::note

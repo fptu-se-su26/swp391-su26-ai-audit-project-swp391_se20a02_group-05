@@ -1,0 +1,107 @@
+@startuml 12A-state-user-account
+' CVerify — User account lifecycle (users.Status, native PG enum "user_status")
+' Verified against:
+'   Modules/Shared/Domain/Enums/UserStatus.cs                (6 PgName values)
+'   Modules/Shared/Domain/Entities/User.cs:80-130            (TransitionTo — the authoritative guard table)
+'   Modules/Auth/Services/AuthService.cs
+'       :375,:996,:2618  new User { Status = EMAIL_VERIFY_PENDING }   (OAuth / register / link flows)
+'       :3973-3977       ActivateUserAsync -> TransitionTo(ACTIVE)
+'       :1120            VerifyEmailAsync -> ActivateUserAsync
+'       :395,:472,:2624,:2633  OAuth callback -> ActivateUserAsync
+'       :1538 DeleteMeAsync            -> user.Status = DELETED  (direct assignment)
+'       :1631 InitiateDeletionAsync    -> TransitionTo(DELETION_PENDING) at :1735
+'       :1803 ReactivateAccountAsync   -> TransitionTo(ACTIVE) at :1824
+'       :180  LoginAsync — DELETION_PENDING short-circuits to a REACTIVATE next-step
+'   Modules/Recovery/Services/RecoveryExecutionEngine.cs:49 ExecuteOptionAAsync -> TransitionTo(ACTIVE) :124
+'                                                      :262 ExecuteOptionBAsync -> TransitionTo(ACTIVE) :404
+'   Modules/Shared/System/BackgroundWorkers/TokenCleanupBackgroundJob.cs:252,:326 (14-day hard purge)
+'   Modules/Auth/Services/IdentityStateResolver.cs:97-98 · Modules/Auth/Services/AccountService.cs:61
+'   docs/architecture/reverse-engineered/GROUND-TRUTH.md  §4 (user_status is the ONLY native PG enum)
+
+title users.Status — UserStatus (native PostgreSQL enum "user_status")
+
+skinparam shadowing false
+skinparam state {
+  BackgroundColor<<terminal>> #FFECEC
+}
+
+[*] --> EMAIL_VERIFY_PENDING : AuthService.RegisterAsync\n(new User { Status = EMAIL_VERIFY_PENDING })
+
+state EMAIL_VERIFY_PENDING
+state ACTIVE
+state SUSPENDED
+state BANNED
+state DELETION_PENDING
+state DELETED <<terminal>>
+
+EMAIL_VERIFY_PENDING --> ACTIVE : VerifyEmailAsync -> ActivateUserAsync\n(TransitionTo(ACTIVE))
+EMAIL_VERIFY_PENDING --> ACTIVE : OAuth callback with verified provider email\n-> ActivateUserAsync
+EMAIL_VERIFY_PENDING --> DELETION_PENDING : InitiateDeletionAsync
+EMAIL_VERIFY_PENDING --> DELETED : DeleteMeAsync
+
+ACTIVE --> SUSPENDED : <i>allowed by TransitionTo</i>
+ACTIVE --> BANNED : <i>allowed by TransitionTo</i>
+ACTIVE --> DELETION_PENDING : AuthService.InitiateDeletionAsync\n(TransitionTo, inside a DB transaction;\nsets DeletedAt, SessionVersion++)
+ACTIVE --> DELETED : AuthService.DeleteMeAsync
+
+SUSPENDED --> ACTIVE : <i>allowed by TransitionTo</i>
+SUSPENDED --> BANNED : <i>allowed by TransitionTo</i>
+SUSPENDED --> DELETION_PENDING : InitiateDeletionAsync
+SUSPENDED --> DELETED : DeleteMeAsync
+
+BANNED --> ACTIVE : <i>allowed by TransitionTo</i>
+BANNED --> DELETION_PENDING : InitiateDeletionAsync
+BANNED --> DELETED : DeleteMeAsync
+
+DELETION_PENDING --> ACTIVE : <b>AuthService.ReactivateAccountAsync</b>\n(TransitionTo(ACTIVE); DeletedAt = null; SessionVersion++)
+DELETION_PENDING --> DELETED : <i>allowed by TransitionTo</i>
+
+DELETION_PENDING --> [*] : TokenCleanupBackgroundJob (hourly)\nDeletedAt <= now-14d -> context.Users.Remove(user)\n<b>hard delete, batches of 50</b>
+
+DELETED --> [*]
+
+note right of DELETION_PENDING
+  <b>Reactivation path</b>
+  LoginAsync (AuthService.cs:180) detects Status = DELETION_PENDING,
+  caches `reactivate:token:{t}` in Redis for 10 minutes and returns a
+  next-step response `REACTIVATE:{token}` instead of issuing tokens.
+  ReactivateAccountAsync consumes that token, requires the user to still
+  be DELETION_PENDING, and un-soft-deletes the AuthProvider rows too.
+end note
+
+note right of ACTIVE
+  RecoveryExecutionEngine.ExecuteOptionAAsync / ExecuteOptionBAsync
+  also call TransitionTo(ACTIVE) when an organization recovery
+  reinstates a representative's user account.
+end note
+
+note bottom of EMAIL_VERIFY_PENDING
+  ⚠ There is NO EMAIL_VERIFY_PENDING -> SUSPENDED or -> BANNED transition
+  in TransitionTo. A pending-verification account cannot be suspended
+  or banned without first being activated.
+end note
+
+note as N_GUARD
+  <b>Guard, User.cs:86</b>
+  TransitionTo throws InvalidOperationException when the target is
+  DELETION_PENDING and IsLegalHold is true:
+  "Cannot initiate account deletion when a legal or compliance hold
+  is active on this account."
+  Any transition not in the switch table also throws.
+end note
+
+note as N_DISCREPANCY #FFF0F0
+  <b>Discrepancies recorded</b>
+  1. AuthService.DeleteMeAsync (:1557) assigns
+     <b>user.Status = UserStatus.DELETED</b> directly, bypassing
+     TransitionTo — its own comment says "setting DELETED directly
+     for legacy test compatibility". The IsLegalHold guard is therefore
+     NOT applied on that path, unlike InitiateDeletionAsync.
+  2. No production code path was found that WRITES SUSPENDED or BANNED.
+     Both are only ever READ (IdentityStateResolver.cs:97-98,
+     AccountService.cs:61, TrustEngineService.cs:90). The transitions
+     into them are drawn as "allowed by TransitionTo" because that is
+     the only evidence for them.
+end note
+
+@enduml

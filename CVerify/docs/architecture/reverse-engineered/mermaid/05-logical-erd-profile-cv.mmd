@@ -1,0 +1,252 @@
+%% ============================================================================
+%% 05 - Logical ERD: Candidate Profile / CV cluster (Profiles module)
+%% ----------------------------------------------------------------------------
+%% Covers: education_entries, work_experience_entries (+ achievements, links,
+%% technologies), project_entries (+ contributions, technologies,
+%% repository_links), academic_achievements, profile_attachments, user_skills,
+%% career_preferences, ai_inferred_preferences, user_cv_settings.
+%% ---
+%% Source of truth (in precedence order):
+%%   1. docs/architecture/reverse-engineered/GROUND-TRUTH.md
+%%   2. CVerify.Core/Migrations/ApplicationDbContextModelSnapshot.cs
+%%   3. CVerify.Core/Modules/Shared/Persistence/ApplicationDbContext.cs
+%% ---
+%% Hazards applying to THIS diagram:
+%%  - Hazard 5: profile_attachments.entity_id is POLYMORPHIC. It is covered by a
+%%    composite index (entity_type, entity_id) but has NO FK to any table. The
+%%    only real FK on profile_attachments is user_id. Drawn [logical].
+%%  - Hazard 6: candidate_assessments.cv_id points at a target that does not
+%%    exist. There is NO `cvs` table - the "CV" in this system IS this cluster
+%%    of tables plus user_cv_settings. Do not invent a cvs entity.
+%%  - Hazard 7: no primitive-collection or jsonb column in this cluster is a
+%%    table. project_entries.verification_metadata_json and
+%%    user_cv_settings.cv_layout_config_json are columns.
+%% ---
+%% Notes:
+%%  - Every FK in this cluster is ON DELETE CASCADE and required, except where
+%%    stated. All child rows die with the user.
+%%  - career_preferences, ai_inferred_preferences and user_cv_settings are
+%%    1:1 extensions of users (user_id is both PK and FK).
+%%  - Soft delete: deleted_at exists on most entries; rows are not physically
+%%    removed by application code.
+%% ---
+%% Cross-references:
+%%  - users, user_profiles: see 04-logical-erd-identity-org.mmd
+%%  - source_code_repositories (target of project_repository_links): see 07
+%%  - user_skills vs candidate_skills: candidate_skills belongs to the AI
+%%    assessment output (see 06); user_skills is the self-declared list here.
+%% ============================================================================
+
+erDiagram
+
+    users {
+        uuid id PK
+        citext email UK
+        citext username UK
+        varchar full_name
+    }
+
+    education_entries {
+        uuid id PK
+        uuid user_id FK
+        varchar school_name
+        varchar degree
+        varchar major
+        varchar label
+        numeric gpa
+        numeric gpa_scale
+        timestamptz start_date
+        timestamptz end_date
+        bool is_currently_studying
+        int display_order
+        timestamptz deleted_at
+    }
+
+    work_experience_entries {
+        uuid id PK
+        uuid user_id FK
+        varchar company
+        varchar job_title
+        varchar location
+        int employment_type "integer-backed enum"
+        int experience_category "integer-backed enum"
+        bool is_leadership
+        bool is_currently_working
+        timestamptz start_date
+        timestamptz end_date
+        int display_order
+        timestamptz deleted_at
+    }
+
+    work_experience_achievements {
+        uuid id PK
+        uuid work_experience_id FK
+        varchar title
+        varchar description
+    }
+
+    work_experience_links {
+        uuid id PK
+        uuid work_experience_id FK
+        int link_type "integer-backed enum"
+        varchar url
+    }
+
+    work_experience_technologies {
+        uuid id PK
+        uuid work_experience_id FK
+        varchar name
+    }
+
+    project_entries {
+        uuid id PK
+        uuid user_id FK
+        varchar name
+        varchar role
+        varchar description
+        bool is_currently_working
+        timestamptz start_date
+        timestamptz end_date
+        int verification_status "integer-backed enum"
+        int verification_level "integer-backed enum"
+        jsonb verification_metadata_json "column, not a table"
+        timestamptz verified_at
+        int display_order
+        timestamptz deleted_at
+    }
+
+    project_contributions {
+        uuid id PK
+        uuid project_entry_id FK
+        varchar content
+    }
+
+    project_technologies {
+        uuid id PK
+        uuid project_entry_id FK
+        varchar name
+    }
+
+    project_repository_links {
+        uuid id PK
+        uuid project_entry_id FK,UK
+        uuid source_code_repository_id FK,UK "idx_project_repo_links_unique"
+        timestamptz linked_at
+    }
+
+    source_code_repositories {
+        uuid id PK
+        varchar name
+        bool is_verified
+    }
+
+    academic_achievements {
+        uuid id PK
+        uuid user_id FK
+        varchar title
+        varchar issuer
+        varchar credential_url
+        timestamptz issue_date
+        int display_order
+        timestamptz deleted_at
+    }
+
+    profile_attachments {
+        uuid id PK
+        uuid user_id FK "the ONLY FK on this table"
+        varchar entity_type "idx_profile_attachments_entity"
+        uuid entity_id "POLYMORPHIC - NO FK (hazard 5)"
+        varchar file_name
+        varchar file_path
+        bigint file_size
+        varchar file_type
+        timestamptz deleted_at
+    }
+
+    user_skills {
+        uuid id PK
+        uuid user_id FK
+        varchar skill "self-declared, free text"
+    }
+
+    career_preferences {
+        uuid user_id PK,FK "1:1 with users"
+        bool available_for_hire
+        varchar open_to_work_status
+        varchar remote_preference
+        bool open_to_relocation
+        varchar job_title_preferences
+        numeric expected_salary_min
+        numeric expected_salary_max
+        varchar expected_salary_currency
+        varchar expected_salary_type
+        bool expected_salary_negotiable
+        bool is_expected_salary_visible
+        numeric salary_expectations
+        text leadership_track
+        text work_preference_notes
+        varchar preferred_language
+        text_ARRAY target_skills "text[] column, NOT a table (hazard 7)"
+        text_ARRAY preferred_industries "text[] column, NOT a table"
+        text_ARRAY preferred_locations "varchar(100)[] column, NOT a table"
+        text_ARRAY desired_job_positions "text[] column, NOT a table"
+        text_ARRAY company_stage_preferences "text[] column, NOT a table"
+        text_ARRAY company_values "text[] column, NOT a table"
+        text_ARRAY employment_preferences "varchar(50)[] column, NOT a table"
+        text_ARRAY preferred_work_environments "text[] column, NOT a table"
+        text_ARRAY work_styles "text[] column, NOT a table"
+        bigint version
+        timestamptz deleted_at
+    }
+
+    ai_inferred_preferences {
+        uuid user_id PK,FK "1:1 with users - AI-derived mirror of career_preferences"
+        varchar inferred_primary_role
+        varchar inferred_seniority
+        numeric inferred_salary_min
+        numeric inferred_salary_max
+        varchar inferred_salary_currency
+        numeric confidence_score
+        text_ARRAY inferred_skills "text[] column, NOT a table (hazard 7)"
+        text_ARRAY inferred_industries "text[] column, NOT a table"
+        text synthesis_rationale
+        timestamptz last_analyzed_at
+        bigint version
+        timestamptz deleted_at
+    }
+
+    user_cv_settings {
+        uuid user_id PK,FK "1:1 with users"
+        varchar cv_template_id
+        varchar cv_theme_color
+        text cv_layout_config_json "column, not a table"
+        bool is_cv_published
+    }
+
+    %% ---------------- Relationships ----------------
+
+    users ||--o{ education_entries : "user_id"
+    users ||--o{ work_experience_entries : "user_id"
+    users ||--o{ project_entries : "user_id"
+    users ||--o{ academic_achievements : "user_id"
+    users ||--o{ user_skills : "user_id"
+    users ||--o{ profile_attachments : "user_id"
+    users ||--o| career_preferences : "user_id"
+    users ||--o| ai_inferred_preferences : "user_id"
+    users ||--o| user_cv_settings : "user_id"
+
+    work_experience_entries ||--o{ work_experience_achievements : "work_experience_id"
+    work_experience_entries ||--o{ work_experience_links : "work_experience_id"
+    work_experience_entries ||--o{ work_experience_technologies : "work_experience_id"
+
+    project_entries ||--o{ project_contributions : "project_entry_id"
+    project_entries ||--o{ project_technologies : "project_entry_id"
+    project_entries ||--o{ project_repository_links : "project_entry_id"
+    source_code_repositories ||--o{ project_repository_links : "source_code_repository_id"
+
+    %% [logical] hazard 5 - profile_attachments.entity_id is a polymorphic uuid
+    %% with NO FK constraint, discriminated by entity_type and covered only by
+    %% idx_profile_attachments_entity (entity_type, entity_id).
+    %% The value set of entity_type was NOT verified in source, so no concrete
+    %% target table is drawn here. <<Not verified>> - deliberately omitted
+    %% rather than guessed. The only enforced edge is users -> profile_attachments.

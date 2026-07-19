@@ -10,6 +10,7 @@ import { Card } from '../../../components/ui/card';
 import { ShieldAlert } from 'lucide-react';
 import { Button } from '../../../components/ui/button';
 import { isModuleEnabled } from '../../../lib/utils/feature-flags';
+import { AdminMonitoringProvider } from '@/modules/admin/providers/admin-monitoring-provider';
 
 export default function AdminDashboardLayout({
   children,
@@ -89,7 +90,9 @@ export default function AdminDashboardLayout({
   return (
     <AuthGuard>
       <AdminShell>
-        {children}
+        <AdminMonitoringProvider>
+          {children}
+        </AdminMonitoringProvider>
       </AdminShell>
     </AuthGuard>
   );

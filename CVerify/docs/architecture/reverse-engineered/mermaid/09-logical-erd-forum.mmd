@@ -1,0 +1,248 @@
+%% ============================================================================
+%% 09 - Logical ERD: Forum module (all 17 tables)
+%% ----------------------------------------------------------------------------
+%% Covers every table declared by Modules/Forum (17 per ground truth section 4):
+%%   forum_categories, forum_category_moderators, forum_topics,
+%%   forum_topic_histories, forum_topic_tags, forum_tags, forum_replies,
+%%   forum_reply_histories, forum_votes, forum_reactions, forum_bookmarks,
+%%   forum_follows, forum_reports, forum_moderation_logs, forum_reputations,
+%%   forum_badges, forum_user_badges.
+%% ---
+%% Source of truth (in precedence order):
+%%   1. docs/architecture/reverse-engineered/GROUND-TRUTH.md
+%%   2. CVerify.Core/Migrations/ApplicationDbContextModelSnapshot.cs
+%%   3. CVerify.Core/Modules/Shared/Persistence/ApplicationDbContext.cs
+%% ---
+%% Hazards applying to THIS diagram:
+%%  - Hazard 5: forum_moderation_logs.target_id is POLYMORPHIC with NO FK,
+%%    discriminated by target_type. Its only real FK is moderator_id -> users.
+%%    The value set of target_type is <<Not verified>>, so no concrete target
+%%    edge is drawn.
+%%  - Ground truth section 4.2: forum_topic_tags, forum_user_badges,
+%%    forum_bookmarks, forum_follows and forum_category_moderators are true M2M
+%%    junctions (composite PK of exactly two FKs).
+%%  - forum_categories.required_role is a plain `character varying(50)` with NO
+%%    FK to roles. Forum authorization is done with permission strings
+%%    (forum:category:manage, forum:moderation:queue, forum:tag:manage,
+%%    forum:topic:moderate) resolved in code, not through this column.
+%%  - forum_votes and forum_reactions each carry BOTH topic_id and reply_id,
+%%    both nullable FKs - the row targets one or the other. There is no DB-level
+%%    check constraint enforcing exactly-one; that is application logic.
+%% ---
+%% Cross-references:
+%%  - users: see 04-logical-erd-identity-org.mmd
+%%  - organizations (nullable parent of forum_categories and forum_topics):
+%%    see 04-logical-erd-identity-org.mmd
+%% ============================================================================
+
+erDiagram
+
+    users {
+        uuid id PK
+        citext username UK
+    }
+    organizations {
+        uuid id PK
+        varchar name
+    }
+
+    forum_categories {
+        uuid id PK
+        uuid organization_id FK "nullable - null means global category"
+        varchar name
+        varchar slug
+        varchar description
+        varchar icon_name
+        varchar required_role "plain varchar(50), NO FK to roles"
+        bool is_private
+        bool is_archived
+        int display_order
+        timestamptz deleted_at
+    }
+
+    forum_category_moderators {
+        uuid category_id PK,FK
+        uuid user_id PK,FK
+        timestamptz assigned_at
+    }
+
+    forum_topics {
+        uuid id PK
+        uuid category_id FK
+        uuid author_id FK
+        uuid organization_id FK "nullable"
+        varchar slug UK "ix_forum_topics_slug"
+        varchar title
+        text content
+        text ai_excerpt
+        int score
+        int reply_count
+        int view_count
+        bool is_solved
+        bool is_pinned
+        bool is_locked
+        bool is_featured
+        bool is_archived
+        bool is_pending_review
+        timestamptz last_activity_at
+        timestamptz deleted_at
+    }
+
+    forum_topic_histories {
+        uuid id PK
+        uuid topic_id FK
+        uuid edited_by_id FK
+        varchar title
+        text content
+        timestamptz edited_at
+    }
+
+    forum_tags {
+        uuid id PK
+        varchar name UK "ix_forum_tags_name"
+        varchar slug UK "ix_forum_tags_slug"
+        bool is_archived
+    }
+
+    forum_topic_tags {
+        uuid topic_id PK,FK
+        uuid tag_id PK,FK
+    }
+
+    forum_replies {
+        uuid id PK
+        uuid topic_id FK
+        uuid author_id FK
+        uuid parent_reply_id FK "self-ref, nullable - threading"
+        text content
+        varchar quote_text
+        int score
+        bool is_accepted_solution
+        timestamptz deleted_at
+    }
+
+    forum_reply_histories {
+        uuid id PK
+        uuid reply_id FK
+        uuid edited_by_id FK
+        text content
+        timestamptz edited_at
+    }
+
+    forum_votes {
+        uuid id PK
+        uuid user_id FK
+        uuid topic_id FK "nullable - target is topic OR reply"
+        uuid reply_id FK "nullable - target is topic OR reply"
+        varchar vote_type
+    }
+
+    forum_reactions {
+        uuid id PK
+        uuid user_id FK
+        uuid topic_id FK "nullable - target is topic OR reply"
+        uuid reply_id FK "nullable - target is topic OR reply"
+        varchar reaction_type
+    }
+
+    forum_bookmarks {
+        uuid topic_id PK,FK
+        uuid user_id PK,FK
+        timestamptz created_at
+    }
+
+    forum_follows {
+        uuid topic_id PK,FK
+        uuid user_id PK,FK
+        timestamptz created_at
+    }
+
+    forum_reports {
+        uuid id PK
+        uuid reporter_user_id FK "required, CASCADE"
+        uuid reported_user_id FK "nullable"
+        uuid resolved_by_id FK "nullable"
+        uuid topic_id FK "nullable"
+        uuid reply_id FK "nullable"
+        varchar reason
+        varchar status
+        varchar resolution_notes
+        timestamptz resolved_at
+    }
+
+    forum_moderation_logs {
+        uuid id PK
+        uuid moderator_id FK "the ONLY FK on this table"
+        varchar action
+        varchar target_type "discriminator; value set <<Not verified>>"
+        uuid target_id "POLYMORPHIC - NO FK (hazard 5)"
+        varchar reason
+    }
+
+    forum_reputations {
+        uuid user_id PK,FK "1:1 with users"
+        int points
+        timestamptz updated_at
+    }
+
+    forum_badges {
+        uuid id PK
+        varchar name
+        varchar description
+        varchar icon_name
+        varchar criteria_code
+    }
+
+    forum_user_badges {
+        uuid user_id PK,FK
+        uuid badge_id PK,FK
+        timestamptz awarded_at
+    }
+
+    %% ---------------- Relationships ----------------
+
+    organizations |o--o{ forum_categories : "organization_id"
+    forum_categories ||--o{ forum_category_moderators : "category_id"
+    users ||--o{ forum_category_moderators : "user_id"
+
+    forum_categories ||--o{ forum_topics : "category_id"
+    users ||--o{ forum_topics : "author_id"
+    organizations |o--o{ forum_topics : "organization_id"
+
+    forum_topics ||--o{ forum_topic_histories : "topic_id"
+    users ||--o{ forum_topic_histories : "edited_by_id"
+    forum_topics ||--o{ forum_topic_tags : "topic_id"
+    forum_tags ||--o{ forum_topic_tags : "tag_id"
+
+    forum_topics ||--o{ forum_replies : "topic_id"
+    users ||--o{ forum_replies : "author_id"
+    forum_replies |o--o{ forum_replies : "parent_reply_id"
+    forum_replies ||--o{ forum_reply_histories : "reply_id"
+    users ||--o{ forum_reply_histories : "edited_by_id"
+
+    users ||--o{ forum_votes : "user_id"
+    forum_topics |o--o{ forum_votes : "topic_id"
+    forum_replies |o--o{ forum_votes : "reply_id"
+    users ||--o{ forum_reactions : "user_id"
+    forum_topics |o--o{ forum_reactions : "topic_id"
+    forum_replies |o--o{ forum_reactions : "reply_id"
+
+    forum_topics ||--o{ forum_bookmarks : "topic_id"
+    users ||--o{ forum_bookmarks : "user_id"
+    forum_topics ||--o{ forum_follows : "topic_id"
+    users ||--o{ forum_follows : "user_id"
+
+    users ||--o{ forum_reports : "reporter_user_id"
+    users |o--o{ forum_reports : "reported_user_id"
+    users |o--o{ forum_reports : "resolved_by_id"
+    forum_topics |o--o{ forum_reports : "topic_id"
+    forum_replies |o--o{ forum_reports : "reply_id"
+
+    users ||--o{ forum_moderation_logs : "moderator_id"
+    %% [logical] hazard 5 - forum_moderation_logs.target_id is a polymorphic uuid
+    %% with NO FK and no index. target_type's value set was not verified, so the
+    %% concrete target table is deliberately omitted rather than guessed.
+
+    users ||--o| forum_reputations : "user_id"
+    users ||--o{ forum_user_badges : "user_id"
+    forum_badges ||--o{ forum_user_badges : "badge_id"

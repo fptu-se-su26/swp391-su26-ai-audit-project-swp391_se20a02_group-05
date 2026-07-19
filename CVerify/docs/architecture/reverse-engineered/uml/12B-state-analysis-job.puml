@@ -1,0 +1,123 @@
+@startuml 12B-state-analysis-job
+' CVerify — analysis_jobs.Status lifecycle (repository analysis)
+' Verified against:
+'   Modules/SourceCode/Entities/AnalysisJob.cs:28              (Status = "Queued", no enum, MaxLength 50)
+'   Modules/SourceCode/Services/RepositoryAnalysisService.cs
+'       :120,:169   new AnalysisJob { Status = "Queued", CurrentStep = "Queued" }
+'       :92-106,:336,:2251  activeStates membership tests
+'       :342        CancelAnalysisAsync -> job.Status = "Cancelled"
+'       :389,:524,:673,:912  cooperative cancellation checks (`if (job.Status == "Cancelled")`)
+'       :534        job.Status = "RunningAgents"
+'       :724,:981   job.Status = "Failed"
+'       :917        job.Status = "Completed"
+'       :945        freshJob.Status = "TimedOut"
+'       :1017,:304  terminalStates = { Completed, Failed, Cancelled, TimedOut }
+'       :1102       RetryTaskAsync -> job.Status = "Queued"
+'       :1521-1560  UpdateJobStateAsync(job, status, ...)  <-- see discrepancy note
+'   Modules/SourceCode/BackgroundWorkers/AnalysisQueueRecoverySweeper.cs:39,:51,:75,:90-101
+'   Modules/SourceCode/Controllers/RepositoryAnalysisController.cs:51,:76,:304
+'   docs/architecture/reverse-engineered/GROUND-TRUTH.md  §5.4 (in-process non-durable queues)
+
+title analysis_jobs.Status — repository AnalysisJob lifecycle (plain string column, no enum)
+
+skinparam shadowing false
+skinparam state {
+  BackgroundColor<<terminal>> #FFECEC
+  BackgroundColor<<unreachable>> #F2F2F2
+}
+
+[*] --> Queued : RepositoryAnalysisService\n(job created, enqueued on IRepositoryAnalysisQueue)
+
+state Queued
+state RunningAgents
+state Completed <<terminal>>
+state Failed <<terminal>>
+state Cancelled <<terminal>>
+state TimedOut <<terminal>>
+
+state "Intermediate step states" as INTERMEDIATE #F2F2F2 {
+  state Preparing <<unreachable>>
+  state CloningRepository <<unreachable>>
+  state DetectingTechnologyStack <<unreachable>>
+  state SamplingCode <<unreachable>>
+  state AggregatingResults <<unreachable>>
+  state SavingReport <<unreachable>>
+}
+
+Queued --> RunningAgents : ProcessJobAsync dispatches tasks\n(RepositoryAnalysisService.cs:534)
+Queued --> INTERMEDIATE : UpdateJobStateAsync(job, "Preparing" | …)
+INTERMEDIATE --> RunningAgents
+INTERMEDIATE --> Failed
+RunningAgents --> Completed : all tasks finished (:917)
+RunningAgents --> Failed : task/aggregation error (:724, :981)
+RunningAgents --> TimedOut : job watchdog exceeded (:945)\nrepo.LatestAnalysisStatus = "TimedOut"
+Queued --> Cancelled : CancelAnalysisAsync (:342)\nonly while Status is in activeStates
+RunningAgents --> Cancelled : CancelAnalysisAsync (:342)
+
+Failed --> Queued : RetryTaskAsync (:1102)\nresets task.Status = "Queued" (:1048)\nand repo.LatestAnalysisStatus = "Pending"
+TimedOut --> Queued : RetryTaskAsync
+Cancelled --> Queued : RetryTaskAsync
+
+state "Recovery on restart" as REC #FFF6E6
+Queued --> Failed : <b>AnalysisQueueRecoverySweeper</b>\nany activeStates job at startup ->\nStatus = "Failed",\nErrorMessage = "Job interrupted by server\nreboot or restart."
+RunningAgents --> Failed : <b>AnalysisQueueRecoverySweeper</b>
+
+Completed --> [*]
+Failed --> [*]
+Cancelled --> [*]
+TimedOut --> [*]
+
+note right of REC
+  <b>AnalysisQueueRecoverySweeper</b> (registered hosted service)
+  runs ONCE at startup, not on a timer. It sweeps every job whose
+  Status is in
+    { Queued, Preparing, CloningRepository, DetectingTechnologyStack,
+      SamplingCode, RunningAgents, AggregatingResults, SavingReport }
+  to Failed, writes an AnalysisJobEvent(Step="Failed"), and sets the
+  owning repository's LatestAnalysisStatus = "Failed".
+  It then sweeps orphaned repositories stuck at
+  LatestAnalysisStatus = "Pending" with no active job to "Failed".
+  It exists because all queues are singleton IN-PROCESS and NOT
+  durable (GROUND-TRUTH §5.4).
+end note
+
+note as N_STALE #FFF0F0
+  <b>Stale-comment discrepancy</b>
+  AnalysisJob.cs declares only `Status = "Queued"` with MaxLength(50)
+  and no value list; project documentation describes only 4 states.
+  The <b>observed</b> value set across the service, controller and
+  sweeper is 12:
+    Queued · Preparing · CloningRepository · DetectingTechnologyStack ·
+    SamplingCode · RunningAgents · AggregatingResults · SavingReport ·
+    Completed · Failed · Cancelled · TimedOut
+  Terminal set, asserted twice in code
+  (RepositoryAnalysisService.cs:1017, RepositoryAnalysisController.cs:304):
+    { Completed, Failed, Cancelled, TimedOut }.
+end note
+
+note as N_UNREACH #FFF0F0
+  <b>Second discrepancy — the 6 grey states are currently unreachable.</b>
+  Preparing / AggregatingResults / SavingReport are only ever passed to
+  <b>UpdateJobStateAsync</b> (RepositoryAnalysisService.cs:396, :759, :820),
+  and UpdateJobStateAsync (declared :1521) has <b>no call sites</b> —
+  grep finds only its declaration. CloningRepository,
+  DetectingTechnologyStack and SamplingCode appear ONLY inside
+  `activeStates` membership arrays and are never assigned anywhere.
+  The only statuses actually written to job.Status are:
+  Queued, RunningAgents, Completed, Failed, Cancelled, TimedOut.
+end note
+
+note as N_PENDING
+  "Pending" is NOT an analysis_jobs.Status value. It belongs to
+  SourceCodeRepository.LatestAnalysisStatus, a separate column set to
+  "Pending" when a job is queued (RepositoryAnalysisService.cs:129, :1113).
+end note
+
+note as N_CANCEL
+  Cancellation is cooperative: the worker re-reads job.Status at
+  :389, :524, :673 and :912 and aborts if it finds "Cancelled".
+  UpdateJobStateAsync also re-queries the DB and throws
+  OperationCanceledException if the row reads "Cancelled".
+end note
+
+@enduml

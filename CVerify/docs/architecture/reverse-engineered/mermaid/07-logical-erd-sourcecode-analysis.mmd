@@ -1,0 +1,295 @@
+%% ============================================================================
+%% 07 - Logical ERD: Source Code connection & Repository Analysis
+%% ----------------------------------------------------------------------------
+%% Covers: auth_providers, external_organizations, source_code_repositories,
+%% analysis_jobs, analysis_tasks, analysis_task_results, analysis_task_events,
+%% analysis_job_events, analysis_executions, analysis_reports,
+%% repository_assessments + its 4 satellites (repository_capabilities,
+%% repository_domains, repository_skill_attributions,
+%% repository_intelligence_signals), cv_repository_mappings,
+%% project_repository_links.
+%% ---
+%% Source of truth (in precedence order):
+%%   1. docs/architecture/reverse-engineered/GROUND-TRUTH.md
+%%   2. CVerify.Core/Migrations/ApplicationDbContextModelSnapshot.cs
+%%   3. CVerify.Core/Modules/Shared/Persistence/ApplicationDbContext.cs
+%% ---
+%% Hazards applying to THIS diagram - ALL FOUR REPOSITORY HAZARDS LIVE HERE:
+%%  - Hazard 1: `ux_repository_assessments_repo_sha` on
+%%    (repository_id, commit_sha) is NAMED like a unique constraint but is
+%%    NOT UNIQUE. It is an ordinary index. Do not read it as a uniqueness rule.
+%%  - Hazard 2: the entire repository_assessments -> repository_capabilities /
+%%    repository_domains / repository_skill_attributions /
+%%    repository_intelligence_signals cluster has ZERO FK CONSTRAINTS. The
+%%    satellites carry repository_assessment_id as a bare uuid, covered by
+%%    indexes (and unique indexes) only. All four edges below are [logical].
+%%    repository_assessments itself ALSO has no FK: repository_id and
+%%    analysis_job_id are bare indexed uuids -> two more [logical] edges.
+%%  - Hazard 4: cv_repository_mappings.user_id is INDEXED
+%%    (idx_cv_repository_mappings_user_id) but has NO FK. Its only real FK is
+%%    source_code_repository_id. Drawn [logical].
+%%    cv_repository_mappings.reference_entity_id is likewise a bare uuid
+%%    discriminated by reference_source - no FK, no target verified.
+%% ---
+%% Other verified notes:
+%%  - auth_providers stores encrypted OAuth tokens. Ground truth section 6.5:
+%%    clone URLs embed the PAT and git stderr can propagate into SSE payloads.
+%%  - analysis_tasks has UNIQUE(job_id, task_type) - one row per task type per
+%%    job. Ground truth section 6.2: the AI-side dispatcher is a flat if/elif
+%%    with NO internal DAG; ordering is owned by the .NET caller and
+%%    intermediate state passes through the filesystem, not these tables.
+%%  - analysis_reports and analysis_task_results are 1:1 dependents.
+%% ---
+%% Cross-references:
+%%  - users, workspaces: see 04-logical-erd-identity-org.mmd
+%%  - project_entries (other side of project_repository_links): see 05
+%%  - candidate_assessments (consumer of repository evidence): see 06
+%%  - pipeline_jobs / pipeline_tasks / artifact_registry_entries (the newer,
+%%    unrelated pipeline tables): see 10-logical-erd-infrastructure.mmd
+%% ============================================================================
+
+erDiagram
+
+    users {
+        uuid id PK
+        citext username UK
+    }
+
+    auth_providers {
+        uuid id PK
+        uuid user_id FK,UK "idx_auth_providers_user_type_lookup"
+        varchar provider_name UK
+        varchar provider_key UK "idx_auth_providers_key_active"
+        varchar provider_account_id
+        varchar provider_username
+        varchar encrypted_access_token
+        varchar encrypted_refresh_token
+        varchar granted_scopes
+        int scope_validation_status
+        varchar sync_status
+        int refresh_failure_count
+        timestamptz token_updated_at
+        timestamptz deleted_at
+    }
+
+    external_organizations {
+        uuid id PK
+        uuid auth_provider_id FK,UK
+        varchar external_id UK "idx_external_organizations_provider_external_active"
+        varchar login
+        varchar name
+        varchar type
+        bool is_active
+        timestamptz last_synced_at
+    }
+
+    source_code_repositories {
+        uuid id PK
+        uuid auth_provider_id FK,UK
+        uuid external_organization_id FK "ON DELETE SET NULL"
+        varchar external_repository_id UK "idx_source_code_repositories_external_active"
+        varchar name
+        varchar owner
+        varchar owner_login
+        varchar owner_type
+        varchar default_branch
+        varchar primary_language
+        bool is_private
+        bool is_enabled
+        bool is_accessible
+        bool is_verified
+        bool archived_externally
+        int stars_count
+        int forks_count
+        int watchers_count
+        int open_issues_count
+        float8 trust_score
+        varchar authenticity_type
+        varchar classification
+        varchar latest_analysis_status
+        float8 latest_risk_score
+        varchar latest_risk_level
+        jsonb latest_risk_factors_json
+    }
+
+    users ||--o{ auth_providers : "user_id"
+    auth_providers ||--o{ external_organizations : "auth_provider_id"
+    auth_providers ||--o{ source_code_repositories : "auth_provider_id"
+    external_organizations |o--o{ source_code_repositories : "external_organization_id"
+
+    %% ---------------- Analysis job pipeline (real FKs) ----------------
+
+    analysis_jobs {
+        uuid id PK
+        uuid repository_id FK
+        uuid user_id FK
+        varchar commit_sha
+        varchar status
+        varchar current_step
+        float8 progress
+        varchar error_message
+        timestamptz started_at
+        timestamptz completed_at
+    }
+    analysis_tasks {
+        uuid id PK
+        uuid job_id FK,UK
+        varchar task_type UK "idx_analysis_tasks_job_id_task_type"
+        varchar status
+        float8 progress
+        varchar model_name
+        int prompt_tokens
+        int completion_tokens
+        int cache_read_tokens
+        int cache_write_tokens
+        numeric estimated_cost_usd
+        bigint duration_ms
+        int retry_count
+        jsonb metadata
+    }
+    analysis_task_results {
+        uuid task_id PK,FK "1:1 with analysis_tasks"
+        jsonb result_data
+        varchar schema_version
+    }
+    analysis_task_events {
+        uuid id PK
+        uuid task_id FK
+        varchar event_type
+        varchar level
+        varchar message
+        jsonb metadata
+    }
+    analysis_job_events {
+        uuid id PK
+        uuid job_id FK
+        varchar step
+        varchar message
+        float8 progress
+    }
+    analysis_executions {
+        uuid id PK
+        uuid job_id FK
+        uuid task_id FK
+        uuid user_id FK
+        varchar execution_type
+        varchar provider
+        varchar model
+        int prompt_tokens
+        int completion_tokens
+        int cached_tokens
+        int total_tokens
+        numeric estimated_cost_usd
+        bigint duration_ms
+    }
+    analysis_reports {
+        uuid id PK
+        uuid job_id FK,UK "1:1, idx_analysis_reports_job_id"
+        uuid repository_id FK
+        jsonb report_data
+    }
+
+    source_code_repositories ||--o{ analysis_jobs : "repository_id"
+    users ||--o{ analysis_jobs : "user_id"
+    analysis_jobs ||--o{ analysis_tasks : "job_id"
+    analysis_tasks ||--o| analysis_task_results : "task_id"
+    analysis_tasks ||--o{ analysis_task_events : "task_id"
+    analysis_jobs ||--o{ analysis_job_events : "job_id"
+    analysis_jobs ||--o{ analysis_executions : "job_id"
+    analysis_tasks ||--o{ analysis_executions : "task_id"
+    users ||--o{ analysis_executions : "user_id"
+    analysis_jobs ||--o| analysis_reports : "job_id"
+    source_code_repositories ||--o{ analysis_reports : "repository_id"
+
+    %% ---------------- Repository assessment cluster (NO FKs AT ALL) ---------
+
+    repository_assessments {
+        uuid id PK
+        uuid repository_id "bare uuid, NO FK - idx_repository_assessments_repo_id"
+        uuid analysis_job_id "bare uuid, NO FK - idx_repository_assessments_job_id"
+        varchar commit_sha "ux_repository_assessments_repo_sha is NOT UNIQUE (hazard 1)"
+        varchar status
+        float8 overall_score
+        jsonb json_data
+        jsonb tech_stack
+        jsonb patterns
+        jsonb quality_metrics
+        varchar model_version
+        varchar prompt_version
+        varchar pipeline_version
+        varchar assessment_schema_version
+    }
+    repository_capabilities {
+        uuid id PK
+        uuid repository_assessment_id UK "bare uuid, NO FK (hazard 2)"
+        varchar name UK "ux_repository_capabilities_assessment_id_name"
+        varchar category
+        varchar maturity
+        float8 score
+        float8 confidence
+        float8 difficulty_score
+        jsonb evidence_json
+    }
+    repository_domains {
+        uuid id PK
+        uuid repository_assessment_id UK "bare uuid, NO FK (hazard 2)"
+        varchar domain_name UK "ux_repository_domains_assessment_id_domain"
+        float8 weight
+        float8 confidence
+        int evidence_count
+        jsonb supporting_signals
+    }
+    repository_skill_attributions {
+        uuid id PK
+        uuid repository_assessment_id UK "bare uuid, NO FK (hazard 2)"
+        varchar skill_name UK "ux_repository_skill_attributions_assessment_id_skill"
+        float8 confidence
+        float8 contribution_weight
+        varchar verification_level
+    }
+    repository_intelligence_signals {
+        uuid id PK
+        uuid repository_assessment_id UK "bare uuid, NO FK; UNIQUE 1:1 in practice"
+        float8 ownership_signal
+        float8 complexity_signal
+        float8 consistency_signal
+        float8 leadership_signal
+        float8 scope_signal
+    }
+
+    %% [logical] hazard 2 - none of the six edges below is a database FK.
+    source_code_repositories ||..o{ repository_assessments : "[logical] repository_id"
+    analysis_jobs ||..o| repository_assessments : "[logical] analysis_job_id"
+    repository_assessments ||..o{ repository_capabilities : "[logical] repository_assessment_id"
+    repository_assessments ||..o{ repository_domains : "[logical] repository_assessment_id"
+    repository_assessments ||..o{ repository_skill_attributions : "[logical] repository_assessment_id"
+    repository_assessments ||..o| repository_intelligence_signals : "[logical] repository_assessment_id"
+
+    %% ---------------- Repository <-> CV linking ----------------
+
+    cv_repository_mappings {
+        uuid id PK
+        uuid source_code_repository_id FK "the ONLY FK on this table"
+        uuid user_id "INDEXED but NO FK (hazard 4)"
+        uuid reference_entity_id "bare uuid, NO FK, target <<Not verified>>"
+        varchar reference_source "discriminator for reference_entity_id"
+        timestamptz indexed_at_utc
+    }
+    project_repository_links {
+        uuid id PK
+        uuid project_entry_id FK "-> project_entries (see 05)"
+        uuid source_code_repository_id FK,UK "idx_project_repo_links_unique"
+        timestamptz linked_at
+    }
+    project_entries {
+        uuid id PK
+        uuid user_id FK
+        varchar name
+    }
+
+    source_code_repositories ||--o{ cv_repository_mappings : "source_code_repository_id"
+    %% [logical] hazard 4 - user_id is indexed but carries no FK constraint.
+    users ||..o{ cv_repository_mappings : "[logical] user_id"
+    source_code_repositories ||--o{ project_repository_links : "source_code_repository_id"
+    project_entries ||--o{ project_repository_links : "project_entry_id"
+    users ||--o{ project_entries : "user_id"
