@@ -9,7 +9,7 @@ namespace CVerify.API.UnitTests.BackgroundWorkers
         public void TestEnqueueSyncJob_AcquiresRedisQueueId()
         {
             var queueId = Guid.NewGuid();
-            Assert.NotNull(queueId);
+            Assert.NotEqual(Guid.Empty, queueId);
         }
     }
 }
