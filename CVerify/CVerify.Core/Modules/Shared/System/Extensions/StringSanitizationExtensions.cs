@@ -17,7 +17,7 @@ namespace CVerify.API.Modules.Shared.System.Extensions
         /// </summary>
         /// <param name="input">The HTML text input.</param>
         /// <returns>A plain text representation of the input without HTML markup.</returns>
-        public static string StripHtml(this string input)
+        public static string StripHtml(this string? input)
         {
             if (string.IsNullOrEmpty(input))
             {
@@ -32,7 +32,7 @@ namespace CVerify.API.Modules.Shared.System.Extensions
         /// </summary>
         /// <param name="input">The search keyword input.</param>
         /// <returns>The escaped search string.</returns>
-        public static string EscapeSqlLikeWildcards(this string input)
+        public static string EscapeSqlLikeWildcards(this string? input)
         {
             if (string.IsNullOrEmpty(input))
             {
@@ -59,7 +59,7 @@ namespace CVerify.API.Modules.Shared.System.Extensions
         /// </summary>
         /// <param name="input">The string to format (e.g. CamelCase or PascalCase).</param>
         /// <returns>The snake_cased string.</returns>
-        public static string ToSnakeCase(this string input)
+        public static string ToSnakeCase(this string? input)
         {
             if (string.IsNullOrEmpty(input))
             {
@@ -92,7 +92,7 @@ namespace CVerify.API.Modules.Shared.System.Extensions
         /// </summary>
         /// <param name="input">The input string.</param>
         /// <returns>The camelCased string.</returns>
-        public static string ToCamelCase(this string input)
+        public static string ToCamelCase(this string? input)
         {
             if (string.IsNullOrEmpty(input))
             {

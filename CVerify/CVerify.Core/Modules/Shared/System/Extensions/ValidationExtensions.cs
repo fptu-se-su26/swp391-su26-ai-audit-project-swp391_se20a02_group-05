@@ -10,9 +10,8 @@ namespace CVerify.API.Modules.Shared.System.Extensions
     public static class ValidationExtensions
     {
         private static readonly Regex EmailRegex = new Regex(
-            @"^(?("")("".+?(?<!\\)""@)|(([0-9a-z]((\.(?!\.))|[-!#\$%&'\*\+/=\?\^`\{\|\}~w])*)(?<=[0-9a-z])@))" +
-            @"(?(\[)(\[(\d{1,3}\.){3}\d{1,3}\])|(([0-9a-z][-0-9a-z]*[0-9a-z]*\.)+[a-z0-9][\-a-z0-9]{0,22}[a-z0-9]))$",
-            RegexOptions.IgnoreCase | RegexOptions.Compiled | RegexOptions.CultureInvariant);
+            @"^([a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+)@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\])|(([a-zA-Z0-9\-]+\.)+[a-zA-Z]{2,}))$",
+            RegexOptions.IgnoreCase | RegexOptions.Compiled);
 
         private static readonly Regex GitHubHttpsRegex = new Regex(
             @"^https?://(www\.)?github\.com/(?<owner>[\w\-.]+)/(?<repo>[\w\-.]+)(/|$)",
@@ -28,7 +27,7 @@ namespace CVerify.API.Modules.Shared.System.Extensions
         /// </summary>
         /// <param name="password">The password to evaluate.</param>
         /// <returns>The calculated entropy in bits.</returns>
-        public static double CalculatePasswordEntropy(this string password)
+        public static double CalculatePasswordEntropy(this string? password)
         {
             if (string.IsNullOrEmpty(password))
             {
@@ -74,7 +73,7 @@ namespace CVerify.API.Modules.Shared.System.Extensions
         /// </summary>
         /// <param name="password">The password to evaluate.</param>
         /// <returns>True if password meets criteria; otherwise false.</returns>
-        public static bool IsSecurePassword(this string password)
+        public static bool IsSecurePassword(this string? password)
         {
             if (string.IsNullOrEmpty(password) || password.Length < 8)
             {
@@ -89,7 +88,7 @@ namespace CVerify.API.Modules.Shared.System.Extensions
         /// </summary>
         /// <param name="email">The email to validate.</param>
         /// <returns>True if valid email format; otherwise false.</returns>
-        public static bool IsValidEmailSyntax(this string email)
+        public static bool IsValidEmailSyntax(this string? email)
         {
             if (string.IsNullOrWhiteSpace(email))
             {
@@ -120,7 +119,7 @@ namespace CVerify.API.Modules.Shared.System.Extensions
         /// <param name="owner">The extracted owner name, if valid.</param>
         /// <param name="repo">The extracted repository name, if valid.</param>
         /// <returns>True if the URL is a valid GitHub repository URL; otherwise false.</returns>
-        public static bool TryParseGitHubUrl(this string url, out string owner, out string repo)
+        public static bool TryParseGitHubUrl(this string? url, out string owner, out string repo)
         {
             owner = string.Empty;
             repo = string.Empty;

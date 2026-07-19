@@ -15,10 +15,10 @@ namespace CVerify.API.UnitTests.Services
         public void Partition_NullSource_ShouldThrowArgumentNullException()
         {
             // Arrange
-            IEnumerable<int> source = null;
+            IEnumerable<int>? source = null;
 
             // Act
-            Action action = () => source.Partition(2).ToList();
+            Action action = () => source!.Partition(2).ToList();
 
             // Assert
             action.Should().Throw<ArgumentNullException>();
@@ -148,7 +148,7 @@ namespace CVerify.API.UnitTests.Services
             }, maxConcurrency: 3);
 
             // Assert
-            maxObservedConcurrency.Should().BeLessOrEqualTo(3);
+            maxObservedConcurrency.Should().BeLessThanOrEqualTo(3);
         }
     }
 }

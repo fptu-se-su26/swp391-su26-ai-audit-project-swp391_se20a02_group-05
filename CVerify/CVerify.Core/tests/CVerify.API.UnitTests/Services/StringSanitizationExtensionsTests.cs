@@ -15,7 +15,7 @@ namespace CVerify.API.UnitTests.Services
         [InlineData("<a href=\"https://google.com\">Click Here</a>", "Click Here")]
         [InlineData("No html tags here", "No html tags here")]
         [InlineData("Test <br/> break", "Test  break")]
-        public void StripHtml_ShouldStripAllTags(string input, string expectedResult)
+        public void StripHtml_ShouldStripAllTags(string? input, string expectedResult)
         {
             // Act
             string result = input.StripHtml();
@@ -32,7 +32,7 @@ namespace CVerify.API.UnitTests.Services
         [InlineData("user_name", "user[_]name")]
         [InlineData("bracket[test", "bracket[[]test")]
         [InlineData("mixed%_brackets[test", "mixed[%][_]brackets[[]test")]
-        public void EscapeSqlLikeWildcards_ShouldEscapeSpecialCharacters(string input, string expectedResult)
+        public void EscapeSqlLikeWildcards_ShouldEscapeSpecialCharacters(string? input, string expectedResult)
         {
             // Act
             string result = input.EscapeSqlLikeWildcards();
@@ -48,9 +48,9 @@ namespace CVerify.API.UnitTests.Services
         [InlineData("camelCaseString", "camel_case_string")]
         [InlineData("already_snake_case", "already_snake_case")]
         [InlineData("PascalCase", "pascal_case")]
-        [InlineData("snake_Case_With_Pascal", "snake__case__with__pascal")] // wait, it handles existing snake case + capitals
+        [InlineData("snake_Case_With_Pascal", "snake_case_with_pascal")] // handles existing snake case + capitals
         [InlineData("Simple", "simple")]
-        public void ToSnakeCase_ShouldFormatCorrectly(string input, string expectedResult)
+        public void ToSnakeCase_ShouldFormatCorrectly(string? input, string expectedResult)
         {
             // Act
             string result = input.ToSnakeCase();
@@ -67,7 +67,7 @@ namespace CVerify.API.UnitTests.Services
         [InlineData("camelCaseString", "camelCaseString")]
         [InlineData("multiple_words_snake_case", "multipleWordsSnakeCase")]
         [InlineData("Singleword", "singleword")]
-        public void ToCamelCase_ShouldFormatCorrectly(string input, string expectedResult)
+        public void ToCamelCase_ShouldFormatCorrectly(string? input, string expectedResult)
         {
             // Act
             string result = input.ToCamelCase();

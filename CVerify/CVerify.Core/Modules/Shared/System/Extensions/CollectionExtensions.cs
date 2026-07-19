@@ -66,7 +66,7 @@ namespace CVerify.API.Modules.Shared.System.Extensions
         /// <returns>A new dictionary containing the merged key-value pairs.</returns>
         public static IDictionary<TKey, TValue> SafeMerge<TKey, TValue>(
             this IDictionary<TKey, TValue> primary,
-            IDictionary<TKey, TValue> secondary,
+            IDictionary<TKey, TValue>? secondary,
             Func<TValue, TValue, TValue> resolveConflict = null)
         {
             if (primary == null) throw new ArgumentNullException(nameof(primary));

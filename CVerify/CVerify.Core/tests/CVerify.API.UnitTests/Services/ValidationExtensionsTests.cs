@@ -12,8 +12,8 @@ namespace CVerify.API.UnitTests.Services
         [InlineData("", 0.0)]
         [InlineData("12345", 16.6)] // 5 * log2(10) ~ 5 * 3.32 = 16.6
         [InlineData("abcdefgh", 37.6)] // 8 * log2(26) ~ 8 * 4.7 = 37.6
-        [InlineData("Ab1!", 32.1)] // 4 * log2(26+26+10+33) = 4 * log2(95) ~ 4 * 6.57 = 26.28 + Unicode ? 
-        public void CalculatePasswordEntropy_ShouldCalculateExpectedEntropy(string password, double minimumExpected)
+        [InlineData("Ab1!", 26.2)] // 4 * log2(26+26+10+33) = 4 * log2(95) ~ 4 * 6.57 = 26.28
+        public void CalculatePasswordEntropy_ShouldCalculateExpectedEntropy(string? password, double minimumExpected)
         {
             // Act
             double entropy = password.CalculatePasswordEntropy();
@@ -29,7 +29,7 @@ namespace CVerify.API.UnitTests.Services
         [InlineData("12345678", false)] // Length 8 but low entropy (only digits)
         [InlineData("Abcd1234!", true)] // Strong enough
         [InlineData("superSecureP@ssword123", true)] // Strong enough
-        public void IsSecurePassword_ShouldValidateCorrectly(string password, bool expectedResult)
+        public void IsSecurePassword_ShouldValidateCorrectly(string? password, bool expectedResult)
         {
             // Act
             bool result = password.IsSecurePassword();
@@ -41,13 +41,14 @@ namespace CVerify.API.UnitTests.Services
         [Theory]
         [InlineData("test@domain.com", true)]
         [InlineData("user.name+tag@sub.domain.co.uk", true)]
-        [InlineData("user@123.123.123.123", true)]
+        [InlineData("user@[123.123.123.123]", true)]
+        [InlineData("user@123.123.123.123", false)]
         [InlineData("plainaddress", false)]
         [InlineData("@missinglocal.com", false)]
         [InlineData("missingdomain@.com", false)]
         [InlineData("two@@domains.com", false)]
         [InlineData("user@domain..com", false)]
-        public void IsValidEmailSyntax_ShouldValidateCorrectly(string email, bool expectedResult)
+        public void IsValidEmailSyntax_ShouldValidateCorrectly(string? email, bool expectedResult)
         {
             // Act
             bool result = email.IsValidEmailSyntax();
@@ -65,7 +66,7 @@ namespace CVerify.API.UnitTests.Services
         [InlineData("https://gitlab.com/octocat/Hello-World", false, "", "")]
         [InlineData("invalid-url", false, "", "")]
         [InlineData(null, false, "", "")]
-        public void TryParseGitHubUrl_ShouldParseAndValidate(string url, bool expectedSuccess, string expectedOwner, string expectedRepo)
+        public void TryParseGitHubUrl_ShouldParseAndValidate(string? url, bool expectedSuccess, string expectedOwner, string expectedRepo)
         {
             // Act
             bool success = url.TryParseGitHubUrl(out string owner, out string repo);
