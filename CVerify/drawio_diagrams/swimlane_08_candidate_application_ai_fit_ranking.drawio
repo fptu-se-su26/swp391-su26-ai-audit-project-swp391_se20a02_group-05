@@ -1,0 +1,104 @@
+<mxfile host="Electron" agent="CVerify">
+  <diagram id="sl-08" name="Candidate Application &amp; AI Job-Fit Ranking">
+    <mxGraphModel dx="1768" dy="1051" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1240" pageHeight="900" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="main_container_sl-08" parent="1" style="shape=swimlane;html=1;childLayout=stackLayout;startSize=30;horizontal=1;horizontalStack=1;fontStyle=1;fontSize=14;collapsible=0;expand=0;labelBackgroundColor=none;" value="Recruitment — Candidate Application &amp;amp; AI Job-Fit Ranking Flow" vertex="1">
+          <mxGeometry height="840" width="1140" x="40" as="geometry" />
+        </mxCell>
+        <mxCell id="l_cand8" parent="main_container_sl-08" style="shape=swimlane;html=1;startSize=30;swimlaneHead=0;swimlaneBody=0;top=0;left=0;bottom=0;right=0;collapsible=0;dropTarget=0;fontStyle=1;fontSize=12;labelBackgroundColor=none;" value="Candidate" vertex="1">
+          <mxGeometry height="810" width="280" y="30" as="geometry" />
+        </mxCell>
+        <mxCell id="vaHtKyOwmIgwQ80syXhR-1" edge="1" parent="main_container_sl-08" source="main_container_sl-08" style="endArrow=none;html=1;rounded=0;entryX=0;entryY=0;entryDx=0;entryDy=0;exitX=0.25;exitY=1;exitDx=0;exitDy=0;" target="l_rec8" value="">
+          <mxGeometry height="50" relative="1" width="50" as="geometry">
+            <mxPoint x="300" y="290" as="sourcePoint" />
+            <mxPoint x="350" y="240" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="l_rec8" parent="main_container_sl-08" style="shape=swimlane;html=1;startSize=30;swimlaneHead=0;swimlaneBody=0;top=0;left=0;bottom=0;right=0;collapsible=0;dropTarget=0;fontStyle=1;fontSize=12;labelBackgroundColor=none;" value="Recruiter / Employer" vertex="1">
+          <mxGeometry height="810" width="280" x="280" y="30" as="geometry" />
+        </mxCell>
+        <mxCell id="l_app_api8" parent="main_container_sl-08" style="shape=swimlane;html=1;startSize=30;swimlaneHead=0;swimlaneBody=0;top=0;left=0;bottom=0;right=0;collapsible=0;dropTarget=0;fontStyle=1;fontSize=12;labelBackgroundColor=none;" value="Application API (.NET)" vertex="1">
+          <mxGeometry height="810" width="280" x="560" y="30" as="geometry" />
+        </mxCell>
+        <mxCell id="l_match8" parent="main_container_sl-08" style="shape=swimlane;html=1;startSize=30;swimlaneHead=0;swimlaneBody=0;top=0;left=0;bottom=0;right=0;collapsible=0;dropTarget=0;fontStyle=1;fontSize=12;labelBackgroundColor=none;" value="CVerify.AI Matching Engine" vertex="1">
+          <mxGeometry height="810" width="300" x="840" y="30" as="geometry" />
+        </mxCell>
+        <mxCell id="a_apply_job" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fontSize=11;align=center;labelBackgroundColor=none;" value="Nhấn Apply &amp; Nộp Hồ sơ CV ứng tuyển Job" vertex="1">
+          <mxGeometry height="50" width="220" x="70" y="150" as="geometry" />
+        </mxCell>
+        <mxCell id="a_save_app" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fontSize=11;align=center;labelBackgroundColor=none;" value="INSERT job_applications (Status = Submitted)" vertex="1">
+          <mxGeometry height="50" width="220" x="630" y="150" as="geometry" />
+        </mxCell>
+        <mxCell id="a_run_matching" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fontSize=11;align=center;labelBackgroundColor=none;" value="Tính toán Vector Cosine Similarity &amp; Domain Weight" vertex="1">
+          <mxGeometry height="50" width="240" x="930" y="250" as="geometry" />
+        </mxCell>
+        <mxCell id="a_gen_factors" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fontSize=11;align=center;labelBackgroundColor=none;" value="Sinh FitScore (%) &amp; Giải thích Match Explanation JSON" vertex="1">
+          <mxGeometry height="50" width="240" x="930" y="340" as="geometry" />
+        </mxCell>
+        <mxCell id="a_save_eval" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fontSize=11;align=center;labelBackgroundColor=none;" value="INSERT matching_evaluations record" vertex="1">
+          <mxGeometry height="50" width="220" x="630" y="430" as="geometry" />
+        </mxCell>
+        <mxCell id="a_view_pipeline" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fontSize=11;align=center;labelBackgroundColor=none;" value="Mở Recruitment Pipeline Dashboard" vertex="1">
+          <mxGeometry height="50" width="220" x="350" y="520" as="geometry" />
+        </mxCell>
+        <mxCell id="a_rank_apps" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fontSize=11;align=center;labelBackgroundColor=none;" value="Truy vấn danh sách Ứng viên ORDER BY FitScore DESC" vertex="1">
+          <mxGeometry height="50" width="220" x="630" y="520" as="geometry" />
+        </mxCell>
+        <mxCell id="a_review_ranked" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fontSize=11;align=center;labelBackgroundColor=none;" value="Xem danh sách Ứng viên đã xếp hạng AI &amp; Lý do Fit" vertex="1">
+          <mxGeometry height="50" width="220" x="350" y="620" as="geometry" />
+        </mxCell>
+        <mxCell id="e_n_start8_a_apply_job" edge="1" parent="1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=classic;fontSize=10;labelBackgroundColor=none;fontColor=default;" target="a_apply_job" value="">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="180" y="119.99999999999989" as="sourcePoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e_a_apply_job_a_save_app" edge="1" parent="1" source="a_apply_job" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=classic;fontSize=10;labelBackgroundColor=none;fontColor=default;" target="a_save_app" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_a_save_app_a_run_matching" edge="1" parent="1" source="a_save_app" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=classic;fontSize=10;labelBackgroundColor=none;fontColor=default;" target="a_run_matching" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_a_run_matching_a_gen_factors" edge="1" parent="1" source="a_run_matching" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=classic;fontSize=10;labelBackgroundColor=none;fontColor=default;" target="a_gen_factors" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_a_gen_factors_a_save_eval" edge="1" parent="1" source="a_gen_factors" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=classic;fontSize=10;labelBackgroundColor=none;fontColor=default;" target="a_save_eval" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_a_save_eval_a_view_pipeline" edge="1" parent="1" source="a_save_eval" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=classic;fontSize=10;labelBackgroundColor=none;fontColor=default;" target="a_view_pipeline" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_a_view_pipeline_a_rank_apps" edge="1" parent="1" source="a_view_pipeline" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=classic;fontSize=10;labelBackgroundColor=none;fontColor=default;" target="a_rank_apps" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_a_rank_apps_a_review_ranked" edge="1" parent="1" source="a_rank_apps" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=classic;fontSize=10;labelBackgroundColor=none;fontColor=default;" target="a_review_ranked" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_a_review_ranked_n_end8" edge="1" parent="1" source="a_review_ranked" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=classic;fontSize=10;labelBackgroundColor=none;fontColor=default;" value="">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="460" y="720" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="vaHtKyOwmIgwQ80syXhR-3" edge="1" parent="1" style="endArrow=none;html=1;rounded=0;entryX=0;entryY=0;entryDx=0;entryDy=0;exitX=0.25;exitY=1;exitDx=0;exitDy=0;" value="">
+          <mxGeometry height="50" relative="1" width="50" as="geometry">
+            <mxPoint x="605" y="840" as="sourcePoint" />
+            <mxPoint x="600" y="30" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="vaHtKyOwmIgwQ80syXhR-4" edge="1" parent="1" style="endArrow=none;html=1;rounded=0;entryX=0;entryY=0;entryDx=0;entryDy=0;exitX=0.25;exitY=1;exitDx=0;exitDy=0;" value="">
+          <mxGeometry height="50" relative="1" width="50" as="geometry">
+            <mxPoint x="885" y="850" as="sourcePoint" />
+            <mxPoint x="880" y="40" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="vaHtKyOwmIgwQ80syXhR-5" parent="1" style="ellipse;html=1;shape=endState;rounded=1;labelBackgroundColor=none;strokeWidth=1;perimeterSpacing=1;fillStyle=solid;fillColor=#000000;" value="" vertex="1">
+          <mxGeometry height="24" width="24" x="450" y="720" as="geometry" />
+        </mxCell>
+        <mxCell id="vaHtKyOwmIgwQ80syXhR-6" parent="1" style="ellipse;html=1;rounded=1;labelBackgroundColor=none;strokeWidth=21;" value="" vertex="1">
+          <mxGeometry height="10" width="10" x="170" y="100" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

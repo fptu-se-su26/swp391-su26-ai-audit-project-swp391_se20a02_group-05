@@ -1,0 +1,98 @@
+<mxfile host="Electron" agent="CVerify">
+  <diagram id="sl-07" name="Job Vacancy, AI Requirement &amp; Publishing">
+    <mxGraphModel dx="1664" dy="1809" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1240" pageHeight="820" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="main_container_sl-07" parent="1" style="shape=swimlane;html=1;childLayout=stackLayout;startSize=30;horizontal=1;horizontalStack=1;fontStyle=1;fontSize=14;collapsible=0;expand=0;labelBackgroundColor=none;" value="Recruitment — Job Vacancy, AI Requirement &amp;amp; Publishing Flow" vertex="1">
+          <mxGeometry height="720" width="1140" x="40" y="-20" as="geometry" />
+        </mxCell>
+        <mxCell id="l_emp7" parent="main_container_sl-07" style="shape=swimlane;html=1;startSize=30;swimlaneHead=0;swimlaneBody=0;top=0;left=0;bottom=0;right=0;collapsible=0;dropTarget=0;fontStyle=1;fontSize=12;labelBackgroundColor=none;" value="Employer / Recruiter" vertex="1">
+          <mxGeometry height="690" width="280" y="30" as="geometry" />
+        </mxCell>
+        <mxCell id="CQ4r05s3nzONV1EABM0z-1" edge="1" parent="main_container_sl-07" style="endArrow=none;html=1;rounded=0;entryX=0;entryY=0;entryDx=0;entryDy=0;" target="l_job_api7" value="">
+          <mxGeometry height="50" relative="1" width="50" as="geometry">
+            <mxPoint x="280" y="720" as="sourcePoint" />
+            <mxPoint x="350" y="290" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="l_job_api7" parent="main_container_sl-07" style="shape=swimlane;html=1;startSize=30;swimlaneHead=0;swimlaneBody=0;top=0;left=0;bottom=0;right=0;collapsible=0;dropTarget=0;fontStyle=1;fontSize=12;labelBackgroundColor=none;" value="Job Vacancy API (.NET)" vertex="1">
+          <mxGeometry height="690" width="280" x="280" y="30" as="geometry" />
+        </mxCell>
+        <mxCell id="CQ4r05s3nzONV1EABM0z-2" edge="1" parent="main_container_sl-07" style="endArrow=none;html=1;rounded=0;entryX=0;entryY=0;entryDx=0;entryDy=0;" value="">
+          <mxGeometry height="50" relative="1" width="50" as="geometry">
+            <mxPoint x="550" y="720" as="sourcePoint" />
+            <mxPoint x="550" y="30" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="l_parser7" parent="main_container_sl-07" style="shape=swimlane;html=1;startSize=30;swimlaneHead=0;swimlaneBody=0;top=0;left=0;bottom=0;right=0;collapsible=0;dropTarget=0;fontStyle=1;fontSize=12;labelBackgroundColor=none;" value="CVerify.AI JD Parser Engine" vertex="1">
+          <mxGeometry height="690" width="300" x="560" y="30" as="geometry" />
+        </mxCell>
+        <mxCell id="CQ4r05s3nzONV1EABM0z-3" edge="1" parent="main_container_sl-07" style="endArrow=none;html=1;rounded=0;entryX=0;entryY=0;entryDx=0;entryDy=0;" value="">
+          <mxGeometry height="50" relative="1" width="50" as="geometry">
+            <mxPoint x="850" y="720" as="sourcePoint" />
+            <mxPoint x="850" y="30" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="l_portal7" parent="main_container_sl-07" style="shape=swimlane;html=1;startSize=30;swimlaneHead=0;swimlaneBody=0;top=0;left=0;bottom=0;right=0;collapsible=0;dropTarget=0;fontStyle=1;fontSize=12;labelBackgroundColor=none;" value="Public Job Board" vertex="1">
+          <mxGeometry height="690" width="280" x="860" y="30" as="geometry" />
+        </mxCell>
+        <mxCell id="a_paste_jd" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fontSize=11;align=center;labelBackgroundColor=none;" value="Nhập tiêu đề &amp; Dán văn bản Mô tả công việc (JD thô)" vertex="1">
+          <mxGeometry height="50" width="220" x="70" y="150" as="geometry" />
+        </mxCell>
+        <mxCell id="a_req_parse" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fontSize=11;align=center;labelBackgroundColor=none;" value="Gửi JD text yêu cầu trích xuất tiêu chuẩn" vertex="1">
+          <mxGeometry height="50" width="220" x="350" y="150" as="geometry" />
+        </mxCell>
+        <mxCell id="a_ai_parse_jd" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fontSize=11;align=center;labelBackgroundColor=none;" value="AI bóc tách Skill Must-have, Nice-to-have&#xa;&amp; Khung tiêu chuẩn chấm điểm" vertex="1">
+          <mxGeometry height="55" width="240" x="630" y="250" as="geometry" />
+        </mxCell>
+        <mxCell id="a_review_req" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fontSize=11;align=center;labelBackgroundColor=none;" value="Xem phác thảo &amp; Tinh chỉnh trọng số kỹ năng" vertex="1">
+          <mxGeometry height="50" width="220" x="70" y="350" as="geometry" />
+        </mxCell>
+        <mxCell id="a_click_pub" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fontSize=11;align=center;labelBackgroundColor=none;" value="Nhấn Save &amp; Publish Job Vacancy" vertex="1">
+          <mxGeometry height="50" width="220" x="70" y="440" as="geometry" />
+        </mxCell>
+        <mxCell id="a_create_snapshot" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fontSize=11;align=center;labelBackgroundColor=none;" value="Khóa Requirement Snapshot &amp; Tạo Job Record" vertex="1">
+          <mxGeometry height="50" width="220" x="350" y="440" as="geometry" />
+        </mxCell>
+        <mxCell id="a_pub_portal" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fontSize=11;align=center;labelBackgroundColor=none;" value="Xuất bản tin tuyển dụng lên Public Job Board (/jobs)" vertex="1">
+          <mxGeometry height="50" width="220" x="930" y="540" as="geometry" />
+        </mxCell>
+        <mxCell id="e_n_start7_a_paste_jd" edge="1" parent="1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=classic;fontSize=10;labelBackgroundColor=none;fontColor=default;" target="a_paste_jd" value="">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="180.00000000000023" y="120" as="sourcePoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e_a_paste_jd_a_req_parse" edge="1" parent="1" source="a_paste_jd" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=classic;fontSize=10;labelBackgroundColor=none;fontColor=default;" target="a_req_parse" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_a_req_parse_a_ai_parse_jd" edge="1" parent="1" source="a_req_parse" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=classic;fontSize=10;labelBackgroundColor=none;fontColor=default;" target="a_ai_parse_jd" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_a_ai_parse_jd_a_review_req" edge="1" parent="1" source="a_ai_parse_jd" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=classic;fontSize=10;labelBackgroundColor=none;fontColor=default;" target="a_review_req" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_a_review_req_a_click_pub" edge="1" parent="1" source="a_review_req" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=classic;fontSize=10;labelBackgroundColor=none;fontColor=default;" target="a_click_pub" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_a_click_pub_a_create_snapshot" edge="1" parent="1" source="a_click_pub" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=classic;fontSize=10;labelBackgroundColor=none;fontColor=default;" target="a_create_snapshot" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_a_create_snapshot_a_pub_portal" edge="1" parent="1" source="a_create_snapshot" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=classic;fontSize=10;labelBackgroundColor=none;fontColor=default;" target="a_pub_portal" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_a_pub_portal_n_end7" edge="1" parent="1" source="a_pub_portal" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=classic;fontSize=10;labelBackgroundColor=none;fontColor=default;" value="">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="1040" y="640" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="CQ4r05s3nzONV1EABM0z-4" parent="1" style="ellipse;html=1;rounded=1;labelBackgroundColor=none;strokeWidth=21;" value="" vertex="1">
+          <mxGeometry height="10" width="10" x="170" y="100" as="geometry" />
+        </mxCell>
+        <mxCell id="CQ4r05s3nzONV1EABM0z-6" parent="1" style="ellipse;html=1;shape=endState;rounded=1;labelBackgroundColor=none;strokeWidth=1;perimeterSpacing=1;fillStyle=solid;fillColor=#000000;" value="" vertex="1">
+          <mxGeometry height="24" width="24" x="1030" y="640" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

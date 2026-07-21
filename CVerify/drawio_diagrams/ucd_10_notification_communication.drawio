@@ -1,0 +1,79 @@
+<mxfile host="Electron" agent="CVerify">
+  <diagram id="ucd-10" name="UCD-10 Notification &amp; Communication System Diagram">
+    <mxGraphModel dx="2175" dy="2121" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1169" pageHeight="827" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="act_user_notif" parent="1" style="shape=umlActor;verticalLabelPosition=bottom;verticalAlign=top;html=1;outlineConnect=0;fontSize=12;fontStyle=0;labelBackgroundColor=none;" value="User / Candidate" vertex="1">
+          <mxGeometry height="90" width="50" x="50" y="250" as="geometry" />
+        </mxCell>
+        <mxCell id="act_worker_notif" parent="1" style="shape=umlActor;verticalLabelPosition=bottom;verticalAlign=top;html=1;outlineConnect=0;fontSize=12;fontStyle=0;labelBackgroundColor=none;" value="Outbox Worker" vertex="1">
+          <mxGeometry height="90" width="50" x="50" y="414" as="geometry" />
+        </mxCell>
+        <mxCell id="act_email_gateway" parent="1" style="shape=umlActor;verticalLabelPosition=bottom;verticalAlign=top;html=1;outlineConnect=0;fontSize=12;fontStyle=0;labelBackgroundColor=none;" value="Email Gateway (SMTP)" vertex="1">
+          <mxGeometry height="90" width="50" x="890" y="405" as="geometry" />
+        </mxCell>
+        <mxCell id="act_admin_notif" parent="1" style="shape=umlActor;verticalLabelPosition=bottom;verticalAlign=top;html=1;outlineConnect=0;fontSize=12;fontStyle=0;labelBackgroundColor=none;" value="Super Admin" vertex="1">
+          <mxGeometry height="90" width="50" x="900" y="630" as="geometry" />
+        </mxCell>
+        <mxCell id="uc_n01" parent="1" style="ellipse;whiteSpace=wrap;html=1;fontSize=11;fontStyle=0;align=center;labelBackgroundColor=none;" value="UC-NOTIF-01: View In-App Notifications" vertex="1">
+          <mxGeometry height="60" width="220" x="230" y="80" as="geometry" />
+        </mxCell>
+        <mxCell id="uc_n02" parent="1" style="ellipse;whiteSpace=wrap;html=1;fontSize=11;fontStyle=0;align=center;labelBackgroundColor=none;" value="UC-NOTIF-02: Mark Notification as Read" vertex="1">
+          <mxGeometry height="60" width="220" x="580" y="100" as="geometry" />
+        </mxCell>
+        <mxCell id="uc_n03" parent="1" style="ellipse;whiteSpace=wrap;html=1;fontSize=11;fontStyle=0;align=center;labelBackgroundColor=none;" value="UC-NOTIF-03: Mark All Notifications as Read" vertex="1">
+          <mxGeometry height="70" width="190" x="330" y="170" as="geometry" />
+        </mxCell>
+        <mxCell id="uc_n04" parent="1" style="ellipse;whiteSpace=wrap;html=1;fontSize=11;fontStyle=0;align=center;labelBackgroundColor=none;" value="UC-NOTIF-04: Manage Notification Preferences" vertex="1">
+          <mxGeometry height="60" width="220" x="220" y="265" as="geometry" />
+        </mxCell>
+        <mxCell id="uc_n05" parent="1" style="ellipse;whiteSpace=wrap;html=1;fontSize=11;fontStyle=1;align=center;labelBackgroundColor=none;" value="UC-NOTIF-05: Aggregate Notifications" vertex="1">
+          <mxGeometry height="60" width="220" x="585" as="geometry" />
+        </mxCell>
+        <mxCell id="uc_n06" parent="1" style="ellipse;whiteSpace=wrap;html=1;fontSize=11;fontStyle=0;align=center;labelBackgroundColor=none;" value="UC-NOTIF-06: Process Outbox Email Messages" vertex="1">
+          <mxGeometry height="60" width="220" x="250" y="420" as="geometry" />
+        </mxCell>
+        <mxCell id="uc_n07" parent="1" style="ellipse;whiteSpace=wrap;html=1;fontSize=11;fontStyle=0;align=center;labelBackgroundColor=none;" value="UC-NOTIF-07: Send Test Email (Admin)" vertex="1">
+          <mxGeometry height="60" width="220" x="470" y="645" as="geometry" />
+        </mxCell>
+        <mxCell id="uc_n08" parent="1" style="ellipse;whiteSpace=wrap;html=1;fontSize=11;fontStyle=0;align=center;labelBackgroundColor=none;" value="UC-NOTIF-08: Render Email Templates" vertex="1">
+          <mxGeometry height="70" width="180" x="410" y="540" as="geometry" />
+        </mxCell>
+        <mxCell id="edge_ucd-10_1" edge="1" parent="1" source="act_user_notif" style="endArrow=none;html=1;rounded=0;strokeWidth=1.5;labelBackgroundColor=none;fontColor=default;fontStyle=0" target="uc_n01" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge_ucd-10_2" edge="1" parent="1" source="act_user_notif" style="endArrow=none;html=1;rounded=0;strokeWidth=1.5;labelBackgroundColor=none;fontColor=default;fontStyle=0" target="uc_n04" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge_ucd-10_3" edge="1" parent="1" source="act_worker_notif" style="endArrow=none;html=1;rounded=0;strokeWidth=1.5;labelBackgroundColor=none;fontColor=default;fontStyle=0" target="uc_n06" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge_ucd-10_4" edge="1" parent="1" source="act_email_gateway" style="endArrow=none;html=1;rounded=0;strokeWidth=1.5;labelBackgroundColor=none;fontColor=default;fontStyle=0" target="uc_n06" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge_ucd-10_5" edge="1" parent="1" source="act_admin_notif" style="endArrow=none;html=1;rounded=0;strokeWidth=1.5;labelBackgroundColor=none;fontColor=default;fontStyle=0" target="uc_n07" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge_ucd-10_6" edge="1" parent="1" source="uc_n01" style="endArrow=open;endSize=8;dashed=1;html=1;rounded=0;strokeWidth=1.2;fontSize=10;fontStyle=0;labelBackgroundColor=none;fontColor=default;" target="uc_n02" value="&amp;lt;&amp;lt;extend&amp;gt;&amp;gt;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge_ucd-10_7" edge="1" parent="1" source="uc_n01" style="endArrow=open;endSize=8;dashed=1;html=1;rounded=0;strokeWidth=1.2;fontSize=10;fontStyle=0;labelBackgroundColor=none;fontColor=default;" target="uc_n05" value="&amp;lt;&amp;lt;include&amp;gt;&amp;gt;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge_ucd-10_8" edge="1" parent="1" source="uc_n06" style="endArrow=open;endSize=8;dashed=1;html=1;rounded=0;strokeWidth=1.2;fontSize=10;fontStyle=0;labelBackgroundColor=none;fontColor=default;" target="uc_n08" value="&amp;lt;&amp;lt;include&amp;gt;&amp;gt;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="nSUjopZyebhVj0Zi1JHI-1" parent="1" style="shape=umlFrame;whiteSpace=wrap;html=1;pointerEvents=0;width=280;height=40;" value="&lt;span style=&quot;font-size: 14px; font-weight: 700;&quot;&gt;Notification &amp;amp; Communication System&lt;/span&gt;" vertex="1">
+          <mxGeometry height="860" width="670" x="160" y="-60" as="geometry" />
+        </mxCell>
+        <mxCell id="nSUjopZyebhVj0Zi1JHI-2" edge="1" parent="1" source="act_user_notif" style="endArrow=none;html=1;rounded=0;exitX=1;exitY=0.3333333333333333;exitDx=0;exitDy=0;exitPerimeter=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;fontStyle=0" target="uc_n03" value="">
+          <mxGeometry height="50" relative="1" width="50" as="geometry">
+            <mxPoint x="250" y="360" as="sourcePoint" />
+            <mxPoint x="300" y="310" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

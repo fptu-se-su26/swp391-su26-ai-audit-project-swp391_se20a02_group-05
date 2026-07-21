@@ -1,0 +1,119 @@
+<mxfile host="Electron" agent="CVerify">
+  <diagram id="sl-04" name="Source Code &amp; Git Repository AI Audit">
+    <mxGraphModel dx="2020" dy="1201" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1200" pageHeight="1300" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="main_container_sl04" parent="1" style="shape=swimlane;html=1;childLayout=stackLayout;startSize=30;horizontal=1;horizontalStack=1;fontStyle=1;fontSize=14;collapsible=0;expand=0;labelBackgroundColor=none;" value="Candidate — Source Code &amp;amp; Git Repository AI Audit Flow" vertex="1">
+          <mxGeometry height="850" width="1120" x="50" as="geometry" />
+        </mxCell>
+        <mxCell id="l_cand" parent="main_container_sl04" style="shape=swimlane;html=1;startSize=30;swimlaneHead=0;swimlaneBody=0;top=0;left=0;bottom=0;right=0;collapsible=0;dropTarget=0;fontStyle=1;fontSize=12;labelBackgroundColor=none;" value="Candidate (Developer)" vertex="1">
+          <mxGeometry height="820" width="280" y="30" as="geometry" />
+        </mxCell>
+        <mxCell id="LzMKddUAu6naEx5tiffc-3" edge="1" parent="main_container_sl04" source="main_container_sl04" style="endArrow=none;html=1;rounded=0;entryX=1;entryY=0;entryDx=0;entryDy=0;exitX=0.25;exitY=1;exitDx=0;exitDy=0;" target="l_cand" value="">
+          <mxGeometry height="50" relative="1" width="50" as="geometry">
+            <mxPoint x="260" y="540" as="sourcePoint" />
+            <mxPoint x="310" y="490" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="l_core" parent="main_container_sl04" style="shape=swimlane;html=1;startSize=30;swimlaneHead=0;swimlaneBody=0;top=0;left=0;bottom=0;right=0;collapsible=0;dropTarget=0;fontStyle=1;fontSize=12;labelBackgroundColor=none;" value="CVerify Core API (.NET)" vertex="1">
+          <mxGeometry height="820" width="280" x="280" y="30" as="geometry" />
+        </mxCell>
+        <mxCell id="l_worker" parent="main_container_sl04" style="shape=swimlane;html=1;startSize=30;swimlaneHead=0;swimlaneBody=0;top=0;left=0;bottom=0;right=0;collapsible=0;dropTarget=0;fontStyle=1;fontSize=12;labelBackgroundColor=none;" value="Background Worker Queue" vertex="1">
+          <mxGeometry height="820" width="280" x="560" y="30" as="geometry" />
+        </mxCell>
+        <mxCell id="l_ai" parent="main_container_sl04" style="shape=swimlane;html=1;startSize=30;swimlaneHead=0;swimlaneBody=0;top=0;left=0;bottom=0;right=0;collapsible=0;dropTarget=0;fontStyle=1;fontSize=12;labelBackgroundColor=none;" value="CVerify.AI Engine (Python)" vertex="1">
+          <mxGeometry height="820" width="280" x="840" y="30" as="geometry" />
+        </mxCell>
+        <mxCell id="LzMKddUAu6naEx5tiffc-6" edge="1" parent="main_container_sl04" source="l_ai" style="endArrow=none;html=1;rounded=0;entryX=1;entryY=0;entryDx=0;entryDy=0;exitX=0;exitY=1;exitDx=0;exitDy=0;" target="l_worker" value="">
+          <mxGeometry height="50" relative="1" width="50" as="geometry">
+            <mxPoint x="750" y="1560" as="sourcePoint" />
+            <mxPoint x="750" y="740" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="g_connect" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fontSize=11;labelBackgroundColor=none;" value="Kết nối GitHub/GitLab OAuth" vertex="1">
+          <mxGeometry height="45" width="220" x="70" y="150" as="geometry" />
+        </mxCell>
+        <mxCell id="g_sync" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fontSize=11;labelBackgroundColor=none;" value="Đồng bộ Remote Repositories" vertex="1">
+          <mxGeometry height="45" width="220" x="350" y="150" as="geometry" />
+        </mxCell>
+        <mxCell id="g_trigger" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fontSize=11;labelBackgroundColor=none;" value="Chọn Repo &amp; Yêu cầu Audit AI" vertex="1">
+          <mxGeometry height="45" width="220" x="70" y="250" as="geometry" />
+        </mxCell>
+        <mxCell id="g_create_job" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fontSize=11;labelBackgroundColor=none;" value="Tạo Pipeline Job (Pending)" vertex="1">
+          <mxGeometry height="45" width="220" x="350" y="250" as="geometry" />
+        </mxCell>
+        <mxCell id="g_consume_job" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fontSize=11;labelBackgroundColor=none;" value="Quét Pending Job &amp; Clone Code" vertex="1">
+          <mxGeometry height="45" width="220" x="630" y="350" as="geometry" />
+        </mxCell>
+        <mxCell id="g_ast" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fontSize=11;labelBackgroundColor=none;" value="Trích xuất Cấu trúc AST &amp; File Stats" vertex="1">
+          <mxGeometry height="45" width="220" x="630" y="440" as="geometry" />
+        </mxCell>
+        <mxCell id="g_ai_analyze" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fontSize=11;labelBackgroundColor=none;" value="Phân tích Tech Stack, Patterns&#xa;&amp; Commit Skill Attributions" vertex="1">
+          <mxGeometry height="50" width="220" x="910" y="440" as="geometry" />
+        </mxCell>
+        <mxCell id="g_save_res" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fontSize=11;labelBackgroundColor=none;" value="Lưu Assessment Report &amp; Capabilities vào DB" vertex="1">
+          <mxGeometry height="50" width="220" x="350" y="550" as="geometry" />
+        </mxCell>
+        <mxCell id="g_view_rep" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fontSize=11;labelBackgroundColor=none;" value="Xem Báo cáo Audit Codebase Dashboard" vertex="1">
+          <mxGeometry height="45" width="220" x="70" y="660" as="geometry" />
+        </mxCell>
+        <mxCell id="eg_g_start_g_connect" edge="1" parent="1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=classic;fontSize=10;labelBackgroundColor=none;fontColor=default;" target="g_connect" value="">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="180" y="120" as="sourcePoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="eg_g_connect_g_sync" edge="1" parent="1" source="g_connect" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=classic;fontSize=10;labelBackgroundColor=none;fontColor=default;" target="g_sync" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="eg_g_sync_g_trigger" edge="1" parent="1" source="g_sync" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=classic;fontSize=10;labelBackgroundColor=none;fontColor=default;" target="g_trigger" value="">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="460" y="220" />
+              <mxPoint x="180" y="220" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="eg_g_trigger_g_create_job" edge="1" parent="1" source="g_trigger" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=classic;fontSize=10;labelBackgroundColor=none;fontColor=default;" target="g_create_job" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="eg_g_create_job_g_consume_job" edge="1" parent="1" source="g_create_job" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=classic;fontSize=10;labelBackgroundColor=none;fontColor=default;" target="g_consume_job" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="eg_g_consume_job_g_ast" edge="1" parent="1" source="g_consume_job" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=classic;fontSize=10;labelBackgroundColor=none;fontColor=default;" target="g_ast" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="eg_g_ast_g_ai_analyze" edge="1" parent="1" source="g_ast" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=classic;fontSize=10;labelBackgroundColor=none;fontColor=default;" target="g_ai_analyze" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="eg_g_ai_analyze_g_save_res" edge="1" parent="1" source="g_ai_analyze" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=classic;fontSize=10;labelBackgroundColor=none;fontColor=default;" target="g_save_res" value="">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1020" y="575" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="eg_g_save_res_g_view_rep" edge="1" parent="1" source="g_save_res" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=classic;fontSize=10;labelBackgroundColor=none;fontColor=default;" target="g_view_rep" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="eg_g_view_rep_g_end" edge="1" parent="1" source="g_view_rep" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=classic;fontSize=10;labelBackgroundColor=none;fontColor=default;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" target="LzMKddUAu6naEx5tiffc-8" value="">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="180" y="759.9999999999998" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="LzMKddUAu6naEx5tiffc-5" edge="1" parent="1" style="endArrow=none;html=1;rounded=0;entryX=1;entryY=0;entryDx=0;entryDy=0;" target="l_core" value="">
+          <mxGeometry height="50" relative="1" width="50" as="geometry">
+            <mxPoint x="610" y="840" as="sourcePoint" />
+            <mxPoint x="620" y="220" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="LzMKddUAu6naEx5tiffc-7" parent="1" style="ellipse;html=1;fillColor=#000000;strokeColor=#000000;" value="" vertex="1">
+          <mxGeometry height="30" width="30" x="180" y="100" as="geometry" />
+        </mxCell>
+        <mxCell id="LzMKddUAu6naEx5tiffc-8" parent="1" style="ellipse;html=1;shape=endState;fillColor=#000000;strokeColor=#000000;" value="" vertex="1">
+          <mxGeometry height="30" width="30" x="170" y="770" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="utf-8"?>
+<mxfile host="app.diagrams.net" agent="CVerify" version="21.0.0">
+  <diagram id="std-03" name="Organization Verification &amp; Account Status">
+    <mxGraphModel dx="1200" dy="800" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="880" pageHeight="560" math="0" shadow="0">
+      <root>
+        <mxCell id="0"/>
+        <mxCell id="1" parent="0"/>
+        <mxCell id="boundary_std-03" value="Organization Status State Machine (organizations)" style="shape=swimlane;whiteSpace=wrap;html=1;startSize=35;collapsible=0;recursiveResize=0;expand=0;fontStyle=1;fontSize=14;fillColor=#f8f9fa;strokeColor=#6c757d;" vertex="1" parent="1">
+          <mxGeometry x="40" y="40" width="780" height="460" as="geometry"/>
+        </mxCell>
+        <mxCell id="st_start3" value="" style="ellipse;html=1;fillColor=#000000;strokeColor=#000000;" vertex="1" parent="1">
+          <mxGeometry x="100" y="120" width="30" height="30" as="geometry"/>
+        </mxCell>
+        <mxCell id="s_unver3" value="State: Unverified&#10;(Newly Created Org Account)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=11;fontStyle=1;align=center;" vertex="1" parent="1">
+          <mxGeometry x="200" y="110" width="220" height="50" as="geometry"/>
+        </mxCell>
+        <mxCell id="s_pending3" value="State: PendingVerification&#10;(GPKD Uploaded, Awaiting Admin)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=11;fontStyle=1;align=center;" vertex="1" parent="1">
+          <mxGeometry x="500" y="110" width="240" height="50" as="geometry"/>
+        </mxCell>
+        <mxCell id="s_ver3" value="State: Verified&#10;(Active Verified Org Badge)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=11;fontStyle=1;align=center;" vertex="1" parent="1">
+          <mxGeometry x="500" y="240" width="240" height="50" as="geometry"/>
+        </mxCell>
+        <mxCell id="s_rej3" value="State: Rejected&#10;(Invalid GPKD Documents)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=11;fontStyle=1;align=center;" vertex="1" parent="1">
+          <mxGeometry x="200" y="240" width="220" height="50" as="geometry"/>
+        </mxCell>
+        <mxCell id="s_susp3" value="State: Suspended&#10;(Account Locked by Super Admin)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=11;fontStyle=1;align=center;" vertex="1" parent="1">
+          <mxGeometry x="500" y="360" width="240" height="50" as="geometry"/>
+        </mxCell>
+        <mxCell id="st_end3" value="" style="ellipse;html=1;shape=endState;fillColor=#000000;strokeColor=#000000;" vertex="1" parent="1">
+          <mxGeometry x="100" y="250" width="30" height="30" as="geometry"/>
+        </mxCell>
+        <mxCell id="e_st_start3_s_unver3" value="Create Org" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=classic;strokeColor=#333333;fontSize=10;fontStyle=1;" edge="1" parent="1" source="st_start3" target="s_unver3">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e_s_unver3_s_pending3" value="Submit GPKD" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=classic;strokeColor=#333333;fontSize=10;fontStyle=1;" edge="1" parent="1" source="s_unver3" target="s_pending3">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e_s_pending3_s_ver3" value="Admin Approve" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=classic;strokeColor=#333333;fontSize=10;fontStyle=1;" edge="1" parent="1" source="s_pending3" target="s_ver3">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e_s_pending3_s_rej3" value="Admin Reject" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=classic;strokeColor=#333333;fontSize=10;fontStyle=1;" edge="1" parent="1" source="s_pending3" target="s_rej3">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e_s_rej3_s_pending3" value="Re-submit Docs" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=classic;strokeColor=#333333;fontSize=10;fontStyle=1;" edge="1" parent="1" source="s_rej3" target="s_pending3">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e_s_ver3_s_susp3" value="Policy Violation" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=classic;strokeColor=#333333;fontSize=10;fontStyle=1;" edge="1" parent="1" source="s_ver3" target="s_susp3">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e_s_susp3_s_ver3" value="Unlock Account" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=classic;strokeColor=#333333;fontSize=10;fontStyle=1;" edge="1" parent="1" source="s_susp3" target="s_ver3">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e_s_ver3_st_end3" value="Active Org" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=classic;strokeColor=#333333;fontSize=10;fontStyle=1;" edge="1" parent="1" source="s_ver3" target="st_end3">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

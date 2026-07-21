@@ -1,0 +1,190 @@
+<mxfile host="Electron" agent="CVerify">
+  <diagram id="sl-01" name="Business — Registration &amp; Verification">
+    <mxGraphModel dx="1451" dy="2410" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1000" pageHeight="1400" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="main_container" parent="1" style="shape=swimlane;html=1;childLayout=stackLayout;startSize=30;horizontal=1;horizontalStack=1;fontStyle=1;fontSize=14;collapsible=0;expand=0;labelBackgroundColor=none;" value="Business — registration &amp;amp; verification" vertex="1">
+          <mxGeometry height="1380" width="920" x="30" y="-30" as="geometry" />
+        </mxCell>
+        <mxCell id="lane_biz" parent="main_container" style="shape=swimlane;html=1;startSize=30;swimlaneHead=0;swimlaneBody=0;top=0;left=0;bottom=0;right=0;collapsible=0;dropTarget=0;fontStyle=1;fontSize=12;labelBackgroundColor=none;" value="Business (Org Admin)" vertex="1">
+          <mxGeometry height="1350" width="300" y="30" as="geometry" />
+        </mxCell>
+        <mxCell id="bp6JRSAbibiFsm8qENGN-5" edge="1" parent="main_container" style="endArrow=none;html=1;rounded=0;entryX=1;entryY=0;entryDx=0;entryDy=0;" target="lane_biz" value="">
+          <mxGeometry height="50" relative="1" width="50" as="geometry">
+            <mxPoint x="300" y="1380" as="sourcePoint" />
+            <mxPoint x="450" y="600" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="lane_admin" parent="main_container" style="shape=swimlane;html=1;startSize=30;swimlaneHead=0;swimlaneBody=0;top=0;left=0;bottom=0;right=0;collapsible=0;dropTarget=0;fontStyle=1;fontSize=12;labelBackgroundColor=none;" value="Super Admin" vertex="1">
+          <mxGeometry height="1350" width="300" x="300" y="30" as="geometry" />
+        </mxCell>
+        <mxCell id="lane_sys" parent="main_container" style="shape=swimlane;html=1;startSize=30;swimlaneHead=0;swimlaneBody=0;top=0;left=0;bottom=0;right=0;collapsible=0;dropTarget=0;fontStyle=1;fontSize=12;labelBackgroundColor=none;" value="CVerify System + AI" vertex="1">
+          <mxGeometry height="1350" width="320" x="600" y="30" as="geometry" />
+        </mxCell>
+        <mxCell id="act_reg" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fontSize=11;labelBackgroundColor=none;" value="Đăng ký: Company + Tax code (MST)&#xa;+ Step 1 đồng ý ToS" vertex="1">
+          <mxGeometry height="50" width="240" x="70" y="150" as="geometry" />
+        </mxCell>
+        <mxCell id="act_req_tos" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fontSize=11;labelBackgroundColor=none;" value="Yêu cầu đồng ý điều khoản" vertex="1">
+          <mxGeometry height="45" width="200" x="90" y="270" as="geometry" />
+        </mxCell>
+        <mxCell id="act_err_mst" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fontSize=11;labelBackgroundColor=none;" value="Báo lỗi MST - nhập lại" vertex="1">
+          <mxGeometry height="45" width="200" x="90" y="430" as="geometry" />
+        </mxCell>
+        <mxCell id="act_up_gpkd" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fontSize=11;labelBackgroundColor=none;" value="Up Giấy ĐKKD (GPKD)" vertex="1">
+          <mxGeometry height="45" width="200" x="90" y="590" as="geometry" />
+        </mxCell>
+        <mxCell id="act_login" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fontSize=11;labelBackgroundColor=none;" value="Đăng nhập (Pass/Magic/OTP/MFA) — BR-07" vertex="1">
+          <mxGeometry height="50" width="240" x="70" y="900" as="geometry" />
+        </mxCell>
+        <mxCell id="act_create_ws" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fontSize=11;labelBackgroundColor=none;" value="Tạo Workspace (Phòng ban/Dự án, BR-10)" vertex="1">
+          <mxGeometry height="50" width="240" x="70" y="980" as="geometry" />
+        </mxCell>
+        <mxCell id="act_invite" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fontSize=11;labelBackgroundColor=none;" value="Mời đối tác / Member / Phân quyền (OAuth)" vertex="1">
+          <mxGeometry height="50" width="240" x="70" y="1060" as="geometry" />
+        </mxCell>
+        <mxCell id="act_pub_job" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fontSize=11;labelBackgroundColor=none;" value="Publish JD lên Job Board (BR-17)" vertex="1">
+          <mxGeometry height="50" width="240" x="70" y="1140" as="geometry" />
+        </mxCell>
+        <mxCell id="act_review" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fontSize=11;labelBackgroundColor=none;" value="Review HSKD và GPKD, Giấy UQ / Mã ĐK" vertex="1">
+          <mxGeometry height="50" width="240" x="370" y="660" as="geometry" />
+        </mxCell>
+        <mxCell id="dec_approve" parent="1" style="rhombus;whiteSpace=wrap;html=1;fontSize=11;labelBackgroundColor=none;" value="Duyệt HSKD?" vertex="1">
+          <mxGeometry height="60" width="120" x="430" y="740" as="geometry" />
+        </mxCell>
+        <mxCell id="act_set_tier2" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fontSize=11;labelBackgroundColor=none;" value="Set Tier -&gt; ACTIVE" vertex="1">
+          <mxGeometry height="45" width="200" x="390" y="830" as="geometry" />
+        </mxCell>
+        <mxCell id="dec_tos" parent="1" style="rhombus;whiteSpace=wrap;html=1;fontSize=10;labelBackgroundColor=none;" value="Đồng ý ToS &amp; Privacy Policy?" vertex="1">
+          <mxGeometry height="70" width="160" x="700" y="150" as="geometry" />
+        </mxCell>
+        <mxCell id="act_check_mst" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fontSize=11;labelBackgroundColor=none;" value="Auto check MST (Tax API)" vertex="1">
+          <mxGeometry height="45" width="200" x="680" y="260" as="geometry" />
+        </mxCell>
+        <mxCell id="dec_mst" parent="1" style="rhombus;whiteSpace=wrap;html=1;fontSize=11;labelBackgroundColor=none;" value="MST Hợp lệ?" vertex="1">
+          <mxGeometry height="60" width="120" x="720" y="330" as="geometry" />
+        </mxCell>
+        <mxCell id="act_create_pending" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fontSize=11;labelBackgroundColor=none;" value="Tạo Org account PENDING, hash Password &amp; Gửi OTP/Magic" vertex="1">
+          <mxGeometry height="55" width="240" x="660" y="420" as="geometry" />
+        </mxCell>
+        <mxCell id="dec_tier" parent="1" style="rhombus;whiteSpace=wrap;html=1;fontSize=11;labelBackgroundColor=none;" value="Check Tier?" vertex="1">
+          <mxGeometry height="60" width="120" x="720" y="500" as="geometry" />
+        </mxCell>
+        <mxCell id="act_set_tier1" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fontSize=11;labelBackgroundColor=none;" value="Set Member Tier 1" vertex="1">
+          <mxGeometry height="45" width="200" x="680" y="590" as="geometry" />
+        </mxCell>
+        <mxCell id="act_email_rej" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fontSize=11;labelBackgroundColor=none;" value="Email lý do -&gt; QTK PENDING" vertex="1">
+          <mxGeometry height="45" width="200" x="680" y="745" as="geometry" />
+        </mxCell>
+        <mxCell id="act_notify" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fontSize=11;labelBackgroundColor=none;" value="Notify + Welcome email (Mật khẩu, Mã kích hoạt)" vertex="1">
+          <mxGeometry height="50" width="240" x="660" y="830" as="geometry" />
+        </mxCell>
+        <mxCell id="join1" parent="1" style="line;strokeWidth=4;html=1;labelBackgroundColor=none;" value="" vertex="1">
+          <mxGeometry height="10" width="450" x="400" y="890" as="geometry" />
+        </mxCell>
+        <mxCell id="e_node_start_act_reg" edge="1" parent="1" source="bp6JRSAbibiFsm8qENGN-1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=classic;fontSize=10;labelBackgroundColor=none;fontColor=default;" target="act_reg" value="">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="190" y="110" />
+            </Array>
+            <mxPoint x="190" y="60" as="sourcePoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e_act_reg_dec_tos" edge="1" parent="1" source="act_reg" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=classic;fontSize=10;labelBackgroundColor=none;fontColor=default;" target="dec_tos" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_dec_tos_act_req_tos" edge="1" parent="1" source="dec_tos" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=classic;fontSize=10;labelBackgroundColor=none;fontColor=default;" target="act_req_tos" value="No">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_act_req_tos_dec_tos" edge="1" parent="1" source="act_req_tos" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=classic;fontSize=10;labelBackgroundColor=none;fontColor=default;" target="dec_tos" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_dec_tos_act_check_mst" edge="1" parent="1" source="dec_tos" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=classic;fontSize=10;labelBackgroundColor=none;fontColor=default;" target="act_check_mst" value="Yes">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_act_check_mst_dec_mst" edge="1" parent="1" source="act_check_mst" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=classic;fontSize=10;labelBackgroundColor=none;fontColor=default;" target="dec_mst" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_dec_mst_act_err_mst" edge="1" parent="1" source="dec_mst" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=classic;fontSize=10;labelBackgroundColor=none;fontColor=default;" target="act_err_mst" value="No">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_act_err_mst_act_check_mst" edge="1" parent="1" source="act_err_mst" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=classic;fontSize=10;labelBackgroundColor=none;fontColor=default;" target="act_check_mst" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_dec_mst_act_create_pending" edge="1" parent="1" source="dec_mst" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=classic;fontSize=10;labelBackgroundColor=none;fontColor=default;" target="act_create_pending" value="Yes">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_act_create_pending_dec_tier" edge="1" parent="1" source="act_create_pending" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=classic;fontSize=10;labelBackgroundColor=none;fontColor=default;" target="dec_tier" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_dec_tier_act_set_tier1" edge="1" parent="1" source="dec_tier" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=classic;fontSize=10;labelBackgroundColor=none;fontColor=default;" target="act_set_tier1" value="Tier 1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_dec_tier_act_up_gpkd" edge="1" parent="1" source="dec_tier" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=classic;fontSize=10;labelBackgroundColor=none;fontColor=default;" target="act_up_gpkd" value="Tier 2">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_act_up_gpkd_fork1" edge="1" parent="1" source="act_up_gpkd" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=classic;fontSize=10;labelBackgroundColor=none;fontColor=default;" value="">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="400" y="650" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e_fork1_act_review" edge="1" parent="1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=classic;fontSize=10;labelBackgroundColor=none;fontColor=default;" target="act_review" value="">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="400" y="655" as="sourcePoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e_act_review_dec_approve" edge="1" parent="1" source="act_review" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=classic;fontSize=10;labelBackgroundColor=none;fontColor=default;" target="dec_approve" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_dec_approve_act_email_rej" edge="1" parent="1" source="dec_approve" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=classic;fontSize=10;labelBackgroundColor=none;fontColor=default;" target="act_email_rej" value="Reject">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_dec_approve_act_set_tier2" edge="1" parent="1" source="dec_approve" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=classic;fontSize=10;labelBackgroundColor=none;fontColor=default;" target="act_set_tier2" value="Approve">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_act_set_tier2_join1" edge="1" parent="1" source="act_set_tier2" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=classic;fontSize=10;labelBackgroundColor=none;fontColor=default;" target="join1" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_act_notify_join1" edge="1" parent="1" source="act_notify" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=classic;fontSize=10;labelBackgroundColor=none;fontColor=default;" target="join1" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_join1_act_login" edge="1" parent="1" source="join1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=classic;fontSize=10;labelBackgroundColor=none;fontColor=default;" target="act_login" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_act_login_act_create_ws" edge="1" parent="1" source="act_login" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=classic;fontSize=10;labelBackgroundColor=none;fontColor=default;" target="act_create_ws" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_act_create_ws_act_invite" edge="1" parent="1" source="act_create_ws" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=classic;fontSize=10;labelBackgroundColor=none;fontColor=default;" target="act_invite" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_act_invite_act_pub_job" edge="1" parent="1" source="act_invite" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=classic;fontSize=10;labelBackgroundColor=none;fontColor=default;" target="act_pub_job" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_act_pub_job_node_end" edge="1" parent="1" source="act_pub_job" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=classic;fontSize=10;labelBackgroundColor=none;fontColor=default;" value="">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="190" y="1230.0000000000005" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="bp6JRSAbibiFsm8qENGN-2" parent="1" style="ellipse;html=1;shape=endState;rounded=1;labelBackgroundColor=none;strokeWidth=1;perimeterSpacing=1;fillStyle=solid;fillColor=#000000;" value="" vertex="1">
+          <mxGeometry height="24" width="24" x="176" y="1230" as="geometry" />
+        </mxCell>
+        <mxCell id="bp6JRSAbibiFsm8qENGN-4" edge="1" parent="1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=classic;fontSize=10;labelBackgroundColor=none;fontColor=default;" target="bp6JRSAbibiFsm8qENGN-1" value="">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points" />
+            <mxPoint x="190" y="60" as="sourcePoint" />
+            <mxPoint x="190" y="150" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="bp6JRSAbibiFsm8qENGN-1" parent="1" style="ellipse;html=1;rounded=1;labelBackgroundColor=none;strokeWidth=21;" value="" vertex="1">
+          <mxGeometry height="10" width="10" x="185" y="60" as="geometry" />
+        </mxCell>
+        <mxCell id="bp6JRSAbibiFsm8qENGN-6" edge="1" parent="1" style="endArrow=none;html=1;rounded=0;entryX=0;entryY=0;entryDx=0;entryDy=0;" target="lane_sys" value="">
+          <mxGeometry height="50" relative="1" width="50" as="geometry">
+            <mxPoint x="640" y="1350" as="sourcePoint" />
+            <mxPoint x="640" y="70" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

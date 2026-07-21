@@ -1,0 +1,67 @@
+<mxfile host="Electron" agent="CVerify">
+  <diagram id="std-01" name="Candidate Assessment Lifecycle">
+    <mxGraphModel dx="1414" dy="841" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="900" pageHeight="680" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="boundary_std-01" parent="1" style="shape=swimlane;whiteSpace=wrap;html=1;startSize=35;collapsible=0;recursiveResize=0;expand=0;fontStyle=1;fontSize=14;labelBackgroundColor=none;" value="Candidate Assessment State Machine (candidate_assessments)" vertex="1">
+          <mxGeometry height="580" width="800" x="40" y="40" as="geometry" />
+        </mxCell>
+        <mxCell id="st_start1" parent="1" style="ellipse;html=1;labelBackgroundColor=none;" value="" vertex="1">
+          <mxGeometry height="30" width="30" x="100" y="120" as="geometry" />
+        </mxCell>
+        <mxCell id="s_queued" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fontSize=11;fontStyle=1;align=center;labelBackgroundColor=none;" value="State: Queued&#xa;(Waiting in Processing Queue)" vertex="1">
+          <mxGeometry height="50" width="220" x="200" y="110" as="geometry" />
+        </mxCell>
+        <mxCell id="s_extracting" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fontSize=11;fontStyle=1;align=center;labelBackgroundColor=none;" value="State: ExtractingCV&#xa;(Parsing Document &amp; Structure)" vertex="1">
+          <mxGeometry height="50" width="220" x="500" y="110" as="geometry" />
+        </mxCell>
+        <mxCell id="s_auditing" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fontSize=11;fontStyle=1;align=center;labelBackgroundColor=none;" value="State: AuditingRepositories&#xa;(Analyzing Code AST &amp; Commits)" vertex="1">
+          <mxGeometry height="50" width="220" x="500" y="230" as="geometry" />
+        </mxCell>
+        <mxCell id="s_calculating" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fontSize=11;fontStyle=1;align=center;labelBackgroundColor=none;" value="State: CalculatingTrustScore&#xa;(Computing SkillTree &amp; Trust Score)" vertex="1">
+          <mxGeometry height="50" width="220" x="500" y="350" as="geometry" />
+        </mxCell>
+        <mxCell id="s_completed" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fontSize=11;fontStyle=1;align=center;labelBackgroundColor=none;" value="State: Completed&#xa;(Assessment Report Active)" vertex="1">
+          <mxGeometry height="50" width="220" x="200" y="350" as="geometry" />
+        </mxCell>
+        <mxCell id="s_failed" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fontSize=11;fontStyle=1;align=center;labelBackgroundColor=none;" value="State: Failed&#xa;(Error Logged / Retrying Allowed)" vertex="1">
+          <mxGeometry height="50" width="220" x="500" y="470" as="geometry" />
+        </mxCell>
+        <mxCell id="st_end1" parent="1" style="ellipse;html=1;shape=endState;labelBackgroundColor=none;" value="" vertex="1">
+          <mxGeometry height="30" width="30" x="100" y="360" as="geometry" />
+        </mxCell>
+        <mxCell id="e_st_start1_s_queued" edge="1" parent="1" source="st_start1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=classic;fontSize=10;fontStyle=1;labelBackgroundColor=none;fontColor=default;" target="s_queued" value="Trigger Assessment">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_s_queued_s_extracting" edge="1" parent="1" source="s_queued" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=classic;fontSize=10;fontStyle=1;labelBackgroundColor=none;fontColor=default;" target="s_extracting" value="Worker Polls Job">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_s_extracting_s_auditing" edge="1" parent="1" source="s_extracting" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=classic;fontSize=10;fontStyle=1;labelBackgroundColor=none;fontColor=default;" target="s_auditing" value="CV Parsed Success">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_s_extracting_s_failed" edge="1" parent="1" source="s_extracting" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=classic;fontSize=10;fontStyle=1;labelBackgroundColor=none;fontColor=default;" target="s_failed" value="CV Format Error">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_s_auditing_s_calculating" edge="1" parent="1" source="s_auditing" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=classic;fontSize=10;fontStyle=1;labelBackgroundColor=none;fontColor=default;" target="s_calculating" value="Repo Audit Success">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_s_auditing_s_failed" edge="1" parent="1" source="s_auditing" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=classic;fontSize=10;fontStyle=1;labelBackgroundColor=none;fontColor=default;" target="s_failed" value="Git Audit Error">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_s_calculating_s_completed" edge="1" parent="1" source="s_calculating" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=classic;fontSize=10;fontStyle=1;labelBackgroundColor=none;fontColor=default;" target="s_completed" value="Pipeline Success">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_s_calculating_s_failed" edge="1" parent="1" source="s_calculating" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=classic;fontSize=10;fontStyle=1;labelBackgroundColor=none;fontColor=default;" target="s_failed" value="AI Engine Exception">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_s_failed_s_queued" edge="1" parent="1" source="s_failed" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=classic;fontSize=10;fontStyle=1;labelBackgroundColor=none;fontColor=default;" target="s_queued" value="Re-trigger / Retry">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_s_completed_st_end1" edge="1" parent="1" source="s_completed" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=classic;fontSize=10;fontStyle=1;labelBackgroundColor=none;fontColor=default;" target="st_end1" value="Finish">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

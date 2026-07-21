@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="utf-8"?>
+<mxfile host="app.diagrams.net" agent="CVerify" version="21.0.0">
+  <diagram id="std-07" name="Community Forum Content Moderation Lifecycle">
+    <mxGraphModel dx="1200" dy="800" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="880" pageHeight="550" math="0" shadow="0">
+      <root>
+        <mxCell id="0"/>
+        <mxCell id="1" parent="0"/>
+        <mxCell id="boundary_std-07" value="Forum Topic Content State Machine (forum_topics)" style="shape=swimlane;whiteSpace=wrap;html=1;startSize=35;collapsible=0;recursiveResize=0;expand=0;fontStyle=1;fontSize=14;fillColor=#f8f9fa;strokeColor=#6c757d;" vertex="1" parent="1">
+          <mxGeometry x="40" y="40" width="780" height="450" as="geometry"/>
+        </mxCell>
+        <mxCell id="st_start7" value="" style="ellipse;html=1;fillColor=#000000;strokeColor=#000000;" vertex="1" parent="1">
+          <mxGeometry x="100" y="120" width="30" height="30" as="geometry"/>
+        </mxCell>
+        <mxCell id="s_active7" value="State: Active&#10;(Topic Published on Forum)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=11;fontStyle=1;align=center;" vertex="1" parent="1">
+          <mxGeometry x="200" y="110" width="220" height="50" as="geometry"/>
+        </mxCell>
+        <mxCell id="s_reported7" value="State: Reported&#10;(Flagged by Community Users)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=11;fontStyle=1;align=center;" vertex="1" parent="1">
+          <mxGeometry x="500" y="110" width="220" height="50" as="geometry"/>
+        </mxCell>
+        <mxCell id="s_queue7" value="State: InModerationQueue&#10;(Under Review by Moderator)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=11;fontStyle=1;align=center;" vertex="1" parent="1">
+          <mxGeometry x="500" y="230" width="220" height="50" as="geometry"/>
+        </mxCell>
+        <mxCell id="s_approved7" value="State: Approved&#10;(Keep &amp; Dismiss Reports)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=11;fontStyle=1;align=center;" vertex="1" parent="1">
+          <mxGeometry x="200" y="230" width="220" height="50" as="geometry"/>
+        </mxCell>
+        <mxCell id="s_removed7" value="State: Removed&#10;(Soft-Deleted for Violation)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=11;fontStyle=1;align=center;" vertex="1" parent="1">
+          <mxGeometry x="500" y="350" width="220" height="50" as="geometry"/>
+        </mxCell>
+        <mxCell id="st_end7" value="" style="ellipse;html=1;shape=endState;fillColor=#000000;strokeColor=#000000;" vertex="1" parent="1">
+          <mxGeometry x="100" y="240" width="30" height="30" as="geometry"/>
+        </mxCell>
+        <mxCell id="e_st_start7_s_active7" value="Post Topic" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=classic;strokeColor=#333333;fontSize=10;fontStyle=1;" edge="1" parent="1" source="st_start7" target="s_active7">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e_s_active7_s_reported7" value="Report Flagged" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=classic;strokeColor=#333333;fontSize=10;fontStyle=1;" edge="1" parent="1" source="s_active7" target="s_reported7">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e_s_reported7_s_queue7" value="Push to Queue" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=classic;strokeColor=#333333;fontSize=10;fontStyle=1;" edge="1" parent="1" source="s_reported7" target="s_queue7">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e_s_queue7_s_approved7" value="Mod Approve" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=classic;strokeColor=#333333;fontSize=10;fontStyle=1;" edge="1" parent="1" source="s_queue7" target="s_approved7">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e_s_queue7_s_removed7" value="Mod Delete" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=classic;strokeColor=#333333;fontSize=10;fontStyle=1;" edge="1" parent="1" source="s_queue7" target="s_removed7">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e_s_approved7_s_active7" value="Restore Active" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=classic;strokeColor=#333333;fontSize=10;fontStyle=1;" edge="1" parent="1" source="s_approved7" target="s_active7">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e_s_removed7_st_end7" value="Finish" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=classic;strokeColor=#333333;fontSize=10;fontStyle=1;" edge="1" parent="1" source="s_removed7" target="st_end7">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

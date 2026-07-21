@@ -1,0 +1,138 @@
+<mxfile host="Electron" agent="CVerify">
+  <diagram id="ucd-09" name="UCD-09 Community Forum &amp; Moderation Diagram">
+    <mxGraphModel dx="1885" dy="1948" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1169" pageHeight="827" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="act_forum_user" parent="1" style="shape=umlActor;verticalLabelPosition=bottom;verticalAlign=top;html=1;outlineConnect=0;fontSize=12;fontStyle=0;labelBackgroundColor=none;" value="Forum User / Candidate" vertex="1">
+          <mxGeometry height="90" width="50" x="50" y="250" as="geometry" />
+        </mxCell>
+        <mxCell id="act_forum_mod" parent="1" style="shape=umlActor;verticalLabelPosition=bottom;verticalAlign=top;html=1;outlineConnect=0;fontSize=12;fontStyle=0;labelBackgroundColor=none;" value="Forum Moderator" vertex="1">
+          <mxGeometry height="90" width="50" x="30" y="715" as="geometry" />
+        </mxCell>
+        <mxCell id="act_admin_forum" parent="1" style="shape=umlActor;verticalLabelPosition=bottom;verticalAlign=top;html=1;outlineConnect=0;fontSize=12;fontStyle=0;labelBackgroundColor=none;" value="Super Admin" vertex="1">
+          <mxGeometry height="90" width="50" x="20" y="910" as="geometry" />
+        </mxCell>
+        <mxCell id="act_auto_filter" parent="1" style="shape=umlActor;verticalLabelPosition=bottom;verticalAlign=top;html=1;outlineConnect=0;fontSize=12;fontStyle=0;labelBackgroundColor=none;" value="Automated Filter" vertex="1">
+          <mxGeometry height="90" width="50" x="960" y="650" as="geometry" />
+        </mxCell>
+        <mxCell id="uc_f01" parent="1" style="ellipse;whiteSpace=wrap;html=1;fontSize=11;fontStyle=0;align=center;labelBackgroundColor=none;" value="UC-FORUM-01: Browse Categories &amp;amp; Topics" vertex="1">
+          <mxGeometry height="80" width="175" x="185" y="-10" as="geometry" />
+        </mxCell>
+        <mxCell id="uc_f02" parent="1" style="ellipse;whiteSpace=wrap;html=1;fontSize=11;fontStyle=0;align=center;labelBackgroundColor=none;" value="UC-FORUM-02: Create Forum Topic" vertex="1">
+          <mxGeometry height="60" width="150" x="470" y="110" as="geometry" />
+        </mxCell>
+        <mxCell id="uc_f03" parent="1" style="ellipse;whiteSpace=wrap;html=1;fontSize=11;fontStyle=0;align=center;labelBackgroundColor=none;" value="UC-FORUM-03: Edit Forum Topic" vertex="1">
+          <mxGeometry height="60" width="140" x="360" y="50" as="geometry" />
+        </mxCell>
+        <mxCell id="uc_f05" parent="1" style="ellipse;whiteSpace=wrap;html=1;fontSize=11;fontStyle=0;align=center;labelBackgroundColor=none;" value="UC-FORUM-05: Create Reply / Comment" vertex="1">
+          <mxGeometry height="50" width="170" x="490" y="200" as="geometry" />
+        </mxCell>
+        <mxCell id="uc_f06" parent="1" style="ellipse;whiteSpace=wrap;html=1;fontSize=11;fontStyle=0;align=center;labelBackgroundColor=none;" value="UC-FORUM-06: Edit/Delete Reply" vertex="1">
+          <mxGeometry height="60" width="150" x="500" y="280" as="geometry" />
+        </mxCell>
+        <mxCell id="uc_f07" parent="1" style="ellipse;whiteSpace=wrap;html=1;fontSize=11;fontStyle=0;align=center;labelBackgroundColor=none;" value="UC-FORUM-07: Vote Upvote / Downvote" vertex="1">
+          <mxGeometry height="60" width="150" x="400" y="430" as="geometry" />
+        </mxCell>
+        <mxCell id="uc_f08" parent="1" style="ellipse;whiteSpace=wrap;html=1;fontSize=11;fontStyle=0;align=center;labelBackgroundColor=none;" value="UC-FORUM-08: React to Post" vertex="1">
+          <mxGeometry height="60" width="135" x="485" y="360" as="geometry" />
+        </mxCell>
+        <mxCell id="uc_f11" parent="1" style="ellipse;whiteSpace=wrap;html=1;fontSize=11;fontStyle=0;align=center;labelBackgroundColor=none;" value="UC-FORUM-11: Report Content" vertex="1">
+          <mxGeometry height="60" width="220" x="170" y="490" as="geometry" />
+        </mxCell>
+        <mxCell id="uc_f12" parent="1" style="ellipse;whiteSpace=wrap;html=1;fontSize=11;fontStyle=0;align=center;labelBackgroundColor=none;" value="UC-FORUM-12: View Moderation Queue" vertex="1">
+          <mxGeometry height="60" width="220" x="310" y="680" as="geometry" />
+        </mxCell>
+        <mxCell id="uc_f13" parent="1" style="ellipse;whiteSpace=wrap;html=1;fontSize=11;fontStyle=0;align=center;labelBackgroundColor=none;" value="UC-FORUM-13: Approve/Reject Reported Content" vertex="1">
+          <mxGeometry height="60" width="220" x="240" y="790" as="geometry" />
+        </mxCell>
+        <mxCell id="uc_f14" parent="1" style="ellipse;whiteSpace=wrap;html=1;fontSize=11;fontStyle=0;align=center;labelBackgroundColor=none;" value="UC-FORUM-14: Manage Categories &amp;amp; Tags" vertex="1">
+          <mxGeometry height="60" width="220" x="230" y="925" as="geometry" />
+        </mxCell>
+        <mxCell id="uc_f15" parent="1" style="ellipse;whiteSpace=wrap;html=1;fontSize=11;fontStyle=0;align=center;labelBackgroundColor=none;" value="UC-FORUM-15: View Reputation &amp;amp; Badges" vertex="1">
+          <mxGeometry height="60" width="110" x="750" y="190" as="geometry" />
+        </mxCell>
+        <mxCell id="edge_ucd-09_1" edge="1" parent="1" source="act_forum_user" style="endArrow=none;html=1;rounded=0;strokeWidth=1.5;labelBackgroundColor=none;fontColor=default;fontStyle=0" target="uc_f01" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge_ucd-09_2" edge="1" parent="1" source="act_forum_user" style="endArrow=none;html=1;rounded=0;strokeWidth=1.5;labelBackgroundColor=none;fontColor=default;fontStyle=0" target="uc_f02" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge_ucd-09_3" edge="1" parent="1" source="act_forum_user" style="endArrow=none;html=1;rounded=0;strokeWidth=1.5;labelBackgroundColor=none;fontColor=default;fontStyle=0" target="uc_f05" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge_ucd-09_4" edge="1" parent="1" source="act_forum_user" style="endArrow=none;html=1;rounded=0;strokeWidth=1.5;labelBackgroundColor=none;fontColor=default;fontStyle=0" target="uc_f07" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge_ucd-09_5" edge="1" parent="1" source="act_forum_user" style="endArrow=none;html=1;rounded=0;strokeWidth=1.5;labelBackgroundColor=none;fontColor=default;fontStyle=0" target="uc_f11" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge_ucd-09_6" edge="1" parent="1" source="act_forum_mod" style="endArrow=none;html=1;rounded=0;strokeWidth=1.5;labelBackgroundColor=none;fontColor=default;fontStyle=0" target="uc_f12" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge_ucd-09_7" edge="1" parent="1" source="act_forum_mod" style="endArrow=none;html=1;rounded=0;strokeWidth=1.5;labelBackgroundColor=none;fontColor=default;fontStyle=0" target="uc_f13" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge_ucd-09_8" edge="1" parent="1" source="act_admin_forum" style="endArrow=none;html=1;rounded=0;strokeWidth=1.5;labelBackgroundColor=none;fontColor=default;fontStyle=0" target="uc_f14" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge_ucd-09_9" edge="1" parent="1" source="act_auto_filter" style="endArrow=none;html=1;rounded=0;strokeWidth=1.5;labelBackgroundColor=none;fontColor=default;fontStyle=0" target="uc_f12" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge_ucd-09_10" edge="1" parent="1" source="uc_f02" style="endArrow=open;endSize=8;dashed=1;html=1;rounded=0;strokeWidth=1.2;fontSize=10;fontStyle=0;labelBackgroundColor=none;fontColor=default;" target="uc_f11" value="&amp;lt;&amp;lt;extend&amp;gt;&amp;gt;">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="870" y="140" />
+              <mxPoint x="870" y="520" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="edge_ucd-09_11" edge="1" parent="1" source="uc_f04" style="endArrow=open;endSize=8;dashed=1;html=1;rounded=0;strokeWidth=1.2;fontSize=10;fontStyle=0;labelBackgroundColor=none;fontColor=default;" target="uc_f12" value="&amp;lt;&amp;lt;include&amp;gt;&amp;gt;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge_ucd-09_12" edge="1" parent="1" source="uc_f12" style="endArrow=open;endSize=8;dashed=1;html=1;rounded=0;strokeWidth=1.2;fontSize=10;fontStyle=0;labelBackgroundColor=none;fontColor=default;" target="uc_f13" value="&amp;lt;&amp;lt;include&amp;gt;&amp;gt;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge_ucd-09_13" edge="1" parent="1" source="uc_f05" style="endArrow=open;endSize=8;dashed=1;html=1;rounded=0;strokeWidth=1.2;fontSize=10;fontStyle=0;labelBackgroundColor=none;fontColor=default;" target="uc_f15" value="&amp;lt;&amp;lt;include&amp;gt;&amp;gt;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="Uj7Ka6v3dEE17vM_zWTs-1" parent="1" style="shape=umlFrame;whiteSpace=wrap;html=1;pointerEvents=0;width=350;height=50;fontStyle=0" value="&lt;span style=&quot;font-size: 14px;&quot;&gt;&lt;b&gt;Community Forum &amp;amp; Moderation System&lt;/b&gt;&lt;/span&gt;" vertex="1">
+          <mxGeometry height="1230" width="750" x="150" y="-120" as="geometry" />
+        </mxCell>
+        <mxCell id="Uj7Ka6v3dEE17vM_zWTs-2" edge="1" parent="1" source="act_forum_user" style="endArrow=none;html=1;rounded=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;exitX=1;exitY=0.3333333333333333;exitDx=0;exitDy=0;exitPerimeter=0;fontStyle=0" target="uc_f03" value="">
+          <mxGeometry height="50" relative="1" width="50" as="geometry">
+            <mxPoint x="190" y="260" as="sourcePoint" />
+            <mxPoint x="240" y="210" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="Uj7Ka6v3dEE17vM_zWTs-3" edge="1" parent="1" source="uc_f08" style="endArrow=none;html=1;rounded=0;" value="">
+          <mxGeometry height="50" relative="1" width="50" as="geometry">
+            <mxPoint x="110" y="490" as="sourcePoint" />
+            <mxPoint x="110" y="300" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="Uj7Ka6v3dEE17vM_zWTs-4" edge="1" parent="1" source="act_forum_user" style="endArrow=none;html=1;rounded=0;" target="uc_f06" value="">
+          <mxGeometry height="50" relative="1" width="50" as="geometry">
+            <mxPoint x="240" y="450" as="sourcePoint" />
+            <mxPoint x="290" y="400" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="Uj7Ka6v3dEE17vM_zWTs-5" edge="1" parent="1" source="act_forum_mod" style="endArrow=none;html=1;rounded=0;exitX=1;exitY=0.3333333333333333;exitDx=0;exitDy=0;exitPerimeter=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="uc_f04" value="">
+          <mxGeometry height="50" relative="1" width="50" as="geometry">
+            <mxPoint x="120" y="530" as="sourcePoint" />
+            <mxPoint x="170" y="480" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="Uj7Ka6v3dEE17vM_zWTs-7" edge="1" parent="1" source="uc_f11" style="endArrow=open;endSize=8;dashed=1;html=1;rounded=0;strokeWidth=1.2;fontSize=10;fontStyle=0;labelBackgroundColor=none;fontColor=default;" target="uc_f04" value="">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="298" y="550" as="sourcePoint" />
+            <mxPoint x="362" y="655" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="uc_f04" parent="1" style="ellipse;whiteSpace=wrap;html=1;fontSize=11;fontStyle=0;align=center;labelBackgroundColor=none;" value="UC-FORUM-04: Delete Forum Topic" vertex="1">
+          <mxGeometry height="60" width="220" x="240" y="590" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>
