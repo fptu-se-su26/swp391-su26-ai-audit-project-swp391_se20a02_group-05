@@ -1,0 +1,83 @@
+<?xml version="1.0" encoding="utf-8"?>
+<mxfile host="app.diagrams.net" agent="CVerify" version="21.0.0">
+  <diagram id="sl-05" name="Candidate AI Assessment &amp; Skill Tree Pipeline">
+    <mxGraphModel dx="1400" dy="900" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1240" pageHeight="920" math="0" shadow="0">
+      <root>
+        <mxCell id="0"/>
+        <mxCell id="1" parent="0"/>
+        <mxCell id="main_container_sl-05" value="Candidate — AI Assessment Pipeline &amp;amp; Skill Tree Flow" style="shape=swimlane;html=1;childLayout=stackLayout;startSize=30;horizontal=1;horizontalStack=1;fillColor=#ffffff;strokeColor=#000000;fontStyle=1;fontSize=14;collapsible=0;expand=0;" vertex="1" parent="1">
+          <mxGeometry x="40" y="40" width="1140" height="820" as="geometry"/>
+        </mxCell>
+        <mxCell id="l_cand5" value="Candidate" style="shape=swimlane;html=1;startSize=30;swimlaneHead=0;swimlaneBody=0;top=0;left=0;bottom=0;right=0;collapsible=0;dropTarget=0;fillColor=#ffffff;strokeColor=#000000;fontStyle=1;fontSize=12;" vertex="1" parent="main_container_sl-05">
+          <mxGeometry x="0" y="30" width="280" height="790" as="geometry"/>
+        </mxCell>
+        <mxCell id="l_core5" value="Assessment Controller (.NET)" style="shape=swimlane;html=1;startSize=30;swimlaneHead=0;swimlaneBody=0;top=0;left=0;bottom=0;right=0;collapsible=0;dropTarget=0;fillColor=#ffffff;strokeColor=#000000;fontStyle=1;fontSize=12;" vertex="1" parent="main_container_sl-05">
+          <mxGeometry x="280" y="30" width="280" height="790" as="geometry"/>
+        </mxCell>
+        <mxCell id="l_ai5" value="CVerify.AI Engine (Python)" style="shape=swimlane;html=1;startSize=30;swimlaneHead=0;swimlaneBody=0;top=0;left=0;bottom=0;right=0;collapsible=0;dropTarget=0;fillColor=#ffffff;strokeColor=#000000;fontStyle=1;fontSize=12;" vertex="1" parent="main_container_sl-05">
+          <mxGeometry x="560" y="30" width="300" height="790" as="geometry"/>
+        </mxCell>
+        <mxCell id="l_db5" value="PostgreSQL Database" style="shape=swimlane;html=1;startSize=30;swimlaneHead=0;swimlaneBody=0;top=0;left=0;bottom=0;right=0;collapsible=0;dropTarget=0;fillColor=#ffffff;strokeColor=#000000;fontStyle=1;fontSize=12;" vertex="1" parent="main_container_sl-05">
+          <mxGeometry x="860" y="30" width="280" height="790" as="geometry"/>
+        </mxCell>
+        <mxCell id="n_start5" value="" style="ellipse;html=1;fillColor=#000000;strokeColor=#000000;" vertex="1" parent="1">
+          <mxGeometry x="165" y="90" width="30" height="30" as="geometry"/>
+        </mxCell>
+        <mxCell id="a_trigger_assess" value="Yêu cầu Đánh giá AI Tổng thể (Queue Assessment)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#000000;fontSize=11;align=center;" vertex="1" parent="1">
+          <mxGeometry x="70" y="150" width="220" height="50" as="geometry"/>
+        </mxCell>
+        <mxCell id="a_create_assess_rec" value="Tạo Candidate Assessment Record (Processing)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#000000;fontSize=11;align=center;" vertex="1" parent="1">
+          <mxGeometry x="350" y="150" width="220" height="50" as="geometry"/>
+        </mxCell>
+        <mxCell id="a_fetch_data" value="Fetch Profile, CV &amp; Repo Audit Data" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#000000;fontSize=11;align=center;" vertex="1" parent="1">
+          <mxGeometry x="930" y="150" width="220" height="50" as="geometry"/>
+        </mxCell>
+        <mxCell id="a_run_skill_tree" value="Giai đoạn 1: Build Interactive Skill Tree Matrix" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#000000;fontSize=11;align=center;" vertex="1" parent="1">
+          <mxGeometry x="630" y="260" width="240" height="50" as="geometry"/>
+        </mxCell>
+        <mxCell id="a_calc_trust" value="Giai đoạn 2: Compute Profile Trust Score (0-100%)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#000000;fontSize=11;align=center;" vertex="1" parent="1">
+          <mxGeometry x="630" y="350" width="240" height="50" as="geometry"/>
+        </mxCell>
+        <mxCell id="a_fit_roles" value="Giai đoạn 3: Analyze Strengths &amp; Best-Fit Roles" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#000000;fontSize=11;align=center;" vertex="1" parent="1">
+          <mxGeometry x="630" y="440" width="240" height="50" as="geometry"/>
+        </mxCell>
+        <mxCell id="a_save_assess" value="Save Assessment Report &amp; Capabilities JSON" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#000000;fontSize=11;align=center;" vertex="1" parent="1">
+          <mxGeometry x="930" y="530" width="220" height="50" as="geometry"/>
+        </mxCell>
+        <mxCell id="a_view_dashboard" value="Hiển thị Cây kỹ năng 3D &amp; Báo cáo Audit Năng lực" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#000000;fontSize=11;align=center;" vertex="1" parent="1">
+          <mxGeometry x="70" y="630" width="220" height="50" as="geometry"/>
+        </mxCell>
+        <mxCell id="n_end5" value="" style="ellipse;html=1;shape=endState;fillColor=#000000;strokeColor=#000000;" vertex="1" parent="1">
+          <mxGeometry x="165" y="730" width="30" height="30" as="geometry"/>
+        </mxCell>
+        <mxCell id="e_n_start5_a_trigger_assess" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=classic;strokeColor=#000000;fontSize=10;" edge="1" parent="1" source="n_start5" target="a_trigger_assess">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e_a_trigger_assess_a_create_assess_rec" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=classic;strokeColor=#000000;fontSize=10;" edge="1" parent="1" source="a_trigger_assess" target="a_create_assess_rec">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e_a_create_assess_rec_a_fetch_data" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=classic;strokeColor=#000000;fontSize=10;" edge="1" parent="1" source="a_create_assess_rec" target="a_fetch_data">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e_a_fetch_data_a_run_skill_tree" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=classic;strokeColor=#000000;fontSize=10;" edge="1" parent="1" source="a_fetch_data" target="a_run_skill_tree">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e_a_run_skill_tree_a_calc_trust" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=classic;strokeColor=#000000;fontSize=10;" edge="1" parent="1" source="a_run_skill_tree" target="a_calc_trust">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e_a_calc_trust_a_fit_roles" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=classic;strokeColor=#000000;fontSize=10;" edge="1" parent="1" source="a_calc_trust" target="a_fit_roles">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e_a_fit_roles_a_save_assess" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=classic;strokeColor=#000000;fontSize=10;" edge="1" parent="1" source="a_fit_roles" target="a_save_assess">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e_a_save_assess_a_view_dashboard" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=classic;strokeColor=#000000;fontSize=10;" edge="1" parent="1" source="a_save_assess" target="a_view_dashboard">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e_a_view_dashboard_n_end5" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=classic;strokeColor=#000000;fontSize=10;" edge="1" parent="1" source="a_view_dashboard" target="n_end5">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

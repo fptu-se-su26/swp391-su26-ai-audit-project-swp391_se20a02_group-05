@@ -1,0 +1,125 @@
+<mxfile host="Electron" agent="CVerify">
+  <diagram id="sl-02" name="Org Level-2 Recovery &amp; Dispute Voting">
+    <mxGraphModel dx="1571" dy="2084" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1300" pageHeight="1150" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="main_container_sl-02" parent="1" style="shape=swimlane;html=1;childLayout=stackLayout;startSize=30;horizontal=1;horizontalStack=1;fontStyle=1;fontSize=14;collapsible=0;expand=0;labelBackgroundColor=none;" value="Organization — Level-2 Recovery &amp;amp; Dispute Voting Flow" vertex="1">
+          <mxGeometry height="1100" width="1200" x="40" y="-10" as="geometry" />
+        </mxCell>
+        <mxCell id="l_claimant" parent="main_container_sl-02" style="shape=swimlane;html=1;startSize=30;swimlaneHead=0;swimlaneBody=0;top=0;left=0;bottom=0;right=0;collapsible=0;dropTarget=0;fontStyle=1;fontSize=12;labelBackgroundColor=none;" value="Claimant (User)" vertex="1">
+          <mxGeometry height="1070" width="300" y="30" as="geometry" />
+        </mxCell>
+        <mxCell id="vU4WrKqcMExWAdNeWFv0-1" edge="1" parent="main_container_sl-02" source="main_container_sl-02" style="endArrow=none;html=1;rounded=0;entryX=1;entryY=0;entryDx=0;entryDy=0;exitX=0.25;exitY=1;exitDx=0;exitDy=0;labelBackgroundColor=none;fontColor=default;" target="l_claimant" value="">
+          <mxGeometry height="50" relative="1" width="50" as="geometry">
+            <mxPoint x="200" y="380" as="sourcePoint" />
+            <mxPoint x="250" y="330" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="l_members" parent="main_container_sl-02" style="shape=swimlane;html=1;startSize=30;swimlaneHead=0;swimlaneBody=0;top=0;left=0;bottom=0;right=0;collapsible=0;dropTarget=0;fontStyle=1;fontSize=12;labelBackgroundColor=none;" value="Org Members" vertex="1">
+          <mxGeometry height="1070" width="300" x="300" y="30" as="geometry" />
+        </mxCell>
+        <mxCell id="l_admin" parent="main_container_sl-02" style="shape=swimlane;html=1;startSize=30;swimlaneHead=0;swimlaneBody=0;top=0;left=0;bottom=0;right=0;collapsible=0;dropTarget=0;fontStyle=1;fontSize=12;labelBackgroundColor=none;" value="Super Admin" vertex="1">
+          <mxGeometry height="1070" width="300" x="600" y="30" as="geometry" />
+        </mxCell>
+        <mxCell id="l_sys2" parent="main_container_sl-02" style="shape=swimlane;html=1;startSize=30;swimlaneHead=0;swimlaneBody=0;top=0;left=0;bottom=0;right=0;collapsible=0;dropTarget=0;fontStyle=1;fontSize=12;labelBackgroundColor=none;" value="CVerify System Core" vertex="1">
+          <mxGeometry height="1070" width="300" x="900" y="30" as="geometry" />
+        </mxCell>
+        <mxCell id="vU4WrKqcMExWAdNeWFv0-2" edge="1" parent="main_container_sl-02" source="main_container_sl-02" style="endArrow=none;html=1;rounded=0;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=1;entryY=0;entryDx=0;entryDy=0;labelBackgroundColor=none;fontColor=default;" target="l_members" value="">
+          <mxGeometry height="50" relative="1" width="50" as="geometry">
+            <mxPoint x="650" y="1270" as="sourcePoint" />
+            <mxPoint x="650" y="200" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="vU4WrKqcMExWAdNeWFv0-3" edge="1" parent="main_container_sl-02" source="l_admin" style="endArrow=none;html=1;rounded=0;entryX=1;entryY=0;entryDx=0;entryDy=0;exitX=1;exitY=1;exitDx=0;exitDy=0;labelBackgroundColor=none;fontColor=default;" target="l_admin" value="">
+          <mxGeometry height="50" relative="1" width="50" as="geometry">
+            <mxPoint x="820" y="1200" as="sourcePoint" />
+            <mxPoint x="820" y="130" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="a_req_l2" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fontSize=11;align=center;labelBackgroundColor=none;" value="Yêu cầu Tranh chấp Khôi phục L2&#xa;(Initiate Org Recovery L2)" vertex="1">
+          <mxGeometry height="50" width="240" x="70" y="150" as="geometry" />
+        </mxCell>
+        <mxCell id="a_up_evid" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fontSize=11;align=center;labelBackgroundColor=none;" value="Tải lên Bằng chứng Pháp lý (Giấy ĐKKD, Con dấu)" vertex="1">
+          <mxGeometry height="50" width="240" x="70" y="240" as="geometry" />
+        </mxCell>
+        <mxCell id="a_create_claim" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fontSize=11;align=center;labelBackgroundColor=none;" value="Tạo bản ghi Claim PENDING &amp; Phát Event Bỏ phiếu" vertex="1">
+          <mxGeometry height="50" width="240" x="970" y="240" as="geometry" />
+        </mxCell>
+        <mxCell id="a_notify_mems" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fontSize=11;align=center;labelBackgroundColor=none;" value="Gửi Mail Thông báo Tranh chấp cho Thành viên" vertex="1">
+          <mxGeometry height="50" width="240" x="970" y="330" as="geometry" />
+        </mxCell>
+        <mxCell id="a_vote" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fontSize=11;align=center;labelBackgroundColor=none;" value="Truy cập Màn hình Bỏ phiếu&#xa;(Vote Approve / Reject Claim)" vertex="1">
+          <mxGeometry height="50" width="240" x="370" y="420" as="geometry" />
+        </mxCell>
+        <mxCell id="a_count_vote" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fontSize=11;align=center;labelBackgroundColor=none;" value="Tổng hợp Tỷ lệ Đồng thuận Bỏ phiếu" vertex="1">
+          <mxGeometry height="50" width="240" x="970" y="420" as="geometry" />
+        </mxCell>
+        <mxCell id="a_admin_review" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fontSize=11;align=center;labelBackgroundColor=none;" value="Super Admin Thẩm định Hồ sơ Tranh chấp &amp; Vote Result" vertex="1">
+          <mxGeometry height="50" width="240" x="670" y="520" as="geometry" />
+        </mxCell>
+        <mxCell id="d_admin_approve" parent="1" style="rhombus;whiteSpace=wrap;html=1;fontSize=11;align=center;labelBackgroundColor=none;" value="Phê duyệt Claim?" vertex="1">
+          <mxGeometry height="60" width="120" x="730" y="610" as="geometry" />
+        </mxCell>
+        <mxCell id="a_reclaim_master" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fontSize=11;align=center;labelBackgroundColor=none;" value="Chuyển giao Quyền Master Admin cho Claimant" vertex="1">
+          <mxGeometry height="50" width="240" x="970" y="700" as="geometry" />
+        </mxCell>
+        <mxCell id="a_reject_claim" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fontSize=11;align=center;labelBackgroundColor=none;" value="Từ chối Yêu cầu &amp; Khóa Tài khoản Báo cáo Sai" vertex="1">
+          <mxGeometry height="50" width="240" x="970" y="780" as="geometry" />
+        </mxCell>
+        <mxCell id="a_track_res" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fontSize=11;align=center;labelBackgroundColor=none;" value="Nhận Thông báo Kết quả Khôi phục Doanh nghiệp" vertex="1">
+          <mxGeometry height="50" width="240" x="70" y="860" as="geometry" />
+        </mxCell>
+        <mxCell id="e_n_start2_a_req_l2" edge="1" parent="1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=classic;fontSize=10;labelBackgroundColor=none;fontColor=default;" target="a_req_l2" value="">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="190.0000000000001" y="120" as="sourcePoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e_a_req_l2_a_up_evid" edge="1" parent="1" source="a_req_l2" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=classic;fontSize=10;labelBackgroundColor=none;fontColor=default;" target="a_up_evid" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_a_up_evid_a_create_claim" edge="1" parent="1" source="a_up_evid" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=classic;fontSize=10;labelBackgroundColor=none;fontColor=default;" target="a_create_claim" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_a_create_claim_a_notify_mems" edge="1" parent="1" source="a_create_claim" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=classic;fontSize=10;labelBackgroundColor=none;fontColor=default;" target="a_notify_mems" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_a_notify_mems_a_vote" edge="1" parent="1" source="a_notify_mems" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=classic;fontSize=10;labelBackgroundColor=none;fontColor=default;" target="a_vote" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_a_vote_a_count_vote" edge="1" parent="1" source="a_vote" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=classic;fontSize=10;labelBackgroundColor=none;fontColor=default;" target="a_count_vote" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_a_count_vote_a_admin_review" edge="1" parent="1" source="a_count_vote" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=classic;fontSize=10;labelBackgroundColor=none;fontColor=default;" target="a_admin_review" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_a_admin_review_d_admin_approve" edge="1" parent="1" source="a_admin_review" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=classic;fontSize=10;labelBackgroundColor=none;fontColor=default;" target="d_admin_approve" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_d_admin_approve_a_reclaim_master" edge="1" parent="1" source="d_admin_approve" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=classic;fontSize=10;labelBackgroundColor=none;fontColor=default;" target="a_reclaim_master" value="Approve">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_d_admin_approve_a_reject_claim" edge="1" parent="1" source="d_admin_approve" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=classic;fontSize=10;labelBackgroundColor=none;fontColor=default;" target="a_reject_claim" value="Reject">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_a_reclaim_master_a_track_res" edge="1" parent="1" source="a_reclaim_master" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=classic;fontSize=10;labelBackgroundColor=none;fontColor=default;" target="a_track_res" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_a_reject_claim_a_track_res" edge="1" parent="1" source="a_reject_claim" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=classic;fontSize=10;labelBackgroundColor=none;fontColor=default;" target="a_track_res" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_a_track_res_n_end2" edge="1" parent="1" source="a_track_res" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=classic;fontSize=10;labelBackgroundColor=none;fontColor=default;" value="">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="190" y="960" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="wpcDHmwD3duXWPo71TWe-3" parent="1" style="ellipse;html=1;shape=endState;rounded=1;labelBackgroundColor=none;strokeWidth=1;perimeterSpacing=1;fillStyle=solid;fillColor=#000000;" value="" vertex="1">
+          <mxGeometry height="24" width="24" x="180" y="960" as="geometry" />
+        </mxCell>
+        <mxCell id="wpcDHmwD3duXWPo71TWe-4" parent="1" style="ellipse;html=1;rounded=1;labelBackgroundColor=none;strokeWidth=21;" value="" vertex="1">
+          <mxGeometry height="10" width="10" x="190" y="100" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

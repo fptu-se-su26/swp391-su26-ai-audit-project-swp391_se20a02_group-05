@@ -1,0 +1,138 @@
+<mxfile host="Electron" agent="CVerify">
+  <diagram id="ucd-03" name="UCD-03 Organization &amp; Workspace Management Diagram">
+    <mxGraphModel dx="2020" dy="2028" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1169" pageHeight="827" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="act_org_admin" parent="1" style="shape=umlActor;verticalLabelPosition=bottom;verticalAlign=top;html=1;outlineConnect=0;fontSize=12;fontStyle=0;labelBackgroundColor=none;" value="Org Admin" vertex="1">
+          <mxGeometry height="90" width="50" x="50" y="220" as="geometry" />
+        </mxCell>
+        <mxCell id="act_org_mem" parent="1" style="shape=umlActor;verticalLabelPosition=bottom;verticalAlign=top;html=1;outlineConnect=0;fontSize=12;fontStyle=0;labelBackgroundColor=none;" value="Org Member" vertex="1">
+          <mxGeometry height="90" width="50" x="50" y="520" as="geometry" />
+        </mxCell>
+        <mxCell id="act_invitee" parent="1" style="shape=umlActor;verticalLabelPosition=bottom;verticalAlign=top;html=1;outlineConnect=0;fontSize=12;fontStyle=0;labelBackgroundColor=none;" value="Guest / Invitee" vertex="1">
+          <mxGeometry height="90" width="50" x="1190" y="265" as="geometry" />
+        </mxCell>
+        <mxCell id="act_s_admin" parent="1" style="shape=umlActor;verticalLabelPosition=bottom;verticalAlign=top;html=1;outlineConnect=0;fontSize=12;fontStyle=0;labelBackgroundColor=none;" value="Super Admin" vertex="1">
+          <mxGeometry height="90" width="50" x="1180" y="-55" as="geometry" />
+        </mxCell>
+        <mxCell id="uc_o01" parent="1" style="ellipse;whiteSpace=wrap;html=1;fontSize=11;fontStyle=0;align=center;labelBackgroundColor=none;" value="UC-ORG-01: Update Org Profile &amp;amp; Branding" vertex="1">
+          <mxGeometry height="60" width="220" x="250" y="-90" as="geometry" />
+        </mxCell>
+        <mxCell id="uc_o02" parent="1" style="ellipse;whiteSpace=wrap;html=1;fontSize=11;fontStyle=0;align=center;labelBackgroundColor=none;" value="UC-ORG-02: Submit Org Verification" vertex="1">
+          <mxGeometry height="60" width="220" x="410" y="-40" as="geometry" />
+        </mxCell>
+        <mxCell id="uc_o03" parent="1" style="ellipse;whiteSpace=wrap;html=1;fontSize=11;fontStyle=0;align=center;labelBackgroundColor=none;" value="UC-ORG-03: Approve/Reject Org Verification" vertex="1">
+          <mxGeometry height="60" width="220" x="730" y="-20" as="geometry" />
+        </mxCell>
+        <mxCell id="uc_o04" parent="1" style="ellipse;whiteSpace=wrap;html=1;fontSize=11;fontStyle=0;align=center;labelBackgroundColor=none;" value="UC-ORG-04: Create Custom Org Role" vertex="1">
+          <mxGeometry height="60" width="220" x="460" y="50" as="geometry" />
+        </mxCell>
+        <mxCell id="uc_o05" parent="1" style="ellipse;whiteSpace=wrap;html=1;fontSize=11;fontStyle=0;align=center;labelBackgroundColor=none;" value="UC-ORG-05: Assign Permissions to Role" vertex="1">
+          <mxGeometry height="60" width="220" x="820" y="70" as="geometry" />
+        </mxCell>
+        <mxCell id="uc_o06" parent="1" style="ellipse;whiteSpace=wrap;html=1;fontSize=11;fontStyle=0;align=center;labelBackgroundColor=none;" value="UC-ORG-06: Manage Org Roles" vertex="1">
+          <mxGeometry height="60" width="220" x="630" y="200" as="geometry" />
+        </mxCell>
+        <mxCell id="uc_o07" parent="1" style="ellipse;whiteSpace=wrap;html=1;fontSize=11;fontStyle=0;align=center;labelBackgroundColor=none;" value="UC-ORG-07: Invite Member via Email" vertex="1">
+          <mxGeometry height="60" width="220" x="390" y="270" as="geometry" />
+        </mxCell>
+        <mxCell id="uc_o08" parent="1" style="ellipse;whiteSpace=wrap;html=1;fontSize=11;fontStyle=0;align=center;labelBackgroundColor=none;" value="UC-ORG-08: Accept/Decline Org Invitation" vertex="1">
+          <mxGeometry height="60" width="220" x="760" y="280" as="geometry" />
+        </mxCell>
+        <mxCell id="uc_o09" parent="1" style="ellipse;whiteSpace=wrap;html=1;fontSize=11;fontStyle=0;align=center;labelBackgroundColor=none;" value="UC-ORG-09: Assign Role to Member" vertex="1">
+          <mxGeometry height="60" width="220" x="460" y="355" as="geometry" />
+        </mxCell>
+        <mxCell id="uc_o11" parent="1" style="ellipse;whiteSpace=wrap;html=1;fontSize=11;fontStyle=0;align=center;labelBackgroundColor=none;" value="UC-ORG-11: Create Workspace" vertex="1">
+          <mxGeometry height="60" width="220" x="220" y="415" as="geometry" />
+        </mxCell>
+        <mxCell id="uc_o13" parent="1" style="ellipse;whiteSpace=wrap;html=1;fontSize=11;fontStyle=0;align=center;labelBackgroundColor=none;" value="UC-ORG-13: ModifyWorkspace Members" vertex="1">
+          <mxGeometry height="60" width="220" x="350" y="540" as="geometry" />
+        </mxCell>
+        <mxCell id="uc_o14" parent="1" style="ellipse;whiteSpace=wrap;html=1;fontSize=11;fontStyle=0;align=center;labelBackgroundColor=none;" value="UC-ORG-14: Create Workspace Post" vertex="1">
+          <mxGeometry height="60" width="220" x="500" y="630" as="geometry" />
+        </mxCell>
+        <mxCell id="uc_o15" parent="1" style="ellipse;whiteSpace=wrap;html=1;fontSize=11;fontStyle=0;align=center;labelBackgroundColor=none;" value="UC-ORG-15: Edit/Delete Workspace Post" vertex="1">
+          <mxGeometry height="60" width="220" x="440" y="710" as="geometry" />
+        </mxCell>
+        <mxCell id="uc_o16" parent="1" style="ellipse;whiteSpace=wrap;html=1;fontSize=11;fontStyle=0;align=center;labelBackgroundColor=none;" value="UC-ORG-16: View Workspace List" vertex="1">
+          <mxGeometry height="60" width="220" x="400" y="800" as="geometry" />
+        </mxCell>
+        <mxCell id="uc_o17" parent="1" style="ellipse;whiteSpace=wrap;html=1;fontSize=11;fontStyle=0;align=center;labelBackgroundColor=none;" value="UC-ORG-17: Business Roles Management" vertex="1">
+          <mxGeometry height="60" width="220" x="250" y="870" as="geometry" />
+        </mxCell>
+        <mxCell id="uc_o18" parent="1" style="ellipse;whiteSpace=wrap;html=1;fontSize=11;fontStyle=0;align=center;labelBackgroundColor=none;" value="UC-ORG-18: View Org Permission Audit" vertex="1">
+          <mxGeometry height="60" width="220" x="520" y="130" as="geometry" />
+        </mxCell>
+        <mxCell id="edge_ucd-03_1" edge="1" parent="1" source="act_org_admin" style="endArrow=none;html=1;rounded=0;strokeWidth=1.5;labelBackgroundColor=none;fontColor=default;fontStyle=0" target="uc_o01" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge_ucd-03_2" edge="1" parent="1" source="act_org_admin" style="endArrow=none;html=1;rounded=0;strokeWidth=1.5;labelBackgroundColor=none;fontColor=default;fontStyle=0" target="uc_o02" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge_ucd-03_3" edge="1" parent="1" source="act_org_admin" style="endArrow=none;html=1;rounded=0;strokeWidth=1.5;labelBackgroundColor=none;fontColor=default;fontStyle=0" target="uc_o04" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge_ucd-03_4" edge="1" parent="1" source="act_org_admin" style="endArrow=none;html=1;rounded=0;strokeWidth=1.5;labelBackgroundColor=none;fontColor=default;fontStyle=0" target="uc_o06" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge_ucd-03_5" edge="1" parent="1" source="act_org_admin" style="endArrow=none;html=1;rounded=0;strokeWidth=1.5;labelBackgroundColor=none;fontColor=default;fontStyle=0" target="uc_o07" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge_ucd-03_6" edge="1" parent="1" source="act_org_admin" style="endArrow=none;html=1;rounded=0;strokeWidth=1.5;labelBackgroundColor=none;fontColor=default;fontStyle=0" target="uc_o09" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge_ucd-03_7" edge="1" parent="1" source="act_org_admin" style="endArrow=none;html=1;rounded=0;strokeWidth=1.5;labelBackgroundColor=none;fontColor=default;fontStyle=0" target="uc_o11" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge_ucd-03_8" edge="1" parent="1" source="act_org_admin" style="endArrow=none;html=1;rounded=0;strokeWidth=1.5;labelBackgroundColor=none;fontColor=default;fontStyle=0" target="uc_o18" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge_ucd-03_9" edge="1" parent="1" source="act_org_mem" style="endArrow=none;html=1;rounded=0;strokeWidth=1.5;labelBackgroundColor=none;fontColor=default;fontStyle=0" target="uc_o13" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge_ucd-03_10" edge="1" parent="1" source="act_org_mem" style="endArrow=none;html=1;rounded=0;strokeWidth=1.5;labelBackgroundColor=none;fontColor=default;fontStyle=0" target="uc_o14" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge_ucd-03_11" edge="1" parent="1" source="act_org_mem" style="endArrow=none;html=1;rounded=0;strokeWidth=1.5;labelBackgroundColor=none;fontColor=default;fontStyle=0" target="uc_o16" value="">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="edge_ucd-03_12" edge="1" parent="1" source="act_invitee" style="endArrow=none;html=1;rounded=0;strokeWidth=1.5;labelBackgroundColor=none;fontColor=default;fontStyle=0" target="uc_o08" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge_ucd-03_13" edge="1" parent="1" source="act_s_admin" style="endArrow=none;html=1;rounded=0;strokeWidth=1.5;labelBackgroundColor=none;fontColor=default;fontStyle=0" target="uc_o03" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge_ucd-03_14" edge="1" parent="1" source="uc_o02" style="endArrow=open;endSize=8;dashed=1;html=1;rounded=0;strokeWidth=1.2;fontSize=10;fontStyle=0;labelBackgroundColor=none;fontColor=default;" target="uc_o03" value="&amp;lt;&amp;lt;extend&amp;gt;&amp;gt;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge_ucd-03_15" edge="1" parent="1" source="uc_o04" style="endArrow=open;endSize=8;dashed=1;html=1;rounded=0;strokeWidth=1.2;fontSize=10;fontStyle=0;labelBackgroundColor=none;fontColor=default;" target="uc_o05" value="&amp;lt;&amp;lt;include&amp;gt;&amp;gt;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge_ucd-03_16" edge="1" parent="1" source="uc_o07" style="endArrow=open;endSize=8;dashed=1;html=1;rounded=0;strokeWidth=1.2;fontSize=10;fontStyle=0;labelBackgroundColor=none;fontColor=default;" target="uc_o08" value="&amp;lt;&amp;lt;include&amp;gt;&amp;gt;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge_ucd-03_17" edge="1" parent="1" source="uc_o11" style="endArrow=open;endSize=8;dashed=1;html=1;rounded=0;strokeWidth=1.2;fontSize=10;fontStyle=0;labelBackgroundColor=none;fontColor=default;" target="uc_o13" value="&amp;lt;&amp;lt;include&amp;gt;&amp;gt;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="vPbIJWrxJEFmfHvdMrde-1" parent="1" style="shape=umlFrame;whiteSpace=wrap;html=1;pointerEvents=0;width=380;height=60;fontStyle=0" value="&lt;span style=&quot;font-size: 14px;&quot;&gt;&lt;b&gt;Organization &amp;amp; Workspace Management System&lt;/b&gt;&lt;/span&gt;" vertex="1">
+          <mxGeometry height="1190" width="930" x="170" y="-190" as="geometry" />
+        </mxCell>
+        <mxCell id="vPbIJWrxJEFmfHvdMrde-2" edge="1" parent="1" style="endArrow=none;html=1;rounded=0;strokeWidth=1.5;labelBackgroundColor=none;fontColor=default;entryX=0;entryY=0.5;entryDx=0;entryDy=0;fontStyle=0" target="uc_o15" value="">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="100" y="570" as="sourcePoint" />
+            <mxPoint x="668" y="795" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="vPbIJWrxJEFmfHvdMrde-3" edge="1" parent="1" source="act_org_mem" style="endArrow=none;html=1;rounded=0;strokeWidth=1.5;labelBackgroundColor=none;fontColor=default;entryX=0;entryY=0.5;entryDx=0;entryDy=0;fontStyle=0" target="uc_o17" value="">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="260" y="740" as="sourcePoint" />
+            <mxPoint x="678" y="815" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

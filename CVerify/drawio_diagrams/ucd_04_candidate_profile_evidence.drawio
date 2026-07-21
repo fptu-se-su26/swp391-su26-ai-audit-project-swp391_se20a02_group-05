@@ -1,0 +1,118 @@
+<mxfile host="Electron" agent="CVerify">
+  <diagram id="ucd-04" name="UCD-04 Candidate Profile &amp; Evidence Verification Diagram">
+    <mxGraphModel dx="1885" dy="1948" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1169" pageHeight="827" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="act_cand_p" parent="1" style="shape=umlActor;verticalLabelPosition=bottom;verticalAlign=top;html=1;outlineConnect=0;fontSize=12;fontStyle=0;labelBackgroundColor=none;" value="Candidate" vertex="1">
+          <mxGeometry height="90" width="50" x="50" y="280" as="geometry" />
+        </mxCell>
+        <mxCell id="act_recruiter_p" parent="1" style="shape=umlActor;verticalLabelPosition=bottom;verticalAlign=top;html=1;outlineConnect=0;fontSize=12;fontStyle=0;labelBackgroundColor=none;" value="Recruiter / Employer" vertex="1">
+          <mxGeometry height="90" width="50" x="970" y="880" as="geometry" />
+        </mxCell>
+        <mxCell id="act_admin_p" parent="1" style="shape=umlActor;verticalLabelPosition=bottom;verticalAlign=top;html=1;outlineConnect=0;fontSize=12;fontStyle=0;labelBackgroundColor=none;" value="Super Admin / System" vertex="1">
+          <mxGeometry height="90" width="50" x="950" y="730" as="geometry" />
+        </mxCell>
+        <mxCell id="uc_p01" parent="1" style="ellipse;whiteSpace=wrap;html=1;fontSize=11;fontStyle=0;align=center;labelBackgroundColor=none;" value="UC-PROF-01: Manage Personal Profile &amp;amp; Bio" vertex="1">
+          <mxGeometry height="80" width="170" x="200" y="40" as="geometry" />
+        </mxCell>
+        <mxCell id="uc_p02" parent="1" style="ellipse;whiteSpace=wrap;html=1;fontSize=11;fontStyle=0;align=center;labelBackgroundColor=none;" value="UC-PROF-02: Upload &amp;amp; Manage CV Files" vertex="1">
+          <mxGeometry height="70" width="150" x="530" y="120" as="geometry" />
+        </mxCell>
+        <mxCell id="uc_p03" parent="1" style="ellipse;whiteSpace=wrap;html=1;fontSize=11;fontStyle=0;align=center;labelBackgroundColor=none;" value="UC-PROF-03: Manage CV Privacy Settings" vertex="1">
+          <mxGeometry height="70" width="160" x="350" y="90" as="geometry" />
+        </mxCell>
+        <mxCell id="uc_p04" parent="1" style="ellipse;whiteSpace=wrap;html=1;fontSize=11;fontStyle=0;align=center;labelBackgroundColor=none;" value="UC-PROF-04: Manage Education Entries" vertex="1">
+          <mxGeometry height="70" width="160" x="505" y="220" as="geometry" />
+        </mxCell>
+        <mxCell id="uc_p05" parent="1" style="ellipse;whiteSpace=wrap;html=1;fontSize=11;fontStyle=0;align=center;labelBackgroundColor=none;" value="UC-PROF-05: Manage Work Experience Entries" vertex="1">
+          <mxGeometry height="85" width="150" x="450" y="300" as="geometry" />
+        </mxCell>
+        <mxCell id="uc_p06" parent="1" style="ellipse;whiteSpace=wrap;html=1;fontSize=11;fontStyle=0;align=center;labelBackgroundColor=none;" value="UC-PROF-06: Set Leadership Flag" vertex="1">
+          <mxGeometry height="70" width="150" x="690" y="250" as="geometry" />
+        </mxCell>
+        <mxCell id="uc_p07" parent="1" style="ellipse;whiteSpace=wrap;html=1;fontSize=11;fontStyle=0;align=center;labelBackgroundColor=none;" value="UC-PROF-07: Manage Project Entries" vertex="1">
+          <mxGeometry height="80" width="160" x="390" y="400" as="geometry" />
+        </mxCell>
+        <mxCell id="uc_p08" parent="1" style="ellipse;whiteSpace=wrap;html=1;fontSize=11;fontStyle=0;align=center;labelBackgroundColor=none;" value="UC-PROF-08: Add Project Contributions" vertex="1">
+          <mxGeometry height="80" width="170" x="660" y="340" as="geometry" />
+        </mxCell>
+        <mxCell id="uc_p09" parent="1" style="ellipse;whiteSpace=wrap;html=1;fontSize=11;fontStyle=0;align=center;labelBackgroundColor=none;" value="UC-PROF-09: Add Project Technologies" vertex="1">
+          <mxGeometry height="76" width="170" x="660" y="454" as="geometry" />
+        </mxCell>
+        <mxCell id="uc_p10" parent="1" style="ellipse;whiteSpace=wrap;html=1;fontSize=11;fontStyle=0;align=center;labelBackgroundColor=none;" value="UC-PROF-10: Manage Achievement Entries" vertex="1">
+          <mxGeometry height="70" width="170" x="250" y="480" as="geometry" />
+        </mxCell>
+        <mxCell id="uc_p11" parent="1" style="ellipse;whiteSpace=wrap;html=1;fontSize=11;fontStyle=0;align=center;labelBackgroundColor=none;" value="UC-PROF-11: Upload Verification Evidence" vertex="1">
+          <mxGeometry height="80" width="190" x="200" y="660" as="geometry" />
+        </mxCell>
+        <mxCell id="uc_p12" parent="1" style="ellipse;whiteSpace=wrap;html=1;fontSize=11;fontStyle=0;align=center;labelBackgroundColor=none;" value="UC-PROF-12: Link Evidence to Profile Claim" vertex="1">
+          <mxGeometry height="60" width="160" x="590" y="680" as="geometry" />
+        </mxCell>
+        <mxCell id="uc_p13" parent="1" style="ellipse;whiteSpace=wrap;html=1;fontSize=11;fontStyle=0;align=center;labelBackgroundColor=none;" value="UC-PROF-13: Validate &amp;amp; Verify Evidence Claims" vertex="1">
+          <mxGeometry height="60" width="220" x="585" y="790" as="geometry" />
+        </mxCell>
+        <mxCell id="uc_p14" parent="1" style="ellipse;whiteSpace=wrap;html=1;fontSize=11;fontStyle=0;align=center;labelBackgroundColor=none;" value="UC-PROF-14: Update Verification Level Status" vertex="1">
+          <mxGeometry height="80" width="180" x="200" y="780" as="geometry" />
+        </mxCell>
+        <mxCell id="uc_p15" parent="1" style="ellipse;whiteSpace=wrap;html=1;fontSize=11;fontStyle=0;align=center;labelBackgroundColor=none;" value="UC-PROF-15: View Public Developer Profile" vertex="1">
+          <mxGeometry height="60" width="220" x="570" y="890" as="geometry" />
+        </mxCell>
+        <mxCell id="uc_p16" parent="1" style="ellipse;whiteSpace=wrap;html=1;fontSize=11;fontStyle=0;align=center;labelBackgroundColor=none;" value="UC-PROF-16: Export Formatted CV" vertex="1">
+          <mxGeometry height="60" width="190" x="210" y="890" as="geometry" />
+        </mxCell>
+        <mxCell id="edge_ucd-04_1" edge="1" parent="1" source="act_cand_p" style="endArrow=none;html=1;rounded=0;strokeWidth=1.5;labelBackgroundColor=none;fontColor=default;fontStyle=0" target="uc_p01" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge_ucd-04_2" edge="1" parent="1" source="act_cand_p" style="endArrow=none;html=1;rounded=0;strokeWidth=1.5;labelBackgroundColor=none;fontColor=default;fontStyle=0" target="uc_p02" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge_ucd-04_3" edge="1" parent="1" source="act_cand_p" style="endArrow=none;html=1;rounded=0;strokeWidth=1.5;labelBackgroundColor=none;fontColor=default;fontStyle=0" target="uc_p03" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge_ucd-04_4" edge="1" parent="1" source="act_cand_p" style="endArrow=none;html=1;rounded=0;strokeWidth=1.5;labelBackgroundColor=none;fontColor=default;fontStyle=0" target="uc_p04" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge_ucd-04_5" edge="1" parent="1" source="act_cand_p" style="endArrow=none;html=1;rounded=0;strokeWidth=1.5;labelBackgroundColor=none;fontColor=default;fontStyle=0" target="uc_p05" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge_ucd-04_6" edge="1" parent="1" source="act_cand_p" style="endArrow=none;html=1;rounded=0;strokeWidth=1.5;labelBackgroundColor=none;fontColor=default;fontStyle=0" target="uc_p07" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge_ucd-04_7" edge="1" parent="1" source="act_cand_p" style="endArrow=none;html=1;rounded=0;strokeWidth=1.5;labelBackgroundColor=none;fontColor=default;fontStyle=0" target="uc_p10" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge_ucd-04_8" edge="1" parent="1" source="act_cand_p" style="endArrow=none;html=1;rounded=0;strokeWidth=1.5;labelBackgroundColor=none;fontColor=default;fontStyle=0" target="uc_p11" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge_ucd-04_9" edge="1" parent="1" source="act_recruiter_p" style="endArrow=none;html=1;rounded=0;strokeWidth=1.5;labelBackgroundColor=none;fontColor=default;fontStyle=0" target="uc_p15" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge_ucd-04_10" edge="1" parent="1" source="act_admin_p" style="endArrow=none;html=1;rounded=0;strokeWidth=1.5;labelBackgroundColor=none;fontColor=default;fontStyle=0" target="uc_p13" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge_ucd-04_11" edge="1" parent="1" source="uc_p05" style="endArrow=open;endSize=8;dashed=1;html=1;rounded=0;strokeWidth=1.2;fontSize=10;fontStyle=0;labelBackgroundColor=none;fontColor=default;" target="uc_p06" value="&amp;lt;&amp;lt;extend&amp;gt;&amp;gt;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge_ucd-04_12" edge="1" parent="1" source="uc_p07" style="endArrow=open;endSize=8;dashed=1;html=1;rounded=0;strokeWidth=1.2;fontSize=10;fontStyle=0;labelBackgroundColor=none;fontColor=default;" target="uc_p08" value="&amp;lt;&amp;lt;include&amp;gt;&amp;gt;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge_ucd-04_13" edge="1" parent="1" source="uc_p07" style="endArrow=open;endSize=8;dashed=1;html=1;rounded=0;strokeWidth=1.2;fontSize=10;fontStyle=0;labelBackgroundColor=none;fontColor=default;" target="uc_p09" value="&amp;lt;&amp;lt;include&amp;gt;&amp;gt;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge_ucd-04_14" edge="1" parent="1" source="uc_p11" style="endArrow=open;endSize=8;dashed=1;html=1;rounded=0;strokeWidth=1.2;fontSize=10;fontStyle=0;labelBackgroundColor=none;fontColor=default;" target="uc_p12" value="&amp;lt;&amp;lt;include&amp;gt;&amp;gt;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge_ucd-04_15" edge="1" parent="1" source="uc_p13" style="endArrow=open;endSize=8;dashed=1;html=1;rounded=0;strokeWidth=1.2;fontSize=10;fontStyle=0;labelBackgroundColor=none;fontColor=default;" target="uc_p14" value="&amp;lt;&amp;lt;include&amp;gt;&amp;gt;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge_ucd-04_16" edge="1" parent="1" source="uc_p15" style="endArrow=open;endSize=8;dashed=1;html=1;rounded=0;strokeWidth=1.2;fontSize=10;fontStyle=0;labelBackgroundColor=none;fontColor=default;" target="uc_p16" value="&amp;lt;&amp;lt;extend&amp;gt;&amp;gt;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="Bc-ILDErMRJ02T_DY5ze-1" parent="1" style="shape=umlFrame;whiteSpace=wrap;html=1;pointerEvents=0;width=340;height=60;fontStyle=0" value="&lt;span style=&quot;font-size: 14px;&quot;&gt;&lt;b&gt;Candidate Profile &amp;amp; Evidence Verification System&lt;/b&gt;&lt;/span&gt;" vertex="1">
+          <mxGeometry height="1100" width="740" x="140" y="-70" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

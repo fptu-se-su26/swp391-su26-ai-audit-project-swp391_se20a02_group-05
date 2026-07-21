@@ -1,0 +1,74 @@
+<?xml version="1.0" encoding="utf-8"?>
+<mxfile host="app.diagrams.net" agent="CVerify" version="21.0.0">
+  <diagram id="std-06" name="Job Application Pipeline Lifecycle">
+    <mxGraphModel dx="1200" dy="800" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1080" pageHeight="560" math="0" shadow="0">
+      <root>
+        <mxCell id="0"/>
+        <mxCell id="1" parent="0"/>
+        <mxCell id="boundary_std-06" value="Job Application Pipeline State Machine (job_applications)" style="shape=swimlane;whiteSpace=wrap;html=1;startSize=35;collapsible=0;recursiveResize=0;expand=0;fontStyle=1;fontSize=14;fillColor=#f8f9fa;strokeColor=#6c757d;" vertex="1" parent="1">
+          <mxGeometry x="40" y="40" width="980" height="460" as="geometry"/>
+        </mxCell>
+        <mxCell id="st_start6" value="" style="ellipse;html=1;fillColor=#000000;strokeColor=#000000;" vertex="1" parent="1">
+          <mxGeometry x="100" y="120" width="30" height="30" as="geometry"/>
+        </mxCell>
+        <mxCell id="s_sub6" value="State: Submitted&#10;(Application Received)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=11;fontStyle=1;align=center;" vertex="1" parent="1">
+          <mxGeometry x="200" y="110" width="200" height="50" as="geometry"/>
+        </mxCell>
+        <mxCell id="s_scoring6" value="State: AIScoring&#10;(Calculating FitScore %)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=11;fontStyle=1;align=center;" vertex="1" parent="1">
+          <mxGeometry x="470" y="110" width="200" height="50" as="geometry"/>
+        </mxCell>
+        <mxCell id="s_screened6" value="State: Screened&#10;(Passed Screening Stage)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=11;fontStyle=1;align=center;" vertex="1" parent="1">
+          <mxGeometry x="740" y="110" width="200" height="50" as="geometry"/>
+        </mxCell>
+        <mxCell id="s_interview6" value="State: InterviewScheduled&#10;(Interview Round Active)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=11;fontStyle=1;align=center;" vertex="1" parent="1">
+          <mxGeometry x="740" y="240" width="200" height="50" as="geometry"/>
+        </mxCell>
+        <mxCell id="s_offered6" value="State: Offered&#10;(Job Offer Extended)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=11;fontStyle=1;align=center;" vertex="1" parent="1">
+          <mxGeometry x="470" y="240" width="200" height="50" as="geometry"/>
+        </mxCell>
+        <mxCell id="s_rejected6" value="State: Rejected&#10;(Application Refused)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=11;fontStyle=1;align=center;" vertex="1" parent="1">
+          <mxGeometry x="470" y="360" width="200" height="50" as="geometry"/>
+        </mxCell>
+        <mxCell id="s_withdrawn6" value="State: Withdrawn&#10;(Candidate Retracted)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=11;fontStyle=1;align=center;" vertex="1" parent="1">
+          <mxGeometry x="200" y="360" width="200" height="50" as="geometry"/>
+        </mxCell>
+        <mxCell id="st_end6" value="" style="ellipse;html=1;shape=endState;fillColor=#000000;strokeColor=#000000;" vertex="1" parent="1">
+          <mxGeometry x="200" y="250" width="30" height="30" as="geometry"/>
+        </mxCell>
+        <mxCell id="e_st_start6_s_sub6" value="Apply Job" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=classic;strokeColor=#333333;fontSize=10;fontStyle=1;" edge="1" parent="1" source="st_start6" target="s_sub6">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e_s_sub6_s_scoring6" value="Auto Match" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=classic;strokeColor=#333333;fontSize=10;fontStyle=1;" edge="1" parent="1" source="s_sub6" target="s_scoring6">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e_s_scoring6_s_screened6" value="FitScore OK" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=classic;strokeColor=#333333;fontSize=10;fontStyle=1;" edge="1" parent="1" source="s_scoring6" target="s_screened6">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e_s_screened6_s_interview6" value="Schedule Interview" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=classic;strokeColor=#333333;fontSize=10;fontStyle=1;" edge="1" parent="1" source="s_screened6" target="s_interview6">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e_s_interview6_s_offered6" value="Pass Interview" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=classic;strokeColor=#333333;fontSize=10;fontStyle=1;" edge="1" parent="1" source="s_interview6" target="s_offered6">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e_s_interview6_s_rejected6" value="Fail Interview" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=classic;strokeColor=#333333;fontSize=10;fontStyle=1;" edge="1" parent="1" source="s_interview6" target="s_rejected6">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e_s_screened6_s_rejected6" value="Reject Candidate" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=classic;strokeColor=#333333;fontSize=10;fontStyle=1;" edge="1" parent="1" source="s_screened6" target="s_rejected6">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e_s_sub6_s_withdrawn6" value="Candidate Withdraw" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=classic;strokeColor=#333333;fontSize=10;fontStyle=1;" edge="1" parent="1" source="s_sub6" target="s_withdrawn6">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e_s_offered6_st_end6" value="Hire Success" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=classic;strokeColor=#333333;fontSize=10;fontStyle=1;" edge="1" parent="1" source="s_offered6" target="st_end6">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e_s_rejected6_st_end6" value="Finish" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=classic;strokeColor=#333333;fontSize=10;fontStyle=1;" edge="1" parent="1" source="s_rejected6" target="st_end6">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e_s_withdrawn6_st_end6" value="Finish" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=classic;strokeColor=#333333;fontSize=10;fontStyle=1;" edge="1" parent="1" source="s_withdrawn6" target="st_end6">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

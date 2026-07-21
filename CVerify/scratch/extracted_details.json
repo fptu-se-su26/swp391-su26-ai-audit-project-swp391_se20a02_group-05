@@ -1,0 +1,2103 @@
+{
+  "controllers": [
+    {
+      "module": "Admin",
+      "controller": "AuditLogsController",
+      "file": "CVerify.Core\\Modules\\Admin\\Controllers\\AuditLogsController.cs",
+      "base_route": "api/admin/audit-logs",
+      "endpoints_count": 1,
+      "endpoints": [
+        {
+          "verb": "HttpGet",
+          "route": "api/admin/audit-logs",
+          "method": "GetAuditLogs"
+        }
+      ]
+    },
+    {
+      "module": "Admin",
+      "controller": "MonitoringController",
+      "file": "CVerify.Core\\Modules\\Admin\\Controllers\\MonitoringController.cs",
+      "base_route": "api/admin/monitoring",
+      "endpoints_count": 1,
+      "endpoints": [
+        {
+          "verb": "HttpPost",
+          "route": "api/admin/monitoring/events",
+          "method": "IngestEvent"
+        }
+      ]
+    },
+    {
+      "module": "Admin",
+      "controller": "PermissionsController",
+      "file": "CVerify.Core\\Modules\\Admin\\Controllers\\PermissionsController.cs",
+      "base_route": "api/admin/permissions",
+      "endpoints_count": 1,
+      "endpoints": [
+        {
+          "verb": "HttpGet",
+          "route": "api/admin/permissions",
+          "method": "GetPermissions"
+        }
+      ]
+    },
+    {
+      "module": "Admin",
+      "controller": "RolesAdminController",
+      "file": "CVerify.Core\\Modules\\Admin\\Controllers\\RolesAdminController.cs",
+      "base_route": "api/admin/roles",
+      "endpoints_count": 5,
+      "endpoints": [
+        {
+          "verb": "HttpGet",
+          "route": "api/admin/roles",
+          "method": "GetRoles"
+        },
+        {
+          "verb": "HttpGet",
+          "route": "api/admin/roles/{id:guid}",
+          "method": "GetRole"
+        },
+        {
+          "verb": "HttpPost",
+          "route": "api/admin/roles",
+          "method": "CreateRole"
+        },
+        {
+          "verb": "HttpPut",
+          "route": "api/admin/roles/{id:guid}",
+          "method": "UpdateRole"
+        },
+        {
+          "verb": "HttpDelete",
+          "route": "api/admin/roles/{id:guid}",
+          "method": "DeleteRole"
+        }
+      ]
+    },
+    {
+      "module": "Admin",
+      "controller": "UsersAdminController",
+      "file": "CVerify.Core\\Modules\\Admin\\Controllers\\UsersAdminController.cs",
+      "base_route": "api/admin/users",
+      "endpoints_count": 8,
+      "endpoints": [
+        {
+          "verb": "HttpGet",
+          "route": "api/admin/users",
+          "method": "GetUsers"
+        },
+        {
+          "verb": "HttpGet",
+          "route": "api/admin/users/{id:guid}",
+          "method": "GetUser"
+        },
+        {
+          "verb": "HttpPut",
+          "route": "api/admin/users/{id:guid}",
+          "method": "UpdateUser"
+        },
+        {
+          "verb": "HttpDelete",
+          "route": "api/admin/users/{id:guid}",
+          "method": "DeleteUser"
+        },
+        {
+          "verb": "HttpPost",
+          "route": "api/admin/users/invitations",
+          "method": "InviteMember"
+        },
+        {
+          "verb": "HttpGet",
+          "route": "api/admin/users/invitations",
+          "method": "GetInvitations"
+        },
+        {
+          "verb": "HttpPost",
+          "route": "api/admin/users/invitations/{id:guid}/cancel",
+          "method": "CancelInvitation"
+        },
+        {
+          "verb": "HttpPost",
+          "route": "api/admin/users/invitations/accept",
+          "method": "AcceptInvitation"
+        }
+      ]
+    },
+    {
+      "module": "AiChat",
+      "controller": "AiChatController",
+      "file": "CVerify.Core\\Modules\\AiChat\\Controllers\\AiChatController.cs",
+      "base_route": "api/ai/chat",
+      "endpoints_count": 4,
+      "endpoints": [
+        {
+          "verb": "HttpPost",
+          "route": "api/ai/chat/stream",
+          "method": "StreamChat"
+        },
+        {
+          "verb": "HttpGet",
+          "route": "api/ai/chat/conversations",
+          "method": "GetConversations"
+        },
+        {
+          "verb": "HttpGet",
+          "route": "api/ai/chat/conversations/{id}/messages",
+          "method": "GetConversationMessages"
+        },
+        {
+          "verb": "HttpDelete",
+          "route": "api/ai/chat/conversations/{id}",
+          "method": "DeleteConversation"
+        }
+      ]
+    },
+    {
+      "module": "Auth",
+      "controller": "AuthController",
+      "file": "CVerify.Core\\Modules\\Auth\\Controllers\\AuthController.cs",
+      "base_route": "api/auth",
+      "endpoints_count": 51,
+      "endpoints": [
+        {
+          "verb": "HttpPost",
+          "route": "api/auth/login",
+          "method": "Login"
+        },
+        {
+          "verb": "HttpPost",
+          "route": "api/auth/google",
+          "method": "LoginWithGoogle"
+        },
+        {
+          "verb": "HttpPost",
+          "route": "api/auth/logout",
+          "method": "Logout"
+        },
+        {
+          "verb": "HttpPost",
+          "route": "api/auth/refresh-token",
+          "method": "RefreshToken"
+        },
+        {
+          "verb": "HttpGet",
+          "route": "api/auth/me",
+          "method": "GetMe"
+        },
+        {
+          "verb": "HttpPost",
+          "route": "api/auth/register",
+          "method": "Register"
+        },
+        {
+          "verb": "HttpPost",
+          "route": "api/auth/verify-email",
+          "method": "VerifyEmail"
+        },
+        {
+          "verb": "HttpPost",
+          "route": "api/auth/resend-verification",
+          "method": "ResendVerification"
+        },
+        {
+          "verb": "HttpPost",
+          "route": "api/auth/forgot-password",
+          "method": "ForgotPassword"
+        },
+        {
+          "verb": "HttpPost",
+          "route": "api/auth/reset-password",
+          "method": "ResetPassword"
+        },
+        {
+          "verb": "HttpDelete",
+          "route": "/api/users/me",
+          "method": "DeleteMe"
+        },
+        {
+          "verb": "HttpGet",
+          "route": "/api/users/me/deletion-requirements",
+          "method": "GetDeletionRequirements"
+        },
+        {
+          "verb": "HttpPost",
+          "route": "/api/users/me/delete-request",
+          "method": "InitiateDeletion"
+        },
+        {
+          "verb": "HttpPost",
+          "route": "/api/users/me/fallback-otp",
+          "method": "InitiateFallbackOtp"
+        },
+        {
+          "verb": "HttpGet",
+          "route": "/api/users/me/connect-reauth/{providerName}",
+          "method": "ConnectReauth"
+        },
+        {
+          "verb": "HttpGet",
+          "route": "/api/users/me/callback-reauth/{providerName}",
+          "method": "OAuthReauthCallback"
+        },
+        {
+          "verb": "HttpPost",
+          "route": "api/auth/reactivate",
+          "method": "ReactivateAccount"
+        },
+        {
+          "verb": "HttpGet",
+          "route": "api/auth/providers",
+          "method": "GetLinkedProviders"
+        },
+        {
+          "verb": "HttpDelete",
+          "route": "api/auth/providers/{providerName}",
+          "method": "UnlinkProvider"
+        },
+        {
+          "verb": "HttpPost",
+          "route": "api/auth/providers/{providerName}/validate-scopes",
+          "method": "ValidateProviderScopes"
+        },
+        {
+          "verb": "HttpPost",
+          "route": "api/auth/providers/google",
+          "method": "LinkGoogleAccount"
+        },
+        {
+          "verb": "HttpPost",
+          "route": "api/auth/change-password",
+          "method": "ChangePassword"
+        },
+        {
+          "verb": "HttpGet",
+          "route": "api/auth/connect/{providerName}",
+          "method": "ConnectProvider"
+        },
+        {
+          "verb": "HttpGet",
+          "route": "api/auth/callback/{providerName}",
+          "method": "OAuthCallback"
+        },
+        {
+          "verb": "HttpGet",
+          "route": "api/auth/github/connection-status",
+          "method": "GetGithubConnectionStatus"
+        },
+        {
+          "verb": "HttpDelete",
+          "route": "api/auth/github/connection",
+          "method": "DisconnectGithub"
+        },
+        {
+          "verb": "HttpGet",
+          "route": "api/auth/providers/pending/{id:guid}",
+          "method": "GetPendingLinkDetails"
+        },
+        {
+          "verb": "HttpPost",
+          "route": "api/auth/providers/confirm/{id:guid}",
+          "method": "ConfirmLink"
+        },
+        {
+          "verb": "HttpGet",
+          "route": "api/auth/providers/connections",
+          "method": "GetLinkedConnections"
+        },
+        {
+          "verb": "HttpDelete",
+          "route": "api/auth/providers/connections/{id:guid}",
+          "method": "UnlinkProviderConnection"
+        },
+        {
+          "verb": "HttpPost",
+          "route": "api/auth/send-otp",
+          "method": "SendOtp"
+        },
+        {
+          "verb": "HttpPost",
+          "route": "api/auth/resolve-email-auth-state",
+          "method": "ResolveEmailAuthState"
+        },
+        {
+          "verb": "HttpPost",
+          "route": "api/auth/verify-otp",
+          "method": "VerifyOtp"
+        },
+        {
+          "verb": "HttpGet",
+          "route": "api/auth/otp/session",
+          "method": "GetOtpSession"
+        },
+        {
+          "verb": "HttpPost",
+          "route": "api/auth/create-password",
+          "method": "CreatePassword"
+        },
+        {
+          "verb": "HttpPost",
+          "route": "api/auth/register-company",
+          "method": "RegisterOrganization"
+        },
+        {
+          "verb": "HttpPost",
+          "route": "api/auth/verify-company-link",
+          "method": "VerifyOrganizationLink"
+        },
+        {
+          "verb": "HttpPost",
+          "route": "api/auth/setup-workspace",
+          "method": "SetupWorkspace"
+        },
+        {
+          "verb": "HttpPost",
+          "route": "api/auth/company-login",
+          "method": "OrganizationLogin"
+        },
+        {
+          "verb": "HttpPost",
+          "route": "api/auth/onboarding/verify-company",
+          "method": "VerifyOrganizationOnboarding"
+        },
+        {
+          "verb": "HttpPost",
+          "route": "api/auth/onboarding/verify-otp",
+          "method": "VerifyOnboardingOtp"
+        },
+        {
+          "verb": "HttpPost",
+          "route": "api/auth/onboarding/verify-google",
+          "method": "VerifyOnboardingGoogle"
+        },
+        {
+          "verb": "HttpPost",
+          "route": "api/auth/onboarding/complete",
+          "method": "CompleteOnboarding"
+        },
+        {
+          "verb": "HttpGet",
+          "route": "api/auth/sessions",
+          "method": "GetActiveSessions"
+        },
+        {
+          "verb": "HttpDelete",
+          "route": "api/auth/sessions/{sessionId:guid}",
+          "method": "RevokeSession"
+        },
+        {
+          "verb": "HttpDelete",
+          "route": "api/auth/sessions",
+          "method": "RevokeOtherSessions"
+        },
+        {
+          "verb": "HttpGet",
+          "route": "api/auth/emails",
+          "method": "GetEmails"
+        },
+        {
+          "verb": "HttpPost",
+          "route": "api/auth/emails/send-otp",
+          "method": "SendLinkEmailOtp"
+        },
+        {
+          "verb": "HttpPost",
+          "route": "api/auth/emails/verify-otp",
+          "method": "VerifyLinkEmailOtp"
+        },
+        {
+          "verb": "HttpPost",
+          "route": "api/auth/emails/make-primary",
+          "method": "MakeEmailPrimary"
+        },
+        {
+          "verb": "HttpDelete",
+          "route": "api/auth/emails/{id:guid}",
+          "method": "DeleteLinkedEmail"
+        }
+      ]
+    },
+    {
+      "module": "Auth",
+      "controller": "InvitationController",
+      "file": "CVerify.Core\\Modules\\Auth\\Controllers\\InvitationController.cs",
+      "base_route": "",
+      "endpoints_count": 8,
+      "endpoints": [
+        {
+          "verb": "HttpPost",
+          "route": "/api/organizations/{orgSlug}/invitations",
+          "method": "InviteMembers"
+        },
+        {
+          "verb": "HttpGet",
+          "route": "/api/organizations/{orgSlug}/invitations",
+          "method": "GetInvitations"
+        },
+        {
+          "verb": "HttpPost",
+          "route": "/api/organizations/{orgSlug}/invitations/{id}/resend",
+          "method": "ResendInvitation"
+        },
+        {
+          "verb": "HttpPost",
+          "route": "/api/organizations/{orgSlug}/invitations/{id}/cancel",
+          "method": "CancelInvitation"
+        },
+        {
+          "verb": "HttpPost",
+          "route": "/api/invitations/accept",
+          "method": "AcceptInvitation"
+        },
+        {
+          "verb": "HttpPost",
+          "route": "/api/invitations/decline",
+          "method": "DeclineInvitation"
+        },
+        {
+          "verb": "HttpPost",
+          "route": "/api/invitations/{id:guid}/accept",
+          "method": "AcceptInvitationById"
+        },
+        {
+          "verb": "HttpPost",
+          "route": "/api/invitations/{id:guid}/decline",
+          "method": "DeclineInvitationById"
+        }
+      ]
+    },
+    {
+      "module": "Auth",
+      "controller": "MemberController",
+      "file": "CVerify.Core\\Modules\\Auth\\Controllers\\MemberController.cs",
+      "base_route": "api/organizations/{orgSlug}/members",
+      "endpoints_count": 4,
+      "endpoints": [
+        {
+          "verb": "HttpGet",
+          "route": "api/organizations/{orgSlug}/members",
+          "method": "GetMembers"
+        },
+        {
+          "verb": "HttpPut",
+          "route": "api/organizations/{orgSlug}/members/{memberId}",
+          "method": "UpdateMember"
+        },
+        {
+          "verb": "HttpDelete",
+          "route": "api/organizations/{orgSlug}/members/{memberId}",
+          "method": "RemoveMember"
+        },
+        {
+          "verb": "HttpGet",
+          "route": "api/organizations/{orgSlug}/members/audit-logs",
+          "method": "GetAuditLogs"
+        }
+      ]
+    },
+    {
+      "module": "Auth",
+      "controller": "OrganizationController",
+      "file": "CVerify.Core\\Modules\\Auth\\Controllers\\OrganizationController.cs",
+      "base_route": "api/organizations",
+      "endpoints_count": 14,
+      "endpoints": [
+        {
+          "verb": "HttpGet",
+          "route": "api/organizations/my-organizations",
+          "method": "GetMyOrganizations"
+        },
+        {
+          "verb": "HttpGet",
+          "route": "api/organizations",
+          "method": "GetOrganizationsList"
+        },
+        {
+          "verb": "HttpGet",
+          "route": "api/organizations/stats",
+          "method": "GetOrganizationsStats"
+        },
+        {
+          "verb": "HttpGet",
+          "route": "api/organizations/{organizationSlug}",
+          "method": "GetOrganizationDetails"
+        },
+        {
+          "verb": "HttpPatch",
+          "route": "api/organizations/{organizationSlug}",
+          "method": "UpdateOrganizationDetails"
+        },
+        {
+          "verb": "HttpPost",
+          "route": "api/organizations/{organizationSlug}/follow",
+          "method": "ToggleFollowOrganization"
+        },
+        {
+          "verb": "HttpGet",
+          "route": "api/organizations/{organizationSlug}/members",
+          "method": "GetOrganizationMembers"
+        },
+        {
+          "verb": "HttpPost",
+          "route": "api/organizations/{organizationSlug}/banner",
+          "method": "UploadBanner"
+        },
+        {
+          "verb": "HttpPost",
+          "route": "api/organizations/{organizationSlug}/avatar",
+          "method": "UploadAvatar"
+        },
+        {
+          "verb": "HttpPost",
+          "route": "api/organizations/{organizationSlug}/media/upload",
+          "method": "UploadMedia"
+        },
+        {
+          "verb": "HttpPost",
+          "route": "api/organizations/{organizationSlug}/posts",
+          "method": "CreatePost"
+        },
+        {
+          "verb": "HttpGet",
+          "route": "api/organizations/{organizationSlug}/posts",
+          "method": "GetPosts"
+        },
+        {
+          "verb": "HttpPost",
+          "route": "api/organizations/{organizationSlug}/jobs",
+          "method": "CreateJob"
+        },
+        {
+          "verb": "HttpGet",
+          "route": "api/organizations/{organizationSlug}/jobs",
+          "method": "GetJobs"
+        }
+      ]
+    },
+    {
+      "module": "Auth",
+      "controller": "OrganizationRoleController",
+      "file": "CVerify.Core\\Modules\\Auth\\Controllers\\OrganizationRoleController.cs",
+      "base_route": "api/organizations/{orgSlug}/roles",
+      "endpoints_count": 9,
+      "endpoints": [
+        {
+          "verb": "HttpGet",
+          "route": "api/organizations/{orgSlug}/roles",
+          "method": "GetRoles"
+        },
+        {
+          "verb": "HttpPost",
+          "route": "api/organizations/{orgSlug}/roles",
+          "method": "CreateRole"
+        },
+        {
+          "verb": "HttpPut",
+          "route": "api/organizations/{orgSlug}/roles/{roleId}",
+          "method": "UpdateRole"
+        },
+        {
+          "verb": "HttpDelete",
+          "route": "api/organizations/{orgSlug}/roles/{roleId}",
+          "method": "DeleteRole"
+        },
+        {
+          "verb": "HttpGet",
+          "route": "api/organizations/{orgSlug}/roles/assignments",
+          "method": "GetRoleAssignments"
+        },
+        {
+          "verb": "HttpPost",
+          "route": "api/organizations/{orgSlug}/roles/assign",
+          "method": "AssignRole"
+        },
+        {
+          "verb": "HttpPost",
+          "route": "api/organizations/{orgSlug}/roles/revoke",
+          "method": "RevokeRole"
+        },
+        {
+          "verb": "HttpGet",
+          "route": "api/organizations/{orgSlug}/roles/audit-logs",
+          "method": "GetAuditLogs"
+        },
+        {
+          "verb": "HttpGet",
+          "route": "api/organizations/{orgSlug}/roles/permissions",
+          "method": "GetAvailablePermissions"
+        }
+      ]
+    },
+    {
+      "module": "Auth",
+      "controller": "WorkspaceController",
+      "file": "CVerify.Core\\Modules\\Auth\\Controllers\\WorkspaceController.cs",
+      "base_route": "api/workspace",
+      "endpoints_count": 25,
+      "endpoints": [
+        {
+          "verb": "HttpGet",
+          "route": "api/workspace/my-organizations",
+          "method": "GetMyOrganizations"
+        },
+        {
+          "verb": "HttpGet",
+          "route": "api/workspace/organizations",
+          "method": "GetOrganizationsList"
+        },
+        {
+          "verb": "HttpGet",
+          "route": "api/workspace/organizations/stats",
+          "method": "GetOrganizationsStats"
+        },
+        {
+          "verb": "HttpGet",
+          "route": "api/workspace/{organizationSlug}",
+          "method": "GetWorkspaceDetails"
+        },
+        {
+          "verb": "HttpPatch",
+          "route": "api/workspace/{organizationSlug}",
+          "method": "UpdateWorkspaceDetails"
+        },
+        {
+          "verb": "HttpPost",
+          "route": "api/workspace/{organizationSlug}/follow",
+          "method": "ToggleFollowWorkspace"
+        },
+        {
+          "verb": "HttpGet",
+          "route": "api/workspace/{organizationSlug}/members",
+          "method": "GetWorkspaceMembers"
+        },
+        {
+          "verb": "HttpPost",
+          "route": "api/workspace/{organizationSlug}/banner",
+          "method": "UploadBanner"
+        },
+        {
+          "verb": "HttpPost",
+          "route": "api/workspace/{organizationSlug}/avatar",
+          "method": "UploadAvatar"
+        },
+        {
+          "verb": "HttpPost",
+          "route": "api/workspace/{organizationSlug}/media/upload",
+          "method": "UploadMedia"
+        },
+        {
+          "verb": "HttpPost",
+          "route": "api/workspace/{organizationSlug}/posts",
+          "method": "CreatePost"
+        },
+        {
+          "verb": "HttpGet",
+          "route": "api/workspace/{organizationSlug}/posts",
+          "method": "GetPosts"
+        },
+        {
+          "verb": "HttpPost",
+          "route": "api/workspace/{organizationSlug}/jobs",
+          "method": "CreateJob"
+        },
+        {
+          "verb": "HttpGet",
+          "route": "api/workspace/{organizationSlug}/jobs",
+          "method": "GetJobs"
+        },
+        {
+          "verb": "HttpPost",
+          "route": "/api/organizations/{organizationSlug}/workspaces",
+          "method": "CreateWorkspace"
+        },
+        {
+          "verb": "HttpGet",
+          "route": "/api/organizations/{organizationSlug}/workspaces",
+          "method": "GetWorkspacesList"
+        },
+        {
+          "verb": "HttpPatch",
+          "route": "/api/organizations/{organizationSlug}/workspaces/{workspaceId}",
+          "method": "UpdateWorkspace"
+        },
+        {
+          "verb": "HttpDelete",
+          "route": "/api/organizations/{organizationSlug}/workspaces/{workspaceId}",
+          "method": "DeleteWorkspace"
+        },
+        {
+          "verb": "HttpPost",
+          "route": "/api/organizations/{organizationSlug}/workspaces/{workspaceId}/archive",
+          "method": "ArchiveWorkspace"
+        },
+        {
+          "verb": "HttpPost",
+          "route": "/api/organizations/{organizationSlug}/workspaces/{workspaceId}/restore",
+          "method": "RestoreWorkspace"
+        },
+        {
+          "verb": "HttpPost",
+          "route": "/api/organizations/{organizationSlug}/workspaces/{workspaceId}/transfer-ownership",
+          "method": "TransferWorkspaceOwnership"
+        },
+        {
+          "verb": "HttpGet",
+          "route": "/api/organizations/{organizationSlug}/workspaces/{workspaceId}/members",
+          "method": "GetWorkspaceLevelMembers"
+        },
+        {
+          "verb": "HttpPost",
+          "route": "/api/organizations/{organizationSlug}/workspaces/{workspaceId}/members",
+          "method": "AddWorkspaceLevelMember"
+        },
+        {
+          "verb": "HttpPatch",
+          "route": "/api/organizations/{organizationSlug}/workspaces/{workspaceId}/members/{targetUserId}",
+          "method": "UpdateWorkspaceLevelMemberRole"
+        },
+        {
+          "verb": "HttpDelete",
+          "route": "/api/organizations/{organizationSlug}/workspaces/{workspaceId}/members/{targetUserId}",
+          "method": "RemoveWorkspaceLevelMember"
+        }
+      ]
+    },
+    {
+      "module": "Forum",
+      "controller": "ForumController",
+      "file": "CVerify.Core\\Modules\\Forum\\Controllers\\ForumController.cs",
+      "base_route": "api/v1/forum",
+      "endpoints_count": 29,
+      "endpoints": [
+        {
+          "verb": "HttpGet",
+          "route": "api/v1/forum/categories",
+          "method": "GetCategories"
+        },
+        {
+          "verb": "HttpGet",
+          "route": "api/v1/forum/categories/{id}",
+          "method": "GetCategory"
+        },
+        {
+          "verb": "HttpPost",
+          "route": "api/v1/forum/admin/categories",
+          "method": "CreateCategory"
+        },
+        {
+          "verb": "HttpPut",
+          "route": "api/v1/forum/admin/categories/{id}",
+          "method": "UpdateCategory"
+        },
+        {
+          "verb": "HttpDelete",
+          "route": "api/v1/forum/admin/categories/{id}",
+          "method": "DeleteCategory"
+        },
+        {
+          "verb": "HttpGet",
+          "route": "api/v1/forum/tags",
+          "method": "GetTags"
+        },
+        {
+          "verb": "HttpGet",
+          "route": "api/v1/forum/tags/trending",
+          "method": "GetTrendingTags"
+        },
+        {
+          "verb": "HttpPost",
+          "route": "api/v1/forum/admin/tags/merge",
+          "method": "MergeTags"
+        },
+        {
+          "verb": "HttpGet",
+          "route": "api/v1/forum/topics",
+          "method": "GetTopics"
+        },
+        {
+          "verb": "HttpGet",
+          "route": "api/v1/forum/topics/{slug}",
+          "method": "GetTopicBySlug"
+        },
+        {
+          "verb": "HttpPost",
+          "route": "api/v1/forum/topics",
+          "method": "CreateTopic"
+        },
+        {
+          "verb": "HttpPut",
+          "route": "api/v1/forum/topics/{id}",
+          "method": "UpdateTopic"
+        },
+        {
+          "verb": "HttpDelete",
+          "route": "api/v1/forum/topics/{id}",
+          "method": "DeleteTopic"
+        },
+        {
+          "verb": "HttpPost",
+          "route": "api/v1/forum/topics/{id}/vote",
+          "method": "VoteOnTopic"
+        },
+        {
+          "verb": "HttpPost",
+          "route": "api/v1/forum/topics/{id}/react",
+          "method": "ReactToTopic"
+        },
+        {
+          "verb": "HttpPost",
+          "route": "api/v1/forum/topics/{id}/bookmark",
+          "method": "ToggleBookmark"
+        },
+        {
+          "verb": "HttpPost",
+          "route": "api/v1/forum/topics/{id}/follow",
+          "method": "ToggleFollow"
+        },
+        {
+          "verb": "HttpPost",
+          "route": "api/v1/forum/topics/{id}/moderation",
+          "method": "ModerateTopic"
+        },
+        {
+          "verb": "HttpGet",
+          "route": "api/v1/forum/topics/{topicId}/replies",
+          "method": "GetReplies"
+        },
+        {
+          "verb": "HttpPost",
+          "route": "api/v1/forum/topics/{topicId}/replies",
+          "method": "CreateReply"
+        },
+        {
+          "verb": "HttpPut",
+          "route": "api/v1/forum/replies/{id}",
+          "method": "UpdateReply"
+        },
+        {
+          "verb": "HttpDelete",
+          "route": "api/v1/forum/replies/{id}",
+          "method": "DeleteReply"
+        },
+        {
+          "verb": "HttpPost",
+          "route": "api/v1/forum/replies/{id}/accept",
+          "method": "ToggleAcceptSolution"
+        },
+        {
+          "verb": "HttpPost",
+          "route": "api/v1/forum/replies/{id}/vote",
+          "method": "VoteOnReply"
+        },
+        {
+          "verb": "HttpPost",
+          "route": "api/v1/forum/replies/{id}/react",
+          "method": "ReactToReply"
+        },
+        {
+          "verb": "HttpPost",
+          "route": "api/v1/forum/reports",
+          "method": "CreateReport"
+        },
+        {
+          "verb": "HttpGet",
+          "route": "api/v1/forum/moderation/queue",
+          "method": "GetReports"
+        },
+        {
+          "verb": "HttpPost",
+          "route": "api/v1/forum/moderation/resolve/{id}",
+          "method": "ResolveReport"
+        },
+        {
+          "verb": "HttpGet",
+          "route": "api/v1/forum/user/me",
+          "method": "GetCurrentUserForumProfile"
+        }
+      ]
+    },
+    {
+      "module": "Intelligence",
+      "controller": "TalentDiscoveryController",
+      "file": "CVerify.Core\\Modules\\Intelligence\\Controllers\\TalentDiscoveryController.cs",
+      "base_route": "",
+      "endpoints_count": 3,
+      "endpoints": [
+        {
+          "verb": "HttpGet",
+          "route": "/api/v1/intelligence/search",
+          "method": "Search"
+        },
+        {
+          "verb": "HttpGet",
+          "route": "/api/v1/intelligence/candidate/{id}",
+          "method": "GetCandidateProfile"
+        },
+        {
+          "verb": "HttpGet",
+          "route": "/api/v1/intelligence/match/{jobVacancyId}/{candidateId}",
+          "method": "EvaluateMatch"
+        }
+      ]
+    },
+    {
+      "module": "Profiles",
+      "controller": "AchievementController",
+      "file": "CVerify.Core\\Modules\\Profiles\\Controllers\\AchievementController.cs",
+      "base_route": "api/v1/users/achievements",
+      "endpoints_count": 5,
+      "endpoints": [
+        {
+          "verb": "HttpGet",
+          "route": "api/v1/users/achievements",
+          "method": "GetAchievements"
+        },
+        {
+          "verb": "HttpPost",
+          "route": "api/v1/users/achievements",
+          "method": "AddAchievement"
+        },
+        {
+          "verb": "HttpPut",
+          "route": "api/v1/users/achievements/{id}",
+          "method": "UpdateAchievement"
+        },
+        {
+          "verb": "HttpDelete",
+          "route": "api/v1/users/achievements/{id}",
+          "method": "DeleteAchievement"
+        },
+        {
+          "verb": "HttpPut",
+          "route": "api/v1/users/achievements/reorder",
+          "method": "ReorderAchievements"
+        }
+      ]
+    },
+    {
+      "module": "Profiles",
+      "controller": "CandidateAssessmentController",
+      "file": "CVerify.Core\\Modules\\Profiles\\Controllers\\CandidateAssessmentController.cs",
+      "base_route": "api",
+      "endpoints_count": 15,
+      "endpoints": [
+        {
+          "verb": "HttpGet",
+          "route": "api/v1/candidate-assessments/readiness",
+          "method": "GetReadinessStatus"
+        },
+        {
+          "verb": "HttpGet",
+          "route": "api/v1/candidate-assessments/stages",
+          "method": "GetStages"
+        },
+        {
+          "verb": "HttpPost",
+          "route": "api/v1/candidate-assessments",
+          "method": "TriggerAssessment"
+        },
+        {
+          "verb": "HttpPost",
+          "route": "api/v1/candidate-assessments/{assessmentId}/cancel",
+          "method": "CancelAssessment"
+        },
+        {
+          "verb": "HttpGet",
+          "route": "api/v1/candidate-assessments/dev-trigger",
+          "method": "DevTriggerAssessment"
+        },
+        {
+          "verb": "HttpGet",
+          "route": "api/v1/candidate-assessments/latest",
+          "method": "GetLatestAssessment"
+        },
+        {
+          "verb": "HttpGet",
+          "route": "api/v1/candidate-assessments/history",
+          "method": "GetAssessmentHistory"
+        },
+        {
+          "verb": "HttpGet",
+          "route": "api/v1/candidate-assessments/{assessmentId}/details",
+          "method": "GetAssessmentDetails"
+        },
+        {
+          "verb": "HttpGet",
+          "route": "api/v1/candidate-assessments/{assessmentId}/skill-tree",
+          "method": "GetSkillTree"
+        },
+        {
+          "verb": "HttpGet",
+          "route": "api/v1/candidate-assessments/latest/skill-tree",
+          "method": "GetLatestSkillTree"
+        },
+        {
+          "verb": "HttpGet",
+          "route": "api/v1/candidate-assessments/public/{username}/skill-tree",
+          "method": "GetPublicSkillTree"
+        },
+        {
+          "verb": "HttpGet",
+          "route": "api/v1/candidate-assessments/public/{username}",
+          "method": "GetPublicAssessment"
+        },
+        {
+          "verb": "HttpGet",
+          "route": "api/v1/candidate-assessments/progress/{userId}",
+          "method": "GetProgressStream"
+        },
+        {
+          "verb": "HttpPost",
+          "route": "api/v1/admin/candidate-assessments/reprocess",
+          "method": "ReprocessAllAssessments"
+        },
+        {
+          "verb": "HttpPost",
+          "route": "api/v1/admin/candidate-assessments/{assessmentId}/reprocess",
+          "method": "ReprocessAssessment"
+        }
+      ]
+    },
+    {
+      "module": "Profiles",
+      "controller": "CareerController",
+      "file": "CVerify.Core\\Modules\\Profiles\\Controllers\\CareerController.cs",
+      "base_route": "api/v1/users/career",
+      "endpoints_count": 4,
+      "endpoints": [
+        {
+          "verb": "HttpGet",
+          "route": "api/v1/users/career",
+          "method": "GetCareer"
+        },
+        {
+          "verb": "HttpPatch",
+          "route": "api/v1/users/career",
+          "method": "UpdateCareer"
+        },
+        {
+          "verb": "HttpPut",
+          "route": "api/v1/users/career",
+          "method": "PutCareer"
+        },
+        {
+          "verb": "HttpPost",
+          "route": "api/v1/users/career/accept-suggestions",
+          "method": "AcceptSuggestions"
+        }
+      ]
+    },
+    {
+      "module": "Profiles",
+      "controller": "EducationController",
+      "file": "CVerify.Core\\Modules\\Profiles\\Controllers\\EducationController.cs",
+      "base_route": "api/v1/users/education",
+      "endpoints_count": 5,
+      "endpoints": [
+        {
+          "verb": "HttpGet",
+          "route": "api/v1/users/education",
+          "method": "GetEducation"
+        },
+        {
+          "verb": "HttpPost",
+          "route": "api/v1/users/education",
+          "method": "AddEducation"
+        },
+        {
+          "verb": "HttpPut",
+          "route": "api/v1/users/education/{id}",
+          "method": "UpdateEducation"
+        },
+        {
+          "verb": "HttpDelete",
+          "route": "api/v1/users/education/{id}",
+          "method": "DeleteEducation"
+        },
+        {
+          "verb": "HttpPut",
+          "route": "api/v1/users/education/reorder",
+          "method": "ReorderEducation"
+        }
+      ]
+    },
+    {
+      "module": "Profiles",
+      "controller": "EvidenceController",
+      "file": "CVerify.Core\\Modules\\Profiles\\Controllers\\EvidenceController.cs",
+      "base_route": "api/v1/users/evidence",
+      "endpoints_count": 3,
+      "endpoints": [
+        {
+          "verb": "HttpPost",
+          "route": "api/v1/users/evidence/upload",
+          "method": "UploadEvidence"
+        },
+        {
+          "verb": "HttpGet",
+          "route": "api/v1/users/evidence/{id}/download",
+          "method": "GetEvidenceDownload"
+        },
+        {
+          "verb": "HttpDelete",
+          "route": "api/v1/users/evidence/{id}",
+          "method": "DeleteEvidence"
+        }
+      ]
+    },
+    {
+      "module": "Profiles",
+      "controller": "ProfileController",
+      "file": "CVerify.Core\\Modules\\Profiles\\Controllers\\ProfileController.cs",
+      "base_route": "api/v1/users/profile",
+      "endpoints_count": 11,
+      "endpoints": [
+        {
+          "verb": "HttpGet",
+          "route": "api/v1/users/profile",
+          "method": "GetProfile"
+        },
+        {
+          "verb": "HttpPut",
+          "route": "api/v1/users/profile",
+          "method": "UpdateProfile"
+        },
+        {
+          "verb": "HttpPut",
+          "route": "api/v1/users/profile/username",
+          "method": "UpdateUsername"
+        },
+        {
+          "verb": "HttpPost",
+          "route": "api/v1/users/profile/avatar",
+          "method": "UploadAvatar"
+        },
+        {
+          "verb": "HttpPost",
+          "route": "api/v1/users/profile/avatar/sync",
+          "method": "SyncAvatar"
+        },
+        {
+          "verb": "HttpDelete",
+          "route": "api/v1/users/profile/avatar",
+          "method": "DeleteAvatar"
+        },
+        {
+          "verb": "HttpGet",
+          "route": "api/v1/users/profile/public/{username}",
+          "method": "GetPublicProfile"
+        },
+        {
+          "verb": "HttpGet",
+          "route": "api/v1/users/profile/ranking",
+          "method": "GetRanking"
+        },
+        {
+          "verb": "HttpGet",
+          "route": "api/v1/users/profile/ranking/stats",
+          "method": "GetRankingStats"
+        },
+        {
+          "verb": "HttpPost",
+          "route": "api/v1/users/profile/public/{username}/follow",
+          "method": "FollowUser"
+        },
+        {
+          "verb": "HttpPost",
+          "route": "api/v1/users/profile/public/{username}/unfollow",
+          "method": "UnfollowUser"
+        }
+      ]
+    },
+    {
+      "module": "Profiles",
+      "controller": "ProjectController",
+      "file": "CVerify.Core\\Modules\\Profiles\\Controllers\\ProjectController.cs",
+      "base_route": "api/v1/users/projects",
+      "endpoints_count": 5,
+      "endpoints": [
+        {
+          "verb": "HttpGet",
+          "route": "api/v1/users/projects",
+          "method": "GetProjects"
+        },
+        {
+          "verb": "HttpPost",
+          "route": "api/v1/users/projects",
+          "method": "AddProject"
+        },
+        {
+          "verb": "HttpPut",
+          "route": "api/v1/users/projects/{id}",
+          "method": "UpdateProject"
+        },
+        {
+          "verb": "HttpDelete",
+          "route": "api/v1/users/projects/{id}",
+          "method": "DeleteProject"
+        },
+        {
+          "verb": "HttpPut",
+          "route": "api/v1/users/projects/reorder",
+          "method": "ReorderProjects"
+        }
+      ]
+    },
+    {
+      "module": "Profiles",
+      "controller": "WorkExperienceController",
+      "file": "CVerify.Core\\Modules\\Profiles\\Controllers\\WorkExperienceController.cs",
+      "base_route": "api/v1/users/work-experience",
+      "endpoints_count": 5,
+      "endpoints": [
+        {
+          "verb": "HttpGet",
+          "route": "api/v1/users/work-experience",
+          "method": "GetWorkExperiences"
+        },
+        {
+          "verb": "HttpPost",
+          "route": "api/v1/users/work-experience",
+          "method": "AddWorkExperience"
+        },
+        {
+          "verb": "HttpPut",
+          "route": "api/v1/users/work-experience/{id}",
+          "method": "UpdateWorkExperience"
+        },
+        {
+          "verb": "HttpDelete",
+          "route": "api/v1/users/work-experience/{id}",
+          "method": "DeleteWorkExperience"
+        },
+        {
+          "verb": "HttpPut",
+          "route": "api/v1/users/work-experience/reorder",
+          "method": "ReorderWorkExperiences"
+        }
+      ]
+    },
+    {
+      "module": "Recovery",
+      "controller": "Level2RecoveryController",
+      "file": "CVerify.Core\\Modules\\Recovery\\Controllers\\Level2RecoveryController.cs",
+      "base_route": "api/auth/recovery/level2",
+      "endpoints_count": 7,
+      "endpoints": [
+        {
+          "verb": "HttpGet",
+          "route": "api/auth/recovery/level2/check",
+          "method": "CheckOrganization"
+        },
+        {
+          "verb": "HttpPost",
+          "route": "api/auth/recovery/level2/request-rotation",
+          "method": "RequestRotation"
+        },
+        {
+          "verb": "HttpGet",
+          "route": "api/auth/recovery/level2/requests",
+          "method": "GetRequestsQueue"
+        },
+        {
+          "verb": "HttpPost",
+          "route": "api/auth/recovery/level2/requests/{id}/verification-call",
+          "method": "RecordVerificationCall"
+        },
+        {
+          "verb": "HttpPost",
+          "route": "api/auth/recovery/level2/requests/{id}/support-approval",
+          "method": "ReviewSupportApproval"
+        },
+        {
+          "verb": "HttpPost",
+          "route": "api/auth/recovery/level2/vote",
+          "method": "SubmitAdminVote"
+        },
+        {
+          "verb": "HttpGet",
+          "route": "api/auth/recovery/level2/organization/{organizationId}/history",
+          "method": "GetOrganizationHistory"
+        }
+      ]
+    },
+    {
+      "module": "Recovery",
+      "controller": "PasswordRecoveryController",
+      "file": "CVerify.Core\\Modules\\Recovery\\Controllers\\PasswordRecoveryController.cs",
+      "base_route": "api/auth/password-recovery",
+      "endpoints_count": 3,
+      "endpoints": [
+        {
+          "verb": "HttpPost",
+          "route": "api/auth/password-recovery/send-otp",
+          "method": "SendOtp"
+        },
+        {
+          "verb": "HttpPost",
+          "route": "api/auth/password-recovery/verify-otp",
+          "method": "VerifyOtp"
+        },
+        {
+          "verb": "HttpPost",
+          "route": "api/auth/password-recovery/change-password",
+          "method": "ChangePassword"
+        }
+      ]
+    },
+    {
+      "module": "Recovery",
+      "controller": "RecoveryController",
+      "file": "CVerify.Core\\Modules\\Recovery\\Controllers\\RecoveryController.cs",
+      "base_route": "api/auth/recovery",
+      "endpoints_count": 15,
+      "endpoints": [
+        {
+          "verb": "HttpPost",
+          "route": "api/auth/recovery/candidate/forgot",
+          "method": "CandidateForgot"
+        },
+        {
+          "verb": "HttpPost",
+          "route": "api/auth/recovery/candidate/reset",
+          "method": "CandidateReset"
+        },
+        {
+          "verb": "HttpPost",
+          "route": "api/auth/recovery/organization/forgot",
+          "method": "OrganizationForgot"
+        },
+        {
+          "verb": "HttpPost",
+          "route": "api/auth/recovery/organization/verify-otp",
+          "method": "OrganizationVerifyOtp"
+        },
+        {
+          "verb": "HttpPost",
+          "route": "api/auth/recovery/organization/reset-password",
+          "method": "OrganizationResetPassword"
+        },
+        {
+          "verb": "HttpPost",
+          "route": "api/auth/recovery/reclaim/submit-claim",
+          "method": "SubmitReclaimClaim"
+        },
+        {
+          "verb": "HttpPost",
+          "route": "api/auth/recovery/reclaim/validate-email-ownership",
+          "method": "ValidateEmailOwnership"
+        },
+        {
+          "verb": "HttpPost",
+          "route": "api/auth/recovery/reclaim/send-otp",
+          "method": "ReclaimSendOtp"
+        },
+        {
+          "verb": "HttpPost",
+          "route": "api/auth/recovery/reclaim/verify-otp",
+          "method": "ReclaimVerifyOtp"
+        },
+        {
+          "verb": "HttpGet",
+          "route": "api/auth/recovery/reclaim/claims",
+          "method": "GetReclaimClaims"
+        },
+        {
+          "verb": "HttpPost",
+          "route": "api/auth/recovery/reclaim/claims/{id}/review",
+          "method": "ReviewReclaimClaim"
+        },
+        {
+          "verb": "HttpGet",
+          "route": "api/auth/recovery/reclaim/claims/{id}/document/{docId}",
+          "method": "DownloadReclaimDocument"
+        },
+        {
+          "verb": "HttpGet",
+          "route": "api/auth/recovery/reclaim/bootstrap/verify",
+          "method": "VerifyReclaimBootstrap"
+        },
+        {
+          "verb": "HttpPost",
+          "route": "api/auth/recovery/reclaim/bootstrap/setup-credentials",
+          "method": "SetupReclaimCredentials"
+        },
+        {
+          "verb": "HttpPost",
+          "route": "api/auth/recovery/reclaim/bootstrap/execute",
+          "method": "ExecuteReclaimRecovery"
+        }
+      ]
+    },
+    {
+      "module": "Email",
+      "controller": "EmailTestController",
+      "file": "CVerify.Core\\Modules\\Shared\\Email\\Controllers\\EmailTestController.cs",
+      "base_route": "api/emailtest",
+      "endpoints_count": 6,
+      "endpoints": [
+        {
+          "verb": "HttpPost",
+          "route": "api/emailtest/send-verification",
+          "method": "SendVerification"
+        },
+        {
+          "verb": "HttpPost",
+          "route": "api/emailtest/send-reset",
+          "method": "SendResetPassword"
+        },
+        {
+          "verb": "HttpGet",
+          "route": "api/emailtest/logs",
+          "method": "GetAuditLogs"
+        },
+        {
+          "verb": "HttpDelete",
+          "route": "api/emailtest/logs",
+          "method": "ClearAuditLogs"
+        },
+        {
+          "verb": "HttpGet",
+          "route": "api/emailtest/generate-token",
+          "method": "GenerateSecureToken"
+        },
+        {
+          "verb": "HttpGet",
+          "route": "/api/email/preview/{template}",
+          "method": "PreviewEmailTemplate"
+        }
+      ]
+    },
+    {
+      "module": "System",
+      "controller": "HiringRequirementController",
+      "file": "CVerify.Core\\Modules\\Shared\\System\\Controllers\\HiringRequirementController.cs",
+      "base_route": "api/v1/hiring-requirements",
+      "endpoints_count": 22,
+      "endpoints": [
+        {
+          "verb": "HttpGet",
+          "route": "api/v1/hiring-requirements/catalog",
+          "method": "GetCatalog"
+        },
+        {
+          "verb": "HttpPost",
+          "route": "api/v1/hiring-requirements",
+          "method": "CreateDraft"
+        },
+        {
+          "verb": "HttpPut",
+          "route": "api/v1/hiring-requirements/{id}",
+          "method": "UpdateDraft"
+        },
+        {
+          "verb": "HttpGet",
+          "route": "api/v1/hiring-requirements/{id}",
+          "method": "GetById"
+        },
+        {
+          "verb": "HttpGet",
+          "route": "api/v1/hiring-requirements/workspace/{workspaceId}",
+          "method": "GetByWorkspaceId"
+        },
+        {
+          "verb": "HttpPost",
+          "route": "api/v1/hiring-requirements/{id}/generate-artifacts",
+          "method": "GenerateArtifacts"
+        },
+        {
+          "verb": "HttpGet",
+          "route": "api/v1/hiring-requirements/{id}/artifacts",
+          "method": "GetArtifacts"
+        },
+        {
+          "verb": "HttpPost",
+          "route": "api/v1/hiring-requirements/{id}/artifacts/generate",
+          "method": "GenerateArtifact"
+        },
+        {
+          "verb": "HttpPost",
+          "route": "api/v1/hiring-requirements/{id}/artifacts/cancel",
+          "method": "CancelArtifactGeneration"
+        },
+        {
+          "verb": "HttpGet",
+          "route": "api/v1/hiring-requirements/{id}/candidate-matches",
+          "method": "GetCandidateMatches"
+        },
+        {
+          "verb": "HttpPost",
+          "route": "api/v1/hiring-requirements/{id}/candidate-matches/discover",
+          "method": "TriggerDiscovery"
+        },
+        {
+          "verb": "HttpPost",
+          "route": "api/v1/hiring-requirements/{id}/candidate-matches/discover/cancel",
+          "method": "CancelDiscovery"
+        },
+        {
+          "verb": "HttpGet",
+          "route": "api/v1/hiring-requirements/{id}/candidate-matches/discover/runs",
+          "method": "GetDiscoveryRuns"
+        },
+        {
+          "verb": "HttpPost",
+          "route": "api/v1/hiring-requirements/{id}/publish",
+          "method": "Publish"
+        },
+        {
+          "verb": "HttpGet",
+          "route": "api/v1/hiring-requirements/{id}/progress-stream",
+          "method": "GetProgressStream"
+        },
+        {
+          "verb": "HttpPost",
+          "route": "api/v1/hiring-requirements/catalog",
+          "method": "CreateCustomCapability"
+        },
+        {
+          "verb": "HttpPut",
+          "route": "api/v1/hiring-requirements/catalog/{capabilityId}",
+          "method": "UpdateCustomCapability"
+        },
+        {
+          "verb": "HttpDelete",
+          "route": "api/v1/hiring-requirements/catalog/{capabilityId}",
+          "method": "DeleteCustomCapability"
+        },
+        {
+          "verb": "HttpDelete",
+          "route": "api/v1/hiring-requirements/{id}",
+          "method": "Delete"
+        },
+        {
+          "verb": "HttpPost",
+          "route": "api/v1/hiring-requirements/bulk-delete",
+          "method": "BulkDelete"
+        },
+        {
+          "verb": "HttpPost",
+          "route": "api/v1/hiring-requirements/bulk-archive",
+          "method": "BulkArchive"
+        },
+        {
+          "verb": "HttpPost",
+          "route": "api/v1/hiring-requirements/{id}/new-version",
+          "method": "CreateNewVersion"
+        }
+      ]
+    },
+    {
+      "module": "System",
+      "controller": "JobVacancyController",
+      "file": "CVerify.Core\\Modules\\Shared\\System\\Controllers\\JobVacancyController.cs",
+      "base_route": "",
+      "endpoints_count": 4,
+      "endpoints": [
+        {
+          "verb": "HttpGet",
+          "route": "/api/v1/job-vacancies/requirement/{requirementId}",
+          "method": "GetByRequirementId"
+        },
+        {
+          "verb": "HttpPost",
+          "route": "/api/v1/job-vacancies/requirement/{requirementId}/create-draft",
+          "method": "CreateDraft"
+        },
+        {
+          "verb": "HttpPut",
+          "route": "/api/v1/job-postings/{id}",
+          "method": "UpdatePostingDraft"
+        },
+        {
+          "verb": "HttpPost",
+          "route": "/api/v1/job-postings/{id}/publish",
+          "method": "PublishPosting"
+        }
+      ]
+    },
+    {
+      "module": "System",
+      "controller": "NotificationController",
+      "file": "CVerify.Core\\Modules\\Shared\\System\\Controllers\\NotificationController.cs",
+      "base_route": "api/notifications",
+      "endpoints_count": 6,
+      "endpoints": [
+        {
+          "verb": "HttpGet",
+          "route": "api/notifications",
+          "method": "GetNotifications"
+        },
+        {
+          "verb": "HttpPut",
+          "route": "api/notifications/{id}/read",
+          "method": "MarkAsRead"
+        },
+        {
+          "verb": "HttpPut",
+          "route": "api/notifications/read-all",
+          "method": "MarkAllAsRead"
+        },
+        {
+          "verb": "HttpDelete",
+          "route": "api/notifications/{id}",
+          "method": "DeleteNotification"
+        },
+        {
+          "verb": "HttpGet",
+          "route": "api/notifications/preferences",
+          "method": "GetPreferences"
+        },
+        {
+          "verb": "HttpPut",
+          "route": "api/notifications/preferences",
+          "method": "UpdatePreference"
+        }
+      ]
+    },
+    {
+      "module": "System",
+      "controller": "PublicJobController",
+      "file": "CVerify.Core\\Modules\\Shared\\System\\Controllers\\PublicJobController.cs",
+      "base_route": "",
+      "endpoints_count": 11,
+      "endpoints": [
+        {
+          "verb": "HttpGet",
+          "route": "/api/v1/public/jobs",
+          "method": "Search"
+        },
+        {
+          "verb": "HttpGet",
+          "route": "/api/v1/public/jobs/{id}",
+          "method": "GetDetails"
+        },
+        {
+          "verb": "HttpGet",
+          "route": "/api/v1/public/jobs/{id}/eligibility",
+          "method": "GetEligibility"
+        },
+        {
+          "verb": "HttpPost",
+          "route": "/api/v1/public/jobs/{id}/apply",
+          "method": "Apply"
+        },
+        {
+          "verb": "HttpPost",
+          "route": "/api/v1/public/jobs/{id}/interact",
+          "method": "Interact"
+        },
+        {
+          "verb": "HttpGet",
+          "route": "/api/v1/public/jobs/interactions",
+          "method": "GetInteractions"
+        },
+        {
+          "verb": "HttpGet",
+          "route": "/api/v1/public/jobs/applications",
+          "method": "GetApplications"
+        },
+        {
+          "verb": "HttpGet",
+          "route": "/api/v1/public/jobs/recommendations",
+          "method": "GetRecommendations"
+        },
+        {
+          "verb": "HttpGet",
+          "route": "/api/v1/public/jobs/{id}/applicants",
+          "method": "GetApplicants"
+        },
+        {
+          "verb": "HttpPut",
+          "route": "/api/v1/public/jobs/{id}/status",
+          "method": "UpdateStatus"
+        },
+        {
+          "verb": "HttpPost",
+          "route": "/api/v1/public/jobs/{id}/duplicate",
+          "method": "Duplicate"
+        }
+      ]
+    },
+    {
+      "module": "System",
+      "controller": "StreamingController",
+      "file": "CVerify.Core\\Modules\\Shared\\System\\Controllers\\StreamingController.cs",
+      "base_route": "api/v1/streaming",
+      "endpoints_count": 6,
+      "endpoints": [
+        {
+          "verb": "HttpGet",
+          "route": "api/v1/streaming/sessions",
+          "method": "GetSessions"
+        },
+        {
+          "verb": "HttpGet",
+          "route": "api/v1/streaming/sessions/{id}",
+          "method": "GetSessionDetails"
+        },
+        {
+          "verb": "HttpGet",
+          "route": "api/v1/streaming/sessions/{id}/logs",
+          "method": "GetSessionLogs"
+        },
+        {
+          "verb": "HttpGet",
+          "route": "api/v1/streaming/sessions/{id}/progress-stream",
+          "method": "GetProgressStream"
+        },
+        {
+          "verb": "HttpGet",
+          "route": "api/v1/streaming/sessions/{id}/costs",
+          "method": "GetSessionCosts"
+        },
+        {
+          "verb": "HttpPost",
+          "route": "api/v1/streaming/sessions/{sessionId}/stages/{stageId}/retry",
+          "method": "RetryStage"
+        }
+      ]
+    },
+    {
+      "module": "System",
+      "controller": "SystemController",
+      "file": "CVerify.Core\\Modules\\Shared\\System\\Controllers\\SystemController.cs",
+      "base_route": "api/[controller]",
+      "endpoints_count": 6,
+      "endpoints": [
+        {
+          "verb": "HttpGet",
+          "route": "api/[controller]/database-status",
+          "method": "GetDatabaseStatus"
+        },
+        {
+          "verb": "HttpGet",
+          "route": "api/[controller]/status",
+          "method": "GetStatus"
+        },
+        {
+          "verb": "HttpGet",
+          "route": "api/[controller]/health",
+          "method": "GetHealth"
+        },
+        {
+          "verb": "HttpGet",
+          "route": "api/[controller]/ping",
+          "method": "Ping"
+        },
+        {
+          "verb": "HttpGet",
+          "route": "api/[controller]/version",
+          "method": "GetVersion"
+        },
+        {
+          "verb": "HttpGet",
+          "route": "api/[controller]/info",
+          "method": "GetInfo"
+        }
+      ]
+    },
+    {
+      "module": "SourceCode",
+      "controller": "AiJobsController",
+      "file": "CVerify.Core\\Modules\\SourceCode\\Controllers\\AiJobsController.cs",
+      "base_route": "api",
+      "endpoints_count": 1,
+      "endpoints": [
+        {
+          "verb": "HttpGet",
+          "route": "api/v1/ai-jobs/{jobId}/artifacts/{artifactKey}",
+          "method": "GetArtifact"
+        }
+      ]
+    },
+    {
+      "module": "SourceCode",
+      "controller": "RepositoryAnalysisController",
+      "file": "CVerify.Core\\Modules\\SourceCode\\Controllers\\RepositoryAnalysisController.cs",
+      "base_route": "api",
+      "endpoints_count": 14,
+      "endpoints": [
+        {
+          "verb": "HttpGet",
+          "route": "api/repository-analyses/active",
+          "method": "GetActiveJobs"
+        },
+        {
+          "verb": "HttpPost",
+          "route": "api/repositories/{repoId}/analyses",
+          "method": "TriggerAnalysis"
+        },
+        {
+          "verb": "HttpPost",
+          "route": "api/repositories/{repoId}/reset",
+          "method": "ResetRepositoryAnalysis"
+        },
+        {
+          "verb": "HttpGet",
+          "route": "api/repositories/{repoId}/dev-reset-and-analyze",
+          "method": "DevResetAndAnalyze"
+        },
+        {
+          "verb": "HttpGet",
+          "route": "api/repository-analyses/jobs/{jobId}",
+          "method": "GetJobStatus"
+        },
+        {
+          "verb": "HttpGet",
+          "route": "api/repository-analyses/jobs/{jobId}/snapshot",
+          "method": "GetJobSnapshot"
+        },
+        {
+          "verb": "HttpGet",
+          "route": "api/repository-analyses/jobs/{jobId}/events",
+          "method": "GetJobEvents"
+        },
+        {
+          "verb": "HttpPost",
+          "route": "api/repository-analyses/jobs/{jobId}/cancel",
+          "method": "CancelJob"
+        },
+        {
+          "verb": "HttpGet",
+          "route": "api/repositories/{repoId}/analyses/latest",
+          "method": "GetLatestReport"
+        },
+        {
+          "verb": "HttpGet",
+          "route": "api/repository-analyses/jobs/{jobId}/progress-stream",
+          "method": "GetProgressStream"
+        },
+        {
+          "verb": "HttpPost",
+          "route": "api/repository-analyses/jobs/{jobId}/tasks/{taskId}/retry",
+          "method": "RetryTask"
+        },
+        {
+          "verb": "HttpGet",
+          "route": "api/repository-analyses/jobs/{jobId}/tasks/{taskId}/events",
+          "method": "GetTaskEvents"
+        },
+        {
+          "verb": "HttpGet",
+          "route": "api/repository-analyses/jobs/{jobId}/costs",
+          "method": "GetJobCosts"
+        },
+        {
+          "verb": "HttpGet",
+          "route": "api/repository-analyses/costs/platform-summary",
+          "method": "GetPlatformCostSummary"
+        }
+      ]
+    },
+    {
+      "module": "SourceCode",
+      "controller": "SourceCodeProvidersController",
+      "file": "CVerify.Core\\Modules\\SourceCode\\Controllers\\SourceCodeProvidersController.cs",
+      "base_route": "api/source-code-providers",
+      "endpoints_count": 7,
+      "endpoints": [
+        {
+          "verb": "HttpGet",
+          "route": "api/source-code-providers",
+          "method": "GetProviders"
+        },
+        {
+          "verb": "HttpGet",
+          "route": "api/source-code-providers/repositories",
+          "method": "GetRepositories"
+        },
+        {
+          "verb": "HttpGet",
+          "route": "api/source-code-providers/organizations",
+          "method": "GetOrganizations"
+        },
+        {
+          "verb": "HttpGet",
+          "route": "api/source-code-providers/repositories/categories",
+          "method": "GetRepositoryCategories"
+        },
+        {
+          "verb": "HttpPost",
+          "route": "api/source-code-providers/{providerId}/sync",
+          "method": "SyncProvider"
+        },
+        {
+          "verb": "HttpPost",
+          "route": "api/source-code-providers/sync-all",
+          "method": "SyncAll"
+        },
+        {
+          "verb": "HttpGet",
+          "route": "api/source-code-providers/sync/status/{jobId}",
+          "method": "GetSyncStatus"
+        }
+      ]
+    }
+  ],
+  "client_routes": [
+    "/.",
+    "/(admin)/admin",
+    "/(admin)/admin/analytics",
+    "/(admin)/admin/audit-logs",
+    "/(admin)/admin/components",
+    "/(admin)/admin/recovery/level2",
+    "/(admin)/admin/recovery-claims",
+    "/(admin)/admin/repositories",
+    "/(admin)/admin/roles",
+    "/(admin)/admin/security",
+    "/(admin)/admin/settings",
+    "/(admin)/admin/system",
+    "/(admin)/admin/users",
+    "/(admin)/admin/verification",
+    "/(auth)/company-onboarding/verify",
+    "/(auth)/company-setup",
+    "/(auth)/company-verification",
+    "/(auth)/continue-with-email",
+    "/(auth)/forgot-password",
+    "/(auth)/gateway",
+    "/(auth)/login",
+    "/(auth)/organization/reclaim",
+    "/(auth)/organization/recovery",
+    "/(auth)/organization/recovery/vote",
+    "/(auth)/reset-password",
+    "/(auth)/verify-email",
+    "/(auth)/workspace-setup",
+    "/(candidate)",
+    "/(candidate)/chat",
+    "/(candidate)/cv",
+    "/(candidate)/intelligence/ai-analysis",
+    "/(candidate)/intelligence/skill-tree",
+    "/(candidate)/intelligence/trust-score",
+    "/(candidate)/settings",
+    "/(candidate)/settings/source-code-providers",
+    "/(candidate)/ui/button",
+    "/(candidate)/user",
+    "/(candidate)/workspace/organizations",
+    "/auth/callback/google",
+    "/auth/reactivate",
+    "/contact",
+    "/forum",
+    "/forum/moderation",
+    "/forum/new",
+    "/forum/topic/[topicSlug]",
+    "/forum/topic/[topicSlug]/edit",
+    "/forum/[categorySlug]",
+    "/invitations/accept",
+    "/jobs",
+    "/organization",
+    "/organization/(admin)/analytics",
+    "/organization/(admin)/companies",
+    "/organization/(admin)/employers",
+    "/organization/(admin)/jobs",
+    "/organization/(admin)/verification",
+    "/organization/recovery/bootstrap",
+    "/organization/[organizationSlug]/(private)/analytics",
+    "/organization/[organizationSlug]/(private)/billing",
+    "/organization/[organizationSlug]/(private)/bookings",
+    "/organization/[organizationSlug]/(private)/customers",
+    "/organization/[organizationSlug]/(private)/dashboard",
+    "/organization/[organizationSlug]/(private)/information",
+    "/organization/[organizationSlug]/(private)/insights",
+    "/organization/[organizationSlug]/(private)/intelligence",
+    "/organization/[organizationSlug]/(private)/intelligence/[id]",
+    "/organization/[organizationSlug]/(private)/listings",
+    "/organization/[organizationSlug]/(private)/members",
+    "/organization/[organizationSlug]/(private)/rankings",
+    "/organization/[organizationSlug]/(private)/recruitment/applications",
+    "/organization/[organizationSlug]/(private)/recruitment/candidates",
+    "/organization/[organizationSlug]/(private)/recruitment/dashboard",
+    "/organization/[organizationSlug]/(private)/recruitment/interviews",
+    "/organization/[organizationSlug]/(private)/recruitment/jd",
+    "/organization/[organizationSlug]/(private)/recruitment/jd/[id]/review",
+    "/organization/[organizationSlug]/(private)/recruitment/pipeline",
+    "/organization/[organizationSlug]/(private)/revenue",
+    "/organization/[organizationSlug]/(private)/roles",
+    "/organization/[organizationSlug]/(private)/settings",
+    "/organization/[organizationSlug]/(private)/talent-pool",
+    "/organization/[organizationSlug]/(private)/verification",
+    "/organization/[organizationSlug]/(private)/workspace/members",
+    "/organization/[organizationSlug]/(private)/workspace/settings",
+    "/organization/[organizationSlug]/(private)/workspaces",
+    "/organization/[organizationSlug]/(public)",
+    "/organization/[organizationSlug]/(public)/jobs",
+    "/organization/[organizationSlug]/(public)/people",
+    "/organization/[organizationSlug]/(public)/posts",
+    "/privacy-policy",
+    "/ranking",
+    "/ranking/insights",
+    "/system/status",
+    "/system-status",
+    "/terms-of-service",
+    "/unauthorized",
+    "/[username]"
+  ],
+  "ai_routes": [
+    [
+      "main.py",
+      "GET",
+      "/health"
+    ],
+    [
+      "main.py",
+      "GET",
+      "/health/ready"
+    ],
+    [
+      "main.py",
+      "GET",
+      "/readiness"
+    ],
+    [
+      "main.py",
+      "POST",
+      "/api/v1/chat/stream"
+    ],
+    [
+      "analysis_router.py",
+      "POST",
+      "/api/v1/analysis/orchestrate/stream"
+    ],
+    [
+      "analysis_router.py",
+      "POST",
+      "/api/v1/candidate/assess/stream"
+    ],
+    [
+      "analysis_router.py",
+      "POST",
+      "/api/v1/analysis/task/execute"
+    ],
+    [
+      "analysis_router.py",
+      "POST",
+      "/api/v1/analysis/task/aggregate"
+    ],
+    [
+      "analysis_router.py",
+      "POST",
+      "/api/v1/repository/assess"
+    ],
+    [
+      "analysis_router.py",
+      "POST",
+      "/api/v1/hiring-requirements/generate/stream"
+    ],
+    [
+      "analysis_router.py",
+      "POST",
+      "/api/v1/hiring-requirements/generate-artifact/stream"
+    ],
+    [
+      "analysis_router.py",
+      "POST",
+      "/api/v1/analysis/jobs/{job_id}/cancel"
+    ],
+    [
+      "analysis_router.py",
+      "POST",
+      "/api/v1/candidate/assess/score"
+    ]
+  ]
+}

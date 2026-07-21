@@ -1,0 +1,158 @@
+<mxfile host="Electron" agent="CVerify">
+  <diagram id="ucd-06" name="UCD-06 Candidate AI Assessment &amp; Intelligence Diagram">
+    <mxGraphModel dx="2175" dy="2121" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1169" pageHeight="827" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="act_cand_intel" parent="1" style="shape=umlActor;verticalLabelPosition=bottom;verticalAlign=top;html=1;outlineConnect=0;fontSize=12;fontStyle=0;labelBackgroundColor=none;" value="Candidate" vertex="1">
+          <mxGeometry height="90" width="50" x="50" y="200" as="geometry" />
+        </mxCell>
+        <mxCell id="act_employer_intel" parent="1" style="shape=umlActor;verticalLabelPosition=bottom;verticalAlign=top;html=1;outlineConnect=0;fontSize=12;fontStyle=0;labelBackgroundColor=none;" value="Employer / Org Admin" vertex="1">
+          <mxGeometry height="90" width="50" x="50" y="500" as="geometry" />
+        </mxCell>
+        <mxCell id="act_ai_intel" parent="1" style="shape=umlActor;verticalLabelPosition=bottom;verticalAlign=top;html=1;outlineConnect=0;fontSize=12;fontStyle=0;labelBackgroundColor=none;" value="CVerify.AI Engine" vertex="1">
+          <mxGeometry height="90" width="50" x="1119" y="40" as="geometry" />
+        </mxCell>
+        <mxCell id="act_admin_intel" parent="1" style="shape=umlActor;verticalLabelPosition=bottom;verticalAlign=top;html=1;outlineConnect=0;fontSize=12;fontStyle=0;labelBackgroundColor=none;" value="Super Admin" vertex="1">
+          <mxGeometry height="90" width="50" x="1090" y="260" as="geometry" />
+        </mxCell>
+        <mxCell id="uc_i01" parent="1" style="ellipse;whiteSpace=wrap;html=1;fontSize=11;fontStyle=0;align=center;labelBackgroundColor=none;" value="UC-INT-01: Queue Candidate for Assessment" vertex="1">
+          <mxGeometry height="60" width="220" x="690" y="-110" as="geometry" />
+        </mxCell>
+        <mxCell id="uc_i02" parent="1" style="ellipse;whiteSpace=wrap;html=1;fontSize=11;fontStyle=0;align=center;labelBackgroundColor=none;" value="UC-INT-02: Run Assessment Pipeline" vertex="1">
+          <mxGeometry height="60" width="220" x="690" y="20" as="geometry" />
+        </mxCell>
+        <mxCell id="uc_i03" parent="1" style="ellipse;whiteSpace=wrap;html=1;fontSize=11;fontStyle=0;align=center;labelBackgroundColor=none;" value="UC-INT-03: Build Interactive Skill Tree" vertex="1">
+          <mxGeometry height="70" width="180" x="220" y="-20" as="geometry" />
+        </mxCell>
+        <mxCell id="uc_i04" parent="1" style="ellipse;whiteSpace=wrap;html=1;fontSize=11;fontStyle=0;align=center;labelBackgroundColor=none;" value="UC-INT-04: Calculate Candidate Trust Score" vertex="1">
+          <mxGeometry height="60" width="180" x="320" y="70" as="geometry" />
+        </mxCell>
+        <mxCell id="uc_i05" parent="1" style="ellipse;whiteSpace=wrap;html=1;fontSize=11;fontStyle=0;align=center;labelBackgroundColor=none;" value="UC-INT-05: Analyze Strengths &amp;amp; Weaknesses" vertex="1">
+          <mxGeometry height="60" width="160" x="790" y="140" as="geometry" />
+        </mxCell>
+        <mxCell id="uc_i06" parent="1" style="ellipse;whiteSpace=wrap;html=1;fontSize=11;fontStyle=0;align=center;labelBackgroundColor=none;" value="UC-INT-06: Project Best-Fit Career Roles" vertex="1">
+          <mxGeometry height="70" width="180" x="540" y="150" as="geometry" />
+        </mxCell>
+        <mxCell id="uc_i07" parent="1" style="ellipse;whiteSpace=wrap;html=1;fontSize=11;fontStyle=0;align=center;labelBackgroundColor=none;" value="UC-INT-07: View AI Assessment Report" vertex="1">
+          <mxGeometry height="60" width="190" x="280" y="170" as="geometry" />
+        </mxCell>
+        <mxCell id="uc_i08" parent="1" style="ellipse;whiteSpace=wrap;html=1;fontSize=11;fontStyle=0;align=center;labelBackgroundColor=none;" value="UC-INT-08: Re-trigger Assessment" vertex="1">
+          <mxGeometry height="70" width="200" x="250" y="280" as="geometry" />
+        </mxCell>
+        <mxCell id="uc_i09" parent="1" style="ellipse;whiteSpace=wrap;html=1;fontSize=11;fontStyle=0;align=center;labelBackgroundColor=none;" value="UC-INT-09: Override Trust Score (Admin)" vertex="1">
+          <mxGeometry height="56" width="170" x="360" y="354" as="geometry" />
+        </mxCell>
+        <mxCell id="uc_i10" parent="1" style="ellipse;whiteSpace=wrap;html=1;fontSize=11;fontStyle=0;align=center;labelBackgroundColor=none;" value="UC-INT-10: View Assessment Version History" vertex="1">
+          <mxGeometry height="70" width="210" x="580" y="390" as="geometry" />
+        </mxCell>
+        <mxCell id="uc_i11" parent="1" style="ellipse;whiteSpace=wrap;html=1;fontSize=11;fontStyle=0;align=center;labelBackgroundColor=none;" value="UC-INT-11: Search Talent Pool with Filters" vertex="1">
+          <mxGeometry height="60" width="220" x="440" y="460" as="geometry" />
+        </mxCell>
+        <mxCell id="uc_i12" parent="1" style="ellipse;whiteSpace=wrap;html=1;fontSize=11;fontStyle=0;align=center;labelBackgroundColor=none;" value="UC-INT-12: Rank Candidates against Job" vertex="1">
+          <mxGeometry height="90" width="230" x="600" y="530" as="geometry" />
+        </mxCell>
+        <mxCell id="uc_i13" parent="1" style="ellipse;whiteSpace=wrap;html=1;fontSize=11;fontStyle=0;align=center;labelBackgroundColor=none;" value="UC-INT-13: Analyze Skill Gap Analysis" vertex="1">
+          <mxGeometry height="80" width="190" x="380" y="850" as="geometry" />
+        </mxCell>
+        <mxCell id="uc_i14" parent="1" style="ellipse;whiteSpace=wrap;html=1;fontSize=11;fontStyle=0;align=center;labelBackgroundColor=none;" value="UC-INT-14: Save Candidate to Talent Pool" vertex="1">
+          <mxGeometry height="80" width="180" x="550" y="640" as="geometry" />
+        </mxCell>
+        <mxCell id="uc_i15" parent="1" style="ellipse;whiteSpace=wrap;html=1;fontSize=11;fontStyle=0;align=center;labelBackgroundColor=none;" value="UC-INT-15: Export Candidate Audit Report" vertex="1">
+          <mxGeometry height="80" width="190" x="540" y="230" as="geometry" />
+        </mxCell>
+        <mxCell id="uc_i16" parent="1" style="ellipse;whiteSpace=wrap;html=1;fontSize=11;fontStyle=0;align=center;labelBackgroundColor=none;" value="UC-INT-16: Browse Capability Catalog" vertex="1">
+          <mxGeometry height="83" width="200" x="500" y="747" as="geometry" />
+        </mxCell>
+        <mxCell id="uc_i17" parent="1" style="ellipse;whiteSpace=wrap;html=1;fontSize=11;fontStyle=0;align=center;labelBackgroundColor=none;" value="UC-INT-17: Compare Candidate Profiles" vertex="1">
+          <mxGeometry height="80" width="180" x="200" y="940" as="geometry" />
+        </mxCell>
+        <mxCell id="edge_ucd-06_1" edge="1" parent="1" source="act_cand_intel" style="endArrow=none;html=1;rounded=0;strokeWidth=1.5;labelBackgroundColor=none;fontColor=default;fontStyle=0" target="uc_i03" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge_ucd-06_2" edge="1" parent="1" source="act_cand_intel" style="endArrow=none;html=1;rounded=0;strokeWidth=1.5;labelBackgroundColor=none;fontColor=default;fontStyle=0" target="uc_i04" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge_ucd-06_3" edge="1" parent="1" source="act_cand_intel" style="endArrow=none;html=1;rounded=0;strokeWidth=1.5;labelBackgroundColor=none;fontColor=default;fontStyle=0" target="uc_i07" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge_ucd-06_4" edge="1" parent="1" source="act_employer_intel" style="endArrow=none;html=1;rounded=0;strokeWidth=1.5;labelBackgroundColor=none;fontColor=default;fontStyle=0" target="uc_i11" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge_ucd-06_5" edge="1" parent="1" source="act_employer_intel" style="endArrow=none;html=1;rounded=0;strokeWidth=1.5;labelBackgroundColor=none;fontColor=default;fontStyle=0" target="uc_i12" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge_ucd-06_6" edge="1" parent="1" source="act_employer_intel" style="endArrow=none;html=1;rounded=0;strokeWidth=1.5;labelBackgroundColor=none;fontColor=default;fontStyle=0" target="uc_i14" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge_ucd-06_7" edge="1" parent="1" source="act_employer_intel" style="endArrow=none;html=1;rounded=0;strokeWidth=1.5;labelBackgroundColor=none;fontColor=default;fontStyle=0" target="uc_i17" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge_ucd-06_8" edge="1" parent="1" source="act_ai_intel" style="endArrow=none;html=1;rounded=0;strokeWidth=1.5;labelBackgroundColor=none;fontColor=default;fontStyle=0" target="uc_i02" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge_ucd-06_9" edge="1" parent="1" source="act_admin_intel" style="endArrow=none;html=1;rounded=0;strokeWidth=1.5;labelBackgroundColor=none;fontColor=default;fontStyle=0" target="uc_i09" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge_ucd-06_10" edge="1" parent="1" source="uc_i01" style="endArrow=open;endSize=8;dashed=1;html=1;rounded=0;strokeWidth=1.2;fontSize=10;fontStyle=0;labelBackgroundColor=none;fontColor=default;" target="uc_i02" value="&amp;lt;&amp;lt;include&amp;gt;&amp;gt;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge_ucd-06_11" edge="1" parent="1" source="uc_i02" style="endArrow=open;endSize=8;dashed=1;html=1;rounded=0;strokeWidth=1.2;fontSize=10;fontStyle=0;labelBackgroundColor=none;fontColor=default;" target="uc_i03" value="&amp;lt;&amp;lt;include&amp;gt;&amp;gt;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge_ucd-06_12" edge="1" parent="1" source="uc_i02" style="endArrow=open;endSize=8;dashed=1;html=1;rounded=0;strokeWidth=1.2;fontSize=10;fontStyle=0;labelBackgroundColor=none;fontColor=default;" target="uc_i04" value="&amp;lt;&amp;lt;include&amp;gt;&amp;gt;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge_ucd-06_13" edge="1" parent="1" source="uc_i02" style="endArrow=open;endSize=8;dashed=1;html=1;rounded=0;strokeWidth=1.2;fontSize=10;fontStyle=0;labelBackgroundColor=none;fontColor=default;" target="uc_i05" value="&amp;lt;&amp;lt;include&amp;gt;&amp;gt;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge_ucd-06_14" edge="1" parent="1" source="uc_i02" style="endArrow=open;endSize=8;dashed=1;html=1;rounded=0;strokeWidth=1.2;fontSize=10;fontStyle=0;labelBackgroundColor=none;fontColor=default;" target="uc_i06" value="&amp;lt;&amp;lt;include&amp;gt;&amp;gt;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge_ucd-06_15" edge="1" parent="1" source="uc_i11" style="endArrow=open;endSize=8;dashed=1;html=1;rounded=0;strokeWidth=1.2;fontSize=10;fontStyle=0;labelBackgroundColor=none;fontColor=default;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0.39;entryY=-0.02;entryDx=0;entryDy=0;entryPerimeter=0;" target="uc_i12" value="&amp;lt;&amp;lt;include&amp;gt;&amp;gt;">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="920" y="490" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="edge_ucd-06_16" edge="1" parent="1" source="uc_i07" style="endArrow=open;endSize=8;dashed=1;html=1;rounded=0;strokeWidth=1.2;fontSize=10;fontStyle=0;labelBackgroundColor=none;fontColor=default;" target="uc_i15" value="&amp;lt;&amp;lt;extend&amp;gt;&amp;gt;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="xR_RqsCXvnUQrK_wM0wS-1" parent="1" style="shape=umlFrame;whiteSpace=wrap;html=1;pointerEvents=0;width=370;height=60;fontStyle=0" value="&lt;span style=&quot;font-size: 14px;&quot;&gt;&lt;b&gt;Candidate AI Assessment &amp;amp; Intelligence System&lt;/b&gt;&lt;/span&gt;" vertex="1">
+          <mxGeometry height="1190" width="830" x="170" y="-140" as="geometry" />
+        </mxCell>
+        <mxCell id="xR_RqsCXvnUQrK_wM0wS-2" edge="1" parent="1" source="act_employer_intel" style="endArrow=none;html=1;rounded=0;exitX=1;exitY=0.3333333333333333;exitDx=0;exitDy=0;exitPerimeter=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="uc_i08" value="">
+          <mxGeometry height="50" relative="1" width="50" as="geometry">
+            <mxPoint x="160" y="360" as="sourcePoint" />
+            <mxPoint x="210" y="310" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="xR_RqsCXvnUQrK_wM0wS-3" edge="1" parent="1" source="act_employer_intel" style="endArrow=none;html=1;rounded=0;exitX=1;exitY=0.3333333333333333;exitDx=0;exitDy=0;exitPerimeter=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="uc_i10" value="">
+          <mxGeometry height="50" relative="1" width="50" as="geometry">
+            <mxPoint x="250" y="360" as="sourcePoint" />
+            <mxPoint x="300" y="310" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="xR_RqsCXvnUQrK_wM0wS-5" edge="1" parent="1" style="endArrow=none;html=1;rounded=0;entryX=0.056;entryY=0.74;entryDx=0;entryDy=0;entryPerimeter=0;" target="uc_i13" value="">
+          <mxGeometry height="50" relative="1" width="50" as="geometry">
+            <mxPoint x="100" y="550" as="sourcePoint" />
+            <mxPoint x="300" y="580" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="xR_RqsCXvnUQrK_wM0wS-6" edge="1" parent="1" style="endArrow=none;html=1;rounded=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="uc_i16" value="">
+          <mxGeometry height="50" relative="1" width="50" as="geometry">
+            <mxPoint x="110" y="560" as="sourcePoint" />
+            <mxPoint x="390" y="600" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="xR_RqsCXvnUQrK_wM0wS-7" edge="1" parent="1" source="uc_i09" style="endArrow=none;html=1;rounded=0;entryX=1;entryY=0.3333333333333333;entryDx=0;entryDy=0;entryPerimeter=0;exitX=0;exitY=0.5;exitDx=0;exitDy=0;" target="act_employer_intel" value="">
+          <mxGeometry height="50" relative="1" width="50" as="geometry">
+            <mxPoint x="-70" y="490" as="sourcePoint" />
+            <mxPoint x="-20" y="440" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>
